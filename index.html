@@ -380,6 +380,7 @@
 
     window.addEventListener("message", (event) => {
       if (event.origin !== window.location.origin) return;
+      if (event.source !== fullscreenFrame.contentWindow) return;
       if (event.data && event.data.type === "codex-menu-exit") {
         closePlayer();
       }
