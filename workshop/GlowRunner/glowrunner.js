@@ -53,10 +53,29 @@
     UPGRADES: "fr_upgrades"
   };
 
+  const storage = {
+    get(key, fallback = null) {
+      try {
+        const value = window.localStorage.getItem(key);
+        return value ?? fallback;
+      } catch {
+        return fallback;
+      }
+    },
+    set(key, value) {
+      try {
+        window.localStorage.setItem(key, value);
+        return true;
+      } catch {
+        return false;
+      }
+    }
+  };
+
   // ========= Load saved =========
-  let best = Number(localStorage.getItem(LS.BEST) || 0);
+  let best = Number(storage.get(LS.BEST, 0) || 0);
   bestEl.textContent = String(best);
-  let orbs = Number(localStorage.getItem(LS.ORBS) || 0);
+  let orbs = Number(storage.get(LS.ORBS, 0) || 0);
 
   // ========= Screens =========
   const SCREEN = { MENU:0, PLAY:1, SHOP:2 };
@@ -120,14 +139,14 @@
   };
 
   try {
-    const saved = JSON.parse(localStorage.getItem(LS.UPGRADES));
+    const saved = JSON.parse(storage.get(LS.UPGRADES, "null"));
     if (saved) Object.assign(upgrades, saved);
   } catch {}
 
   // ========= Save helper =========
   function saveProgress() {
-    localStorage.setItem(LS.ORBS, String(orbs));
-    localStorage.setItem(LS.UPGRADES, JSON.stringify(upgrades));
+    storage.set(LS.ORBS, String(orbs));
+    storage.set(LS.UPGRADES, JSON.stringify(upgrades));
   }
 
   // ========= Utility =========
@@ -351,7 +370,7 @@
     orbs += Math.floor(state.score / 50);
     best = Math.max(best, Math.floor(state.score));
 
-    localStorage.setItem(LS.BEST, String(best));
+    storage.set(LS.BEST, String(best));
     saveProgress();
 
     bestEl.textContent = best;
