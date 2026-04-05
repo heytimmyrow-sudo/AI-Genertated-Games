@@ -1,0 +1,27 @@
+.shadow-circuit-shell {
+  position: relative;
+  overflow: hidden;
+}
+
+.shadow-circuit-shell::before {
+  content: "";
+  position: absolute;
+  inset: 12px;
+  border: 1px solid rgba(102, 255, 240, 0.16);
+  pointer-events: none;
+}
+
+#shadowCircuitCanvas {
+  display: block;
+  width: min(100%, 960px);
+  max-width: 100%;
+  margin: 0 auto;
+  border: 1px solid rgba(91, 224, 255, 0.24);
+  background:
+    radial-gradient(circle at top, rgba(28, 84, 128, 0.24), transparent 56%),
+    linear-gradient(180deg, #061019, #03070d);
+  box-shadow:
+    0 0 0 1px rgba(120, 244, 255, 0.08),
+    0 24px 60px rgba(0, 0, 0, 0.45),
+    0 0 36px rgba(33, 173, 255, 0.18);
+}

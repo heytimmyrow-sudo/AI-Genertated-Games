@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Stillwake House</title>
+  <link rel="stylesheet" href="../style.css">
+  <link rel="stylesheet" href="./stillwake-house.css">
+</head>
+<body>
+  <main class="shell">
+    <section class="hud-frame stillwake-shell">
+      <div class="title-block">
+        <p class="eyebrow">Mystery Scene</p>
+        <h1>Stillwake House</h1>
+        <p class="subtitle">Wake inside your own warm little house, read the letter on the table, and notice the quiet details that do not feel right.</p>
+      </div>
+
+      <div class="stillwake-stage">
+        <canvas id="stillwakeCanvas" width="1280" height="720" aria-label="Stillwake House 3D scene"></canvas>
+
+        <div class="stillwake-fade" id="stillwakeFade"></div>
+
+        <div class="stillwake-title" id="stillwakeTitle">
+          <div class="stillwake-title__panel">
+            <p class="eyebrow">Opening Scene</p>
+            <h2>Stillwake House</h2>
+            <p>Your room is warm. The village is quiet. The letter on the table is not.</p>
+            <button type="button" id="stillwakeStart">Begin</button>
+          </div>
+        </div>
+
+        <div class="stillwake-prompt" id="stillwakePrompt" hidden>
+          Press <b>E</b> to read the letter
+        </div>
+
+        <div class="stillwake-note" id="stillwakeNote" hidden>
+          <div class="stillwake-note__paper">
+            <button type="button" class="stillwake-note__close" id="stillwakeCloseNote">Close</button>
+            <p class="stillwake-note__label" id="stillwakeNoteLabel">Folded Letter</p>
+            <h2 id="stillwakeNoteTitle">For You</h2>
+            <div id="stillwakeNoteBody">
+              <p>You need to leave before-</p>
+              <p><span class="scratched">they are already here</span></p>
+              <p>Do not trust-</p>
+              <p><span class="scratched">the village</span></p>
+              <p>If you're reading this, it's already-</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="stillwake-hint" id="stillwakeHint">WASD move. E interact. P pause. Esc menu.</div>
+      </div>
+    </section>
+  </main>
+
+  <script src="../vendor/three.min.js"></script>
+  <script src="../js/stillwake-house/config.js"></script>
+  <script src="../js/stillwake-house/scene.js"></script>
+  <script src="../js/stillwake-house/player.js"></script>
+  <script src="../js/stillwake-house/world.js"></script>
+  <script src="../js/stillwake-house/ui.js"></script>
+  <script src="../js/stillwake-house/game.js"></script>
+  <script src="../js/stillwake-house/boot.js"></script>
+</body>
+</html>

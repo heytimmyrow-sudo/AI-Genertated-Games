@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Kingdom of Grace</title>
+  <link rel="stylesheet" href="cathedral.css" />
+</head>
+<body>
+  <div class="parish">
+    <p class="crest">Idle Cathedral</p>
+    <h1>Kingdom of Grace</h1>
+    <p class="intro">
+      Build a symbolic kingdom through prayers, helpers, and long-run blessings.
+    </p>
+
+    <div class="stats">
+      <div><span class="label">Grace:</span> <span id="grace">0</span></div>
+      <div><span class="label">Per Prayer:</span> <span id="perClick">1</span></div>
+      <div><span class="label">Per Second:</span> <span id="perSecond">0</span></div>
+      <div><span class="label">Blessing:</span> <span id="multiplier">x1.00</span></div>
+      <div><span class="label">Virtue:</span> <span id="virtue">0</span> (<span id="virtueBonus">+0%</span>)</div>
+      <div><span class="label">Best Grace:</span> <span id="bestGrace">0</span></div>
+    </div>
+
+    <button id="prayBtn" class="pray-button">Offer Prayer</button>
+    <div id="floatLayer" class="float-layer"></div>
+
+    <div class="tabs">
+      <button class="tab active" data-tab="helpers">Helpers</button>
+      <button class="tab" data-tab="tools">Tools</button>
+      <button class="tab" data-tab="saints">Saints</button>
+      <button class="tab" data-tab="blessings">Blessings</button>
+      <button class="tab" data-tab="prestige">Prestige</button>
+    </div>
+
+    <div id="helpers" class="panel"></div>
+    <div id="tools" class="panel hidden"></div>
+    <div id="saints" class="panel hidden"></div>
+    <div id="blessings" class="panel hidden"></div>
+    <div id="prestige" class="panel hidden"></div>
+
+    <div class="row">
+      <button id="saveBtn" class="small-btn">Save</button>
+      <button id="resetBtn" class="small-btn danger">Reset</button>
+    </div>
+
+    <div class="row">
+      <button id="sfxBtn" class="small-btn">SFX: ON</button>
+      <button id="musicBtn" class="small-btn">Music: OFF</button>
+    </div>
+
+    <p class="disclaimer">
+      (This is a respectful game using symbolic points, not real spiritual value.)
+    </p>
+  </div>
+
+  <script src="mission.js"></script>
+</body>
+</html>

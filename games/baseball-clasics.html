@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Baseball Clasics</title>
+  <link rel="stylesheet" href="../style.css">
+  <link rel="stylesheet" href="./baseball-clasics.css">
+</head>
+<body>
+  <main class="shell baseball-shell">
+    <section class="hud-frame baseball-frame">
+      <div class="title-block baseball-hero">
+        <div>
+          <p class="eyebrow">Sports Sandbox</p>
+          <h1>Baseball Clasics</h1>
+          <p class="subtitle">Load current MLB clubs as they are right now, or build your own lineup by mixing real players from different teams.</p>
+        </div>
+        <div class="baseball-hero__status">
+          <p class="baseball-hero__label">Live Data</p>
+          <p id="dataStatus">Loading current teams and active rosters...</p>
+        </div>
+      </div>
+
+      <section class="baseball-summary" aria-label="Matchup summary">
+        <div class="baseball-summary__panel">
+          <p class="baseball-summary__label">Home</p>
+          <strong id="homeSummaryName">Choose a team</strong>
+          <span id="homeSummaryMeta">No roster loaded yet</span>
+        </div>
+        <div class="baseball-summary__panel">
+          <p class="baseball-summary__label">Away</p>
+          <strong id="awaySummaryName">Choose a team</strong>
+          <span id="awaySummaryMeta">No roster loaded yet</span>
+        </div>
+        <div class="baseball-summary__panel baseball-summary__panel--accent">
+          <p class="baseball-summary__label">Mode</p>
+          <strong>Classic Setup</strong>
+          <span>Real MLB clubs or custom mixed rosters</span>
+        </div>
+      </section>
+
+      <section class="baseball-builder" aria-label="Baseball roster builder">
+        <article class="team-builder" data-side="home">
+          <div class="team-builder__header">
+            <p class="team-builder__eyebrow">Home Club</p>
+            <h2>Team Setup</h2>
+          </div>
+
+          <div class="team-builder__modes" role="tablist" aria-label="Home club mode">
+            <button class="mode-chip is-active" type="button" data-side="home" data-mode="official">Use Real Team</button>
+            <button class="mode-chip" type="button" data-side="home" data-mode="custom">Build Custom Team</button>
+          </div>
+
+          <div class="team-builder__section" id="homeOfficialPanel">
+            <label class="field">
+              <span>Current MLB Team</span>
+              <select id="homeTeamSelect"></select>
+            </label>
+            <button class="action-button" type="button" id="homeLoadOfficial">Load Active Roster</button>
+          </div>
+
+          <div class="team-builder__section team-builder__section--stack is-hidden" id="homeCustomPanel">
+            <label class="field">
+              <span>Custom Team Name</span>
+              <input id="homeCustomName" type="text" maxlength="30" placeholder="Home All-Stars">
+            </label>
+            <div class="team-builder__custom-grid">
+              <label class="field">
+                <span>Source Team</span>
+                <select id="homeSourceTeam"></select>
+              </label>
+              <label class="field">
+                <span>Real Player</span>
+                <select id="homePlayerSelect"></select>
+              </label>
+            </div>
+            <div class="team-builder__actions">
+              <button class="action-button" type="button" id="homeAddPlayer">Add Player</button>
+              <button class="action-button action-button--ghost" type="button" id="homeLoadBaseTeam">Load Team As Base</button>
+              <button class="action-button action-button--ghost" type="button" id="homeClearCustom">Clear Team</button>
+            </div>
+          </div>
+
+          <div class="roster-panel">
+            <div class="roster-panel__topline">
+              <h3 id="homeRosterTitle">Home roster</h3>
+              <span id="homeRosterCount">0 players</span>
+            </div>
+            <ol class="roster-list" id="homeRosterList"></ol>
+          </div>
+        </article>
+
+        <article class="team-builder" data-side="away">
+          <div class="team-builder__header">
+            <p class="team-builder__eyebrow">Away Club</p>
+            <h2>Team Setup</h2>
+          </div>
+
+          <div class="team-builder__modes" role="tablist" aria-label="Away club mode">
+            <button class="mode-chip is-active" type="button" data-side="away" data-mode="official">Use Real Team</button>
+            <button class="mode-chip" type="button" data-side="away" data-mode="custom">Build Custom Team</button>
+          </div>
+
+          <div class="team-builder__section" id="awayOfficialPanel">
+            <label class="field">
+              <span>Current MLB Team</span>
+              <select id="awayTeamSelect"></select>
+            </label>
+            <button class="action-button" type="button" id="awayLoadOfficial">Load Active Roster</button>
+          </div>
+
+          <div class="team-builder__section team-builder__section--stack is-hidden" id="awayCustomPanel">
+            <label class="field">
+              <span>Custom Team Name</span>
+              <input id="awayCustomName" type="text" maxlength="30" placeholder="Away Legends">
+            </label>
+            <div class="team-builder__custom-grid">
+              <label class="field">
+                <span>Source Team</span>
+                <select id="awaySourceTeam"></select>
+              </label>
+              <label class="field">
+                <span>Real Player</span>
+                <select id="awayPlayerSelect"></select>
+              </label>
+            </div>
+            <div class="team-builder__actions">
+              <button class="action-button" type="button" id="awayAddPlayer">Add Player</button>
+              <button class="action-button action-button--ghost" type="button" id="awayLoadBaseTeam">Load Team As Base</button>
+              <button class="action-button action-button--ghost" type="button" id="awayClearCustom">Clear Team</button>
+            </div>
+          </div>
+
+          <div class="roster-panel">
+            <div class="roster-panel__topline">
+              <h3 id="awayRosterTitle">Away roster</h3>
+              <span id="awayRosterCount">0 players</span>
+            </div>
+            <ol class="roster-list" id="awayRosterList"></ol>
+          </div>
+        </article>
+      </section>
+
+      <section class="simulation-panel" aria-label="Exhibition simulation">
+        <div class="simulation-panel__topline">
+          <div>
+            <p class="eyebrow">Matchup Simulator</p>
+            <h2>Play The Game</h2>
+            <p class="subtitle">Use the current player stats when available, then simulate a full game between your two lineups.</p>
+          </div>
+          <div class="simulation-panel__actions">
+            <button class="action-button" type="button" id="simulateGameButton">Simulate Game</button>
+            <button class="action-button action-button--ghost" type="button" id="resetGameButton">Clear Result</button>
+          </div>
+        </div>
+
+        <div class="scoreboard" id="scoreboard">
+          <div class="scoreboard__team">
+            <p class="scoreboard__label">Away</p>
+            <strong id="scoreboardAwayName">Away Club</strong>
+            <span id="scoreboardAwayScore">0</span>
+          </div>
+          <div class="scoreboard__center">
+            <strong id="scoreboardStatus">No game played yet</strong>
+            <span id="scoreboardMeta">Build both teams, then run the sim.</span>
+          </div>
+          <div class="scoreboard__team">
+            <p class="scoreboard__label">Home</p>
+            <strong id="scoreboardHomeName">Home Club</strong>
+            <span id="scoreboardHomeScore">0</span>
+          </div>
+        </div>
+
+        <div class="inning-lines" id="inningLines"></div>
+        <ol class="game-log" id="gameLog">
+          <li class="game-log__empty">The inning-by-inning game log will appear here.</li>
+        </ol>
+      </section>
+
+      <section class="baseball-footer" aria-label="Controls and next step">
+        <div class="controls">
+          <span>Live MLB teams</span>
+          <span>Real active players</span>
+          <span>Custom mixed rosters</span>
+          <span>Simulated innings</span>
+          <span>Pause: P</span>
+          <span>Menu: Esc</span>
+        </div>
+        <div class="baseball-note">
+          <p id="builderStatus">Build the matchup first. Once you like both rosters, send the next details and I can turn this into the actual baseball game.</p>
+        </div>
+      </section>
+    </section>
+  </main>
+
+  <div class="pause-overlay" id="pauseOverlay" hidden>
+    <div class="pause-overlay__panel">
+      <p class="eyebrow">Paused</p>
+      <h2>Baseball Clasics</h2>
+      <p>Press <strong>P</strong> to resume or <strong>Esc</strong> to head back to the menu.</p>
+      <div class="pause-overlay__actions">
+        <button class="action-button" type="button" id="resumeButton">Resume</button>
+        <button class="action-button action-button--ghost" type="button" id="menuButton">Menu</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="../js/baseball-clasics-data.js"></script>
+  <script src="../js/baseball-clasics.js"></script>
+</body>
+</html>

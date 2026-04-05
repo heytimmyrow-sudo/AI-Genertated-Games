@@ -1,0 +1,465 @@
+.baseball-shell {
+  align-items: start;
+}
+
+.baseball-frame {
+  width: min(100%, 1240px);
+}
+
+.baseball-hero {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  align-items: start;
+}
+
+.baseball-hero__status {
+  min-width: 280px;
+  padding: 16px 18px;
+  border: 1px solid rgba(125, 227, 255, 0.16);
+  border-radius: 18px;
+  background: linear-gradient(180deg, rgba(13, 26, 38, 0.78), rgba(7, 12, 19, 0.76));
+}
+
+.baseball-hero__label,
+.baseball-summary__label,
+.team-builder__eyebrow {
+  margin: 0 0 8px;
+  color: var(--warm);
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  font-size: 0.72rem;
+}
+
+.baseball-hero__status p:last-child {
+  margin: 0;
+  color: var(--accent-soft);
+}
+
+.baseball-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  margin-bottom: 18px;
+}
+
+.baseball-summary__panel {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 16px 18px;
+  border-radius: 18px;
+  border: 1px solid rgba(125, 227, 255, 0.14);
+  background: linear-gradient(180deg, rgba(13, 26, 38, 0.78), rgba(7, 12, 19, 0.76));
+}
+
+.baseball-summary__panel strong {
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+}
+
+.baseball-summary__panel span {
+  color: var(--muted);
+}
+
+.baseball-summary__panel--accent {
+  border-color: rgba(255, 214, 107, 0.2);
+  background: linear-gradient(180deg, rgba(62, 42, 14, 0.72), rgba(18, 13, 8, 0.82));
+}
+
+.baseball-builder {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.team-builder {
+  padding: 18px;
+  border: 1px solid rgba(167, 128, 255, 0.18);
+  border-radius: 22px;
+  background: linear-gradient(180deg, rgba(10, 16, 25, 0.84), rgba(7, 12, 19, 0.9));
+  box-shadow: 0 18px 45px rgba(0, 0, 0, 0.28);
+}
+
+.team-builder__header h2,
+.roster-panel__topline h3 {
+  margin: 0;
+  font-family: var(--font-display);
+}
+
+.team-builder__modes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 16px 0;
+}
+
+.mode-chip {
+  border: 1px solid rgba(125, 227, 255, 0.16);
+  border-radius: 999px;
+  padding: 10px 14px;
+  background: rgba(7, 15, 24, 0.72);
+  color: var(--muted);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.mode-chip.is-active {
+  background: linear-gradient(135deg, var(--accent), #57c6e7);
+  color: #062030;
+  border-color: transparent;
+}
+
+.team-builder__section {
+  display: flex;
+  align-items: end;
+  gap: 14px;
+  margin-bottom: 18px;
+}
+
+.team-builder__section--stack {
+  align-items: stretch;
+  flex-direction: column;
+}
+
+.team-builder__custom-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.team-builder__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1 1 0;
+}
+
+.field span {
+  color: var(--accent-soft);
+  font-size: 0.88rem;
+}
+
+.field input,
+.field select {
+  width: 100%;
+  border: 1px solid rgba(125, 227, 255, 0.16);
+  border-radius: 14px;
+  padding: 12px 14px;
+  background: rgba(4, 12, 20, 0.92);
+  color: var(--text);
+  font: inherit;
+}
+
+.action-button {
+  border: 0;
+  border-radius: 999px;
+  padding: 12px 18px;
+  background: linear-gradient(135deg, var(--accent), #57c6e7);
+  color: #062030;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.action-button--ghost {
+  border: 1px solid rgba(125, 227, 255, 0.16);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--accent-soft);
+}
+
+.roster-panel {
+  padding: 14px;
+  border-radius: 18px;
+  border: 1px solid rgba(125, 227, 255, 0.14);
+  background: rgba(3, 9, 16, 0.72);
+  min-height: 420px;
+}
+
+.roster-panel__topline {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.roster-panel__topline span {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.roster-list {
+  margin: 0;
+  padding-left: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.roster-list li {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 10px;
+  align-items: center;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.roster-list__index {
+  color: var(--warm);
+  font-weight: 700;
+}
+
+.roster-list__player {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.roster-list__player strong {
+  font-size: 0.96rem;
+}
+
+.roster-list__player span {
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.roster-list__remove {
+  border: 0;
+  border-radius: 999px;
+  padding: 8px 12px;
+  background: rgba(255, 94, 122, 0.14);
+  color: #ffd7de;
+  font: inherit;
+  cursor: pointer;
+}
+
+.roster-list__empty {
+  color: var(--muted);
+  padding: 12px 4px;
+}
+
+.baseball-footer {
+  margin-top: 18px;
+}
+
+.simulation-panel {
+  margin-top: 18px;
+  padding: 18px;
+  border: 1px solid rgba(167, 128, 255, 0.18);
+  border-radius: 22px;
+  background: linear-gradient(180deg, rgba(10, 16, 25, 0.84), rgba(7, 12, 19, 0.9));
+  box-shadow: 0 18px 45px rgba(0, 0, 0, 0.28);
+}
+
+.simulation-panel__topline {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  align-items: start;
+  margin-bottom: 16px;
+}
+
+.simulation-panel__topline h2 {
+  margin: 0;
+  font-family: var(--font-display);
+}
+
+.simulation-panel__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.scoreboard {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(220px, 0.9fr) minmax(0, 1fr);
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+.scoreboard__team,
+.scoreboard__center {
+  padding: 16px 18px;
+  border-radius: 18px;
+  border: 1px solid rgba(125, 227, 255, 0.14);
+  background: rgba(3, 9, 16, 0.72);
+}
+
+.scoreboard__team {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.scoreboard__center {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  text-align: center;
+  gap: 8px;
+}
+
+.scoreboard__label {
+  margin: 0;
+  color: var(--warm);
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  font-size: 0.72rem;
+}
+
+.scoreboard__team strong,
+.scoreboard__center strong {
+  font-family: var(--font-display);
+}
+
+.scoreboard__team strong {
+  font-size: 1.16rem;
+}
+
+.scoreboard__team span {
+  font-size: 2rem;
+  color: var(--accent-soft);
+  font-family: var(--font-display);
+}
+
+.scoreboard__center span {
+  color: var(--muted);
+}
+
+.inning-lines {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(82px, 1fr));
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.inning-line {
+  padding: 10px 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.04);
+  text-align: center;
+}
+
+.inning-line strong {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--warm);
+}
+
+.inning-line span {
+  display: block;
+  color: var(--accent-soft);
+}
+
+.game-log {
+  margin: 0;
+  padding-left: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.game-log li {
+  padding: 11px 14px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text);
+}
+
+.game-log__empty {
+  color: var(--muted);
+}
+
+.baseball-note {
+  margin-top: 12px;
+  padding: 16px 18px;
+  border-radius: 18px;
+  border: 1px solid rgba(125, 227, 255, 0.14);
+  background: linear-gradient(180deg, rgba(13, 26, 38, 0.78), rgba(7, 12, 19, 0.76));
+}
+
+.baseball-note p {
+  margin: 0;
+  color: var(--muted);
+}
+
+.pause-overlay {
+  position: fixed;
+  inset: 0;
+  display: none;
+  place-items: center;
+  background: rgba(3, 8, 14, 0.72);
+  backdrop-filter: blur(8px);
+  z-index: 30;
+}
+
+.pause-overlay.is-open {
+  display: grid;
+}
+
+.pause-overlay__panel {
+  width: min(100% - 32px, 420px);
+  padding: 24px;
+  border: 1px solid rgba(125, 227, 255, 0.2);
+  border-radius: 22px;
+  background: linear-gradient(180deg, rgba(10, 16, 25, 0.92), rgba(7, 12, 19, 0.96));
+  text-align: center;
+}
+
+.pause-overlay__panel h2,
+.pause-overlay__panel p {
+  margin: 0;
+}
+
+.pause-overlay__panel h2 {
+  margin-bottom: 10px;
+  font-family: var(--font-display);
+}
+
+.pause-overlay__actions {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.is-hidden {
+  display: none;
+}
+
+@media (max-width: 980px) {
+  .baseball-hero,
+  .baseball-builder,
+  .baseball-summary,
+  .team-builder__custom-grid {
+    grid-template-columns: 1fr;
+    display: grid;
+  }
+
+  .team-builder__section {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .simulation-panel__topline,
+  .scoreboard {
+    grid-template-columns: 1fr;
+    display: grid;
+  }
+}

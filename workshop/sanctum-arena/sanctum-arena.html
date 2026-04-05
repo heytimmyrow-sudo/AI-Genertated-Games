@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Sanctum Arena</title>
+  <link rel="stylesheet" href="sanctum-arena.css" />
+</head>
+<body>
+  <div id="hud">
+    <div class="eyebrow">Arena Trial</div>
+    <div class="title">Sanctum Arena</div>
+
+    <div id="stats">Loading...</div>
+
+    <div id="barWrap" aria-label="Faith progress">
+      <div id="bar"></div>
+    </div>
+
+    <div class="hint">
+      Click once to focus + enable sound.<br>
+      <b>WASD</b> move | <b>Shift</b> dash | <b>Click/Space</b> swing | <b>R</b> restart | <b>M</b> mute
+    </div>
+
+    <div id="debug"></div>
+  </div>
+
+  <div id="minimapWrap" aria-label="Minimap">
+    <canvas id="minimap" width="180" height="180"></canvas>
+    <div class="miniLabel">Sanctum Map</div>
+  </div>
+
+  <script src="https://unpkg.com/three@0.160.0/build/three.min.js"></script>
+  <script src="sanctum-world.js"></script>
+  <script src="sanctum-entities.js"></script>
+  <script src="sanctum-ui.js"></script>
+  <script src="sanctum-main.js"></script>
+</body>
+</html>

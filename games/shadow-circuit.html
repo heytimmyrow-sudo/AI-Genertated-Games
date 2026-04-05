@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Shadow Circuit</title>
+  <link rel="stylesheet" href="../style.css">
+  <link rel="stylesheet" href="./shadow-circuit.css">
+</head>
+<body>
+  <main class="shell">
+    <section class="hud-frame shadow-circuit-shell">
+      <div class="title-block">
+        <p class="eyebrow">Sci-Fi Action Adventure</p>
+        <h1>Shadow Circuit</h1>
+        <p class="subtitle">Run the maze, unlock sealed sectors, fight neon drones, and gather enough cores to break out of the system.</p>
+      </div>
+      <canvas id="shadowCircuitCanvas" width="960" height="640" aria-label="Shadow Circuit game area"></canvas>
+      <div class="controls">
+        <span>Move: WASD / Arrows</span>
+        <span>Dash: Shift</span>
+        <span>Blast: Space</span>
+        <span>Pause: P</span>
+        <span>Menu: Esc</span>
+      </div>
+    </section>
+  </main>
+
+  <script src="../js/shadow-circuit/config.js"></script>
+  <script src="../js/shadow-circuit/utils.js"></script>
+  <script src="../js/shadow-circuit/input.js"></script>
+  <script src="../js/shadow-circuit/content/maps.js"></script>
+  <script src="../js/shadow-circuit/effects.js"></script>
+  <script src="../js/shadow-circuit/entities.js"></script>
+  <script src="../js/shadow-circuit/world.js"></script>
+  <script src="../js/shadow-circuit/ui.js"></script>
+  <script src="../js/shadow-circuit/game.js"></script>
+  <script src="../js/shadow-circuit/boot.js"></script>
+</body>
+</html>

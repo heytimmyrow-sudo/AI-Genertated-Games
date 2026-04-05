@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Codex Arena Vault</title>
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+  <main class="shell shell--hub">
+    <section class="hub-frame">
+      <section class="hub-hero">
+        <div class="title-block">
+          <p class="eyebrow">Codex Arena Vault x Arcade Workshop</p>
+          <h1>Vault Workshop Nexus</h1>
+          <p class="subtitle">One launcher, two collections, fifteen games. Pick a lane fast, launch instantly, and jump back to the hub whenever you want.</p>
+        </div>
+
+        <aside class="vault-summary" aria-label="Vault summary">
+          <p class="vault-summary__label">Restoration Status</p>
+          <div class="vault-stats">
+            <div class="vault-stat">
+              <strong>15</strong>
+              <span>Linked worlds</span>
+            </div>
+            <div class="vault-stat">
+              <strong>2</strong>
+              <span>Collections merged</span>
+            </div>
+            <div class="vault-stat">
+              <strong>0</strong>
+              <span>Sports links</span>
+            </div>
+          </div>
+        </aside>
+      </section>
+
+      <section class="status-strip" aria-label="Vault objective">
+        <div class="status-strip__panel">
+          <p class="status-strip__label">Objective</p>
+          <p>Choose a collection, launch a game instantly, and use `Esc` at any time to phase back to the combined hub.</p>
+        </div>
+        <div class="status-strip__panel">
+          <p class="status-strip__label">Flow</p>
+          <p>`P` pauses inside supported games, while the shared fullscreen player and menu flow stay consistent across the hub.</p>
+        </div>
+      </section>
+
+      <section class="collection-toolbar" aria-label="Collection filters">
+        <button class="collection-chip is-active" type="button" data-filter="all">All Games</button>
+        <button class="collection-chip" type="button" data-filter="codex">Codex Arena Vault</button>
+        <button class="collection-chip" type="button" data-filter="workshop">Arcade Workshop</button>
+      </section>
+
+      <section class="collection-block" data-collection="codex">
+        <div class="collection-heading">
+          <p class="collection-heading__eyebrow">Collection One</p>
+          <h2>Codex Arena Vault</h2>
+        </div>
+
+        <section class="hub-grid" aria-label="Codex Arena Vault games">
+          <article class="game-card game-card--void is-active" data-card="./games/dodge.html">
+            <p class="game-card__eyebrow">Arcade Dodge</p>
+            <h2>Purple Square Panic</h2>
+            <p>Slide across the floor, dodge the falling hazards, and catch yellow powerups to survive longer.</p>
+            <div class="game-card__meta">
+              <span>Quick reflexes</span>
+              <span>Pickups</span>
+            </div>
+            <button class="play-button" type="button" data-game="./games/dodge.html">Play Dodge</button>
+          </article>
+
+          <article class="game-card game-card--ocean" data-card="./games/starforge.html">
+            <p class="game-card__eyebrow">Top-Down Shooter</p>
+            <h2>Starforge Salvage</h2>
+            <p>Drift through a wreck field, collect energy cores, and blast down hostile drones before they close in.</p>
+            <div class="game-card__meta">
+              <span>Auto-fire</span>
+              <span>Dash movement</span>
+            </div>
+            <button class="play-button" type="button" data-game="./games/starforge.html">Play Starforge</button>
+          </article>
+
+          <article class="game-card game-card--sanctum" data-card="./games/beastblade.html">
+            <p class="game-card__eyebrow">PvE Swordfighting</p>
+            <h2>Beastblade Ascent</h2>
+            <p>Clear arena trials, spend upgrades, summon your beast ally, and survive the monster gauntlet.</p>
+            <div class="game-card__meta">
+              <span>3D combat</span>
+              <span>Upgrades</span>
+            </div>
+            <button class="play-button" type="button" data-game="./games/beastblade.html">Play Beastblade</button>
+          </article>
+
+          <article class="game-card game-card--ember" data-card="./games/racing.html">
+            <p class="game-card__eyebrow">Arcade Racing</p>
+            <h2>Neon Apex Rush</h2>
+            <p>Hit sweeping turns, race rival drivers, and tear through bright neon circuits at top speed.</p>
+            <div class="game-card__meta">
+              <span>Track select</span>
+              <span>Rivals</span>
+            </div>
+            <button class="play-button" type="button" data-game="./games/racing.html">Play Racing</button>
+          </article>
+
+          <article class="game-card game-card--jungle" data-card="./games/relicbound.html">
+            <p class="game-card__eyebrow">Adventure Framework</p>
+            <h2>Relicbound Vale</h2>
+            <p>Explore a growing fantasy action-adventure with shrines, camps, dungeons, and room for much bigger systems later.</p>
+            <div class="game-card__meta">
+              <span>Open region</span>
+              <span>Framework</span>
+            </div>
+            <button class="play-button" type="button" data-game="./games/relicbound.html">Play Relicbound</button>
+          </article>
+
+          <article class="game-card game-card--marble" data-card="./games/typing.html">
+            <p class="game-card__eyebrow">Typing Trainer</p>
+            <h2>Typing Tempo</h2>
+            <p>Practice typing speed, keep a clean streak, and build better accuracy in a focused word rush.</p>
+            <div class="game-card__meta">
+              <span>Typing</span>
+              <span>Accuracy</span>
+            </div>
+            <button class="play-button" type="button" data-game="./games/typing.html">Play Typing</button>
+          </article>
+
+          <article class="game-card game-card--void" data-card="./games/shadow-circuit.html">
+            <p class="game-card__eyebrow">Sci-Fi Action Adventure</p>
+            <h2>Shadow Circuit</h2>
+            <p>Dash through a neon maze, collect power cores, unlock sealed gates, and fight hostile drones on the way out.</p>
+            <div class="game-card__meta">
+              <span>Maze escape</span>
+              <span>Dash combat</span>
+            </div>
+            <button class="play-button" type="button" data-game="./games/shadow-circuit.html">Play Shadow Circuit</button>
+          </article>
+
+          <article class="game-card game-card--marble" data-card="./games/board-arcade.html">
+            <p class="game-card__eyebrow">Strategy Collection</p>
+            <h2>Board Blitz Arcade</h2>
+            <p>Play chess, checkers, or tic-tac-toe in one board-game hub, with either local multiplayer or a computer opponent.</p>
+            <div class="game-card__meta">
+              <span>3 classics</span>
+              <span>PvP / PvC</span>
+            </div>
+            <button class="play-button" type="button" data-game="./games/board-arcade.html">Play Board Blitz</button>
+          </article>
+
+          <article class="game-card game-card--ember" data-card="./games/sky-archer.html">
+            <p class="game-card__eyebrow">Fantasy Defense</p>
+            <h2>Sky Archer</h2>
+            <p>Draw the bow, arc arrows across floating bridges, and stop invading sky raiders before they strike the tower.</p>
+            <div class="game-card__meta">
+              <span>Archery</span>
+              <span>Wave defense</span>
+            </div>
+            <button class="play-button" type="button" data-game="./games/sky-archer.html">Play Sky Archer</button>
+          </article>
+
+          <article class="game-card game-card--jungle" data-card="./games/stillwake-house.html">
+            <p class="game-card__eyebrow">3D Mystery Scene</p>
+            <h2>Stillwake House</h2>
+            <p>Walk through one warm little house, read the letter on the table, and sit with the quiet feeling that something is wrong.</p>
+            <div class="game-card__meta">
+              <span>Three.js</span>
+              <span>Exploration</span>
+            </div>
+            <button class="play-button" type="button" data-game="./games/stillwake-house.html">Play Stillwake</button>
+          </article>
+        </section>
+      </section>
+
+      <section class="collection-block" data-collection="workshop">
+        <div class="collection-heading">
+          <p class="collection-heading__eyebrow">Collection Two</p>
+          <h2>Arcade Workshop</h2>
+        </div>
+
+        <section class="hub-grid" aria-label="Arcade Workshop games">
+          <article class="game-card game-card--ocean" data-card="./workshop/Mobile%20Game/pirates.html">
+            <p class="game-card__eyebrow">Arcade Workshop</p>
+            <h2>Pirate Ship Battles</h2>
+            <p>Sail, fight, board enemy ships, and spend coins on upgrades across the open water.</p>
+            <div class="game-card__meta">
+              <span>Naval action</span>
+              <span>Upgrades</span>
+            </div>
+            <button class="play-button" type="button" data-game="./workshop/Mobile%20Game/pirates.html">Play Pirates</button>
+          </article>
+
+          <article class="game-card game-card--ember" data-card="./workshop/GlowRunner/glowrunner.html">
+            <p class="game-card__eyebrow">Arcade Workshop</p>
+            <h2>Glow Runner</h2>
+            <p>Dash through a neon course, dodge spikes, and build up a better run with shop upgrades.</p>
+            <div class="game-card__meta">
+              <span>Runner</span>
+              <span>Shop</span>
+            </div>
+            <button class="play-button" type="button" data-game="./workshop/GlowRunner/glowrunner.html">Play Glow Runner</button>
+          </article>
+
+          <article class="game-card game-card--marble" data-card="./workshop/CatholicClickyGame/vatican.html">
+            <p class="game-card__eyebrow">Arcade Workshop</p>
+            <h2>Kingdom of Grace</h2>
+            <p>Build a symbolic kingdom through idle growth, helpers, blessings, and long-form upgrades.</p>
+            <div class="game-card__meta">
+              <span>Idle</span>
+              <span>Builder</span>
+            </div>
+            <button class="play-button" type="button" data-game="./workshop/CatholicClickyGame/vatican.html">Play Grace</button>
+          </article>
+
+          <article class="game-card game-card--jungle" data-card="./workshop/CastawayArchitectsPrototype/castaway.html">
+            <p class="game-card__eyebrow">Arcade Workshop</p>
+            <h2>Castaway Architects</h2>
+            <p>Gather resources, place machines, and turn an island into a working settlement.</p>
+            <div class="game-card__meta">
+              <span>Crafting</span>
+              <span>Building</span>
+            </div>
+            <button class="play-button" type="button" data-game="./workshop/CastawayArchitectsPrototype/castaway.html">Play Castaway</button>
+          </article>
+
+          <article class="game-card game-card--sanctum" data-card="./workshop/sanctum-arena/sanctum-arena.html">
+            <p class="game-card__eyebrow">Arcade Workshop</p>
+            <h2>Sanctum Arena</h2>
+            <p>Fight through a close-range action arena with dashes, swings, and escalating pressure.</p>
+            <div class="game-card__meta">
+              <span>Arena</span>
+              <span>Action</span>
+            </div>
+            <button class="play-button" type="button" data-game="./workshop/sanctum-arena/sanctum-arena.html">Play Sanctum</button>
+          </article>
+        </section>
+      </section>
+    </section>
+  </main>
+
+  <section class="fullscreen-player" id="fullscreenPlayer" aria-hidden="true">
+    <div class="fullscreen-player__topbar">
+      <div>
+        <p class="fullscreen-player__eyebrow">Now Playing</p>
+        <h2 id="fullscreenTitle">Purple Square Panic</h2>
+      </div>
+      <div class="fullscreen-player__actions">
+        <button class="fullscreen-player__mode" type="button" id="toggleImmersive">Immersive</button>
+        <button class="fullscreen-player__close" type="button" id="closeFullscreenPlayer">Menu</button>
+      </div>
+    </div>
+    <iframe
+      id="fullscreenFrame"
+      class="fullscreen-player__frame"
+      src="./games/dodge.html"
+      title="Fullscreen game frame"
+      allowfullscreen
+      loading="eager">
+    </iframe>
+  </section>
+
+  <script>
+    const buttons = document.querySelectorAll("[data-game]");
+    const cards = document.querySelectorAll("[data-card]");
+    const collectionBlocks = document.querySelectorAll("[data-collection]");
+    const filterButtons = document.querySelectorAll("[data-filter]");
+    const fullscreenPlayer = document.getElementById("fullscreenPlayer");
+    const fullscreenFrame = document.getElementById("fullscreenFrame");
+    const fullscreenTitle = document.getElementById("fullscreenTitle");
+    const closeFullscreenPlayer = document.getElementById("closeFullscreenPlayer");
+    const toggleImmersive = document.getElementById("toggleImmersive");
+    const assetVersion = "20260329a";
+
+    const gameData = {
+      "./games/dodge.html": { title: "Purple Square Panic" },
+      "./games/starforge.html": { title: "Starforge Salvage" },
+      "./games/beastblade.html": { title: "Beastblade Ascent" },
+      "./games/racing.html": { title: "Neon Apex Rush" },
+      "./games/relicbound.html": { title: "Relicbound Vale" },
+      "./games/typing.html": { title: "Typing Tempo" },
+      "./games/shadow-circuit.html": { title: "Shadow Circuit" },
+      "./games/board-arcade.html": { title: "Board Blitz Arcade" },
+      "./games/sky-archer.html": { title: "Sky Archer" },
+      "./games/stillwake-house.html": { title: "Stillwake House" },
+      "./workshop/Mobile%20Game/pirates.html": { title: "Pirate Ship Battles" },
+      "./workshop/GlowRunner/glowrunner.html": { title: "Glow Runner" },
+      "./workshop/CatholicClickyGame/vatican.html": { title: "Kingdom of Grace" },
+      "./workshop/CastawayArchitectsPrototype/castaway.html": { title: "Castaway Architects" },
+      "./workshop/sanctum-arena/sanctum-arena.html": { title: "Sanctum Arena" }
+    };
+
+    function setActiveGame(next) {
+      const entry = gameData[next];
+      const separator = next.includes("?") ? "&" : "?";
+      fullscreenFrame.src = next + separator + "v=" + assetVersion;
+      fullscreenTitle.textContent = entry.title;
+
+      for (const card of cards) {
+        card.classList.toggle("is-active", card.getAttribute("data-card") === next);
+      }
+    }
+
+    function setFilter(filter) {
+      for (const button of filterButtons) {
+        button.classList.toggle("is-active", button.getAttribute("data-filter") === filter);
+      }
+
+      for (const block of collectionBlocks) {
+        const show = filter === "all" || block.getAttribute("data-collection") === filter;
+        block.hidden = !show;
+      }
+    }
+
+    function openFullscreenPlayer(next) {
+      setActiveGame(next);
+      fullscreenPlayer.classList.add("is-open");
+      fullscreenPlayer.setAttribute("aria-hidden", "false");
+      document.body.classList.add("player-open");
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+
+    function closePlayer() {
+      fullscreenPlayer.classList.remove("is-open");
+      fullscreenPlayer.setAttribute("aria-hidden", "true");
+      document.body.classList.remove("player-open");
+      if (document.fullscreenElement === fullscreenPlayer) {
+        document.exitFullscreen();
+      }
+    }
+
+    async function toggleFullscreenMode() {
+      if (document.fullscreenElement === fullscreenPlayer) {
+        await document.exitFullscreen();
+        return;
+      }
+
+      if (fullscreenPlayer.requestFullscreen) {
+        await fullscreenPlayer.requestFullscreen();
+      }
+    }
+
+    function syncFullscreenLabel() {
+      const inImmersive = document.fullscreenElement === fullscreenPlayer;
+      toggleImmersive.textContent = inImmersive ? "Windowed" : "Immersive";
+    }
+
+    for (const button of buttons) {
+      button.addEventListener("click", () => {
+        openFullscreenPlayer(button.getAttribute("data-game"));
+      });
+    }
+
+    for (const card of cards) {
+      card.addEventListener("click", (event) => {
+        if (event.target.closest("button")) return;
+        openFullscreenPlayer(card.getAttribute("data-card"));
+      });
+    }
+
+    for (const button of filterButtons) {
+      button.addEventListener("click", () => {
+        setFilter(button.getAttribute("data-filter"));
+      });
+    }
+
+    closeFullscreenPlayer.addEventListener("click", closePlayer);
+    toggleImmersive.addEventListener("click", () => {
+      toggleFullscreenMode().catch(() => {
+        toggleImmersive.textContent = "Unavailable";
+        window.setTimeout(syncFullscreenLabel, 1200);
+      });
+    });
+
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape" && fullscreenPlayer.classList.contains("is-open")) {
+        closePlayer();
+      }
+    });
+
+    document.addEventListener("fullscreenchange", syncFullscreenLabel);
+
+    window.addEventListener("message", (event) => {
+      if (event.origin !== window.location.origin) return;
+      if (event.data && event.data.type === "codex-menu-exit") {
+        closePlayer();
+      }
+    });
+
+    setFilter("all");
+    setActiveGame("./games/dodge.html");
+    syncFullscreenLabel();
+  </script>
+</body>
+</html>

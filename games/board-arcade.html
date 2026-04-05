@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Board Blitz Arcade</title>
+  <link rel="stylesheet" href="../style.css">
+  <link rel="stylesheet" href="./board-arcade.css">
+</head>
+<body>
+  <main class="shell">
+    <section class="hud-frame board-arcade-shell">
+      <div class="title-block">
+        <p class="eyebrow">Strategy Collection</p>
+        <h1>Board Blitz Arcade</h1>
+        <p class="subtitle">Switch between chess, checkers, and tic-tac-toe, then choose whether you want a local duel or a computer opponent.</p>
+      </div>
+
+      <section class="board-arcade-layout">
+        <aside class="board-arcade-panel">
+          <div class="board-arcade-controls" id="boardArcadeControls">
+            <div class="control-group">
+              <p class="control-label">Game</p>
+              <div class="choice-row">
+                <button type="button" class="choice-button is-active" data-game="chess">Chess</button>
+                <button type="button" class="choice-button" data-game="checkers">Checkers</button>
+                <button type="button" class="choice-button" data-game="tictactoe">Tic-Tac-Toe</button>
+              </div>
+            </div>
+
+            <div class="control-group">
+              <p class="control-label">Mode</p>
+              <div class="choice-row">
+                <button type="button" class="choice-button is-active" data-mode="pvp">Player vs Player</button>
+                <button type="button" class="choice-button" data-mode="pvc">Player vs Computer</button>
+              </div>
+            </div>
+
+            <div class="control-group">
+              <p class="control-label">Difficulty</p>
+              <div class="choice-row">
+                <button type="button" class="choice-button is-active" data-difficulty="easy">Easy</button>
+                <button type="button" class="choice-button" data-difficulty="medium">Medium</button>
+                <button type="button" class="choice-button" data-difficulty="hard">Hard</button>
+              </div>
+            </div>
+
+            <div class="choice-row">
+              <button type="button" class="action-button" id="restartBoardArcade">Restart Match</button>
+            </div>
+          </div>
+
+          <div class="board-arcade-status">
+            <p class="board-arcade-status__label">Status</p>
+            <h2 id="boardArcadeTitle">Chess</h2>
+            <p id="boardArcadeMessage">White to move.</p>
+            <p id="boardArcadeMode">Mode: Player vs Player</p>
+            <p id="boardArcadeDifficulty">Difficulty: Easy</p>
+            <p id="boardArcadeHint">Click a piece to see its legal moves.</p>
+          </div>
+        </aside>
+
+        <section class="board-arcade-board-wrap">
+          <div class="board-arcade-sides" id="boardArcadeSides">
+            <span id="boardArcadeTopSide">Black Side</span>
+            <span id="boardArcadeBottomSide">White Side</span>
+          </div>
+          <div class="board-arcade-board" id="boardArcadeBoard" aria-label="Board Blitz Arcade board"></div>
+          <div class="board-arcade-overlay" id="boardArcadeOverlay" hidden>
+            <div class="board-arcade-overlay__panel">
+              <h2>Paused</h2>
+              <p>Press P to resume or Esc for the menu.</p>
+            </div>
+          </div>
+        </section>
+      </section>
+
+      <div class="controls">
+        <span>Play: Mouse</span>
+        <span>Pause: P</span>
+        <span>Menu: Esc</span>
+        <span>Restart: Button</span>
+      </div>
+    </section>
+  </main>
+
+  <script src="../js/board-arcade.js?v=20260316b"></script>
+</body>
+</html>

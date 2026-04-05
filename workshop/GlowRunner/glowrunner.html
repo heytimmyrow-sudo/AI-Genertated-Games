@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Glow Runner</title>
+  <link rel="stylesheet" href="glowrunner.css" />
+</head>
+<body>
+  <div class="wrap">
+    <header class="topbar">
+      <div class="brandBlock">
+        <div class="brand">GLOW RUNNER</div>
+        <p class="subline">Neon floor-shift survival</p>
+      </div>
+      <div class="hud">
+        <div class="hud-pill">Score: <span id="score">0</span></div>
+        <div class="hud-pill">Best: <span id="best">0</span></div>
+        <div class="hud-pill">Orbs: <span id="orbBank">0</span></div>
+        <div class="hud-pill">Floor: <span id="floorLabel">Middle</span></div>
+        <div class="hud-pill">Wave: <span id="waveLabel">Middle (6s)</span></div>
+      </div>
+    </header>
+
+    <div class="gamebox">
+      <canvas id="game" width="900" height="450"></canvas>
+
+      <div class="overlay" id="overlay">
+        <div class="card">
+          <p class="eyebrow">Arcade Runner</p>
+          <h1 id="title">Glow Runner</h1>
+          <p class="tip">Press <b>Space</b> to jump, shift floors, avoid spikes, and grab orbs to power up your next runs.</p>
+          <button id="startBtn">Start</button>
+        </div>
+      </div>
+    </div>
+
+    <footer class="help">
+      Controls: <b>Space</b> / <b>W</b> / <b>Up Arrow</b> (jump) | <b>Down</b> / <b>S</b> (shift down) | <b>P</b> (pause) | <b>Esc</b> (menu) | <b>R</b> (restart)
+    </footer>
+  </div>
+
+  <script src="glowrunner.js?v=20260316b"></script>
+</body>
+</html>

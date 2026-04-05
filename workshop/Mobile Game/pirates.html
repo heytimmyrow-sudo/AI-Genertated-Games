@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Pirate Ship Battles</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="ocean_style.css" />
+</head>
+<body>
+  <div id="ui">
+    <div id="masthead">
+      <div>
+        <p class="eyebrow">Naval Arcade</p>
+        <h1>Pirate Ship Battles</h1>
+      </div>
+      <p class="controls">Sail with WASD or arrows, fire with Space, board with B.</p>
+    </div>
+
+    <div id="hud">
+      <span id="coins">Coins: 0</span>
+      <span id="hp">HP: 100</span>
+      <span id="boardingHint"></span>
+    </div>
+
+    <div id="shop">
+      <h3>Upgrades</h3>
+      <button id="upgradeSpeed">Speed + (10 coins)</button>
+      <button id="upgradeFireRate">Fire Rate + (10 coins)</button>
+      <button id="upgradeDamage">Damage + (15 coins)</button>
+    </div>
+  </div>
+
+  <div id="minigameOverlay" class="hidden">
+    <div id="minigameBox">
+      <h2>Boarding Minigame</h2>
+      <p>Tap the button as fast as you can in 3 seconds!</p>
+      <button id="tapButton">TAP!</button>
+      <p id="tapCountText">Taps: 0</p>
+      <button id="startMinigame">Start</button>
+      <button id="exitMinigame">Exit</button>
+    </div>
+  </div>
+
+  <canvas id="gameCanvas"></canvas>
+
+  <script src="ship_battle.js"></script>
+</body>
+</html>

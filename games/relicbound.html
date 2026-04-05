@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Relicbound Vale</title>
+  <link rel="stylesheet" href="../style.css">
+  <link rel="stylesheet" href="./relicbound.css">
+</head>
+<body>
+  <main class="shell">
+    <section class="hud-frame relicbound-shell">
+      <div class="title-block">
+        <p class="eyebrow">Expandable Adventure Framework</p>
+        <h1>Relicbound Vale</h1>
+        <p class="subtitle">A modular top-down action-adventure foundation with a giant region, biome zones, a real village hub, gathering, crafting, camps, NPCs, shrines, combat, and progression hooks ready for expansion.</p>
+      </div>
+
+      <div class="relicbound-stage">
+        <canvas id="gameCanvas" width="960" height="600" aria-label="Relicbound Vale game area"></canvas>
+
+        <aside class="relicbound-sidebar">
+          <section class="sidebar-card">
+            <h2>Framework Notes</h2>
+            <p>Explore one giant region packed with biome pockets, Lantern Rest Village, gatherable trees and stone, a craft bench, NPCs, a merchant, sanctuaries, a dungeon entrance, relic shards, enemy camps, a mini-boss roadblock, and multiple shrine upgrade points. The codebase is still organized for future maps, quests, bosses, inventory, and save systems.</p>
+          </section>
+
+          <section class="sidebar-card">
+            <h2>Controls</h2>
+            <div class="controls controls--stack">
+              <span>Move: WASD / Arrows / Left Stick / D-Pad</span>
+              <span>Attack: Space / J / A</span>
+              <span>Harvest: Attack trees and stone nodes</span>
+              <span>Talk / Interact: E / X</span>
+              <span>Map: M / Y</span>
+              <span>Shop: 1 / 2 while trading</span>
+              <span>Crafting: 1 / 2 / 3 at Oren's Bench</span>
+              <span>Fast Travel: 1-4 at active sanctuaries</span>
+              <span>Upgrade Shrine: 1 / 2 / 3 / 4 or D-Pad at shrine</span>
+              <span>Pause: P / Start</span>
+              <span>Menu: Esc</span>
+              <span>Restart: R / Back</span>
+            </div>
+          </section>
+
+          <section class="sidebar-card">
+            <h2>Goal</h2>
+            <p>Cross the Sunken Wilds, visit Lantern Rest Village, gather wood and stone, craft at Oren's Bench, use sanctuaries as checkpoints and fast-travel points, trade with Nilo, clear the named camps, enter the Glass Vault, defeat the Stone Warden, and recover every relic shard.</p>
+          </section>
+
+          <section class="sidebar-card">
+            <h2>Run Controls</h2>
+            <div class="sidebar-actions">
+              <button id="startButton" class="play-button" type="button">Start Adventure</button>
+              <button id="restartButton" class="play-button play-button--ghost" type="button">Restart Run</button>
+              <button id="fullscreenButton" class="play-button play-button--ghost" type="button">Fullscreen Mode</button>
+            </div>
+          </section>
+        </aside>
+      </div>
+    </section>
+  </main>
+
+  <script src="../js/relicbound/config.js"></script>
+  <script src="../js/relicbound/utils.js"></script>
+  <script src="../js/relicbound/content/maps.js"></script>
+  <script src="../js/relicbound/camera.js"></script>
+  <script src="../js/relicbound/effects.js"></script>
+  <script src="../js/relicbound/input.js"></script>
+  <script src="../js/relicbound/entities/collectible.js"></script>
+  <script src="../js/relicbound/entities/enemy.js"></script>
+  <script src="../js/relicbound/entities/player.js"></script>
+  <script src="../js/relicbound/world.js"></script>
+  <script src="../js/relicbound/ui.js"></script>
+  <script src="../js/relicbound/game.js"></script>
+  <script src="../js/relicbound/boot.js"></script>
+</body>
+</html>

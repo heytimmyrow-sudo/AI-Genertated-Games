@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sky Archer</title>
+  <link rel="stylesheet" href="../style.css">
+  <link rel="stylesheet" href="./sky-archer.css">
+</head>
+<body>
+  <main class="shell">
+    <section class="hud-frame sky-archer-shell">
+      <div class="title-block">
+        <p class="eyebrow">Fantasy Archery Defense</p>
+        <h1>Sky Archer</h1>
+        <p class="subtitle">Stand on the sky tower, draw the bow with your mouse, and break incoming waves before they reach the floating kingdom.</p>
+      </div>
+
+      <canvas id="skyArcherCanvas" width="1280" height="720" aria-label="Sky Archer game area"></canvas>
+
+      <div class="controls">
+        <span>Aim: Mouse</span>
+        <span>Draw Bow: Hold Mouse</span>
+        <span>Shoot: Release Mouse</span>
+        <span>Pause: P</span>
+        <span>Menu: Esc</span>
+      </div>
+    </section>
+  </main>
+
+  <script src="../js/sky-archer/config.js"></script>
+  <script src="../js/sky-archer/input.js"></script>
+  <script src="../js/sky-archer/entities.js"></script>
+  <script src="../js/sky-archer/effects.js"></script>
+  <script src="../js/sky-archer/waves.js"></script>
+  <script src="../js/sky-archer/world.js"></script>
+  <script src="../js/sky-archer/ui.js"></script>
+  <script src="../js/sky-archer/game.js"></script>
+  <script src="../js/sky-archer/boot.js"></script>
+</body>
+</html>

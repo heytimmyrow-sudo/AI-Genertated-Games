@@ -1,0 +1,199 @@
+:root{
+  --bg:#060813;
+  --panel:rgba(8, 12, 24, 0.78);
+  --text:#eef4ff;
+  --muted:#a7b2cb;
+  --glow:#ff6b35;
+  --glow2:#ffe066;
+}
+
+*{box-sizing:border-box}
+html,body{width:100%;height:100%}
+body{
+  margin:0;
+  color:var(--text);
+  font-family:"Trebuchet MS","Segoe UI",sans-serif;
+  background:
+    radial-gradient(1100px 560px at 15% 10%, rgba(255,107,53,.16), transparent 58%),
+    radial-gradient(900px 460px at 85% 18%, rgba(255,224,102,.10), transparent 54%),
+    linear-gradient(180deg, #101426 0%, #060813 64%, #04050c 100%);
+}
+
+.wrap{
+  height:100%;
+  display:grid;
+  grid-template-rows:auto minmax(0,1fr) auto;
+}
+
+.topbar{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:16px;
+  padding:18px 18px 12px;
+}
+
+.brandBlock{
+  display:grid;
+  gap:6px;
+}
+
+.brand{
+  display:inline-flex;
+  width:max-content;
+  padding:10px 14px;
+  border-radius:999px;
+  letter-spacing:.24em;
+  font-weight:900;
+  font-size:13px;
+  background:rgba(255,255,255,.05);
+  border:1px solid rgba(255,107,53,.28);
+  box-shadow:0 0 24px rgba(255,107,53,.18);
+}
+
+.subline{
+  margin:0;
+  color:var(--muted);
+  font-size:13px;
+}
+
+.hud{
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
+  justify-content:flex-end;
+}
+
+.hud-pill{
+  padding:10px 13px;
+  border-radius:16px;
+  background:rgba(255,255,255,.05);
+  border:1px solid rgba(255,255,255,.08);
+  color:var(--muted);
+  backdrop-filter:blur(10px);
+}
+
+.hud-pill span{color:var(--text);font-weight:700}
+
+.gamebox{
+  position:relative;
+  min-height:0;
+  margin:0 18px;
+  border-radius:28px;
+  overflow:hidden;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.01)),
+    rgba(7,10,20,.85);
+  border:1px solid rgba(255,255,255,.08);
+  box-shadow:0 24px 60px rgba(0,0,0,.45);
+}
+
+.gamebox::before{
+  content:"";
+  position:absolute;
+  inset:0;
+  pointer-events:none;
+  background:
+    linear-gradient(120deg, rgba(255,255,255,.04), transparent 26%),
+    radial-gradient(circle at 70% 0%, rgba(255,224,102,.12), transparent 24%);
+  z-index:1;
+}
+
+canvas{
+  display:block;
+  width:100%;
+  height:100%;
+  background:
+    radial-gradient(600px 300px at 40% 30%, rgba(255,107,53,.18), transparent 60%),
+    radial-gradient(500px 260px at 70% 60%, rgba(255,224,102,.14), transparent 60%),
+    #060714;
+}
+
+.overlay{
+  position:absolute;
+  inset:0;
+  z-index:2;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background:rgba(3,5,12,.54);
+  backdrop-filter:blur(8px);
+}
+
+.card{
+  width:min(440px,92%);
+  padding:24px 22px 20px;
+  border-radius:24px;
+  background:var(--panel);
+  border:1px solid rgba(255,107,53,.24);
+  box-shadow:0 16px 44px rgba(0,0,0,.36);
+  text-align:center;
+}
+
+.eyebrow{
+  margin:0 0 8px;
+  color:#ffb88b;
+  font-size:12px;
+  font-weight:700;
+  letter-spacing:.22em;
+  text-transform:uppercase;
+}
+
+.card h1{
+  margin:0 0 10px;
+  font-size:32px;
+  line-height:1;
+  text-shadow:0 0 18px rgba(255,107,53,.28);
+}
+
+.tip{
+  margin:0 0 16px;
+  color:var(--muted);
+  line-height:1.5;
+}
+
+.menuBtns,
+.shop{
+  margin-top:14px;
+}
+
+button{
+  cursor:pointer;
+  border:0;
+  padding:11px 16px;
+  border-radius:14px;
+  font-weight:800;
+  letter-spacing:.02em;
+  color:#060714;
+  background:linear-gradient(90deg, var(--glow), var(--glow2));
+  box-shadow:0 14px 26px rgba(255,107,53,.20);
+}
+
+button:hover{filter:brightness(1.05)}
+
+.help{
+  padding:12px 18px 18px;
+  color:var(--muted);
+  font-size:12px;
+  text-align:center;
+}
+
+@media (max-width: 860px){
+  .topbar{
+    flex-direction:column;
+    align-items:stretch;
+  }
+
+  .hud{
+    justify-content:flex-start;
+  }
+}
+
+@media (max-width: 720px){
+  .topbar{padding:14px 12px 10px}
+  .gamebox{margin:0 12px;border-radius:22px}
+  .brand,.hud-pill{text-align:center}
+  .hud{justify-content:center}
+  .card h1{font-size:28px}
+  .help{padding:12px 12px 16px}
+}

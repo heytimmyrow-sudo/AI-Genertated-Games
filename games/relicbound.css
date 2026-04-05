@@ -1,0 +1,77 @@
+.relicbound-shell {
+  width: min(100%, 1280px);
+}
+
+.relicbound-stage {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 280px;
+  gap: 18px;
+  align-items: start;
+}
+
+.relicbound-stage:fullscreen {
+  grid-template-columns: minmax(0, 1fr);
+  align-items: stretch;
+  gap: 0;
+  padding: 18px;
+  background:
+    radial-gradient(circle at top, rgba(146, 251, 255, 0.12), transparent 32%),
+    linear-gradient(180deg, #07111d, #03070c);
+}
+
+.relicbound-stage:fullscreen .relicbound-sidebar {
+  display: none;
+}
+
+.relicbound-stage:fullscreen #gameCanvas {
+  width: min(100vw - 36px, 1800px);
+  max-width: none;
+  height: calc(100vh - 36px);
+  max-height: none;
+  margin: 0 auto;
+}
+
+.relicbound-sidebar {
+  display: grid;
+  gap: 14px;
+}
+
+.sidebar-card {
+  padding: 16px;
+  border: 1px solid rgba(255, 214, 107, 0.14);
+  border-radius: 18px;
+  background: linear-gradient(180deg, rgba(255, 214, 107, 0.08), rgba(12, 18, 39, 0.36));
+}
+
+.sidebar-card h2 {
+  margin: 0 0 10px;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.1rem;
+}
+
+.sidebar-card p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.controls--stack {
+  display: grid;
+  gap: 10px;
+}
+
+.sidebar-actions {
+  display: grid;
+  gap: 10px;
+}
+
+.play-button--ghost {
+  background: linear-gradient(135deg, rgba(255, 214, 107, 0.18), rgba(255, 214, 107, 0.08));
+  color: var(--text);
+}
+
+@media (max-width: 980px) {
+  .relicbound-stage {
+    grid-template-columns: 1fr;
+  }
+}
