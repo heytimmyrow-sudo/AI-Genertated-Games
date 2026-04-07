@@ -28,10 +28,21 @@ jobs:
       - name: Setup Pages
         uses: actions/configure-pages@v5
 
+      - name: Build static site
+        shell: bash
+        run: |
+          mkdir -p site/games site/js
+          cp style.css site/style.css
+          cp math-masters.html site/math-masters.html
+          cp .nojekyll site/.nojekyll
+          cp games/math-masters.html site/games/math-masters.html
+          cp games/math-masters.css site/games/math-masters.css
+          cp js/math-masters.js site/js/math-masters.js
+
       - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-pages-artifact@v4
         with:
-          path: .
+          path: ./site
 
       - name: Deploy to GitHub Pages
         id: deployment
