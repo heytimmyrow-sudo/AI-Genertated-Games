@@ -113,6 +113,19 @@
   let state = createState();
   let lastTime = 0;
 
+  function handleTapStart() {
+    if (state.screen === "title") {
+      startRun();
+      return;
+    }
+
+    if (state.screen === "gameover") {
+      resetGame();
+      state.screen = "playing";
+      state.message = "New run started.";
+    }
+  }
+
   function resetGame() {
     const bestScore = Math.max(state.bestScore, Math.floor(state.score));
     state = createState();
@@ -512,6 +525,10 @@
     input.endFrame();
     requestAnimationFrame(loop);
   }
+
+  canvas.addEventListener("pointerdown", () => {
+    handleTapStart();
+  });
 
   requestAnimationFrame(loop);
 })();
