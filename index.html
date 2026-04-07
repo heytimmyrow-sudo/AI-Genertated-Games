@@ -3,6 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; connect-src 'self'; frame-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
+  <meta name="referrer" content="no-referrer">
   <title>Codex Arena Vault</title>
   <link rel="stylesheet" href="./style.css">
 </head>
@@ -13,14 +15,14 @@
         <div class="title-block">
           <p class="eyebrow">Codex Arena Vault x Arcade Workshop</p>
           <h1>Vault Workshop Nexus</h1>
-          <p class="subtitle">One launcher, two collections, thirteen games. Pick a lane fast, launch instantly, and jump back to the hub whenever you want.</p>
+          <p class="subtitle">One launcher, two collections, fourteen games. Pick a lane fast, launch instantly, and jump back to the hub whenever you want.</p>
         </div>
 
         <aside class="vault-summary" aria-label="Vault summary">
           <p class="vault-summary__label">Restoration Status</p>
           <div class="vault-stats">
             <div class="vault-stat">
-              <strong>13</strong>
+              <strong>14</strong>
               <span>Linked worlds</span>
             </div>
             <div class="vault-stat">
@@ -101,6 +103,19 @@
               <span>Framework</span>
             </div>
             <button class="play-button" type="button" data-game="./games/relicbound.html">Play Relicbound</button>
+          </article>
+
+
+
+          <article class="game-card game-card--ocean" data-card="./games/math-masters.html">
+            <p class="game-card__eyebrow">Learning Experience</p>
+            <h2>Math Masters</h2>
+            <p>Practice adaptive mental math with streak quests, mastery tracking, and focused drill sessions that feel engaging without being an arcade game.</p>
+            <div class="game-card__meta">
+              <span>IXL-inspired</span>
+              <span>Adaptive</span>
+            </div>
+            <button class="play-button" type="button" data-game="./games/math-masters.html">Play Math Masters</button>
           </article>
 
           <article class="game-card game-card--marble" data-card="./games/typing.html">
@@ -231,6 +246,7 @@
       class="fullscreen-player__frame"
       src="./games/dodge.html"
       title="Fullscreen game frame"
+      sandbox="allow-scripts allow-same-origin allow-pointer-lock allow-forms"
       allowfullscreen
       loading="eager">
     </iframe>
@@ -258,6 +274,7 @@
       "./games/board-arcade.html": { title: "Board Blitz Arcade" },
       "./games/sky-archer.html": { title: "Sky Archer" },
       "./games/stillwake-house.html": { title: "Stillwake House" },
+      "./games/math-masters.html": { title: "Math Masters" },
       "./workshop/Mobile%20Game/pirates.html": { title: "Pirate Ship Battles" },
       "./workshop/CatholicClickyGame/vatican.html": { title: "Kingdom of Grace" },
       "./workshop/CastawayArchitectsPrototype/castaway.html": { title: "Castaway Architects" },

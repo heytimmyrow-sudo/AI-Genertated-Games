@@ -1,0 +1,162 @@
+.math-masters {
+  width: min(100%, 1020px);
+}
+
+.math-layout {
+  display: grid;
+  grid-template-columns: 1.3fr 1fr;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
+.panel {
+  border: 1px solid rgba(125, 227, 255, 0.18);
+  border-radius: 18px;
+  background: linear-gradient(180deg, rgba(9, 22, 36, 0.8), rgba(7, 13, 20, 0.78));
+  padding: 16px;
+}
+
+.panel__label {
+  margin: 0 0 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  color: var(--warm);
+  font-size: 0.72rem;
+}
+
+.panel__label--tight {
+  margin-top: 14px;
+}
+
+.panel--question h2 {
+  margin: 0 0 8px;
+}
+
+.prompt {
+  margin: 6px 0 14px;
+  font-size: clamp(1.4rem, 3vw, 2rem);
+  font-family: var(--font-display);
+}
+
+.answer-row {
+  display: flex;
+  gap: 10px;
+}
+
+.answer-row input,
+.answer-row button,
+.actions-row button {
+  border-radius: 12px;
+  border: 1px solid rgba(125, 227, 255, 0.26);
+  background: rgba(7, 15, 24, 0.86);
+  color: var(--text);
+  padding: 10px 12px;
+  font: inherit;
+}
+
+.answer-row input {
+  flex: 1;
+}
+
+.answer-row button,
+.actions-row button {
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.answer-row button:disabled,
+.actions-row button:disabled,
+.answer-row input:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.actions-row {
+  display: flex;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.feedback {
+  min-height: 1.4rem;
+  color: var(--accent-soft);
+}
+
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.stat-grid div {
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 12px;
+  padding: 10px;
+}
+
+.stat-grid span {
+  display: block;
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.stat-grid strong {
+  font-family: var(--font-display);
+  font-size: 1.3rem;
+}
+
+.xp-track {
+  margin-top: 12px;
+  height: 12px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.09);
+  overflow: hidden;
+}
+
+#xpFill {
+  width: 0;
+  height: 100%;
+  background: linear-gradient(90deg, #7de3ff, #52d273);
+}
+
+.tiny {
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 0.86rem;
+}
+
+.controls--compact {
+  margin-top: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.skill-list {
+  display: grid;
+  gap: 10px;
+}
+
+.skill-item {
+  border: 1px solid rgba(125, 227, 255, 0.14);
+  border-radius: 12px;
+  padding: 10px;
+  background: rgba(5, 10, 16, 0.52);
+}
+
+.skill-item__top {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.skill-item .xp-track {
+  margin-top: 8px;
+  height: 10px;
+}
+
+@media (max-width: 860px) {
+  .math-layout {
+    grid-template-columns: 1fr;
+  }
+}
