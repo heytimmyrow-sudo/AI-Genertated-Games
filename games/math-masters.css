@@ -4,7 +4,10 @@
 
 .panel--home,
 .panel--community,
-.panel--parent {
+.panel--parent,
+.panel--ops,
+.panel--admin,
+.panel--toolbar {
   margin-bottom: 14px;
 }
 
@@ -17,11 +20,44 @@
 
 .home-card,
 .community-panel,
-.support-panel {
+.support-panel,
+.teach-card,
+.reflection-panel {
   border: 1px solid rgba(125, 227, 255, 0.14);
   border-radius: 16px;
   padding: 14px;
   background: rgba(4, 10, 16, 0.46);
+}
+
+.toolbar-grid,
+.assignment-builder {
+  display: grid;
+  gap: 10px;
+}
+
+.account-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.account-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: end;
+}
+
+.account-actions button {
+  border-radius: 12px;
+  border: 1px solid rgba(125, 227, 255, 0.26);
+  background: rgba(7, 15, 24, 0.86);
+  color: var(--text);
+  padding: 10px 12px;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
 }
 
 .home-card--hero {
@@ -69,6 +105,16 @@
 }
 
 .profile-field input {
+  border-radius: 12px;
+  border: 1px solid rgba(125, 227, 255, 0.26);
+  background: rgba(7, 15, 24, 0.86);
+  color: var(--text);
+  padding: 10px 12px;
+  font: inherit;
+}
+
+.profile-field select,
+.profile-field textarea {
   border-radius: 12px;
   border: 1px solid rgba(125, 227, 255, 0.26);
   background: rgba(7, 15, 24, 0.86);
@@ -277,6 +323,27 @@
   margin-top: 14px;
 }
 
+.teach-card,
+.reflection-panel {
+  margin-top: 12px;
+}
+
+.teach-card h3 {
+  margin: 0;
+  font-family: var(--font-display);
+}
+
+.graph-visual {
+  margin-top: 12px;
+  min-height: 140px;
+  border: 1px solid rgba(125, 227, 255, 0.14);
+  border-radius: 16px;
+  background: rgba(0, 0, 0, 0.16);
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+}
+
 .choice-list {
   display: grid;
   gap: 10px;
@@ -330,6 +397,18 @@
   min-height: 1.4rem;
   margin-top: 12px;
   color: var(--accent-soft);
+}
+
+#reflectionInput {
+  width: 100%;
+  margin-top: 10px;
+  border-radius: 12px;
+  border: 1px solid rgba(125, 227, 255, 0.26);
+  background: rgba(7, 15, 24, 0.86);
+  color: var(--text);
+  padding: 10px 12px;
+  font: inherit;
+  resize: vertical;
 }
 
 .support-stack {
@@ -533,6 +612,48 @@
 .leaderboard-row.is-you {
   border-color: rgba(255, 214, 107, 0.3);
   background: rgba(255, 214, 107, 0.08);
+}
+
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.calendar-day {
+  aspect-ratio: 1;
+  border-radius: 10px;
+  border: 1px solid rgba(125, 227, 255, 0.14);
+  background: rgba(255, 255, 255, 0.03);
+  display: grid;
+  place-items: center;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.calendar-day.is-active {
+  background: linear-gradient(135deg, rgba(82, 210, 115, 0.32), rgba(125, 227, 255, 0.26));
+  color: var(--text);
+}
+
+.skill-item.is-locked {
+  opacity: 0.58;
+}
+
+.skill-item__lock {
+  color: var(--warm);
+  font-size: 0.78rem;
+}
+
+body.high-contrast {
+  --bg-top: #000;
+  --bg-bottom: #000;
+  --panel-border: rgba(255, 255, 255, 0.7);
+  --accent: #00ffff;
+  --accent-soft: #ffffff;
+  --text: #ffffff;
+  --muted: #d6d6d6;
+  --warm: #ffd400;
 }
 
 .skill-list,

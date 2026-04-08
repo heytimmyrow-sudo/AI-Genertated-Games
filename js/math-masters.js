@@ -1,5 +1,6 @@
 (function () {
-  const STORAGE_KEY = "math-masters-progress-v3";
+  const STORAGE_KEY = "math-masters-progress-v5";
+  const ACCOUNTS_KEY = "math-masters-accounts-v1";
   const GRADE_PATHS = [
     { id: "grade6", label: "Grade 6", title: "6th Grade Foundations", description: "Ratios, fractions, decimals, expressions, area, and early statistics." },
     { id: "grade7", label: "Grade 7", title: "7th Grade", description: "Rational numbers, proportional relationships, equations, probability, and geometry." },
@@ -46,6 +47,82 @@
     { name: "Riley", medal: "Gold", xp: 58, challengeClears: 4, mastery: 79 },
     { name: "Taylor", medal: "Silver", xp: 42, challengeClears: 2, mastery: 68 }
   ];
+  const PREREQUISITES = {
+    "g7-composite-area": ["g6-area"],
+    "g7-surface-area": ["g7-scale"],
+    "g7a-volume": ["g7a-surface-area"],
+    "g7a-slope": ["g7a-linear-patterns"],
+    "g7a-function-table": ["g7a-linear-patterns"],
+    "g8-scientific-notation": ["g8-square-roots"],
+    "g8-pythagorean-preview": ["g8-translation-image"]
+  };
+  const TEACHING_CARDS = {
+    numbers: {
+      title: "Signed Number Strategy",
+      summary: "Use a number line or think in gains and losses. Combining a negative with a positive depends on which has the larger absolute value.",
+      example: "Example: -8 + 13 = 5 because you move 13 units right from -8."
+    },
+    proportions: {
+      title: "Rate and Ratio Thinking",
+      summary: "Match multiplicative relationships, not additive ones. Equivalent ratios scale by the same factor.",
+      example: "Example: 3/5 = 9/15 because both parts were multiplied by 3."
+    },
+    finance: {
+      title: "Percent Problem Structure",
+      summary: "Convert percent to decimal, apply it to the original amount, then adjust the total carefully in order.",
+      example: "Example: 20% off $50 means subtract 0.20 x 50 = 10, so the sale price is $40."
+    },
+    equations: {
+      title: "Undo in Reverse Order",
+      summary: "To solve an equation, reverse the operations one step at a time while keeping both sides balanced.",
+      example: "Example: 3x + 5 = 20 becomes 3x = 15, then x = 5."
+    },
+    "word-problems": {
+      title: "Model the Story",
+      summary: "Name the unknown, write the equation from the story, then solve and check whether the answer makes sense.",
+      example: "Example: total cost = ticket price x number of tickets + fixed fee."
+    },
+    geometry: {
+      title: "Geometry Relationships",
+      summary: "Look for definitions and angle rules first: straight angles add to 180, full rotations add to 360, and circles use radius and diameter relationships.",
+      example: "Example: if one angle on a straight line is 68°, the other is 112°."
+    },
+    measurement: {
+      title: "Break Shapes Into Parts",
+      summary: "For area, surface area, and volume, label the dimensions clearly and combine simpler shapes when needed.",
+      example: "Example: composite area = rectangle A + rectangle B."
+    },
+    data: {
+      title: "Describe the Pattern",
+      summary: "In statistics, compute carefully and interpret the meaning. In probability, compare favorable outcomes to total outcomes.",
+      example: "Example: MAD tells the average distance from the mean."
+    },
+    transformations: {
+      title: "Track the Coordinates",
+      summary: "Translations add moves, reflections flip signs across an axis, and rotations follow coordinate rules around the origin.",
+      example: "Example: reflecting (4, -1) across the y-axis gives (-4, -1)."
+    },
+    "coordinate-plane": {
+      title: "Coordinate Grid Moves",
+      summary: "Horizontal movement changes x and vertical movement changes y. Distance on a horizontal or vertical line is the absolute difference.",
+      example: "Example: from (2, 5) to (2, -1) is 6 units."
+    },
+    "inequality-graphs": {
+      title: "Boundary and Direction",
+      summary: "Identify the boundary value first, then decide whether the solutions are greater than or less than that point.",
+      example: "Example: x > 4 means the least integer solution is 5."
+    },
+    functions: {
+      title: "Input to Output Rule",
+      summary: "A function applies one rule to every input. Substitute carefully and watch for constant rate of change.",
+      example: "Example: if y = 3x + 2, then x = 4 gives y = 14."
+    },
+    accelerated: {
+      title: "Preview the Next Level",
+      summary: "Accelerated topics connect patterns, real numbers, and algebra. Look for structure before computing.",
+      example: "Example: perfect square roots connect areas to side lengths."
+    }
+  };
 
   function skill(id, grade, chapter, lesson, strand, unit, name, standard, alignment, description, generate) {
     return { id, grade, chapter, lesson, strand, unit, name, standard, alignment, description, generate };
@@ -175,19 +252,40 @@
     leaderboardOptIn: document.getElementById("leaderboardOptIn"),
     soundToggle: document.getElementById("soundToggle"),
     profileStatus: document.getElementById("profileStatus"),
+    accountSelect: document.getElementById("accountSelect"),
+    newAccountButton: document.getElementById("newAccountButton"),
+    deleteAccountButton: document.getElementById("deleteAccountButton"),
     homeGreeting: document.getElementById("homeGreeting"),
     homeSummary: document.getElementById("homeSummary"),
     dailyGoalList: document.getElementById("dailyGoalList"),
     dailyGoalStatus: document.getElementById("dailyGoalStatus"),
+    skillSearch: document.getElementById("skillSearch"),
+    printReportButton: document.getElementById("printReportButton"),
+    contrastToggleButton: document.getElementById("contrastToggleButton"),
+    curriculumImport: document.getElementById("curriculumImport"),
+    curriculumStatus: document.getElementById("curriculumStatus"),
     choiceList: document.getElementById("choiceList"),
     hintButton: document.getElementById("hintButton"),
     masteryTestButton: document.getElementById("masteryTestButton"),
+    chapterTestButton: document.getElementById("chapterTestButton"),
     hintText: document.getElementById("hintText"),
     explanationText: document.getElementById("explanationText"),
     sessionText: document.getElementById("sessionText"),
+    challengeBoardText: document.getElementById("challengeBoardText"),
+    teachCard: document.getElementById("teachCard"),
+    teachTitle: document.getElementById("teachTitle"),
+    teachSummary: document.getElementById("teachSummary"),
+    teachExample: document.getElementById("teachExample"),
+    graphVisual: document.getElementById("graphVisual"),
+    reflectionInput: document.getElementById("reflectionInput"),
+    saveReflectionButton: document.getElementById("saveReflectionButton"),
+    reflectionStatus: document.getElementById("reflectionStatus"),
     badgeList: document.getElementById("badgeList"),
     leaderboardList: document.getElementById("leaderboardList"),
     leaderboardStatus: document.getElementById("leaderboardStatus"),
+    weeklyChallengeList: document.getElementById("weeklyChallengeList"),
+    mistakeTrackerList: document.getElementById("mistakeTrackerList"),
+    reviewNotebookList: document.getElementById("reviewNotebookList"),
     parentMinutes: document.getElementById("parentMinutes"),
     parentMinutesText: document.getElementById("parentMinutesText"),
     parentSessions: document.getElementById("parentSessions"),
@@ -195,7 +293,14 @@
     parentReadiness: document.getElementById("parentReadiness"),
     parentReadinessText: document.getElementById("parentReadinessText"),
     parentNextMove: document.getElementById("parentNextMove"),
-    parentNextMoveText: document.getElementById("parentNextMoveText")
+    parentNextMoveText: document.getElementById("parentNextMoveText"),
+    assignmentTitle: document.getElementById("assignmentTitle"),
+    assignSkillButton: document.getElementById("assignSkillButton"),
+    assignmentList: document.getElementById("assignmentList"),
+    streakCalendar: document.getElementById("streakCalendar"),
+    leaderboardImport: document.getElementById("leaderboardImport"),
+    exportLeaderboardButton: document.getElementById("exportLeaderboardButton"),
+    syncStatus: document.getElementById("syncStatus")
   };
 
   if (!el.answerForm) return;
@@ -208,6 +313,7 @@
     inputState.keys[event.key.toLowerCase()] = false;
   });
 
+  let accountsMeta = loadAccountsMeta();
   let state = createState();
   refreshSelectedSkill();
   render();
@@ -223,12 +329,29 @@
   el.profileColor.addEventListener("input", updateProfileFromInputs);
   el.leaderboardOptIn.addEventListener("change", updateProfileFromInputs);
   el.soundToggle.addEventListener("change", updateProfileFromInputs);
+  el.accountSelect.addEventListener("change", switchAccount);
+  el.newAccountButton.addEventListener("click", createAccount);
+  el.deleteAccountButton.addEventListener("click", deleteCurrentAccount);
+  el.skillSearch.addEventListener("input", updateSearch);
+  el.printReportButton.addEventListener("click", printReport);
+  el.contrastToggleButton.addEventListener("click", toggleContrast);
+  el.curriculumImport.addEventListener("change", importCurriculum);
   window.addEventListener("beforeunload", saveProgress);
+  el.chapterTestButton.addEventListener("click", startChapterTest);
+  el.saveReflectionButton.addEventListener("click", saveReflection);
+  el.assignSkillButton.addEventListener("click", assignCurrentSkill);
+  el.leaderboardImport.addEventListener("change", importLeaderboardJson);
+  el.exportLeaderboardButton.addEventListener("click", exportLeaderboardJson);
+  el.feedbackText.setAttribute("aria-live", "polite");
+  el.explanationText.setAttribute("aria-live", "polite");
+  el.hintText.setAttribute("aria-live", "polite");
+  window.addEventListener("keydown", handleGlobalShortcuts);
 
   function createState() {
     const saved = loadProgress();
     const daily = normalizeDailyProgress(saved?.dailyProgress);
     return {
+      accountId: accountsMeta.currentAccountId,
       activeRound: false,
       sessionType: "practice",
       reviewMode: false,
@@ -257,12 +380,24 @@
       placementResult: saved?.placementResult || null,
       masteryTests: saved?.masteryTests || {},
       dailyProgress: daily,
+      searchQuery: saved?.searchQuery || "",
+      highContrast: Boolean(saved?.highContrast),
+      weeklyChallengeProgress: saved?.weeklyChallengeProgress || {},
+      reviewNotebook: saved?.reviewNotebook || [],
+      reflections: saved?.reflections || [],
+      mistakeStats: saved?.mistakeStats || {},
+      assignments: saved?.assignments || [],
+      streakHistory: saved?.streakHistory || [],
+      importedLeaderboard: saved?.importedLeaderboard || [],
+      curriculumMap: saved?.curriculumMap || null,
+      activeChapterTest: null,
       profile: {
         name: saved?.profile?.name || "Math Master",
         color: saved?.profile?.color || "#7de3ff",
         leaderboardOptIn: Boolean(saved?.profile?.leaderboardOptIn),
         soundOn: saved?.profile?.soundOn !== false
       },
+      reflectionStatus: saved?.reflectionStatus || "Reflections are saved to the review notebook for this student.",
       visibleExplanation: saved?.visibleExplanation || "Step-by-step explanations appear after misses and mastery checks.",
       visibleHint: saved?.visibleHint || "Hints will appear here when you need a nudge.",
       activePlacement: null,
@@ -274,6 +409,40 @@
     const mastery = {};
     for (const lesson of SKILLS) mastery[lesson.id] = 0;
     return mastery;
+  }
+
+  function createDefaultAccountsMeta() {
+    return {
+      currentAccountId: "student-1",
+      accounts: [
+        { id: "student-1", label: "Student 1" }
+      ]
+    };
+  }
+
+  function loadAccountsMeta() {
+    try {
+      const raw = window.localStorage.getItem(ACCOUNTS_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed?.accounts?.length && parsed.currentAccountId) return parsed;
+      }
+    } catch {
+      // Ignore and fall back.
+    }
+    return createDefaultAccountsMeta();
+  }
+
+  function saveAccountsMeta() {
+    try {
+      window.localStorage.setItem(ACCOUNTS_KEY, JSON.stringify(accountsMeta));
+    } catch {
+      // Ignore storage failures.
+    }
+  }
+
+  function getAccountStorageKey(accountId) {
+    return STORAGE_KEY + ":" + accountId;
   }
 
   function normalizeDailyProgress(saved) {
@@ -297,6 +466,20 @@
     state.visibleHint = "Hints will appear here when you need a nudge.";
     saveProgress();
     render();
+  }
+
+  function updateSearch() {
+    state.searchQuery = el.skillSearch.value.trim();
+    refreshSelectedSkill();
+    saveProgress();
+    render();
+  }
+
+  function handleGlobalShortcuts(event) {
+    if (event.key === "/" && document.activeElement !== el.answerInput && document.activeElement !== el.reflectionInput) {
+      event.preventDefault();
+      el.skillSearch.focus();
+    }
   }
 
   function submitAnswer(event) {
@@ -328,6 +511,7 @@
       state.questProgress = 0;
       adjustMastery(state.selectedSkillId, -4);
       state.visibleExplanation = state.currentQuestion.explanation || ("Correct answer: " + formatAnswer(state.currentQuestion.answer) + ".");
+      logMistake(state.selectedSkillId, state.currentQuestion, parsed.value);
       setFeedback("Not quite. Correct answer: " + formatAnswer(state.currentQuestion.answer) + ".", false);
       playCue("miss");
     }
@@ -349,6 +533,9 @@
       advancePlacement();
     } else if (state.sessionType === "mastery") {
       advanceMasteryTest();
+    } else if (state.sessionType === "chapter-test") {
+      if (isCorrect && state.activeChapterTest) state.activeChapterTest.correct += 1;
+      advanceChapterTest();
     } else {
       nextQuestion();
     }
@@ -359,6 +546,7 @@
 
   function startSession(reviewMode) {
     syncPracticeTime();
+    recordPracticeDay();
     state.activeRound = true;
     state.sessionType = reviewMode ? "review" : "practice";
     state.reviewMode = Boolean(reviewMode);
@@ -388,6 +576,7 @@
 
   function startPlacementCheck() {
     syncPracticeTime();
+    recordPracticeDay();
     state.activeRound = true;
     state.reviewMode = false;
     state.sessionType = "placement";
@@ -408,6 +597,7 @@
 
   function startMasteryTest() {
     syncPracticeTime();
+    recordPracticeDay();
     const lesson = getSkillById(state.selectedSkillId);
     if (!lesson) return;
     state.activeRound = true;
@@ -424,6 +614,38 @@
     state.visibleHint = "Hints stay available during mastery tests, but try first without them.";
     state.visibleExplanation = "Mastery tests use five checks on the current lesson.";
     setFeedback("Mastery test started for " + lesson.name + ".", true);
+    nextQuestion();
+    render();
+  }
+
+  function startChapterTest() {
+    const lesson = getSkillById(state.selectedSkillId);
+    if (!lesson) return;
+    const chapterSkills = getSkillsForGrade().filter((item) => item.chapter === lesson.chapter);
+    if (!chapterSkills.length) return;
+    syncPracticeTime();
+    recordPracticeDay();
+    state.activeRound = true;
+    state.reviewMode = false;
+    state.sessionType = "chapter-test";
+    state.streak = 0;
+    state.score = 0;
+    state.questionsAnswered = 0;
+    state.correctAnswers = 0;
+    state.questProgress = 0;
+    state.sessionStartedAt = Date.now();
+    state.activePlacement = null;
+    state.activeMasteryTest = null;
+    state.activeChapterTest = {
+      chapter: lesson.chapter,
+      skillIds: chapterSkills.map((item) => item.id),
+      index: 0,
+      total: Math.min(6, Math.max(4, chapterSkills.length)),
+      correct: 0
+    };
+    state.visibleHint = "Chapter tests mix related skills from the current chapter.";
+    state.visibleExplanation = "Chapter tests check whether you can apply a whole cluster of chapter skills.";
+    setFeedback("Chapter test started for Chapter " + lesson.chapter + ".", true);
     nextQuestion();
     render();
   }
@@ -450,6 +672,8 @@
       advancePlacement();
     } else if (state.sessionType === "mastery") {
       advanceMasteryTest();
+    } else if (state.sessionType === "chapter-test") {
+      advanceChapterTest();
     } else {
       nextQuestion();
     }
@@ -487,6 +711,10 @@
     }
     if (state.sessionType === "mastery" && state.activeMasteryTest) {
       return getSkillById(state.activeMasteryTest.skillId) || ranked[0];
+    }
+    if (state.sessionType === "chapter-test" && state.activeChapterTest) {
+      const chapterPool = state.activeChapterTest.skillIds.map((skillId) => getSkillById(skillId)).filter(Boolean);
+      return chapterPool[randomInt(0, chapterPool.length - 1)] || ranked[0];
     }
     return Math.random() < 0.72 ? ranked[0] : ranked[randomInt(0, ranked.length - 1)];
   }
@@ -571,6 +799,35 @@
     saveProgress();
   }
 
+  function advanceChapterTest() {
+    state.activeChapterTest.index += 1;
+    if (state.activeChapterTest.index >= state.activeChapterTest.total) {
+      finishChapterTest();
+      return;
+    }
+    nextQuestion();
+  }
+
+  function finishChapterTest() {
+    syncPracticeTime();
+    const test = state.activeChapterTest;
+    const passed = test.correct >= Math.ceil(test.total * 0.7);
+    state.visibleExplanation = "You answered " + test.correct + " out of " + test.total + " chapter test questions correctly.";
+    if (passed) {
+      awardXp(40);
+      setFeedback("Chapter test complete. Nice chapter-level work.", true);
+      playCue("celebrate");
+    } else {
+      setFeedback("Chapter test complete. Review the weak skills from this chapter.", false);
+    }
+    state.activeChapterTest = null;
+    state.activeRound = false;
+    state.sessionStartedAt = null;
+    state.sessionType = "practice";
+    state.currentQuestion = null;
+    saveProgress();
+  }
+
   function decorateStandaloneQuestion(question, strand, difficultyWeight) {
     const lesson = { strand, unit: "Placement Check", standard: "Mixed readiness", alignment: "Adaptive placement sample" };
     const decorated = decorateQuestion(question, lesson);
@@ -596,7 +853,16 @@
   }
 
   function getVisibleSkills() {
-    return SKILLS.filter((lesson) => lesson.grade === state.selectedGrade && (state.selectedStrand === "all" || lesson.strand === state.selectedStrand));
+    const query = normalizeSearchText(state.searchQuery);
+    return SKILLS.filter((lesson) => {
+      if (lesson.grade !== state.selectedGrade) return false;
+      if (state.selectedStrand !== "all" && lesson.strand !== state.selectedStrand) return false;
+      if (query) {
+        const haystack = normalizeSearchText(lesson.name + " " + lesson.description + " " + lesson.unit + " " + lesson.standard);
+        if (!haystack.includes(query)) return false;
+      }
+      return true;
+    });
   }
 
   function getSkillsForGrade() {
@@ -609,6 +875,11 @@
 
   function getMastery(skillId) {
     return state.skillMastery[skillId] || 0;
+  }
+
+  function isSkillLocked(skillId) {
+    const prereqs = PREREQUISITES[skillId] || [];
+    return prereqs.some((prereqId) => getMastery(prereqId) < 55);
   }
 
   function adjustMastery(skillId, delta) {
@@ -630,6 +901,7 @@
     const accuracy = state.questionsAnswered === 0 ? 100 : Math.round((state.correctAnswers / state.questionsAnswered) * 100);
     const path = getGradePath();
     hydrateProfileInputs();
+    renderAccounts();
     el.pathwayTitle.textContent = path.title;
     el.pathwayDescription.textContent = path.description;
     el.homeGreeting.textContent = "Welcome back, " + state.profile.name;
@@ -647,6 +919,11 @@
     renderDailyGoals();
     renderBadges();
     renderLeaderboard();
+    renderWeeklyChallenges();
+    renderMistakeTracker();
+    renderReviewNotebook();
+    renderAssignments();
+    renderStreakCalendar();
     renderParentView();
     if (lesson) {
       el.skillName.textContent = lesson.name;
@@ -655,6 +932,7 @@
       el.skillDescription.textContent = lesson.description;
       el.standardText.textContent = lesson.standard;
       el.alignmentText.textContent = lesson.alignment;
+      renderTeachCard(lesson);
     }
     el.promptText.textContent = state.currentQuestion ? state.currentQuestion.prompt : "Press Start to begin.";
     el.streakValue.textContent = String(state.streak);
@@ -671,9 +949,20 @@
     el.skipButton.disabled = !state.activeRound;
     el.hintButton.disabled = !state.activeRound;
     el.masteryTestButton.disabled = state.sessionType === "placement";
+    el.chapterTestButton.disabled = state.sessionType === "placement";
     el.hintText.textContent = state.visibleHint;
     el.explanationText.textContent = state.visibleExplanation;
+    el.challengeBoardText.textContent = "This week's challenge board updates using the current calendar week and your selected grade path.";
+    el.curriculumStatus.textContent = state.curriculumMap
+      ? "Curriculum import active: " + state.curriculumMap.label
+      : "You can import a local pacing guide or assignment map in JSON format.";
+    el.syncStatus.textContent = state.importedLeaderboard.length
+      ? "Imported shared leaderboard entries are included in the board."
+      : "Backend-ready JSON import/export is enabled for future shared sync.";
+    el.reflectionStatus.textContent = state.reflectionStatus;
     renderAnswerControls();
+    renderGraphVisual();
+    document.body.classList.toggle("high-contrast", state.highContrast);
   }
 
   function renderPathwayBadges() {
@@ -718,6 +1007,19 @@
 
     el.dashboardLeaderboardText.textContent =
       "Community board preview blends your profile with shared leaderboard cards in a static-site friendly way.";
+  }
+
+  function renderAccounts() {
+    el.accountSelect.innerHTML = "";
+    for (const account of accountsMeta.accounts) {
+      const option = document.createElement("option");
+      option.value = account.id;
+      option.textContent = account.label;
+      if (account.id === state.accountId) option.selected = true;
+      el.accountSelect.appendChild(option);
+    }
+    el.skillSearch.value = state.searchQuery;
+    el.contrastToggleButton.textContent = state.highContrast ? "Standard Contrast" : "High Contrast";
   }
 
   function renderRankingList(target, rankings, emptyText) {
@@ -833,10 +1135,19 @@
 
   function renderSkillList() {
     el.skillList.innerHTML = "";
-    for (const lesson of getVisibleSkills()) {
+    const visibleSkills = getVisibleSkills();
+    if (!visibleSkills.length) {
+      const empty = document.createElement("p");
+      empty.className = "tiny";
+      empty.textContent = "No lessons match that search yet. Try a broader topic or switch strands.";
+      el.skillList.appendChild(empty);
+      return;
+    }
+    for (const lesson of visibleSkills) {
       const mastery = getMastery(lesson.id);
+      const locked = isSkillLocked(lesson.id);
       const item = document.createElement("article");
-      item.className = "skill-item" + (lesson.id === state.selectedSkillId ? " is-selected" : "");
+      item.className = "skill-item" + (lesson.id === state.selectedSkillId ? " is-selected" : "") + (locked ? " is-locked" : "");
       item.innerHTML = [
         '<div class="skill-item__top">',
         "<div>",
@@ -846,18 +1157,21 @@
         '<span class="skill-item__tag">' + mastery + "%</span>",
         "</div>",
         '<p class="skill-item__meta">' + lesson.description + "</p>",
+        locked ? '<p class="skill-item__lock">Locked until prerequisite skills are stronger.</p>' : "",
         '<div class="xp-track"><div style="width:' + mastery + '%;height:100%;background:linear-gradient(90deg,#7de3ff,#52d273)"></div></div>',
         '<div class="skill-item__footer">',
         '<span class="skill-item__meta">Chapter ' + lesson.chapter + " | " + lesson.standard + "</span>",
-        '<button type="button" class="skill-item__action">Focus</button>',
+        '<button type="button" class="skill-item__action"' + (locked ? " disabled" : "") + '>Focus</button>',
         "</div>"
       ].join("");
-      item.querySelector(".skill-item__action").addEventListener("click", () => {
-        state.selectedSkillId = lesson.id;
-        refreshQuestionForCurrentSelection();
-        saveProgress();
-        render();
-      });
+      if (!locked) {
+        item.querySelector(".skill-item__action").addEventListener("click", () => {
+          state.selectedSkillId = lesson.id;
+          refreshQuestionForCurrentSelection();
+          saveProgress();
+          render();
+        });
+      }
       el.skillList.appendChild(item);
     }
   }
@@ -901,7 +1215,7 @@
 
   function loadProgress() {
     try {
-      const raw = window.localStorage.getItem(STORAGE_KEY);
+      const raw = window.localStorage.getItem(getAccountStorageKey(accountsMeta.currentAccountId));
       return raw ? JSON.parse(raw) : null;
     } catch {
       return null;
@@ -911,7 +1225,7 @@
   function saveProgress() {
     try {
       syncPracticeTime();
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify({
+      window.localStorage.setItem(getAccountStorageKey(state.accountId), JSON.stringify({
         xp: state.xp,
         level: state.level,
         totalLessonFocuses: state.totalLessonFocuses,
@@ -928,13 +1242,166 @@
         placementResult: state.placementResult,
         masteryTests: state.masteryTests,
         dailyProgress: state.dailyProgress,
+        searchQuery: state.searchQuery,
+        highContrast: state.highContrast,
+        weeklyChallengeProgress: state.weeklyChallengeProgress,
+        reviewNotebook: state.reviewNotebook,
+        reflections: state.reflections,
+        mistakeStats: state.mistakeStats,
+        assignments: state.assignments,
+        streakHistory: state.streakHistory,
+        importedLeaderboard: state.importedLeaderboard,
+        curriculumMap: state.curriculumMap,
         profile: state.profile,
+        reflectionStatus: state.reflectionStatus,
         visibleExplanation: state.visibleExplanation,
         visibleHint: state.visibleHint
       }));
     } catch {
       // Ignore storage failures.
     }
+  }
+
+  function switchAccount() {
+    saveProgress();
+    accountsMeta.currentAccountId = el.accountSelect.value;
+    saveAccountsMeta();
+    state = createState();
+    refreshSelectedSkill();
+    render();
+  }
+
+  function createAccount() {
+    const name = window.prompt("New student name:");
+    if (!name) return;
+    const id = "student-" + Date.now();
+    accountsMeta.accounts.push({ id, label: name.trim() || "Student" });
+    accountsMeta.currentAccountId = id;
+    saveAccountsMeta();
+    state = createState();
+    state.profile.name = name.trim() || "Student";
+    saveProgress();
+    refreshSelectedSkill();
+    render();
+  }
+
+  function deleteCurrentAccount() {
+    if (accountsMeta.accounts.length <= 1) {
+      el.profileStatus.textContent = "At least one student account must remain.";
+      return;
+    }
+    const account = accountsMeta.accounts.find((item) => item.id === state.accountId);
+    if (!window.confirm("Delete " + (account?.label || "this account") + " and its saved progress?")) return;
+    window.localStorage.removeItem(getAccountStorageKey(state.accountId));
+    accountsMeta.accounts = accountsMeta.accounts.filter((item) => item.id !== state.accountId);
+    accountsMeta.currentAccountId = accountsMeta.accounts[0].id;
+    saveAccountsMeta();
+    state = createState();
+    refreshSelectedSkill();
+    render();
+  }
+
+  function printReport() {
+    window.print();
+  }
+
+  function toggleContrast() {
+    state.highContrast = !state.highContrast;
+    saveProgress();
+    render();
+  }
+
+  function importCurriculum(event) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const parsed = JSON.parse(String(reader.result));
+        state.curriculumMap = {
+          label: parsed.label || "Imported Curriculum",
+          assignments: parsed.assignments || []
+        };
+        if (Array.isArray(parsed.assignments)) {
+          state.assignments = parsed.assignments.map((item, index) => ({
+            title: item.title || ("Imported Assignment " + (index + 1)),
+            skillId: item.skillId || state.selectedSkillId,
+            skillName: getSkillById(item.skillId || state.selectedSkillId)?.name || "Imported Skill"
+          }));
+        }
+        saveProgress();
+        render();
+      } catch {
+        el.curriculumStatus.textContent = "That file could not be read as curriculum JSON.";
+      }
+    };
+    reader.readAsText(file);
+  }
+
+  function saveReflection() {
+    const text = el.reflectionInput.value.trim();
+    if (!text || !state.currentQuestion) {
+      state.reflectionStatus = "Write a short reflection first.";
+      render();
+      return;
+    }
+    state.reflections.push({
+      date: getTodayStamp(),
+      skill: getSkillById(state.selectedSkillId)?.name || "Skill",
+      reflection: text
+    });
+    state.reviewNotebook.push({
+      date: getTodayStamp(),
+      skill: getSkillById(state.selectedSkillId)?.name || "Skill",
+      prompt: state.currentQuestion.prompt,
+      answer: formatAnswer(state.currentQuestion.answer),
+      reflection: text
+    });
+    el.reflectionInput.value = "";
+    state.reflectionStatus = "Reflection saved to the notebook.";
+    saveProgress();
+    render();
+  }
+
+  function assignCurrentSkill() {
+    const lesson = getSkillById(state.selectedSkillId);
+    if (!lesson) return;
+    state.assignments.push({
+      title: el.assignmentTitle.value.trim() || "Practice Assignment",
+      skillId: lesson.id,
+      skillName: lesson.name,
+      date: getTodayStamp()
+    });
+    el.assignmentTitle.value = "";
+    saveProgress();
+    render();
+  }
+
+  function importLeaderboardJson(event) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const parsed = JSON.parse(String(reader.result));
+        state.importedLeaderboard = Array.isArray(parsed) ? parsed : [];
+        saveProgress();
+        render();
+      } catch {
+        el.syncStatus.textContent = "That leaderboard file could not be imported.";
+      }
+    };
+    reader.readAsText(file);
+  }
+
+  function exportLeaderboardJson() {
+    const payload = JSON.stringify(buildLeaderboardEntries(), null, 2);
+    const blob = new Blob([payload], { type: "application/json" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = "math-masters-leaderboard.json";
+    link.click();
+    URL.revokeObjectURL(link.href);
   }
 
   function hydrateProfileInputs() {
@@ -1008,18 +1475,114 @@
     }
   }
 
-  function renderLeaderboard() {
-    const entries = [...SAMPLE_LEADERBOARD];
-    if (state.profile.leaderboardOptIn) {
-      entries.push({
-        name: state.profile.name,
-        medal: getCurrentMedal().label,
-        xp: state.level * 10 + state.xp,
-        challengeClears: state.challengeClears,
-        mastery: averageMastery(),
-        you: true
+  function renderWeeklyChallenges() {
+    const challenges = getWeeklyChallenges();
+    el.weeklyChallengeList.innerHTML = "";
+    for (const challenge of challenges) {
+      const item = document.createElement("article");
+      item.className = "goal-card";
+      item.innerHTML = [
+        "<strong>" + challenge.title + "</strong>",
+        '<p class="tiny">' + challenge.detail + "</p>"
+      ].join("");
+      const button = document.createElement("button");
+      button.type = "button";
+      button.textContent = "Launch";
+      button.addEventListener("click", () => {
+        state.selectedMode = "challenge";
+        state.selectedSkillId = challenge.skillId;
+        startSession(false);
       });
+      item.appendChild(button);
+      el.weeklyChallengeList.appendChild(item);
     }
+  }
+
+  function renderMistakeTracker() {
+    el.mistakeTrackerList.innerHTML = "";
+    const items = Object.entries(state.mistakeStats).sort((a, b) => b[1] - a[1]).slice(0, 5);
+    if (!items.length) {
+      const empty = document.createElement("p");
+      empty.className = "tiny";
+      empty.textContent = "Mistakes are tracked by topic and answer type as you practice.";
+      el.mistakeTrackerList.appendChild(empty);
+      return;
+    }
+    for (const [label, count] of items) {
+      const row = document.createElement("div");
+      row.className = "badge-chip";
+      row.innerHTML = "<strong>" + label + "</strong><span>" + count + " misses</span>";
+      el.mistakeTrackerList.appendChild(row);
+    }
+  }
+
+  function renderReviewNotebook() {
+    el.reviewNotebookList.innerHTML = "";
+    const items = state.reviewNotebook.slice(-5).reverse();
+    if (!items.length) {
+      const empty = document.createElement("p");
+      empty.className = "tiny";
+      empty.textContent = "Missed questions and reflections will appear here.";
+      el.reviewNotebookList.appendChild(empty);
+      return;
+    }
+    for (const item of items) {
+      const row = document.createElement("div");
+      row.className = "goal-card";
+      row.innerHTML = [
+        "<strong>" + item.skill + "</strong>",
+        '<p class="tiny">' + item.prompt + "</p>",
+        '<p class="tiny">Correct answer: ' + item.answer + "</p>",
+        item.reflection ? '<p class="tiny">Reflection: ' + item.reflection + "</p>" : ""
+      ].join("");
+      el.reviewNotebookList.appendChild(row);
+    }
+  }
+
+  function renderAssignments() {
+    el.assignmentList.innerHTML = "";
+    if (!state.assignments.length) {
+      const empty = document.createElement("p");
+      empty.className = "tiny";
+      empty.textContent = "Assign the current skill to this student or import a curriculum map.";
+      el.assignmentList.appendChild(empty);
+      return;
+    }
+    for (const item of state.assignments.slice(-5).reverse()) {
+      const row = document.createElement("div");
+      row.className = "badge-chip";
+      row.innerHTML = "<strong>" + item.title + "</strong><span>" + item.skillName + "</span>";
+      el.assignmentList.appendChild(row);
+    }
+  }
+
+  function renderStreakCalendar() {
+    el.streakCalendar.innerHTML = "";
+    const activeDays = new Set(state.streakHistory);
+    for (let i = 27; i >= 0; i -= 1) {
+      const date = new Date();
+      date.setDate(date.getDate() - i);
+      const stamp = date.toLocaleDateString("en-CA");
+      const cell = document.createElement("div");
+      cell.className = "calendar-day" + (activeDays.has(stamp) ? " is-active" : "");
+      cell.textContent = String(date.getDate());
+      el.streakCalendar.appendChild(cell);
+    }
+  }
+
+  function renderTeachCard(lesson) {
+    const card = TEACHING_CARDS[lesson.strand] || {
+      title: "Lesson Preview",
+      summary: lesson.description,
+      example: "Work step by step and use the hint if you need a nudge."
+    };
+    el.teachTitle.textContent = card.title;
+    el.teachSummary.textContent = card.summary;
+    el.teachExample.textContent = card.example;
+  }
+
+  function renderLeaderboard() {
+    const entries = buildLeaderboardEntries();
     entries.sort((a, b) => (b.mastery + b.xp + b.challengeClears * 8) - (a.mastery + a.xp + a.challengeClears * 8));
     el.leaderboardList.innerHTML = "";
     entries.slice(0, 5).forEach((entry, index) => {
@@ -1034,6 +1597,51 @@
     el.leaderboardStatus.textContent = state.profile.leaderboardOptIn
       ? "Your profile is currently included in this public-ready leaderboard preview."
       : "Turn on the leaderboard option in your profile to include this student.";
+  }
+
+  function buildLeaderboardEntries() {
+    const entries = [...SAMPLE_LEADERBOARD, ...state.importedLeaderboard];
+    if (state.profile.leaderboardOptIn) {
+      entries.push({
+        name: state.profile.name,
+        medal: getCurrentMedal().label,
+        xp: state.level * 10 + state.xp,
+        challengeClears: state.challengeClears,
+        mastery: averageMastery(),
+        you: true
+      });
+    }
+    return entries;
+  }
+
+  function renderGraphVisual() {
+    const visual = state.currentQuestion?.visual;
+    if (!visual) {
+      el.graphVisual.hidden = true;
+      el.graphVisual.innerHTML = "";
+      return;
+    }
+    el.graphVisual.hidden = false;
+    if (visual.type === "scatter") {
+      el.graphVisual.innerHTML = '<svg viewBox="0 0 220 140" width="100%" height="140" aria-label="Scatter plot">' +
+        '<line x1="20" y1="120" x2="200" y2="120" stroke="#94afc0"/>' +
+        '<line x1="20" y1="120" x2="20" y2="20" stroke="#94afc0"/>' +
+        '<circle cx="50" cy="95" r="4" fill="#7de3ff"/>' +
+        '<circle cx="90" cy="82" r="4" fill="#7de3ff"/>' +
+        '<circle cx="120" cy="64" r="4" fill="#7de3ff"/>' +
+        '<circle cx="165" cy="42" r="4" fill="#7de3ff"/>' +
+        '<circle cx="190" cy="30" r="4" fill="#7de3ff"/>' +
+        '</svg>';
+      return;
+    }
+    if (visual.type === "coordinate") {
+      el.graphVisual.innerHTML = '<svg viewBox="0 0 220 220" width="100%" height="180" aria-label="Coordinate plane">' +
+        '<rect x="0" y="0" width="220" height="220" fill="rgba(255,255,255,0.02)"/>' +
+        '<line x1="110" y1="10" x2="110" y2="210" stroke="#94afc0"/>' +
+        '<line x1="10" y1="110" x2="210" y2="110" stroke="#94afc0"/>' +
+        '<circle cx="' + (110 + visual.x * 15) + '" cy="' + (110 - visual.y * 15) + '" r="5" fill="#ffd66b"/>' +
+        '</svg>';
+    }
   }
 
   function renderParentView() {
@@ -1110,6 +1718,7 @@
   function sessionLabel() {
     if (state.sessionType === "placement") return "Placement Check";
     if (state.sessionType === "mastery") return "Mastery Test";
+    if (state.sessionType === "chapter-test") return "Chapter Test";
     if (state.sessionType === "review") return "Review Mode";
     return "Practice Session";
   }
@@ -1165,6 +1774,46 @@
     gain.gain.value = 0.02;
     oscillator.start();
     oscillator.stop(context.currentTime + (kind === "celebrate" ? 0.18 : 0.08));
+  }
+
+  function getWeeklyChallenges() {
+    const week = getWeekStamp();
+    const skills = getSkillsForGrade().slice().sort((a, b) => a.id.localeCompare(b.id));
+    return skills.slice(0, 3).map((skill, index) => ({
+      title: "Week " + week.split("-W")[1] + " Challenge " + (index + 1),
+      detail: skill.name + " in Challenge mode",
+      skillId: skill.id
+    }));
+  }
+
+  function getWeekStamp() {
+    const date = new Date();
+    const first = new Date(date.getFullYear(), 0, 1);
+    const day = Math.floor((date - first) / 86400000);
+    const week = Math.ceil((day + first.getDay() + 1) / 7);
+    return date.getFullYear() + "-W" + String(week).padStart(2, "0");
+  }
+
+  function logMistake(skillId, question, studentResponse) {
+    const lesson = getSkillById(skillId);
+    const strand = lesson ? strandLabel(lesson.strand) : "General";
+    state.mistakeStats[strand] = (state.mistakeStats[strand] || 0) + 1;
+    state.mistakeStats[(question.answerType || "number") + " response"] = (state.mistakeStats[(question.answerType || "number") + " response"] || 0) + 1;
+    state.reviewNotebook.push({
+      date: getTodayStamp(),
+      skill: lesson?.name || "Skill",
+      prompt: question.prompt,
+      answer: formatAnswer(question.answer),
+      studentResponse: Array.isArray(studentResponse) ? formatAnswer(studentResponse) : String(studentResponse),
+      reflection: ""
+    });
+    state.reviewNotebook = state.reviewNotebook.slice(-20);
+  }
+
+  function recordPracticeDay() {
+    const stamp = getTodayStamp();
+    if (!state.streakHistory.includes(stamp)) state.streakHistory.push(stamp);
+    state.streakHistory = state.streakHistory.slice(-60);
   }
 
   function integerAddQuestion() {
@@ -1597,6 +2246,7 @@
       prompt: "A scatter plot shows that as study time increases, quiz scores usually increase. Which statement best describes the association?",
       answer: "positive",
       answerType: "multiple",
+      visual: { type: "scatter" },
       choices: [
         { label: "Positive association", value: "positive" },
         { label: "Negative association", value: "negative" },
@@ -1640,6 +2290,7 @@
       prompt: "Translate (" + x + ", " + y + ") by <" + dx + ", " + dy + ">. Enter the image as an ordered pair.",
       answer: [x + dx, y + dy],
       answerType: "coordinate",
+      visual: { type: "coordinate", x, y },
       hint: "Add the horizontal move to x and the vertical move to y.",
       explanation: "Add " + dx + " to the x-coordinate and " + dy + " to the y-coordinate to get (" + (x + dx) + ", " + (y + dy) + ")."
     };
@@ -1689,6 +2340,10 @@
   function roundTo(value, digits) {
     const power = Math.pow(10, digits);
     return Math.round(value * power) / power;
+  }
+
+  function normalizeSearchText(value) {
+    return String(value || "").toLowerCase().replace(/[^a-z0-9]+/g, "");
   }
 
   function randomChoice(values) {
