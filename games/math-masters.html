@@ -13,8 +13,52 @@
       <div class="title-block">
         <p class="eyebrow">Skill Builder</p>
         <h1>Math Masters</h1>
-        <p class="subtitle">A polished practice studio aligned by public lesson sequence to Big Ideas Math 2022 Accelerated Grade 7, with original practice sets, adaptive drills, and chapter-by-chapter progression.</p>
+        <p class="subtitle">A polished practice studio aligned by public lesson sequence to Big Ideas Math 2022 Accelerated Grade 7, with original practice sets, adaptive drills, explanations, review loops, and chapter-by-chapter progression.</p>
       </div>
+
+      <section class="panel panel--home" aria-label="Home dashboard">
+        <div class="home-grid">
+          <article class="home-card home-card--hero">
+            <p class="panel__label">Home</p>
+            <h2 class="home-title" id="homeGreeting">Welcome back to Math Masters</h2>
+            <p class="tiny" id="homeSummary">Pick up where you left off, take a placement check, or jump into review mode.</p>
+            <div class="home-actions">
+              <button type="button" id="continueButton">Continue Practice</button>
+              <button type="button" id="reviewButton">Start Review Mode</button>
+              <button type="button" id="diagnosticButton">Placement Check</button>
+            </div>
+          </article>
+
+          <article class="home-card">
+            <p class="panel__label">Student Profile</p>
+            <div class="profile-row">
+              <label class="profile-field">
+                <span>Name</span>
+                <input id="profileName" maxlength="18" placeholder="Math Master">
+              </label>
+              <label class="profile-field">
+                <span>Color</span>
+                <input id="profileColor" type="color" value="#7de3ff">
+              </label>
+            </div>
+            <label class="profile-check">
+              <input id="leaderboardOptIn" type="checkbox">
+              <span>Show this student on the community leaderboard preview</span>
+            </label>
+            <label class="profile-check">
+              <input id="soundToggle" type="checkbox" checked>
+              <span>Play subtle celebration sounds</span>
+            </label>
+            <p class="tiny" id="profileStatus">Profile saves on this device.</p>
+          </article>
+
+          <article class="home-card">
+            <p class="panel__label">Daily Goals</p>
+            <div class="goal-stack" id="dailyGoalList"></div>
+            <p class="tiny" id="dailyGoalStatus">Daily goals reset each day on this device.</p>
+          </article>
+        </div>
+      </section>
 
       <section class="panel panel--pathway" aria-label="Learning pathway">
         <div>
@@ -63,6 +107,7 @@
           <p class="lesson-code" id="lessonCode">Chapter 1 | Lesson 1.2</p>
           <p class="prompt" id="promptText">Press Start to begin.</p>
           <p class="tiny" id="skillDescription">Build confidence with focused accelerated practice.</p>
+          <div id="choiceList" class="choice-list" hidden></div>
           <form id="answerForm" class="answer-row" autocomplete="off">
             <input id="answerInput" inputmode="decimal" aria-label="Answer" placeholder="Type your answer" disabled>
             <button type="submit" id="submitButton" disabled>Check</button>
@@ -71,6 +116,18 @@
           <div class="actions-row">
             <button type="button" id="startButton">Start Session</button>
             <button type="button" id="skipButton" disabled>Skip</button>
+            <button type="button" id="hintButton" disabled>Hint</button>
+            <button type="button" id="masteryTestButton">Mastery Test</button>
+          </div>
+          <div class="support-stack">
+            <div class="support-panel">
+              <p class="panel__label">Hint</p>
+              <p class="tiny" id="hintText">Hints will appear here when you need a nudge.</p>
+            </div>
+            <div class="support-panel">
+              <p class="panel__label">Worked Explanation</p>
+              <p class="tiny" id="explanationText">Step-by-step explanations appear after misses and mastery checks.</p>
+            </div>
           </div>
         </article>
 
@@ -94,6 +151,9 @@
 
           <p class="panel__label panel__label--tight">Focus Quest</p>
           <p class="tiny" id="questText">Answer 5 in a row correctly to complete the quest.</p>
+
+          <p class="panel__label panel__label--tight">Session Type</p>
+          <p class="tiny" id="sessionText">Practice session ready.</p>
 
           <p class="panel__label panel__label--tight">Current Standard Lens</p>
           <p class="tiny" id="standardText">Practice tied to a standards-style topic label.</p>
@@ -121,6 +181,20 @@
           <p class="panel__label">Course Roadmap</p>
           <div id="roadmapList" class="roadmap-list"></div>
         </section>
+      </section>
+
+      <section class="panel panel--community" aria-label="Community and badges">
+        <div class="community-grid">
+          <section class="community-panel">
+            <p class="panel__label">Badges and Achievements</p>
+            <div id="badgeList" class="badge-list"></div>
+          </section>
+          <section class="community-panel">
+            <p class="panel__label">Community Leaderboard</p>
+            <div id="leaderboardList" class="leaderboard-list"></div>
+            <p class="tiny" id="leaderboardStatus">Static-site leaderboard preview with your student profile layered into the board.</p>
+          </section>
+        </div>
       </section>
 
       <section class="panel panel--dashboard" aria-label="Student dashboard">
@@ -169,6 +243,38 @@
               <p class="tiny" id="dashboardLeaderboardText">Display name, medal tier, XP, challenge clears, and mastery average can be published once shared storage is added.</p>
             </div>
           </section>
+        </div>
+      </section>
+
+      <section class="panel panel--parent" aria-label="Teacher and parent view">
+        <div class="dashboard-header">
+          <div>
+            <p class="panel__label">Teacher or Parent View</p>
+            <h2 class="dashboard-title">Coaching Snapshot</h2>
+            <p class="tiny">A quick readout of time practiced, consistency, readiness, and the next teaching move.</p>
+          </div>
+        </div>
+        <div class="dashboard-grid">
+          <article class="dashboard-card">
+            <span class="dashboard-card__label">Minutes Practiced</span>
+            <strong id="parentMinutes">0</strong>
+            <p class="tiny" id="parentMinutesText">Practice time is counted while sessions are active.</p>
+          </article>
+          <article class="dashboard-card">
+            <span class="dashboard-card__label">Sessions Completed</span>
+            <strong id="parentSessions">0</strong>
+            <p class="tiny" id="parentSessionsText">Short daily sessions build steady growth.</p>
+          </article>
+          <article class="dashboard-card">
+            <span class="dashboard-card__label">Readiness</span>
+            <strong id="parentReadiness">Building</strong>
+            <p class="tiny" id="parentReadinessText">Keep practicing to improve confidence across strands.</p>
+          </article>
+          <article class="dashboard-card">
+            <span class="dashboard-card__label">Next Move</span>
+            <strong id="parentNextMove">Stay On-Level</strong>
+            <p class="tiny" id="parentNextMoveText">A coaching suggestion based on mastery and accuracy.</p>
+          </article>
         </div>
       </section>
     </section>

@@ -35,6 +35,17 @@
     { id: "platinum", label: "Platinum", minScore: 760, next: "Diamond" },
     { id: "diamond", label: "Diamond", minScore: 1150, next: "Maxed tier" }
   ];
+  const DAILY_GOALS = [
+    { id: "xp", label: "Earn 60 XP", target: 60 },
+    { id: "lessons", label: "Start 2 lessons", target: 2 },
+    { id: "challengeClears", label: "Clear 1 challenge quest", target: 1 }
+  ];
+  const SAMPLE_LEADERBOARD = [
+    { name: "Avery", medal: "Diamond", xp: 94, challengeClears: 7, mastery: 91 },
+    { name: "Jordan", medal: "Platinum", xp: 76, challengeClears: 5, mastery: 84 },
+    { name: "Riley", medal: "Gold", xp: 58, challengeClears: 4, mastery: 79 },
+    { name: "Taylor", medal: "Silver", xp: 42, challengeClears: 2, mastery: 68 }
+  ];
 
   function skill(id, grade, chapter, lesson, strand, unit, name, standard, alignment, description, generate) {
     return { id, grade, chapter, lesson, strand, unit, name, standard, alignment, description, generate };
@@ -103,7 +114,13 @@
     skill("g8-linear-pattern", "grade8", "3", "3.2", "functions", "Chapter 3: Linear Relationships", "Linear Patterns", "8.F pattern reasoning", "Original practice aligned to a public-style Grade 8 lesson flow.", "Use a linear rule to extend a pattern.", linearPatternQuestion),
     skill("g8-systems-preview", "grade8", "4", "4.4", "equations", "Chapter 4: Equations", "Multi-Step Equations", "8.EE equation solving", "Original practice aligned to a public-style Grade 8 lesson flow.", "Solve a multi-step equation with distribution.", multiStepEquationQuestion),
     skill("g8-square-roots", "grade8", "7", "7.1", "accelerated", "Chapter 7: Real Numbers", "Square Roots", "8.NS real-number work", "Original practice aligned to a public-style Grade 8 lesson flow.", "Find perfect-square roots.", squareRootQuestion),
-    skill("g8-scientific-notation", "grade8", "7", "7.4", "accelerated", "Chapter 7: Real Numbers", "Scientific Notation", "8.EE scientific notation", "Original practice aligned to a public-style Grade 8 lesson flow.", "Convert values into or out of scientific notation.", scientificNotationQuestion)
+    skill("g8-scientific-notation", "grade8", "7", "7.4", "accelerated", "Chapter 7: Real Numbers", "Scientific Notation", "8.EE scientific notation", "Original practice aligned to a public-style Grade 8 lesson flow.", "Convert values into or out of scientific notation.", scientificNotationQuestion),
+    skill("g7-composite-area", "grade7", "10", "10.3", "measurement", "Chapter 10: Surface Area and Volume", "Composite Area", "7.G composite figure reasoning", "Original practice aligned to a public-style Grade 7 extension lesson.", "Break a figure into rectangles and combine areas.", compositeAreaQuestion),
+    skill("g7-scatter-plots", "grade7", "8", "8.6", "data", "Chapter 8: Statistics", "Scatter Plot Trends", "7.SP informal data inference", "Original practice aligned to a public-style Grade 7 extension lesson.", "Read a trend statement from a scatter plot description.", scatterPlotQuestion),
+    skill("g7a-multi-ineq", "grade7acc", "6", "6.9", "inequality-graphs", "Chapter 6: Equations and Inequalities", "Multi-Step Inequalities", "7.EE multi-step inequality reasoning", "Public-sequence extension for accelerated problem solving.", "Solve multi-step inequalities and identify the least integer solution.", multiStepInequalityQuestion),
+    skill("g7a-function-table", "grade7acc", "AT", "2.3", "functions", "Accelerated Topics: Functions", "Function Tables", "8.F function table reasoning", "Public-sequence extension for accelerated algebra preview topics.", "Use an input-output rule to complete a function table.", functionTableQuestion),
+    skill("g8-translation-image", "grade8", "1", "1.5", "transformations", "Chapter 1: Transformations", "Translated Points", "8.G coordinate transformations", "Original practice aligned to a public-style Grade 8 lesson flow.", "Give the image of a point after a translation.", translatedPointQuestion),
+    skill("g8-pythagorean-preview", "grade8", "8", "8.2", "geometry", "Chapter 8: Geometry Extensions", "Pythagorean Preview", "8.G distance and right triangle reasoning", "Original practice aligned to a public-style Grade 8 extension lesson.", "Use square lengths to find a missing side in a right triangle.", pythagoreanPreviewQuestion)
   ];
 
   const el = {
@@ -149,7 +166,36 @@
     dashboardAccuracyText: document.getElementById("dashboardAccuracyText"),
     dashboardStrongest: document.getElementById("dashboardStrongest"),
     dashboardWeakest: document.getElementById("dashboardWeakest"),
-    dashboardLeaderboardText: document.getElementById("dashboardLeaderboardText")
+    dashboardLeaderboardText: document.getElementById("dashboardLeaderboardText"),
+    continueButton: document.getElementById("continueButton"),
+    reviewButton: document.getElementById("reviewButton"),
+    diagnosticButton: document.getElementById("diagnosticButton"),
+    profileName: document.getElementById("profileName"),
+    profileColor: document.getElementById("profileColor"),
+    leaderboardOptIn: document.getElementById("leaderboardOptIn"),
+    soundToggle: document.getElementById("soundToggle"),
+    profileStatus: document.getElementById("profileStatus"),
+    homeGreeting: document.getElementById("homeGreeting"),
+    homeSummary: document.getElementById("homeSummary"),
+    dailyGoalList: document.getElementById("dailyGoalList"),
+    dailyGoalStatus: document.getElementById("dailyGoalStatus"),
+    choiceList: document.getElementById("choiceList"),
+    hintButton: document.getElementById("hintButton"),
+    masteryTestButton: document.getElementById("masteryTestButton"),
+    hintText: document.getElementById("hintText"),
+    explanationText: document.getElementById("explanationText"),
+    sessionText: document.getElementById("sessionText"),
+    badgeList: document.getElementById("badgeList"),
+    leaderboardList: document.getElementById("leaderboardList"),
+    leaderboardStatus: document.getElementById("leaderboardStatus"),
+    parentMinutes: document.getElementById("parentMinutes"),
+    parentMinutesText: document.getElementById("parentMinutesText"),
+    parentSessions: document.getElementById("parentSessions"),
+    parentSessionsText: document.getElementById("parentSessionsText"),
+    parentReadiness: document.getElementById("parentReadiness"),
+    parentReadinessText: document.getElementById("parentReadinessText"),
+    parentNextMove: document.getElementById("parentNextMove"),
+    parentNextMoveText: document.getElementById("parentNextMoveText")
   };
 
   if (!el.answerForm) return;
@@ -165,14 +211,27 @@
   let state = createState();
   refreshSelectedSkill();
   render();
-  el.startButton.addEventListener("click", startSession);
+  el.startButton.addEventListener("click", () => startSession(false));
   el.skipButton.addEventListener("click", skipQuestion);
   el.answerForm.addEventListener("submit", submitAnswer);
+  el.continueButton.addEventListener("click", () => startSession(false));
+  el.reviewButton.addEventListener("click", startSessionInReviewMode);
+  el.diagnosticButton.addEventListener("click", startPlacementCheck);
+  el.hintButton.addEventListener("click", showHint);
+  el.masteryTestButton.addEventListener("click", startMasteryTest);
+  el.profileName.addEventListener("input", updateProfileFromInputs);
+  el.profileColor.addEventListener("input", updateProfileFromInputs);
+  el.leaderboardOptIn.addEventListener("change", updateProfileFromInputs);
+  el.soundToggle.addEventListener("change", updateProfileFromInputs);
+  window.addEventListener("beforeunload", saveProgress);
 
   function createState() {
     const saved = loadProgress();
+    const daily = normalizeDailyProgress(saved?.dailyProgress);
     return {
       activeRound: false,
+      sessionType: "practice",
+      reviewMode: false,
       streak: 0,
       score: 0,
       xp: saved?.xp || 0,
@@ -189,7 +248,25 @@
       selectedMode: saved?.selectedMode || "onlevel",
       selectedSkillId: saved?.selectedSkillId || "g7a-int-add",
       skillMastery: saved?.skillMastery || createEmptyMastery(),
-      currentQuestion: null
+      currentQuestion: null,
+      selectedChoiceIndex: null,
+      totalProblemsSolved: saved?.totalProblemsSolved || 0,
+      sessionsCompleted: saved?.sessionsCompleted || 0,
+      totalPracticeSeconds: saved?.totalPracticeSeconds || 0,
+      sessionStartedAt: null,
+      placementResult: saved?.placementResult || null,
+      masteryTests: saved?.masteryTests || {},
+      dailyProgress: daily,
+      profile: {
+        name: saved?.profile?.name || "Math Master",
+        color: saved?.profile?.color || "#7de3ff",
+        leaderboardOptIn: Boolean(saved?.profile?.leaderboardOptIn),
+        soundOn: saved?.profile?.soundOn !== false
+      },
+      visibleExplanation: saved?.visibleExplanation || "Step-by-step explanations appear after misses and mastery checks.",
+      visibleHint: saved?.visibleHint || "Hints will appear here when you need a nudge.",
+      activePlacement: null,
+      activeMasteryTest: null
     };
   }
 
@@ -199,17 +276,41 @@
     return mastery;
   }
 
+  function normalizeDailyProgress(saved) {
+    const today = getTodayStamp();
+    if (!saved || saved.date !== today) {
+      return { date: today, xp: 0, lessons: 0, challengeClears: 0 };
+    }
+    return {
+      date: today,
+      xp: saved.xp || 0,
+      lessons: saved.lessons || 0,
+      challengeClears: saved.challengeClears || 0
+    };
+  }
+
+  function updateProfileFromInputs() {
+    state.profile.name = (el.profileName.value || "Math Master").trim() || "Math Master";
+    state.profile.color = el.profileColor.value || "#7de3ff";
+    state.profile.leaderboardOptIn = el.leaderboardOptIn.checked;
+    state.profile.soundOn = el.soundToggle.checked;
+    state.visibleHint = "Hints will appear here when you need a nudge.";
+    saveProgress();
+    render();
+  }
+
   function submitAnswer(event) {
     event.preventDefault();
     if (!state.activeRound || !state.currentQuestion) return;
-    const raw = el.answerInput.value.trim();
-    if (raw.length === 0 || Number.isNaN(Number(raw))) {
-      setFeedback("Type a number first.", false);
+    const parsed = parseCurrentAnswer();
+    if (!parsed.valid) {
+      setFeedback(parsed.message, false);
       return;
     }
-    const answer = Number(raw);
-    const isCorrect = isAnswerCorrect(answer, state.currentQuestion.answer);
+    const isCorrect = isAnswerCorrect(parsed.value, state.currentQuestion.answer, state.currentQuestion.answerType);
     state.questionsAnswered += 1;
+    state.totalProblemsSolved += 1;
+    let completedChallenge = false;
     if (isCorrect) {
       state.correctAnswers += 1;
       state.streak += 1;
@@ -217,41 +318,114 @@
       state.score += 35 + state.streak * 6;
       awardXp(18);
       adjustMastery(state.selectedSkillId, 9);
+      state.visibleExplanation = "Nice work. " + buildCorrectExplanation(state.currentQuestion);
+      if (state.sessionType === "mastery" && state.activeMasteryTest) state.activeMasteryTest.correct += 1;
+      if (state.sessionType === "placement" && state.activePlacement) state.activePlacement.score += state.currentQuestion.difficultyWeight || 1;
       setFeedback("Correct. Keep stacking clean reps.", true);
+      playCue("correct");
     } else {
       state.streak = 0;
       state.questProgress = 0;
       adjustMastery(state.selectedSkillId, -4);
+      state.visibleExplanation = state.currentQuestion.explanation || ("Correct answer: " + formatAnswer(state.currentQuestion.answer) + ".");
       setFeedback("Not quite. Correct answer: " + formatAnswer(state.currentQuestion.answer) + ".", false);
+      playCue("miss");
     }
     if (state.questProgress >= state.questGoal) {
       state.score += 140;
       awardXp(28);
       state.questProgress = 0;
       state.questGoal = 4 + Math.floor(Math.random() * 4);
-      if (state.selectedMode === "challenge") state.challengeClears += 1;
+      if (state.selectedMode === "challenge") {
+        state.challengeClears += 1;
+        state.dailyProgress.challengeClears += 1;
+        completedChallenge = true;
+      }
       setFeedback("Quest complete. Your pathway just leveled up.", true);
+      playCue("celebrate");
     }
     state.bestAccuracy = Math.max(state.bestAccuracy, Math.round((state.correctAnswers / state.questionsAnswered) * 100));
-    nextQuestion();
+    if (state.sessionType === "placement") {
+      advancePlacement();
+    } else if (state.sessionType === "mastery") {
+      advanceMasteryTest();
+    } else {
+      nextQuestion();
+    }
+    if (completedChallenge) state.dailyProgress.challengeClears = Math.max(state.dailyProgress.challengeClears, 1);
     saveProgress();
     render();
   }
 
-  function startSession() {
+  function startSession(reviewMode) {
+    syncPracticeTime();
     state.activeRound = true;
+    state.sessionType = reviewMode ? "review" : "practice";
+    state.reviewMode = Boolean(reviewMode);
+    state.activePlacement = null;
+    state.activeMasteryTest = null;
     state.streak = 0;
     state.score = 0;
     state.questionsAnswered = 0;
     state.correctAnswers = 0;
     state.questProgress = 0;
     state.questGoal = 5;
+    state.visibleHint = "Hints will appear here when you need a nudge.";
+    state.visibleExplanation = "Step-by-step explanations appear after misses and mastery checks.";
+    state.sessionStartedAt = Date.now();
     refreshSelectedSkill();
     nextQuestion();
     state.totalLessonFocuses += 1;
-    setFeedback("Session started. Stay sharp and steady.", true);
+    state.dailyProgress.lessons += 1;
+    setFeedback(reviewMode ? "Review mode started. We'll pull in older weak skills too." : "Session started. Stay sharp and steady.", true);
     render();
     el.answerInput.focus();
+  }
+
+  function startSessionInReviewMode() {
+    startSession(true);
+  }
+
+  function startPlacementCheck() {
+    syncPracticeTime();
+    state.activeRound = true;
+    state.reviewMode = false;
+    state.sessionType = "placement";
+    state.streak = 0;
+    state.score = 0;
+    state.questionsAnswered = 0;
+    state.correctAnswers = 0;
+    state.questProgress = 0;
+    state.sessionStartedAt = Date.now();
+    state.activePlacement = { index: 0, score: 0 };
+    state.activeMasteryTest = null;
+    state.visibleHint = "Use the hint if a question feels too far ahead.";
+    state.visibleExplanation = "Placement feedback will help choose the right path.";
+    setFeedback("Placement check started. Answer five mixed questions as best you can.", true);
+    nextQuestion();
+    render();
+  }
+
+  function startMasteryTest() {
+    syncPracticeTime();
+    const lesson = getSkillById(state.selectedSkillId);
+    if (!lesson) return;
+    state.activeRound = true;
+    state.reviewMode = false;
+    state.sessionType = "mastery";
+    state.streak = 0;
+    state.score = 0;
+    state.questionsAnswered = 0;
+    state.correctAnswers = 0;
+    state.questProgress = 0;
+    state.sessionStartedAt = Date.now();
+    state.activePlacement = null;
+    state.activeMasteryTest = { skillId: lesson.id, index: 0, total: 5, correct: 0 };
+    state.visibleHint = "Hints stay available during mastery tests, but try first without them.";
+    state.visibleExplanation = "Mastery tests use five checks on the current lesson.";
+    setFeedback("Mastery test started for " + lesson.name + ".", true);
+    nextQuestion();
+    render();
   }
 
   function refreshQuestionForCurrentSelection() {
@@ -270,8 +444,15 @@
     state.questProgress = 0;
     state.score = Math.max(0, state.score - 10);
     adjustMastery(state.selectedSkillId, -2);
+    state.visibleExplanation = state.currentQuestion?.explanation || "Skips reset the streak. Review the pattern and try the next one.";
     setFeedback("Skipped. Reset and take the next rep.", false);
-    nextQuestion();
+    if (state.sessionType === "placement") {
+      advancePlacement();
+    } else if (state.sessionType === "mastery") {
+      advanceMasteryTest();
+    } else {
+      nextQuestion();
+    }
     saveProgress();
     render();
   }
@@ -286,15 +467,128 @@
 
   function nextQuestion() {
     const lesson = getSkillById(state.selectedSkillId) || chooseSkill();
+    if (!lesson) return;
     state.selectedSkillId = lesson.id;
-    state.currentQuestion = lesson.generate();
+    if (state.sessionType === "placement") {
+      state.currentQuestion = decorateQuestion(getPlacementQuestion(), lesson);
+    } else {
+      state.currentQuestion = decorateQuestion(lesson.generate(), lesson);
+    }
+    state.selectedChoiceIndex = null;
     el.answerInput.value = "";
   }
 
   function chooseSkill() {
     const pool = getVisibleSkills();
     const ranked = [...pool].sort((a, b) => getMastery(a.id) - getMastery(b.id));
+    if (state.reviewMode) {
+      const reviewPool = ranked.filter((lesson) => getMastery(lesson.id) < 70);
+      if (reviewPool.length) return reviewPool[randomInt(0, reviewPool.length - 1)];
+    }
+    if (state.sessionType === "mastery" && state.activeMasteryTest) {
+      return getSkillById(state.activeMasteryTest.skillId) || ranked[0];
+    }
     return Math.random() < 0.72 ? ranked[0] : ranked[randomInt(0, ranked.length - 1)];
+  }
+
+  function getPlacementQuestion() {
+    const questions = [
+      decorateStandaloneQuestion(integerAddQuestion(), "numbers", 1),
+      decorateStandaloneQuestion(percentChangeQuestion(), "finance", 2),
+      decorateStandaloneQuestion(twoStepEquationQuestion(), "equations", 2),
+      decorateStandaloneQuestion(compositeAreaQuestion(), "measurement", 3),
+      decorateStandaloneQuestion(functionTableQuestion(), "functions", 3)
+    ];
+    return questions[Math.min(state.activePlacement?.index || 0, questions.length - 1)];
+  }
+
+  function advancePlacement() {
+    state.activePlacement.index += 1;
+    if (state.activePlacement.index >= 5) {
+      finishPlacement();
+      return;
+    }
+    nextQuestion();
+  }
+
+  function finishPlacement() {
+    syncPracticeTime();
+    const score = state.activePlacement?.score || 0;
+    let grade = "grade6";
+    if (score >= 11) grade = "grade8";
+    else if (score >= 8) grade = "grade7acc";
+    else if (score >= 5) grade = "grade7";
+    state.selectedGrade = grade;
+    state.selectedStrand = "all";
+    state.selectedMode = score >= 10 ? "challenge" : score >= 6 ? "onlevel" : "warmup";
+    state.placementResult = { date: getTodayStamp(), score, grade, mode: state.selectedMode };
+    state.activePlacement = null;
+    state.activeRound = false;
+    state.sessionStartedAt = null;
+    state.sessionType = "practice";
+    refreshSelectedSkill();
+    state.currentQuestion = null;
+    state.visibleExplanation = "Placement check complete. Recommended path: " + getGradePath().label + " in " + modeLabel(state.selectedMode) + ".";
+    setFeedback("Placement complete. Recommended path updated.", true);
+    saveProgress();
+  }
+
+  function advanceMasteryTest() {
+    state.activeMasteryTest.index += 1;
+    if (state.activeMasteryTest.index >= state.activeMasteryTest.total) {
+      finishMasteryTest();
+      return;
+    }
+    nextQuestion();
+  }
+
+  function finishMasteryTest() {
+    syncPracticeTime();
+    const test = state.activeMasteryTest;
+    const skillId = test.skillId;
+    const passed = test.correct >= 4;
+    const record = state.masteryTests[skillId] || { attempts: 0, best: 0, passed: false };
+    record.attempts += 1;
+    record.best = Math.max(record.best, test.correct);
+    record.passed = record.passed || passed;
+    state.masteryTests[skillId] = record;
+    if (passed) {
+      state.skillMastery[skillId] = Math.max(getMastery(skillId), 85);
+      awardXp(35);
+      setFeedback("Mastery test passed. Skill marked mastered.", true);
+      playCue("celebrate");
+    } else {
+      setFeedback("Mastery test finished. Review the explanation and try again.", false);
+    }
+    state.visibleExplanation = passed
+      ? "You answered " + test.correct + " out of " + test.total + " correctly, so this lesson now counts as mastered."
+      : "You answered " + test.correct + " out of " + test.total + " correctly. Build a few more clean reps, then test again.";
+    state.activeMasteryTest = null;
+    state.activeRound = false;
+    state.sessionStartedAt = null;
+    state.sessionType = "practice";
+    state.currentQuestion = null;
+    saveProgress();
+  }
+
+  function decorateStandaloneQuestion(question, strand, difficultyWeight) {
+    const lesson = { strand, unit: "Placement Check", standard: "Mixed readiness", alignment: "Adaptive placement sample" };
+    const decorated = decorateQuestion(question, lesson);
+    decorated.difficultyWeight = difficultyWeight;
+    return decorated;
+  }
+
+  function decorateQuestion(question, lesson) {
+    const prompt = question.prompt;
+    return {
+      prompt,
+      answer: question.answer,
+      answerType: question.answerType || "number",
+      choices: question.choices || null,
+      difficultyWeight: question.difficultyWeight || 1,
+      hint: question.hint || buildHint(prompt, lesson),
+      explanation: question.explanation || buildExplanation(question, lesson)
+    };
   }
 
   function getGradePath() {
@@ -323,6 +617,7 @@
 
   function awardXp(amount) {
     state.xp += amount;
+    state.dailyProgress.xp += amount;
     while (state.xp >= 100) {
       state.xp -= 100;
       state.level += 1;
@@ -330,11 +625,18 @@
   }
 
   function render() {
+    syncDailyProgress();
     const lesson = getSkillById(state.selectedSkillId) || getVisibleSkills()[0];
     const accuracy = state.questionsAnswered === 0 ? 100 : Math.round((state.correctAnswers / state.questionsAnswered) * 100);
     const path = getGradePath();
+    hydrateProfileInputs();
     el.pathwayTitle.textContent = path.title;
     el.pathwayDescription.textContent = path.description;
+    el.homeGreeting.textContent = "Welcome back, " + state.profile.name;
+    el.homeGreeting.style.color = state.profile.color;
+    el.homeSummary.textContent = state.placementResult
+      ? "Placement recommends " + path.label + " in " + modeLabel(state.selectedMode) + ". Continue, review weak skills, or retake placement."
+      : "Pick up where you left off, take a placement check, or jump into review mode.";
     renderPathwayBadges();
     renderGradeFilters();
     renderStrands();
@@ -342,6 +644,10 @@
     renderSkillList();
     renderRoadmap();
     renderDashboard();
+    renderDailyGoals();
+    renderBadges();
+    renderLeaderboard();
+    renderParentView();
     if (lesson) {
       el.skillName.textContent = lesson.name;
       el.skillMeta.textContent = lesson.unit + " | " + strandLabel(lesson.strand);
@@ -359,9 +665,15 @@
     el.xpFill.style.width = state.xp + "%";
     el.xpText.textContent = state.xp + " / 100 mastery XP";
     el.questText.textContent = "Answer " + state.questGoal + " in a row correctly (" + state.questProgress + "/" + state.questGoal + ").";
+    el.sessionText.textContent = sessionLabel();
     el.answerInput.disabled = !state.activeRound;
     el.submitButton.disabled = !state.activeRound;
     el.skipButton.disabled = !state.activeRound;
+    el.hintButton.disabled = !state.activeRound;
+    el.masteryTestButton.disabled = state.sessionType === "placement";
+    el.hintText.textContent = state.visibleHint;
+    el.explanationText.textContent = state.visibleExplanation;
+    renderAnswerControls();
   }
 
   function renderPathwayBadges() {
@@ -405,7 +717,7 @@
     renderRankingList(el.dashboardWeakest, weakest, "No category data yet.");
 
     el.dashboardLeaderboardText.textContent =
-      "A future public board can show medal tier, XP, mastery average, challenge clears, and strongest categories.";
+      "Community board preview blends your profile with shared leaderboard cards in a static-site friendly way.";
   }
 
   function renderRankingList(target, rankings, emptyText) {
@@ -555,13 +867,15 @@
     for (const lesson of getSkillsForGrade()) {
       let unit = grouped.find((entry) => entry.name === lesson.unit);
       if (!unit) {
-        unit = { name: lesson.unit, chapter: lesson.chapter, count: 0 };
+        unit = { name: lesson.unit, chapter: lesson.chapter, count: 0, masteryTotal: 0 };
         grouped.push(unit);
       }
       unit.count += 1;
+      unit.masteryTotal += getMastery(lesson.id);
     }
     el.roadmapList.innerHTML = "";
     for (const unit of grouped) {
+      const progress = Math.round(unit.masteryTotal / unit.count);
       const item = document.createElement("article");
       item.className = "roadmap-item";
       item.innerHTML = [
@@ -569,7 +883,8 @@
         '<h3 class="roadmap-item__title">' + unit.name + "</h3>",
         '<span class="roadmap-item__badge">' + unit.count + " lessons</span>",
         "</div>",
-        '<p class="roadmap-item__meta">Chapter ' + unit.chapter + "</p>"
+        '<p class="roadmap-item__meta">Chapter ' + unit.chapter + " | " + progress + "% complete</p>",
+        '<div class="roadmap-progress"><div style="width:' + progress + '%"></div></div>'
       ].join("");
       el.roadmapList.appendChild(item);
     }
@@ -595,6 +910,7 @@
 
   function saveProgress() {
     try {
+      syncPracticeTime();
       window.localStorage.setItem(STORAGE_KEY, JSON.stringify({
         xp: state.xp,
         level: state.level,
@@ -605,11 +921,250 @@
         selectedStrand: state.selectedStrand,
         selectedMode: state.selectedMode,
         selectedSkillId: state.selectedSkillId,
-        skillMastery: state.skillMastery
+        skillMastery: state.skillMastery,
+        totalProblemsSolved: state.totalProblemsSolved,
+        sessionsCompleted: state.sessionsCompleted,
+        totalPracticeSeconds: state.totalPracticeSeconds,
+        placementResult: state.placementResult,
+        masteryTests: state.masteryTests,
+        dailyProgress: state.dailyProgress,
+        profile: state.profile,
+        visibleExplanation: state.visibleExplanation,
+        visibleHint: state.visibleHint
       }));
     } catch {
       // Ignore storage failures.
     }
+  }
+
+  function hydrateProfileInputs() {
+    if (el.profileName.value !== state.profile.name) el.profileName.value = state.profile.name;
+    if (el.profileColor.value !== state.profile.color) el.profileColor.value = state.profile.color;
+    el.leaderboardOptIn.checked = state.profile.leaderboardOptIn;
+    el.soundToggle.checked = state.profile.soundOn;
+    el.profileStatus.textContent = state.profile.leaderboardOptIn
+      ? "Profile saves on this device and appears in the leaderboard preview."
+      : "Profile saves on this device.";
+  }
+
+  function renderDailyGoals() {
+    el.dailyGoalList.innerHTML = "";
+    for (const goal of DAILY_GOALS) {
+      const current = state.dailyProgress[goal.id];
+      const percent = clamp(Math.round((current / goal.target) * 100), 0, 100);
+      const card = document.createElement("article");
+      card.className = "goal-card";
+      card.innerHTML = [
+        "<strong>" + goal.label + "</strong>",
+        '<p class="tiny">' + current + " / " + goal.target + "</p>",
+        '<div class="goal-progress"><div style="width:' + percent + '%"></div></div>'
+      ].join("");
+      el.dailyGoalList.appendChild(card);
+    }
+    el.dailyGoalStatus.textContent = DAILY_GOALS.every((goal) => state.dailyProgress[goal.id] >= goal.target)
+      ? "Daily goals complete. Great work."
+      : "Daily goals reset each day on this device.";
+  }
+
+  function renderAnswerControls() {
+    const question = state.currentQuestion;
+    const isMultiple = question?.answerType === "multiple";
+    el.choiceList.hidden = !isMultiple;
+    el.answerInput.hidden = isMultiple;
+    if (isMultiple && question?.choices) {
+      el.choiceList.innerHTML = "";
+      question.choices.forEach((choice, index) => {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "choice-button" + (state.selectedChoiceIndex === index ? " is-selected" : "");
+        button.textContent = choice.label;
+        button.disabled = !state.activeRound;
+        button.addEventListener("click", () => {
+          state.selectedChoiceIndex = index;
+          el.answerInput.value = String(choice.value);
+          renderAnswerControls();
+        });
+        el.choiceList.appendChild(button);
+      });
+    } else {
+      const placeholder = question?.answerType === "coordinate"
+        ? "Type an ordered pair like (3, -2)"
+        : question?.answerType === "fraction"
+          ? "Type a fraction like 3/4 or a decimal"
+          : "Type your answer";
+      el.answerInput.placeholder = placeholder;
+      el.answerInput.inputMode = question?.answerType === "coordinate" ? "text" : "decimal";
+    }
+  }
+
+  function renderBadges() {
+    const badges = getBadges();
+    el.badgeList.innerHTML = "";
+    for (const badge of badges) {
+      const item = document.createElement("div");
+      item.className = "badge-chip";
+      item.innerHTML = "<strong>" + badge.label + "</strong><span>" + badge.status + "</span>";
+      el.badgeList.appendChild(item);
+    }
+  }
+
+  function renderLeaderboard() {
+    const entries = [...SAMPLE_LEADERBOARD];
+    if (state.profile.leaderboardOptIn) {
+      entries.push({
+        name: state.profile.name,
+        medal: getCurrentMedal().label,
+        xp: state.level * 10 + state.xp,
+        challengeClears: state.challengeClears,
+        mastery: averageMastery(),
+        you: true
+      });
+    }
+    entries.sort((a, b) => (b.mastery + b.xp + b.challengeClears * 8) - (a.mastery + a.xp + a.challengeClears * 8));
+    el.leaderboardList.innerHTML = "";
+    entries.slice(0, 5).forEach((entry, index) => {
+      const row = document.createElement("div");
+      row.className = "leaderboard-row" + (entry.you ? " is-you" : "");
+      row.innerHTML = [
+        "<div><strong>" + (index + 1) + ". " + entry.name + "</strong><span>" + entry.medal + " | " + entry.mastery + "% mastery</span></div>",
+        "<span>" + entry.challengeClears + " clears</span>"
+      ].join("");
+      el.leaderboardList.appendChild(row);
+    });
+    el.leaderboardStatus.textContent = state.profile.leaderboardOptIn
+      ? "Your profile is currently included in this public-ready leaderboard preview."
+      : "Turn on the leaderboard option in your profile to include this student.";
+  }
+
+  function renderParentView() {
+    const minutes = Math.round(getTotalPracticeSeconds() / 60);
+    const accuracy = state.bestAccuracy;
+    const mastery = averageMastery();
+    const readiness = mastery >= 70 && accuracy >= 80 ? "Ready to Stretch" : mastery >= 50 ? "On Track" : "Building";
+    const nextMove = mastery >= 75 ? "Use Challenge Mode" : rankStrands(true)[0]?.label || "Stay On-Level";
+    el.parentMinutes.textContent = String(minutes);
+    el.parentMinutesText.textContent = minutes > 0 ? "Minutes practiced across saved sessions on this device." : "Practice time is counted while sessions are active.";
+    el.parentSessions.textContent = String(state.totalLessonFocuses);
+    el.parentSessionsText.textContent = state.totalLessonFocuses > 0 ? "Focused sessions started so far." : "Short daily sessions build steady growth.";
+    el.parentReadiness.textContent = readiness;
+    el.parentReadinessText.textContent = "Readiness blends mastery average and best session accuracy.";
+    el.parentNextMove.textContent = nextMove;
+    el.parentNextMoveText.textContent = mastery >= 75
+      ? "The student is ready for more challenge or a mastery test."
+      : "Coach the weakest category next, then return to review mode.";
+  }
+
+  function syncDailyProgress() {
+    state.dailyProgress = normalizeDailyProgress(state.dailyProgress);
+  }
+
+  function syncPracticeTime() {
+    if (state.sessionStartedAt) {
+      state.totalPracticeSeconds += Math.max(0, Math.round((Date.now() - state.sessionStartedAt) / 1000));
+      state.sessionStartedAt = Date.now();
+    }
+  }
+
+  function getTotalPracticeSeconds() {
+    if (!state.sessionStartedAt) return state.totalPracticeSeconds;
+    return state.totalPracticeSeconds + Math.max(0, Math.round((Date.now() - state.sessionStartedAt) / 1000));
+  }
+
+  function getTodayStamp() {
+    return new Date().toLocaleDateString("en-CA");
+  }
+
+  function parseCurrentAnswer() {
+    const raw = el.answerInput.value.trim();
+    const answerType = state.currentQuestion?.answerType || "number";
+    if (answerType === "coordinate") {
+      const match = raw.match(/^\(?\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*\)?$/);
+      if (!match) return { valid: false, message: "Type an ordered pair like (3, -2)." };
+      return { valid: true, value: [Number(match[1]), Number(match[2])] };
+    }
+    if (answerType === "fraction") {
+      if (raw.includes("/")) {
+        const parts = raw.split("/");
+        if (parts.length !== 2 || Number(parts[1]) === 0 || parts.some((part) => Number.isNaN(Number(part)))) {
+          return { valid: false, message: "Type a fraction like 3/4 or a decimal." };
+        }
+        return { valid: true, value: Number(parts[0]) / Number(parts[1]) };
+      }
+      if (Number.isNaN(Number(raw))) return { valid: false, message: "Type a fraction like 3/4 or a decimal." };
+      return { valid: true, value: Number(raw) };
+    }
+    if (answerType === "multiple") {
+      if (!raw.length) return { valid: false, message: "Pick one of the choices first." };
+      return { valid: true, value: raw };
+    }
+    if (raw.length === 0 || Number.isNaN(Number(raw))) return { valid: false, message: "Type a number first." };
+    return { valid: true, value: Number(raw) };
+  }
+
+  function showHint() {
+    if (!state.currentQuestion) return;
+    state.visibleHint = state.currentQuestion.hint;
+    render();
+  }
+
+  function sessionLabel() {
+    if (state.sessionType === "placement") return "Placement Check";
+    if (state.sessionType === "mastery") return "Mastery Test";
+    if (state.sessionType === "review") return "Review Mode";
+    return "Practice Session";
+  }
+
+  function modeLabel(modeId) {
+    return MODES.find((mode) => mode.id === modeId)?.label || "On-Level";
+  }
+
+  function getBadges() {
+    const weakest = rankStrands(true)[0];
+    return [
+      { label: "Daily Climber", status: state.dailyProgress.lessons >= 2 ? "Unlocked" : "Start 2 lessons today" },
+      { label: "Accuracy Ace", status: state.bestAccuracy >= 90 ? "Unlocked" : "Reach 90% accuracy" },
+      { label: "Challenge Crusher", status: state.challengeClears >= 3 ? "Unlocked" : "Clear 3 challenge quests" },
+      { label: "Mastery Maker", status: masteredSkillCount() >= 5 ? "Unlocked" : "Master 5 skills" },
+      { label: "Review Hero", status: weakest && weakest.value >= 55 ? "Unlocked" : "Lift weak categories above 55%" }
+    ];
+  }
+
+  function masteredSkillCount() {
+    return getSkillsForGrade().filter((lesson) => getMastery(lesson.id) >= 85).length;
+  }
+
+  function buildHint(prompt, lesson) {
+    return "Start with the key relationship in " + strandLabel(lesson.strand) + ". Then solve one step at a time for: " + prompt;
+  }
+
+  function buildExplanation(question, lesson) {
+    if (question.answerType === "multiple") {
+      return "Look for the choice that best matches the pattern or trend described. The correct choice is " + formatAnswer(question.answer) + ".";
+    }
+    if (question.answerType === "coordinate") {
+      return "Track how the x-value and y-value move, then write the image as an ordered pair. The correct point is " + formatAnswer(question.answer) + ".";
+    }
+    return "Use the structure of " + strandLabel(lesson.strand) + ", work step by step, and compare your result to " + formatAnswer(question.answer) + ".";
+  }
+
+  function buildCorrectExplanation(question) {
+    return question.answerType === "multiple"
+      ? "You picked the best matching choice for the pattern."
+      : "You matched the expected answer of " + formatAnswer(question.answer) + ".";
+  }
+
+  function playCue(kind) {
+    if (!state.profile.soundOn || typeof window.AudioContext === "undefined") return;
+    const context = playCue.audioContext || (playCue.audioContext = new window.AudioContext());
+    const oscillator = context.createOscillator();
+    const gain = context.createGain();
+    oscillator.connect(gain);
+    gain.connect(context.destination);
+    oscillator.type = "sine";
+    oscillator.frequency.value = kind === "celebrate" ? 720 : kind === "miss" ? 220 : 480;
+    gain.gain.value = 0.02;
+    oscillator.start();
+    oscillator.stop(context.currentTime + (kind === "celebrate" ? 0.18 : 0.08));
   }
 
   function integerAddQuestion() {
@@ -711,13 +1266,25 @@
   function fractionMultiplyQuestion() {
     const a = randomChoice([[1, 2], [2, 3], [3, 4], [4, 5]]);
     const b = randomChoice([[1, 3], [2, 5], [3, 5], [5, 6]]);
-    return { prompt: "Multiply: " + a[0] + "/" + a[1] + " x " + b[0] + "/" + b[1], answer: roundTo((a[0] / a[1]) * (b[0] / b[1]), 2) };
+    return {
+      prompt: "Multiply: " + a[0] + "/" + a[1] + " x " + b[0] + "/" + b[1],
+      answer: roundTo((a[0] / a[1]) * (b[0] / b[1]), 4),
+      answerType: "fraction",
+      hint: "Multiply the numerators, multiply the denominators, then simplify or write a decimal.",
+      explanation: "Multiply across: " + a[0] + " x " + b[0] + " over " + a[1] + " x " + b[1] + ". Then simplify the result."
+    };
   }
 
   function fractionDivideQuestion() {
     const a = randomChoice([[1, 2], [2, 3], [3, 4], [5, 6]]);
     const b = randomChoice([[1, 3], [2, 5], [3, 5], [4, 7]]);
-    return { prompt: "Divide: " + a[0] + "/" + a[1] + " / " + b[0] + "/" + b[1], answer: roundTo((a[0] / a[1]) / (b[0] / b[1]), 2) };
+    return {
+      prompt: "Divide: " + a[0] + "/" + a[1] + " / " + b[0] + "/" + b[1],
+      answer: roundTo((a[0] / a[1]) / (b[0] / b[1]), 4),
+      answerType: "fraction",
+      hint: "Keep the first fraction, flip the second fraction, and multiply.",
+      explanation: "Dividing by a fraction means multiplying by its reciprocal, so " + a[0] + "/" + a[1] + " x " + b[1] + "/" + b[0] + " gives the correct result."
+    };
   }
 
   function fractionDecimalConversionQuestion() {
@@ -963,6 +1530,82 @@
     return { prompt: "Find the slope between (" + x1 + ", " + y1 + ") and (" + (x1 + run) + ", " + (y1 + rise) + "). Enter a decimal if needed.", answer: roundTo(rise / run, 2) };
   }
 
+  function compositeAreaQuestion() {
+    const widthA = randomChoice([4, 5, 6, 8]);
+    const heightA = randomChoice([6, 7, 8, 10]);
+    const widthB = randomChoice([2, 3, 4]);
+    const heightB = randomChoice([3, 4, 5]);
+    return {
+      prompt: "A composite figure is made from a " + widthA + " by " + heightA + " rectangle and a " + widthB + " by " + heightB + " rectangle attached with no overlap. What is the total area?",
+      answer: widthA * heightA + widthB * heightB
+    };
+  }
+
+  function scatterPlotQuestion() {
+    return {
+      prompt: "A scatter plot shows that as study time increases, quiz scores usually increase. Which statement best describes the association?",
+      answer: "positive",
+      answerType: "multiple",
+      choices: [
+        { label: "Positive association", value: "positive" },
+        { label: "Negative association", value: "negative" },
+        { label: "No association", value: "none" }
+      ],
+      hint: "Ask whether both variables tend to rise together, move opposite ways, or stay unrelated.",
+      explanation: "Because higher study time is usually paired with higher quiz scores, the relationship is positive."
+    };
+  }
+
+  function multiStepInequalityQuestion() {
+    const x = randomInt(3, 10);
+    const a = randomChoice([2, 3, 4]);
+    const b = randomChoice([4, 6, 8]);
+    const c = randomChoice([3, 5, 7]);
+    const bound = a * x + b + c - randomChoice([1, 2]);
+    return {
+      prompt: "What is the least integer x that makes " + a + "x + " + b + " + " + c + " > " + bound + " true?",
+      answer: x
+    };
+  }
+
+  function functionTableQuestion() {
+    const input = randomChoice([3, 4, 5, 6]);
+    const multiplier = randomChoice([2, 3, 4]);
+    const addend = randomChoice([1, 2, 5, 7]);
+    return {
+      prompt: "A function rule is y = " + multiplier + "x + " + addend + ". What is the output when x = " + input + "?",
+      answer: multiplier * input + addend
+    };
+  }
+
+  function translatedPointQuestion() {
+    const x = randomInt(-5, 5);
+    const y = randomInt(-5, 5);
+    const dx = randomChoice([-4, -3, 2, 5]);
+    const dy = randomChoice([-3, -2, 4, 5]);
+    return {
+      prompt: "Translate (" + x + ", " + y + ") by <" + dx + ", " + dy + ">. Enter the image as an ordered pair.",
+      answer: [x + dx, y + dy],
+      answerType: "coordinate",
+      hint: "Add the horizontal move to x and the vertical move to y.",
+      explanation: "Add " + dx + " to the x-coordinate and " + dy + " to the y-coordinate to get (" + (x + dx) + ", " + (y + dy) + ")."
+    };
+  }
+
+  function pythagoreanPreviewQuestion() {
+    const pair = randomChoice([
+      { legs: [3, 4], hypotenuse: 5 },
+      { legs: [5, 12], hypotenuse: 13 },
+      { legs: [8, 15], hypotenuse: 17 }
+    ]);
+    return {
+      prompt: "A right triangle has legs " + pair.legs[0] + " and " + pair.legs[1] + ". What is the hypotenuse?",
+      answer: pair.hypotenuse,
+      hint: "Look for a common Pythagorean triple.",
+      explanation: pair.legs[0] + "^2 + " + pair.legs[1] + "^2 = " + (pair.legs[0] * pair.legs[0]) + " + " + (pair.legs[1] * pair.legs[1]) + " = " + (pair.hypotenuse * pair.hypotenuse) + ", so the hypotenuse is " + pair.hypotenuse + "."
+    };
+  }
+
   function modeChoice(warmup, onlevel, challenge) {
     if (state.selectedMode === "warmup") return randomChoice(warmup);
     if (state.selectedMode === "challenge") return randomChoice(challenge);
@@ -975,11 +1618,18 @@
     return randomInt(onMin, onMax);
   }
 
-  function isAnswerCorrect(input, expected) {
+  function isAnswerCorrect(input, expected, answerType) {
+    if (answerType === "coordinate") {
+      return Array.isArray(input) && Array.isArray(expected) && Math.abs(input[0] - expected[0]) < 0.01 && Math.abs(input[1] - expected[1]) < 0.01;
+    }
+    if (answerType === "multiple") {
+      return input === expected;
+    }
     return Math.abs(input - expected) < 0.01;
   }
 
   function formatAnswer(answer) {
+    if (Array.isArray(answer)) return "(" + answer[0] + ", " + answer[1] + ")";
     return Number.isInteger(answer) ? String(answer) : answer.toFixed(2).replace(/0+$/, "").replace(/\.$/, "");
   }
 
