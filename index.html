@@ -70,30 +70,32 @@
             <strong id="visibleGameCount">14</strong>
           </div>
           <div class="launcher-summary__card">
-            <span class="launcher-summary__label">Highlighted Collection</span>
-            <strong id="featuredCollection">Codex Arena Vault</strong>
+            <span class="launcher-summary__label">Highlighted Track</span>
+            <strong id="featuredCollection">Arcade Action</strong>
           </div>
           <div class="launcher-summary__actions">
-            <button class="collection-chip collection-chip--utility" type="button" id="launchMathMasters">Jump To Math Masters</button>
-            <button class="collection-chip collection-chip--utility" type="button" id="clearSearch">Clear Search</button>
+            <button class="collection-chip collection-chip--utility" type="button" id="launchMathMasters">Open Math Masters</button>
+            <button class="collection-chip collection-chip--utility" type="button" id="clearSearch">Reset Search</button>
           </div>
         </div>
       </section>
 
-      <section class="collection-toolbar" aria-label="Collection filters">
+      <section class="collection-toolbar" aria-label="Browse tabs">
         <button class="collection-chip is-active" type="button" data-filter="all">All Games</button>
-        <button class="collection-chip" type="button" data-filter="codex">Codex Arena Vault</button>
-        <button class="collection-chip" type="button" data-filter="workshop">Arcade Workshop</button>
+        <button class="collection-chip" type="button" data-filter="learn">Learning</button>
+        <button class="collection-chip" type="button" data-filter="action">Action</button>
+        <button class="collection-chip" type="button" data-filter="worlds">Worlds</button>
+        <button class="collection-chip" type="button" data-filter="strategy">Strategy and Builders</button>
       </section>
 
-      <section class="collection-block" data-collection="codex" data-default-count="4">
+      <section class="collection-block" data-collection="codex">
         <div class="collection-heading">
           <p class="collection-heading__eyebrow">Collection One</p>
           <h2>Codex Arena Vault</h2>
         </div>
 
         <section class="hub-grid" aria-label="Codex Arena Vault games">
-          <article class="game-card game-card--void is-active" data-card="./games/dodge.html" data-collection-label="Codex Arena Vault">
+          <article class="game-card game-card--void is-active" data-card="./games/dodge.html" data-collection-label="Codex Arena Vault" data-group="action" data-track-label="Arcade Action">
             <p class="game-card__eyebrow">Arcade Dodge</p>
             <h2>Purple Square Panic</h2>
             <p>Slide across the floor, dodge the falling hazards, and catch yellow powerups to survive longer.</p>
@@ -104,7 +106,7 @@
             <button class="play-button" type="button" data-game="./games/dodge.html">Play Dodge</button>
           </article>
 
-          <article class="game-card game-card--ocean" data-card="./games/starforge.html" data-collection-label="Codex Arena Vault">
+          <article class="game-card game-card--ocean" data-card="./games/starforge.html" data-collection-label="Codex Arena Vault" data-group="action" data-track-label="Arcade Action">
             <p class="game-card__eyebrow">Top-Down Shooter</p>
             <h2>Starforge Salvage</h2>
             <p>Drift through a wreck field, collect energy cores, and blast down hostile drones before they close in.</p>
@@ -115,7 +117,7 @@
             <button class="play-button" type="button" data-game="./games/starforge.html">Play Starforge</button>
           </article>
 
-          <article class="game-card game-card--sanctum" data-card="./games/beastblade.html" data-collection-label="Codex Arena Vault">
+          <article class="game-card game-card--sanctum" data-card="./games/beastblade.html" data-collection-label="Codex Arena Vault" data-group="action" data-track-label="Arcade Action">
             <p class="game-card__eyebrow">PvE Swordfighting</p>
             <h2>Beastblade Ascent</h2>
             <p>Clear arena trials, spend upgrades, summon your beast ally, and survive the monster gauntlet.</p>
@@ -126,7 +128,7 @@
             <button class="play-button" type="button" data-game="./games/beastblade.html">Play Beastblade</button>
           </article>
 
-          <article class="game-card game-card--jungle" data-card="./games/relicbound.html" data-collection-label="Codex Arena Vault">
+          <article class="game-card game-card--jungle" data-card="./games/relicbound.html" data-collection-label="Codex Arena Vault" data-group="worlds" data-track-label="Exploration Worlds">
             <p class="game-card__eyebrow">Adventure Framework</p>
             <h2>Relicbound Vale</h2>
             <p>Explore a growing fantasy action-adventure with shrines, camps, dungeons, and room for much bigger systems later.</p>
@@ -139,7 +141,7 @@
 
 
 
-          <article class="game-card game-card--ocean" data-card="./games/math-masters.html" data-collection-label="Codex Arena Vault">
+          <article class="game-card game-card--ocean" data-card="./games/math-masters.html" data-collection-label="Codex Arena Vault" data-group="learn" data-track-label="Learning and Skill Building">
             <p class="game-card__eyebrow">Learning Experience</p>
             <h2>Math Masters</h2>
             <p>Practice adaptive mental math with streak quests, mastery tracking, and focused drill sessions that feel engaging without being an arcade game.</p>
@@ -150,7 +152,7 @@
             <button class="play-button" type="button" data-game="./games/math-masters.html">Play Math Masters</button>
           </article>
 
-          <article class="game-card game-card--marble" data-card="./games/typing.html" data-collection-label="Codex Arena Vault">
+          <article class="game-card game-card--marble" data-card="./games/typing.html" data-collection-label="Codex Arena Vault" data-group="learn" data-track-label="Learning and Skill Building">
             <p class="game-card__eyebrow">Typing Trainer</p>
             <h2>Typing Tempo</h2>
             <p>Practice typing speed, keep a clean streak, and build better accuracy in a focused word rush.</p>
@@ -161,7 +163,7 @@
             <button class="play-button" type="button" data-game="./games/typing.html">Play Typing</button>
           </article>
 
-          <article class="game-card game-card--void" data-card="./games/shadow-circuit.html" data-collection-label="Codex Arena Vault">
+          <article class="game-card game-card--void" data-card="./games/shadow-circuit.html" data-collection-label="Codex Arena Vault" data-group="action" data-track-label="Arcade Action">
             <p class="game-card__eyebrow">Sci-Fi Action Adventure</p>
             <h2>Shadow Circuit</h2>
             <p>Dash through a neon maze, collect power cores, unlock sealed gates, and fight hostile drones on the way out.</p>
@@ -172,7 +174,7 @@
             <button class="play-button" type="button" data-game="./games/shadow-circuit.html">Play Shadow Circuit</button>
           </article>
 
-          <article class="game-card game-card--marble" data-card="./games/board-arcade.html" data-collection-label="Codex Arena Vault">
+          <article class="game-card game-card--marble" data-card="./games/board-arcade.html" data-collection-label="Codex Arena Vault" data-group="strategy" data-track-label="Strategy and Builders">
             <p class="game-card__eyebrow">Strategy Collection</p>
             <h2>Board Blitz Arcade</h2>
             <p>Play chess, checkers, or tic-tac-toe in one board-game hub, with either local multiplayer or a computer opponent.</p>
@@ -183,7 +185,7 @@
             <button class="play-button" type="button" data-game="./games/board-arcade.html">Play Board Blitz</button>
           </article>
 
-          <article class="game-card game-card--ember" data-card="./games/sky-archer.html" data-collection-label="Codex Arena Vault">
+          <article class="game-card game-card--ember" data-card="./games/sky-archer.html" data-collection-label="Codex Arena Vault" data-group="action" data-track-label="Arcade Action">
             <p class="game-card__eyebrow">Fantasy Defense</p>
             <h2>Sky Archer</h2>
             <p>Draw the bow, arc arrows across floating bridges, and stop invading sky raiders before they strike the tower.</p>
@@ -194,7 +196,7 @@
             <button class="play-button" type="button" data-game="./games/sky-archer.html">Play Sky Archer</button>
           </article>
 
-          <article class="game-card game-card--jungle" data-card="./games/stillwake-house.html" data-collection-label="Codex Arena Vault">
+          <article class="game-card game-card--jungle" data-card="./games/stillwake-house.html" data-collection-label="Codex Arena Vault" data-group="worlds" data-track-label="Exploration Worlds">
             <p class="game-card__eyebrow">3D Mystery Scene</p>
             <h2>Stillwake House</h2>
             <p>Walk through one warm little house, read the letter on the table, and sit with the quiet feeling that something is wrong.</p>
@@ -205,19 +207,16 @@
             <button class="play-button" type="button" data-game="./games/stillwake-house.html">Play Stillwake</button>
           </article>
         </section>
-        <div class="collection-footer">
-          <button class="collection-chip collection-chip--utility collection-toggle" type="button" data-toggle-collection="codex">Show More</button>
-        </div>
       </section>
 
-      <section class="collection-block" data-collection="workshop" data-default-count="4">
+      <section class="collection-block" data-collection="workshop">
         <div class="collection-heading">
           <p class="collection-heading__eyebrow">Collection Two</p>
           <h2>Arcade Workshop</h2>
         </div>
 
         <section class="hub-grid" aria-label="Arcade Workshop games">
-          <article class="game-card game-card--ocean" data-card="./workshop/Mobile%20Game/pirates.html" data-collection-label="Arcade Workshop">
+          <article class="game-card game-card--ocean" data-card="./workshop/Mobile%20Game/pirates.html" data-collection-label="Arcade Workshop" data-group="action" data-track-label="Arcade Action">
             <p class="game-card__eyebrow">Arcade Workshop</p>
             <h2>Pirate Ship Battles</h2>
             <p>Sail, fight, board enemy ships, and spend coins on upgrades across the open water.</p>
@@ -228,7 +227,7 @@
             <button class="play-button" type="button" data-game="./workshop/Mobile%20Game/pirates.html">Play Pirates</button>
           </article>
 
-          <article class="game-card game-card--marble" data-card="./workshop/CatholicClickyGame/vatican.html" data-collection-label="Arcade Workshop">
+          <article class="game-card game-card--marble" data-card="./workshop/CatholicClickyGame/vatican.html" data-collection-label="Arcade Workshop" data-group="strategy" data-track-label="Strategy and Builders">
             <p class="game-card__eyebrow">Arcade Workshop</p>
             <h2>Kingdom of Grace</h2>
             <p>Build a symbolic kingdom through idle growth, helpers, blessings, and long-form upgrades.</p>
@@ -239,7 +238,7 @@
             <button class="play-button" type="button" data-game="./workshop/CatholicClickyGame/vatican.html">Play Grace</button>
           </article>
 
-          <article class="game-card game-card--jungle" data-card="./workshop/CastawayArchitectsPrototype/castaway.html" data-collection-label="Arcade Workshop">
+          <article class="game-card game-card--jungle" data-card="./workshop/CastawayArchitectsPrototype/castaway.html" data-collection-label="Arcade Workshop" data-group="strategy" data-track-label="Strategy and Builders">
             <p class="game-card__eyebrow">Arcade Workshop</p>
             <h2>Castaway Architects</h2>
             <p>Gather resources, place machines, and turn an island into a working settlement.</p>
@@ -250,7 +249,7 @@
             <button class="play-button" type="button" data-game="./workshop/CastawayArchitectsPrototype/castaway.html">Play Castaway</button>
           </article>
 
-          <article class="game-card game-card--sanctum" data-card="./workshop/sanctum-arena/sanctum-arena.html" data-collection-label="Arcade Workshop">
+          <article class="game-card game-card--sanctum" data-card="./workshop/sanctum-arena/sanctum-arena.html" data-collection-label="Arcade Workshop" data-group="action" data-track-label="Arcade Action">
             <p class="game-card__eyebrow">Arcade Workshop</p>
             <h2>Sanctum Arena</h2>
             <p>Fight through a close-range action arena with dashes, swings, and escalating pressure.</p>
@@ -261,9 +260,6 @@
             <button class="play-button" type="button" data-game="./workshop/sanctum-arena/sanctum-arena.html">Play Sanctum</button>
           </article>
         </section>
-        <div class="collection-footer">
-          <button class="collection-chip collection-chip--utility collection-toggle" type="button" data-toggle-collection="workshop">Show More</button>
-        </div>
       </section>
     </section>
   </main>
@@ -309,11 +305,9 @@
     const featuredCollection = document.getElementById("featuredCollection");
     const launchMathMasters = document.getElementById("launchMathMasters");
     const clearSearch = document.getElementById("clearSearch");
-    const collectionToggles = document.querySelectorAll("[data-toggle-collection]");
     const assetVersion = "20260329a";
     let activeFilter = "all";
     let activeSearch = "";
-    const expandedCollections = { codex: false, workshop: false };
 
     const gameData = {
       "./games/dodge.html": { title: "Purple Square Panic" },
@@ -338,7 +332,7 @@
       featuredTitle.textContent = card.querySelector("h2")?.textContent || "Game";
       featuredMeta.textContent = card.getAttribute("data-collection-label") + " | " + (card.querySelector(".game-card__eyebrow")?.textContent || "Featured");
       featuredDescription.textContent = card.querySelector("p:not(.game-card__eyebrow)")?.textContent || "Pick a game and jump in.";
-      featuredCollection.textContent = card.getAttribute("data-collection-label") || "Collection";
+      featuredCollection.textContent = card.getAttribute("data-track-label") || card.getAttribute("data-collection-label") || "Collection";
       featuredLaunch.setAttribute("data-game", next);
     }
 
@@ -365,36 +359,21 @@
 
       for (const block of collectionBlocks) {
         let blockHasVisibleCards = false;
-        const collectionMatches = activeFilter === "all" || block.getAttribute("data-collection") === activeFilter;
-        const collectionId = block.getAttribute("data-collection");
-        const defaultCount = Number(block.getAttribute("data-default-count") || 4);
+        const collectionMatches = true;
         const cardsInBlock = [...block.querySelectorAll("[data-card]")];
-        const matchedCards = [];
         for (const card of cardsInBlock) {
           const text = card.textContent.toLowerCase();
           const matchesSearch = !activeSearch || text.includes(activeSearch);
-          if (collectionMatches && matchesSearch) matchedCards.push(card);
-        }
-        const showAllMatches = Boolean(activeSearch) || expandedCollections[collectionId];
-        matchedCards.forEach((card, index) => {
-          const show = showAllMatches || index < defaultCount;
+          const matchesFilter = activeFilter === "all" || card.getAttribute("data-group") === activeFilter;
+          const show = collectionMatches && matchesSearch && matchesFilter;
           card.hidden = !show;
           if (show) {
             if (!firstVisibleCard) firstVisibleCard = card;
             blockHasVisibleCards = true;
             visibleCount += 1;
           }
-        });
-        cardsInBlock.filter((card) => !matchedCards.includes(card)).forEach((card) => {
-          card.hidden = true;
-        });
-        block.hidden = !blockHasVisibleCards;
-        const toggle = block.querySelector("[data-toggle-collection]");
-        if (toggle) {
-          const needsToggle = matchedCards.length > defaultCount && !activeSearch;
-          toggle.hidden = !needsToggle;
-          toggle.textContent = expandedCollections[collectionId] ? "Show Less" : "Show More";
         }
+        block.hidden = !blockHasVisibleCards;
       }
 
       visibleGameCount.textContent = String(visibleCount);
@@ -477,13 +456,6 @@
     launchMathMasters.addEventListener("click", () => {
       setActiveGame("./games/math-masters.html");
       openFullscreenPlayer("./games/math-masters.html");
-    });
-    collectionToggles.forEach((toggle) => {
-      toggle.addEventListener("click", () => {
-        const collectionId = toggle.getAttribute("data-toggle-collection");
-        expandedCollections[collectionId] = !expandedCollections[collectionId];
-        applyDiscoveryState();
-      });
     });
     clearSearch.addEventListener("click", () => {
       gameSearch.value = "";

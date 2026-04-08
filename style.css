@@ -319,18 +319,8 @@ body::before {
   color: var(--accent-soft);
 }
 
-.collection-toggle[hidden] {
-  display: none;
-}
-
 .collection-block {
   margin-bottom: 24px;
-}
-
-.collection-footer {
-  display: flex;
-  justify-content: center;
-  margin-top: 4px;
 }
 
 .collection-heading {
@@ -349,6 +339,16 @@ body::before {
   text-transform: uppercase;
   letter-spacing: 0.2em;
   font-size: 0.72rem;
+}
+
+.collection-heading h2::after {
+  content: "";
+  display: block;
+  width: 72px;
+  height: 3px;
+  margin-top: 10px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--accent), transparent);
 }
 
 .game-card {
