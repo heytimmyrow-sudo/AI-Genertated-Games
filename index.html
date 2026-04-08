@@ -86,7 +86,7 @@
         <button class="collection-chip" type="button" data-filter="workshop">Arcade Workshop</button>
       </section>
 
-      <section class="collection-block" data-collection="codex">
+      <section class="collection-block" data-collection="codex" data-default-count="4">
         <div class="collection-heading">
           <p class="collection-heading__eyebrow">Collection One</p>
           <h2>Codex Arena Vault</h2>
@@ -205,9 +205,12 @@
             <button class="play-button" type="button" data-game="./games/stillwake-house.html">Play Stillwake</button>
           </article>
         </section>
+        <div class="collection-footer">
+          <button class="collection-chip collection-chip--utility collection-toggle" type="button" data-toggle-collection="codex">Show More</button>
+        </div>
       </section>
 
-      <section class="collection-block" data-collection="workshop">
+      <section class="collection-block" data-collection="workshop" data-default-count="4">
         <div class="collection-heading">
           <p class="collection-heading__eyebrow">Collection Two</p>
           <h2>Arcade Workshop</h2>
@@ -258,6 +261,9 @@
             <button class="play-button" type="button" data-game="./workshop/sanctum-arena/sanctum-arena.html">Play Sanctum</button>
           </article>
         </section>
+        <div class="collection-footer">
+          <button class="collection-chip collection-chip--utility collection-toggle" type="button" data-toggle-collection="workshop">Show More</button>
+        </div>
       </section>
     </section>
   </main>
@@ -303,9 +309,11 @@
     const featuredCollection = document.getElementById("featuredCollection");
     const launchMathMasters = document.getElementById("launchMathMasters");
     const clearSearch = document.getElementById("clearSearch");
+    const collectionToggles = document.querySelectorAll("[data-toggle-collection]");
     const assetVersion = "20260329a";
     let activeFilter = "all";
     let activeSearch = "";
+    const expandedCollections = { codex: false, workshop: false };
 
     const gameData = {
       "./games/dodge.html": { title: "Purple Square Panic" },
@@ -358,18 +366,35 @@
       for (const block of collectionBlocks) {
         let blockHasVisibleCards = false;
         const collectionMatches = activeFilter === "all" || block.getAttribute("data-collection") === activeFilter;
-        for (const card of block.querySelectorAll("[data-card]")) {
+        const collectionId = block.getAttribute("data-collection");
+        const defaultCount = Number(block.getAttribute("data-default-count") || 4);
+        const cardsInBlock = [...block.querySelectorAll("[data-card]")];
+        const matchedCards = [];
+        for (const card of cardsInBlock) {
           const text = card.textContent.toLowerCase();
           const matchesSearch = !activeSearch || text.includes(activeSearch);
-          const show = collectionMatches && matchesSearch;
+          if (collectionMatches && matchesSearch) matchedCards.push(card);
+        }
+        const showAllMatches = Boolean(activeSearch) || expandedCollections[collectionId];
+        matchedCards.forEach((card, index) => {
+          const show = showAllMatches || index < defaultCount;
           card.hidden = !show;
           if (show) {
             if (!firstVisibleCard) firstVisibleCard = card;
             blockHasVisibleCards = true;
             visibleCount += 1;
           }
-        }
+        });
+        cardsInBlock.filter((card) => !matchedCards.includes(card)).forEach((card) => {
+          card.hidden = true;
+        });
         block.hidden = !blockHasVisibleCards;
+        const toggle = block.querySelector("[data-toggle-collection]");
+        if (toggle) {
+          const needsToggle = matchedCards.length > defaultCount && !activeSearch;
+          toggle.hidden = !needsToggle;
+          toggle.textContent = expandedCollections[collectionId] ? "Show Less" : "Show More";
+        }
       }
 
       visibleGameCount.textContent = String(visibleCount);
@@ -452,6 +477,13 @@
     launchMathMasters.addEventListener("click", () => {
       setActiveGame("./games/math-masters.html");
       openFullscreenPlayer("./games/math-masters.html");
+    });
+    collectionToggles.forEach((toggle) => {
+      toggle.addEventListener("click", () => {
+        const collectionId = toggle.getAttribute("data-toggle-collection");
+        expandedCollections[collectionId] = !expandedCollections[collectionId];
+        applyDiscoveryState();
+      });
     });
     clearSearch.addEventListener("click", () => {
       gameSearch.value = "";

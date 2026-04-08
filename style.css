@@ -319,8 +319,18 @@ body::before {
   color: var(--accent-soft);
 }
 
+.collection-toggle[hidden] {
+  display: none;
+}
+
 .collection-block {
   margin-bottom: 24px;
+}
+
+.collection-footer {
+  display: flex;
+  justify-content: center;
+  margin-top: 4px;
 }
 
 .collection-heading {
