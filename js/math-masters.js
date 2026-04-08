@@ -47,6 +47,9 @@
     { name: "Riley", medal: "Gold", xp: 58, challengeClears: 4, mastery: 79 },
     { name: "Taylor", medal: "Silver", xp: 42, challengeClears: 2, mastery: 68 }
   ];
+  const SUPABASE_URL = "https://jbljqusdpifdyewlenun.supabase.co";
+  const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpibGpxdXNkcGlmZHlld2xlbnVuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU2ODY5NTUsImV4cCI6MjA5MTI2Mjk1NX0.jwpLv3AtXP0PGdoOSSkhruDAY8vdJzcxklu-PauTjSE";
+  const SUPABASE_TABLE = "math_masters_leaderboard";
   const PREREQUISITES = {
     "g7-composite-area": ["g6-area"],
     "g7-surface-area": ["g7-scale"],
@@ -298,9 +301,12 @@
     assignSkillButton: document.getElementById("assignSkillButton"),
     assignmentList: document.getElementById("assignmentList"),
     streakCalendar: document.getElementById("streakCalendar"),
+    refreshLeaderboardButton: document.getElementById("refreshLeaderboardButton"),
+    publishLeaderboardButton: document.getElementById("publishLeaderboardButton"),
     leaderboardImport: document.getElementById("leaderboardImport"),
     exportLeaderboardButton: document.getElementById("exportLeaderboardButton"),
-    syncStatus: document.getElementById("syncStatus")
+    syncStatus: document.getElementById("syncStatus"),
+    leaderboardSetupHint: document.getElementById("leaderboardSetupHint")
   };
 
   if (!el.answerForm) return;
@@ -317,6 +323,7 @@
   let state = createState();
   refreshSelectedSkill();
   render();
+  fetchOnlineLeaderboard();
   el.startButton.addEventListener("click", () => startSession(false));
   el.skipButton.addEventListener("click", skipQuestion);
   el.answerForm.addEventListener("submit", submitAnswer);
@@ -340,6 +347,10 @@
   el.chapterTestButton.addEventListener("click", startChapterTest);
   el.saveReflectionButton.addEventListener("click", saveReflection);
   el.assignSkillButton.addEventListener("click", assignCurrentSkill);
+  el.refreshLeaderboardButton.addEventListener("click", () => {
+    fetchOnlineLeaderboard(true);
+  });
+  el.publishLeaderboardButton.addEventListener("click", publishOnlineScore);
   el.leaderboardImport.addEventListener("change", importLeaderboardJson);
   el.exportLeaderboardButton.addEventListener("click", exportLeaderboardJson);
   el.feedbackText.setAttribute("aria-live", "polite");
@@ -389,8 +400,11 @@
       assignments: saved?.assignments || [],
       streakHistory: saved?.streakHistory || [],
       importedLeaderboard: saved?.importedLeaderboard || [],
+      onlineLeaderboard: [],
       curriculumMap: saved?.curriculumMap || null,
       activeChapterTest: null,
+      onlineSyncStatus: "Connecting to the online leaderboard...",
+      tableReady: null,
       profile: {
         name: saved?.profile?.name || "Math Master",
         color: saved?.profile?.color || "#7de3ff",
@@ -956,9 +970,16 @@
     el.curriculumStatus.textContent = state.curriculumMap
       ? "Curriculum import active: " + state.curriculumMap.label
       : "You can import a local pacing guide or assignment map in JSON format.";
-    el.syncStatus.textContent = state.importedLeaderboard.length
+    el.syncStatus.textContent = state.onlineSyncStatus || (state.importedLeaderboard.length
       ? "Imported shared leaderboard entries are included in the board."
-      : "Backend-ready JSON import/export is enabled for future shared sync.";
+      : "Backend-ready JSON import/export is enabled for future shared sync.");
+    if (el.leaderboardSetupHint) {
+      el.leaderboardSetupHint.textContent = state.tableReady === true
+        ? "Online leaderboard is connected through Supabase. JSON import/export is still available as a backup."
+        : state.tableReady === false
+          ? "Run the included Supabase SQL once to create the online leaderboard table and policies."
+          : "Checking whether the online leaderboard table is ready...";
+    }
     el.reflectionStatus.textContent = state.reflectionStatus;
     renderAnswerControls();
     renderGraphVisual();
@@ -1006,7 +1027,9 @@
     renderRankingList(el.dashboardWeakest, weakest, "No category data yet.");
 
     el.dashboardLeaderboardText.textContent =
-      "Community board preview blends your profile with shared leaderboard cards in a static-site friendly way.";
+      state.tableReady
+        ? "Community leaderboard can now sync through Supabase for shared Math Masters rankings."
+        : "The online leaderboard is wired, but Supabase still needs the leaderboard table setup.";
   }
 
   function renderAccounts() {
@@ -1311,6 +1334,113 @@
     render();
   }
 
+  async function fetchOnlineLeaderboard(forceMessage) {
+    state.onlineSyncStatus = forceMessage ? "Refreshing online leaderboard..." : "Connecting to the online leaderboard...";
+    render();
+    try {
+      const response = await fetch(
+        SUPABASE_URL + "/rest/v1/" + SUPABASE_TABLE + "?select=account_id,display_name,medal,xp,challenge_clears,mastery,grade_path,updated_at&order=xp.desc,mastery.desc,updated_at.asc&limit=10",
+        {
+          headers: getSupabaseHeaders()
+        }
+      );
+      const payload = await response.json().catch(() => ([]));
+      if (!response.ok) {
+        handleSupabaseError(payload);
+        return;
+      }
+      state.tableReady = true;
+      state.onlineLeaderboard = Array.isArray(payload) ? payload.map(normalizeRemoteEntry) : [];
+      state.onlineSyncStatus = state.onlineLeaderboard.length
+        ? "Online leaderboard synced from Supabase."
+        : "Online leaderboard is live but does not have entries yet.";
+    } catch {
+      state.onlineSyncStatus = "Could not reach Supabase right now. The local app still works.";
+    }
+    render();
+  }
+
+  async function publishOnlineScore() {
+    if (!state.profile.leaderboardOptIn) {
+      state.onlineSyncStatus = "Turn on the leaderboard option in the student profile before publishing.";
+      render();
+      return;
+    }
+    state.onlineSyncStatus = "Publishing this student's score to the online leaderboard...";
+    render();
+    try {
+      const response = await fetch(
+        SUPABASE_URL + "/rest/v1/" + SUPABASE_TABLE + "?on_conflict=account_id",
+        {
+          method: "POST",
+          headers: {
+            ...getSupabaseHeaders(),
+            "Content-Type": "application/json",
+            Prefer: "resolution=merge-duplicates,return=representation"
+          },
+          body: JSON.stringify([buildOnlineScorePayload()])
+        }
+      );
+      const payload = await response.json().catch(() => ([]));
+      if (!response.ok) {
+        handleSupabaseError(payload);
+        return;
+      }
+      state.tableReady = true;
+      state.onlineSyncStatus = "Score published to the online leaderboard.";
+      await fetchOnlineLeaderboard(false);
+    } catch {
+      state.onlineSyncStatus = "Publishing failed. Check the network and Supabase table setup.";
+      render();
+    }
+  }
+
+  function getSupabaseHeaders() {
+    return {
+      apikey: SUPABASE_ANON_KEY,
+      Authorization: "Bearer " + SUPABASE_ANON_KEY
+    };
+  }
+
+  function buildOnlineScorePayload() {
+    return {
+      account_id: state.accountId,
+      display_name: state.profile.name.slice(0, 18) || "Math Master",
+      medal: getCurrentMedal().label,
+      xp: state.level * 100 + state.xp,
+      challenge_clears: state.challengeClears,
+      mastery: averageMastery(),
+      grade_path: getGradePath().label,
+      updated_at: new Date().toISOString()
+    };
+  }
+
+  function normalizeRemoteEntry(entry) {
+    return {
+      name: entry.display_name || "Math Master",
+      medal: entry.medal || "Bronze",
+      xp: Number(entry.xp) || 0,
+      challengeClears: Number(entry.challenge_clears) || 0,
+      mastery: Number(entry.mastery) || 0,
+      gradePath: entry.grade_path || "",
+      accountId: entry.account_id || "",
+      updatedAt: entry.updated_at || "",
+      remote: true
+    };
+  }
+
+  function handleSupabaseError(payload) {
+    const code = payload && typeof payload === "object" ? payload.code : "";
+    if (code === "PGRST205") {
+      state.tableReady = false;
+      state.onlineLeaderboard = [];
+      state.onlineSyncStatus = "Supabase is connected, but the leaderboard table has not been created yet.";
+    } else {
+      state.onlineSyncStatus = "Supabase returned an error while loading the online leaderboard.";
+    }
+    render();
+  }
+
   function importCurriculum(event) {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -1594,14 +1724,24 @@
       ].join("");
       el.leaderboardList.appendChild(row);
     });
-    el.leaderboardStatus.textContent = state.profile.leaderboardOptIn
-      ? "Your profile is currently included in this public-ready leaderboard preview."
-      : "Turn on the leaderboard option in your profile to include this student.";
+    if (!entries.length) {
+      const empty = document.createElement("p");
+      empty.className = "tiny";
+      empty.textContent = "No online scores yet. Publish the first Math Masters score.";
+      el.leaderboardList.appendChild(empty);
+    }
+    el.leaderboardStatus.textContent = state.tableReady
+      ? (state.profile.leaderboardOptIn
+        ? "This student is ready to publish to the live online leaderboard."
+        : "Turn on the leaderboard option in the student profile to publish this score online.")
+      : "Supabase is connected, but the leaderboard table is still missing.";
   }
 
   function buildLeaderboardEntries() {
-    const entries = [...SAMPLE_LEADERBOARD, ...state.importedLeaderboard];
-    if (state.profile.leaderboardOptIn) {
+    const entries = state.onlineLeaderboard.length
+      ? [...state.onlineLeaderboard]
+      : [...SAMPLE_LEADERBOARD, ...state.importedLeaderboard];
+    if (!state.onlineLeaderboard.length && state.profile.leaderboardOptIn) {
       entries.push({
         name: state.profile.name,
         medal: getCurrentMedal().label,

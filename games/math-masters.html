@@ -240,7 +240,7 @@
           <section class="community-panel">
             <p class="panel__label">Community Leaderboard</p>
             <div id="leaderboardList" class="leaderboard-list"></div>
-            <p class="tiny" id="leaderboardStatus">Static-site leaderboard preview with your student profile layered into the board.</p>
+            <p class="tiny" id="leaderboardStatus">Online leaderboard loading status appears here.</p>
           </section>
         </div>
       </section>
@@ -365,15 +365,18 @@
           <section class="community-panel">
             <p class="panel__label">Leaderboard Backend Sync</p>
             <div class="assignment-builder">
+              <div class="account-actions">
+                <button type="button" id="refreshLeaderboardButton">Refresh Online Board</button>
+                <button type="button" id="publishLeaderboardButton">Publish My Score</button>
+                <button type="button" id="exportLeaderboardButton">Export Leaderboard JSON</button>
+              </div>
               <label class="profile-field">
                 <span>Import Shared Leaderboard JSON</span>
                 <input id="leaderboardImport" type="file" accept=".json">
               </label>
-              <div class="account-actions">
-                <button type="button" id="exportLeaderboardButton">Export Leaderboard JSON</button>
-              </div>
             </div>
             <p class="tiny" id="syncStatus">Backend-ready JSON import/export is enabled for future shared sync.</p>
+            <p class="tiny" id="leaderboardSetupHint">If the online table has not been created yet, run the included Supabase SQL setup once.</p>
           </section>
         </div>
       </section>
