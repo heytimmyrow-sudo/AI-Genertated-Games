@@ -1289,10 +1289,31 @@
 
   function fractionDecimalConversionQuestion() {
     const pair = randomChoice([
-      { prompt: "Convert 3/4 to a decimal.", answer: 0.75 },
-      { prompt: "Convert 5/8 to a decimal.", answer: 0.625 },
-      { prompt: "Convert 0.375 to a fraction as a decimal answer check.", answer: 0.375 },
-      { prompt: "Convert 7/20 to a decimal.", answer: 0.35 }
+      {
+        prompt: "Convert 3/4 to a decimal.",
+        answer: 0.75,
+        hint: "Think of 3 divided by 4.",
+        explanation: "Divide 3 by 4 to get 0.75."
+      },
+      {
+        prompt: "Convert 5/8 to a decimal.",
+        answer: 0.625,
+        hint: "Think of 5 divided by 8.",
+        explanation: "Divide 5 by 8 to get 0.625."
+      },
+      {
+        prompt: "Convert 0.375 to a fraction in simplest form. You may enter a fraction or a decimal equivalent.",
+        answer: 0.375,
+        answerType: "fraction",
+        hint: "Read 0.375 as 375 thousandths, then simplify.",
+        explanation: "0.375 = 375/1000, and simplifying gives 3/8."
+      },
+      {
+        prompt: "Convert 7/20 to a decimal.",
+        answer: 0.35,
+        hint: "Make the denominator 100 or divide 7 by 20.",
+        explanation: "7/20 = 35/100 = 0.35."
+      }
     ]);
     return pair;
   }
@@ -1377,12 +1398,14 @@
   }
 
   function angleRelationshipQuestion() {
-    const x = randomInt(8, 28);
-    const angleA = 3 * x + 12;
+    const x = randomInt(8, 24);
+    const angleA = 4 * x + 8;
     const angleB = 180 - angleA;
     return {
-      prompt: "Two angles form a straight line. One angle measures 3x + 12 and x = " + x + ". What is the other angle?",
-      answer: angleB
+      prompt: "Two angles form a straight line. One angle measures 4x + 8 degrees and x = " + x + ". What is the other angle?",
+      answer: angleB,
+      hint: "Angles on a straight line add to 180 degrees.",
+      explanation: "First find the given angle: 4(" + x + ") + 8 = " + angleA + ". Then subtract from 180: 180 - " + angleA + " = " + angleB + "."
     };
   }
 
@@ -1407,13 +1430,17 @@
     const radius = modeChoice([4, 5, 6, 7, 8], [6, 8, 10, 12, 14], [10, 12, 15, 18, 20]);
     if (Math.random() < 0.5) {
       return {
-        prompt: "Use pi = 3.14. A circle has radius " + radius + ". Find the area minus the circumference.",
-        answer: roundTo(3.14 * radius * radius - 2 * 3.14 * radius, 2)
+        prompt: "Use pi = 3.14. A circle has radius " + radius + ". What is the circumference?",
+        answer: roundTo(2 * 3.14 * radius, 2),
+        hint: "Circumference uses C = 2pi r.",
+        explanation: "Use C = 2(3.14)(" + radius + ") = " + roundTo(2 * 3.14 * radius, 2) + "."
       };
     }
     return {
       prompt: "Use pi = 3.14. A circle has diameter " + (radius * 2) + ". Find its area.",
-      answer: roundTo(3.14 * radius * radius, 2)
+      answer: roundTo(3.14 * radius * radius, 2),
+      hint: "Area uses A = pi r^2, so find the radius first.",
+      explanation: "The radius is " + radius + ", so A = 3.14(" + radius + "^2) = " + roundTo(3.14 * radius * radius, 2) + "."
     };
   }
 
@@ -1496,7 +1523,9 @@
     const mad = values.reduce((sum, value) => sum + Math.abs(value - mean), 0) / values.length;
     return {
       prompt: "Find the mean absolute deviation of " + values.join(", ") + ".",
-      answer: roundTo(mad, 2)
+      answer: roundTo(mad, 2),
+      hint: "Find the mean first, then average the distances from the mean.",
+      explanation: "The mean is " + roundTo(mean, 2) + ". Then find each distance from the mean and average those distances to get " + roundTo(mad, 2) + "."
     };
   }
 
@@ -1507,10 +1536,30 @@
 
   function scientificNotationQuestion() {
     const pair = randomChoice([
-      { prompt: "Write 4500000 in scientific notation. Enter the coefficient only.", answer: 4.5 },
-      { prompt: "Write 0.00072 in scientific notation. Enter the coefficient only.", answer: 7.2 },
-      { prompt: "4.8 x 10^5 equals what standard number divided by 100000?", answer: 4.8 },
-      { prompt: "6.3 x 10^-4 has what coefficient?", answer: 6.3 }
+      {
+        prompt: "Write 4.5 x 10^6 as a standard number.",
+        answer: 4500000,
+        hint: "Move the decimal 6 places to the right.",
+        explanation: "4.5 x 10^6 means 4.5 multiplied by 1,000,000, which is 4,500,000."
+      },
+      {
+        prompt: "Write 7.2 x 10^-4 as a decimal.",
+        answer: 0.00072,
+        hint: "Move the decimal 4 places to the left.",
+        explanation: "A negative exponent means move the decimal left, so 7.2 becomes 0.00072."
+      },
+      {
+        prompt: "Write 8300000 in scientific notation. Enter the coefficient only.",
+        answer: 8.3,
+        hint: "Move the decimal so the coefficient is between 1 and 10.",
+        explanation: "8,300,000 = 8.3 x 10^6, so the coefficient is 8.3."
+      },
+      {
+        prompt: "Write 0.00056 in scientific notation. Enter the coefficient only.",
+        answer: 5.6,
+        hint: "Move the decimal so the coefficient is between 1 and 10.",
+        explanation: "0.00056 = 5.6 x 10^-4, so the coefficient is 5.6."
+      }
     ]);
     return pair;
   }
@@ -1536,8 +1585,10 @@
     const widthB = randomChoice([2, 3, 4]);
     const heightB = randomChoice([3, 4, 5]);
     return {
-      prompt: "A composite figure is made from a " + widthA + " by " + heightA + " rectangle and a " + widthB + " by " + heightB + " rectangle attached with no overlap. What is the total area?",
-      answer: widthA * heightA + widthB * heightB
+      prompt: "A composite figure is made from a " + widthA + " by " + heightA + " rectangle and a " + widthB + " by " + heightB + " rectangle attached with no overlap. What is the total area in square units?",
+      answer: widthA * heightA + widthB * heightB,
+      hint: "Find each rectangle's area, then add them.",
+      explanation: "The two areas are " + widthA + " x " + heightA + " = " + (widthA * heightA) + " and " + widthB + " x " + heightB + " = " + (widthB * heightB) + ". Their total is " + (widthA * heightA + widthB * heightB) + "."
     };
   }
 
@@ -1574,7 +1625,9 @@
     const addend = randomChoice([1, 2, 5, 7]);
     return {
       prompt: "A function rule is y = " + multiplier + "x + " + addend + ". What is the output when x = " + input + "?",
-      answer: multiplier * input + addend
+      answer: multiplier * input + addend,
+      hint: "Substitute the input value for x in the rule.",
+      explanation: "Replace x with " + input + ": y = " + multiplier + "(" + input + ") + " + addend + " = " + (multiplier * input + addend) + "."
     };
   }
 
