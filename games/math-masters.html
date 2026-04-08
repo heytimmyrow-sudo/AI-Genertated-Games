@@ -82,6 +82,11 @@
             <div><span>Accuracy</span><strong id="accuracyValue">100%</strong></div>
             <div><span>Level</span><strong id="levelValue">1</strong></div>
           </div>
+          <div class="medal-card" id="medalCard">
+            <span class="medal-card__label">Medal Tier</span>
+            <strong id="medalTier">Bronze</strong>
+            <p class="tiny" id="medalText">Keep practicing to reach Silver.</p>
+          </div>
           <div class="xp-track" aria-label="Mastery progress bar">
             <div id="xpFill"></div>
           </div>
@@ -116,6 +121,55 @@
           <p class="panel__label">Course Roadmap</p>
           <div id="roadmapList" class="roadmap-list"></div>
         </section>
+      </section>
+
+      <section class="panel panel--dashboard" aria-label="Student dashboard">
+        <div class="dashboard-header">
+          <div>
+            <p class="panel__label">Student Dashboard</p>
+            <h2 class="dashboard-title">Progress Snapshot</h2>
+            <p class="tiny">A private local dashboard today, with a data shape that can support a public leaderboard later.</p>
+          </div>
+        </div>
+        <div class="dashboard-grid">
+          <article class="dashboard-card">
+            <span class="dashboard-card__label">Lessons Focused</span>
+            <strong id="dashboardLessons">0</strong>
+            <p class="tiny" id="dashboardLessonsText">Keep going to build your course history.</p>
+          </article>
+          <article class="dashboard-card">
+            <span class="dashboard-card__label">Mastered Skills</span>
+            <strong id="dashboardMastered">0</strong>
+            <p class="tiny" id="dashboardMasteredText">Push skills past 85% mastery.</p>
+          </article>
+          <article class="dashboard-card">
+            <span class="dashboard-card__label">Challenge Clears</span>
+            <strong id="dashboardChallenge">0</strong>
+            <p class="tiny" id="dashboardChallengeText">Challenge mode wins count here.</p>
+          </article>
+          <article class="dashboard-card">
+            <span class="dashboard-card__label">Best Accuracy</span>
+            <strong id="dashboardAccuracy">0%</strong>
+            <p class="tiny" id="dashboardAccuracyText">Finish a session to set this.</p>
+          </article>
+        </div>
+        <div class="dashboard-lists">
+          <section class="dashboard-panel">
+            <p class="panel__label">Strongest Categories</p>
+            <div id="dashboardStrongest" class="dashboard-rankings"></div>
+          </section>
+          <section class="dashboard-panel">
+            <p class="panel__label">Needs Work</p>
+            <div id="dashboardWeakest" class="dashboard-rankings"></div>
+          </section>
+          <section class="dashboard-panel">
+            <p class="panel__label">Leaderboard Preview</p>
+            <div class="dashboard-leaderboard">
+              <p class="tiny">Ready for public later:</p>
+              <p class="tiny" id="dashboardLeaderboardText">Display name, medal tier, XP, challenge clears, and mastery average can be published once shared storage is added.</p>
+            </div>
+          </section>
+        </div>
       </section>
     </section>
   </main>

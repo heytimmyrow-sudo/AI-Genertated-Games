@@ -28,6 +28,13 @@
     { id: "onlevel", label: "On-Level" },
     { id: "challenge", label: "Challenge" }
   ];
+  const MEDALS = [
+    { id: "bronze", label: "Bronze", minScore: 0, next: "Silver" },
+    { id: "silver", label: "Silver", minScore: 180, next: "Gold" },
+    { id: "gold", label: "Gold", minScore: 420, next: "Platinum" },
+    { id: "platinum", label: "Platinum", minScore: 760, next: "Diamond" },
+    { id: "diamond", label: "Diamond", minScore: 1150, next: "Maxed tier" }
+  ];
 
   function skill(id, grade, chapter, lesson, strand, unit, name, standard, alignment, description, generate) {
     return { id, grade, chapter, lesson, strand, unit, name, standard, alignment, description, generate };
@@ -38,12 +45,14 @@
     skill("g6-unit-rate", "grade6", "2", "2.4", "proportions", "Chapter 2: Ratios", "Unit Rates", "6.RP style unit rate work", "Original practice aligned to a public-style ratio lesson flow.", "Find the unit rate in a real-life situation.", unitRateQuestion),
     skill("g6-decimal-ops", "grade6", "3", "3.3", "arithmetic", "Chapter 3: Decimals and Fractions", "Decimal Operations", "6.NS style decimal computation", "Original practice aligned to a public-style arithmetic lesson flow.", "Add, subtract, multiply, and divide decimals.", decimalOperationQuestion),
     skill("g6-fraction-multiply", "grade6", "3", "3.6", "arithmetic", "Chapter 3: Decimals and Fractions", "Multiply Fractions", "6.NS style fraction computation", "Original practice aligned to a public-style fraction lesson flow.", "Multiply fractions and mixed values with friendly numbers.", fractionMultiplyQuestion),
+    skill("g6-fraction-divide", "grade6", "3", "3.7", "arithmetic", "Chapter 3: Decimals and Fractions", "Divide Fractions", "6.NS style fraction division", "Original practice aligned to a public-style fraction lesson flow.", "Divide fractions using reciprocal reasoning.", fractionDivideQuestion),
     skill("g6-expressions", "grade6", "6", "6.1", "equations", "Chapter 6: Expressions and Equations", "Evaluate Expressions", "6.EE style expression work", "Original practice aligned to a public-style expressions lesson flow.", "Substitute values into simple expressions.", expressionEvaluationQuestion),
     skill("g6-area", "grade6", "9", "9.1", "measurement", "Chapter 9: Area", "Area of Triangles", "6.G style area reasoning", "Original practice aligned to a public-style geometry lesson flow.", "Find triangle area from base and height.", triangleAreaQuestion),
     skill("g6-mean", "grade6", "11", "11.2", "data", "Chapter 11: Statistics", "Mean of a Data Set", "6.SP style statistics", "Original practice aligned to a public-style statistics lesson flow.", "Compute the mean of a small data set.", meanQuestion),
     skill("g7-int-add", "grade7", "1", "1.2", "numbers", "Chapter 1: Rational Numbers", "Adding Integers", "7.NS style signed number work", "Original practice aligned to a public-style Grade 7 lesson flow.", "Practice addition with positive and negative integers.", integerAddQuestion),
     skill("g7-int-sub", "grade7", "1", "1.4", "numbers", "Chapter 1: Rational Numbers", "Subtracting Integers", "7.NS style signed number work", "Original practice aligned to a public-style Grade 7 lesson flow.", "Practice subtraction with positive and negative integers.", integerSubtractQuestion),
     skill("g7-rational-add-sub", "grade7", "1", "1.5", "numbers", "Chapter 1: Rational Numbers", "Add and Subtract Rational Numbers", "7.NS style rational-number work", "Original practice aligned to a public-style Grade 7 lesson flow.", "Add and subtract signed decimals.", rationalAddSubtractQuestion),
+    skill("g7-rational-convert", "grade7", "1", "1.7", "numbers", "Chapter 1: Rational Numbers", "Fraction Decimal Conversion", "7.NS rational-number fluency", "Original practice aligned to a public-style Grade 7 lesson flow.", "Convert fractions and decimals in useful benchmark forms.", fractionDecimalConversionQuestion),
     skill("g7-proportionality", "grade7", "4", "4.2", "proportions", "Chapter 4: Proportional Relationships", "Constant of Proportionality", "7.RP proportional reasoning", "Original practice aligned to a public-style Grade 7 lesson flow.", "Use tables to find proportional values.", proportionalTableQuestion),
     skill("g7-percent", "grade7", "5", "5.2", "finance", "Chapter 5: Percent", "Percent Increase and Decrease", "7.RP percent problem solving", "Original practice aligned to a public-style Grade 7 lesson flow.", "Solve discount and growth questions.", percentChangeQuestion),
     skill("g7-tax-tip", "grade7", "5", "5.4", "finance", "Chapter 5: Percent", "Tax, Tip, and Total Cost", "7.RP percent applications", "Original practice aligned to a public-style Grade 7 lesson flow.", "Find final totals using tax and tip.", taxTipQuestion),
@@ -51,6 +60,7 @@
     skill("g7-inequalities", "grade7", "6", "6.5", "equations", "Chapter 6: Equations and Inequalities", "Inequalities", "7.EE inequality reasoning", "Original practice aligned to a public-style Grade 7 lesson flow.", "Find values that satisfy an inequality.", inequalityQuestion),
     skill("g7-both-sides", "grade7", "6", "6.6", "equations", "Chapter 6: Equations and Inequalities", "Variables on Both Sides", "7.EE equation solving", "Original practice aligned to a public-style Grade 7 lesson flow.", "Solve linear equations with variables on both sides.", variablesBothSidesQuestion),
     skill("g7-word-problem", "grade7", "6", "6.7", "word-problems", "Chapter 6: Equations and Inequalities", "Equation Word Problems", "7.EE real-world equation modeling", "Original practice aligned to a public-style Grade 7 lesson flow.", "Set up and solve a real-world equation.", equationWordProblemQuestion),
+    skill("g7-percent-error", "grade7", "8", "8.4", "data", "Chapter 8: Statistics", "Mean Absolute Deviation", "7.SP variability reasoning", "Original practice aligned to a public-style Grade 7 lesson flow.", "Compare a data set to its mean using distances.", meanAbsoluteDeviationQuestion),
     skill("g7-probability", "grade7", "7", "7.1", "data", "Chapter 7: Probability", "Experimental Probability", "7.SP probability", "Original practice aligned to a public-style Grade 7 lesson flow.", "Find a simple probability as a decimal.", probabilityQuestion),
     skill("g7-scale", "grade7", "9", "9.3", "measurement", "Chapter 9: Geometry", "Scale Drawings", "7.G scale reasoning", "Original practice aligned to a public-style Grade 7 lesson flow.", "Use scale factors to find actual lengths.", scaleDrawingQuestion),
     skill("g7-angles", "grade7", "9", "9.5", "geometry", "Chapter 9: Geometry", "Angle Relationships", "7.G angle problem solving", "Original practice aligned to a public-style Grade 7 lesson flow.", "Solve for unknown angle measures.", angleRelationshipQuestion),
@@ -61,6 +71,7 @@
     skill("g7a-rational-sub", "grade7acc", "1", "1.5", "numbers", "Chapter 1: Adding and Subtracting Rational Numbers", "Subtracting Rational Numbers", "7.NS style rational-number work", "Public-sequence match for accelerated Chapter 1.", "Add and subtract signed decimals in a rational-number setting.", rationalAddSubtractQuestion),
     skill("g7a-multiply-rationals", "grade7acc", "2", "2.3", "numbers", "Chapter 2: Multiplying and Dividing Rational Numbers", "Multiplying Rational Numbers", "7.NS style rational-number work", "Public-sequence match for accelerated Chapter 2.", "Multiply decimals and signed rational values.", rationalMultiplyQuestion),
     skill("g7a-divide-rationals", "grade7acc", "2", "2.5", "numbers", "Chapter 2: Multiplying and Dividing Rational Numbers", "Dividing Rational Numbers", "7.NS style rational-number work", "Public-sequence match for accelerated Chapter 2.", "Divide decimals and rational numbers with clean quotients.", divideRationalsQuestion),
+    skill("g7a-convert-rationals", "grade7acc", "2", "2.6", "numbers", "Chapter 2: Multiplying and Dividing Rational Numbers", "Fraction Decimal Conversion", "7.NS rational-number fluency", "Public-sequence match for accelerated Chapter 2.", "Convert benchmark fractions and decimals in context.", fractionDecimalConversionQuestion),
     skill("g7a-equivalent-exp", "grade7acc", "3", "3.2", "equations", "Chapter 3: Algebraic Expressions", "Equivalent Expressions", "7.EE style expression rewriting", "Public-sequence match for accelerated Chapter 3.", "Evaluate and simplify equivalent expressions.", equivalentExpressionsQuestion),
     skill("g7a-unit-rate", "grade7acc", "4", "4.1", "proportions", "Chapter 4: Ratios and Proportional Relationships", "Unit Rate Reasoning", "7.RP proportional reasoning", "Public-sequence match for accelerated Chapter 4.", "Turn rates into a 1-unit comparison.", unitRateQuestion),
     skill("g7a-constant-prop", "grade7acc", "4", "4.2", "proportions", "Chapter 4: Ratios and Proportional Relationships", "Constant of Proportionality", "7.RP proportional reasoning", "Public-sequence match for accelerated Chapter 4.", "Use tables and ratios to find missing values.", proportionalTableQuestion),
@@ -74,6 +85,7 @@
     skill("g7a-graph-ineq", "grade7acc", "6", "6.8", "inequality-graphs", "Chapter 6: Equations and Inequalities", "Inequalities on a Number Line", "7.EE inequality graph interpretation", "Public-sequence match for accelerated Chapter 6.", "Interpret a graphed inequality and identify a boundary value.", inequalityGraphQuestion),
     skill("g7a-probability", "grade7acc", "7", "7.1", "data", "Chapter 7: Probability", "Experimental Probability", "7.SP probability models", "Public-sequence match for accelerated Chapter 7.", "Compare outcomes and compute simple probabilities.", probabilityQuestion),
     skill("g7a-mean", "grade7acc", "8", "8.2", "data", "Chapter 8: Statistics", "Mean and Distance", "7.SP statistical thinking", "Public-sequence match for accelerated Chapter 8.", "Find the mean of a small data set.", meanQuestion),
+    skill("g7a-mad", "grade7acc", "8", "8.4", "data", "Chapter 8: Statistics", "Mean Absolute Deviation", "7.SP variability reasoning", "Public-sequence match for accelerated Chapter 8.", "Measure variability by average distance from the mean.", meanAbsoluteDeviationQuestion),
     skill("g7a-circle", "grade7acc", "9", "9.1", "geometry", "Chapter 9: Geometry", "Circles and Area", "7.G circle measurement", "Public-sequence match for accelerated Chapter 9.", "Use pi = 3.14 to find circumference or area.", circleQuestion),
     skill("g7a-scale", "grade7acc", "9", "9.3", "measurement", "Chapter 9: Geometry", "Scale Drawings", "7.G scale reasoning", "Public-sequence match for accelerated Chapter 9.", "Use scale factors and proportions in drawings.", scaleDrawingQuestion),
     skill("g7a-angles", "grade7acc", "9", "9.5", "geometry", "Chapter 9: Geometry", "Angle Relationships", "7.G angle problem solving", "Public-sequence match for accelerated Chapter 9.", "Solve multi-step angle relationships.", angleRelationshipQuestion),
@@ -90,7 +102,8 @@
     skill("g8-slope", "grade8", "3", "3.1", "functions", "Chapter 3: Linear Relationships", "Slope as Rate of Change", "8.EE slope reasoning", "Original practice aligned to a public-style Grade 8 lesson flow.", "Compute slope from two points.", slopeQuestion),
     skill("g8-linear-pattern", "grade8", "3", "3.2", "functions", "Chapter 3: Linear Relationships", "Linear Patterns", "8.F pattern reasoning", "Original practice aligned to a public-style Grade 8 lesson flow.", "Use a linear rule to extend a pattern.", linearPatternQuestion),
     skill("g8-systems-preview", "grade8", "4", "4.4", "equations", "Chapter 4: Equations", "Multi-Step Equations", "8.EE equation solving", "Original practice aligned to a public-style Grade 8 lesson flow.", "Solve a multi-step equation with distribution.", multiStepEquationQuestion),
-    skill("g8-square-roots", "grade8", "7", "7.1", "accelerated", "Chapter 7: Real Numbers", "Square Roots", "8.NS real-number work", "Original practice aligned to a public-style Grade 8 lesson flow.", "Find perfect-square roots.", squareRootQuestion)
+    skill("g8-square-roots", "grade8", "7", "7.1", "accelerated", "Chapter 7: Real Numbers", "Square Roots", "8.NS real-number work", "Original practice aligned to a public-style Grade 8 lesson flow.", "Find perfect-square roots.", squareRootQuestion),
+    skill("g8-scientific-notation", "grade8", "7", "7.4", "accelerated", "Chapter 7: Real Numbers", "Scientific Notation", "8.EE scientific notation", "Original practice aligned to a public-style Grade 8 lesson flow.", "Convert values into or out of scientific notation.", scientificNotationQuestion)
   ];
 
   const el = {
@@ -117,11 +130,26 @@
     scoreValue: document.getElementById("scoreValue"),
     accuracyValue: document.getElementById("accuracyValue"),
     levelValue: document.getElementById("levelValue"),
+    medalCard: document.getElementById("medalCard"),
+    medalTier: document.getElementById("medalTier"),
+    medalText: document.getElementById("medalText"),
     xpFill: document.getElementById("xpFill"),
     xpText: document.getElementById("xpText"),
     questText: document.getElementById("questText"),
     skillList: document.getElementById("skillList"),
     roadmapList: document.getElementById("roadmapList")
+    ,
+    dashboardLessons: document.getElementById("dashboardLessons"),
+    dashboardLessonsText: document.getElementById("dashboardLessonsText"),
+    dashboardMastered: document.getElementById("dashboardMastered"),
+    dashboardMasteredText: document.getElementById("dashboardMasteredText"),
+    dashboardChallenge: document.getElementById("dashboardChallenge"),
+    dashboardChallengeText: document.getElementById("dashboardChallengeText"),
+    dashboardAccuracy: document.getElementById("dashboardAccuracy"),
+    dashboardAccuracyText: document.getElementById("dashboardAccuracyText"),
+    dashboardStrongest: document.getElementById("dashboardStrongest"),
+    dashboardWeakest: document.getElementById("dashboardWeakest"),
+    dashboardLeaderboardText: document.getElementById("dashboardLeaderboardText")
   };
 
   if (!el.answerForm) return;
@@ -153,6 +181,9 @@
       questGoal: 5,
       questionsAnswered: 0,
       correctAnswers: 0,
+      totalLessonFocuses: saved?.totalLessonFocuses || 0,
+      challengeClears: saved?.challengeClears || 0,
+      bestAccuracy: saved?.bestAccuracy || 0,
       selectedGrade: saved?.selectedGrade || "grade7acc",
       selectedStrand: saved?.selectedStrand || "all",
       selectedMode: saved?.selectedMode || "onlevel",
@@ -198,8 +229,10 @@
       awardXp(28);
       state.questProgress = 0;
       state.questGoal = 4 + Math.floor(Math.random() * 4);
+      if (state.selectedMode === "challenge") state.challengeClears += 1;
       setFeedback("Quest complete. Your pathway just leveled up.", true);
     }
+    state.bestAccuracy = Math.max(state.bestAccuracy, Math.round((state.correctAnswers / state.questionsAnswered) * 100));
     nextQuestion();
     saveProgress();
     render();
@@ -215,6 +248,7 @@
     state.questGoal = 5;
     refreshSelectedSkill();
     nextQuestion();
+    state.totalLessonFocuses += 1;
     setFeedback("Session started. Stay sharp and steady.", true);
     render();
     el.answerInput.focus();
@@ -297,6 +331,7 @@
     renderModes();
     renderSkillList();
     renderRoadmap();
+    renderDashboard();
     if (lesson) {
       el.skillName.textContent = lesson.name;
       el.skillMeta.textContent = lesson.unit + " | " + strandLabel(lesson.strand);
@@ -310,6 +345,7 @@
     el.scoreValue.textContent = String(state.score);
     el.accuracyValue.textContent = accuracy + "%";
     el.levelValue.textContent = String(state.level);
+    renderMedal();
     el.xpFill.style.width = state.xp + "%";
     el.xpText.textContent = state.xp + " / 100 mastery XP";
     el.questText.textContent = "Answer " + state.questGoal + " in a row correctly (" + state.questProgress + "/" + state.questGoal + ").";
@@ -327,6 +363,95 @@
       chip.textContent = strand;
       el.pathwayBadges.appendChild(chip);
     }
+  }
+
+  function renderDashboard() {
+    const visibleSkills = getSkillsForGrade();
+    const masteredCount = visibleSkills.filter((lesson) => getMastery(lesson.id) >= 85).length;
+    const strongest = rankStrands(false);
+    const weakest = rankStrands(true);
+
+    el.dashboardLessons.textContent = String(state.totalLessonFocuses);
+    el.dashboardLessonsText.textContent = state.totalLessonFocuses > 0
+      ? "You have started " + state.totalLessonFocuses + " focused practice sessions."
+      : "Keep going to build your course history.";
+
+    el.dashboardMastered.textContent = String(masteredCount);
+    el.dashboardMasteredText.textContent = masteredCount > 0
+      ? "Skills above 85% mastery count as mastered."
+      : "Push skills past 85% mastery.";
+
+    el.dashboardChallenge.textContent = String(state.challengeClears);
+    el.dashboardChallengeText.textContent = state.challengeClears > 0
+      ? "Challenge-mode quest clears are stacking up."
+      : "Challenge mode wins count here.";
+
+    el.dashboardAccuracy.textContent = state.bestAccuracy + "%";
+    el.dashboardAccuracyText.textContent = state.bestAccuracy > 0
+      ? "Best recorded session accuracy so far."
+      : "Finish a session to set this.";
+
+    renderRankingList(el.dashboardStrongest, strongest, "No category data yet.");
+    renderRankingList(el.dashboardWeakest, weakest, "No category data yet.");
+
+    el.dashboardLeaderboardText.textContent =
+      "A future public board can show medal tier, XP, mastery average, challenge clears, and strongest categories.";
+  }
+
+  function renderRankingList(target, rankings, emptyText) {
+    target.innerHTML = "";
+    if (!rankings.length) {
+      const empty = document.createElement("p");
+      empty.className = "tiny";
+      empty.textContent = emptyText;
+      target.appendChild(empty);
+      return;
+    }
+    for (const item of rankings.slice(0, 3)) {
+      const row = document.createElement("div");
+      row.className = "dashboard-ranking";
+      row.innerHTML = "<strong>" + item.label + "</strong><span>" + item.value + "%</span>";
+      target.appendChild(row);
+    }
+  }
+
+  function rankStrands(reverse) {
+    const gradeSkills = getSkillsForGrade();
+    const groups = [];
+    for (const strand of STRANDS) {
+      if (strand.id === "all") continue;
+      const lessons = gradeSkills.filter((lesson) => lesson.strand === strand.id);
+      if (!lessons.length) continue;
+      const average = Math.round(lessons.reduce((sum, lesson) => sum + getMastery(lesson.id), 0) / lessons.length);
+      groups.push({ label: strand.label, value: average });
+    }
+    return groups.sort((a, b) => reverse ? a.value - b.value : b.value - a.value);
+  }
+
+  function renderMedal() {
+    const medal = getCurrentMedal();
+    el.medalTier.textContent = medal.label;
+    el.medalText.textContent = medal.next === "Maxed tier"
+      ? "You reached the highest medal tier."
+      : "Keep practicing to reach " + medal.next + ".";
+    el.medalCard.className = "medal-card medal-card--" + medal.id;
+  }
+
+  function getCurrentMedal() {
+    const masteryAverage = averageMastery();
+    const totalScore = state.level * 100 + masteryAverage + state.score;
+    let current = MEDALS[0];
+    for (const medal of MEDALS) {
+      if (totalScore >= medal.minScore) current = medal;
+    }
+    return current;
+  }
+
+  function averageMastery() {
+    const values = Object.values(state.skillMastery);
+    if (!values.length) return 0;
+    const total = values.reduce((sum, value) => sum + value, 0);
+    return Math.round(total / values.length);
   }
 
   function renderGradeFilters() {
@@ -465,6 +590,9 @@
       window.localStorage.setItem(STORAGE_KEY, JSON.stringify({
         xp: state.xp,
         level: state.level,
+        totalLessonFocuses: state.totalLessonFocuses,
+        challengeClears: state.challengeClears,
+        bestAccuracy: state.bestAccuracy,
         selectedGrade: state.selectedGrade,
         selectedStrand: state.selectedStrand,
         selectedMode: state.selectedMode,
@@ -576,6 +704,22 @@
     const a = randomChoice([[1, 2], [2, 3], [3, 4], [4, 5]]);
     const b = randomChoice([[1, 3], [2, 5], [3, 5], [5, 6]]);
     return { prompt: "Multiply: " + a[0] + "/" + a[1] + " x " + b[0] + "/" + b[1], answer: roundTo((a[0] / a[1]) * (b[0] / b[1]), 2) };
+  }
+
+  function fractionDivideQuestion() {
+    const a = randomChoice([[1, 2], [2, 3], [3, 4], [5, 6]]);
+    const b = randomChoice([[1, 3], [2, 5], [3, 5], [4, 7]]);
+    return { prompt: "Divide: " + a[0] + "/" + a[1] + " / " + b[0] + "/" + b[1], answer: roundTo((a[0] / a[1]) / (b[0] / b[1]), 2) };
+  }
+
+  function fractionDecimalConversionQuestion() {
+    const pair = randomChoice([
+      { prompt: "Convert 3/4 to a decimal.", answer: 0.75 },
+      { prompt: "Convert 5/8 to a decimal.", answer: 0.625 },
+      { prompt: "Convert 0.375 to a fraction as a decimal answer check.", answer: 0.375 },
+      { prompt: "Convert 7/20 to a decimal.", answer: 0.35 }
+    ]);
+    return pair;
   }
 
   function expressionEvaluationQuestion() {
@@ -771,9 +915,29 @@
     return { prompt: "Find the mean of " + values.join(", ") + ".", answer: roundTo(total / values.length, 2) };
   }
 
+  function meanAbsoluteDeviationQuestion() {
+    const values = Array.from({ length: 4 }, () => randomChoice([4, 6, 8, 10, 12, 14, 16]));
+    const mean = values.reduce((sum, value) => sum + value, 0) / values.length;
+    const mad = values.reduce((sum, value) => sum + Math.abs(value - mean), 0) / values.length;
+    return {
+      prompt: "Find the mean absolute deviation of " + values.join(", ") + ".",
+      answer: roundTo(mad, 2)
+    };
+  }
+
   function squareRootQuestion() {
     const value = randomChoice([16, 25, 36, 49, 64, 81, 100, 121]);
     return { prompt: "What is the principal square root of " + value + "?", answer: Math.sqrt(value) };
+  }
+
+  function scientificNotationQuestion() {
+    const pair = randomChoice([
+      { prompt: "Write 4500000 in scientific notation. Enter the coefficient only.", answer: 4.5 },
+      { prompt: "Write 0.00072 in scientific notation. Enter the coefficient only.", answer: 7.2 },
+      { prompt: "4.8 x 10^5 equals what standard number divided by 100000?", answer: 4.8 },
+      { prompt: "6.3 x 10^-4 has what coefficient?", answer: 6.3 }
+    ]);
+    return pair;
   }
 
   function linearPatternQuestion() {
