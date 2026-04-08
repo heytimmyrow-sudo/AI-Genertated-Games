@@ -254,6 +254,16 @@
     el.answerInput.focus();
   }
 
+  function refreshQuestionForCurrentSelection() {
+    refreshSelectedSkill();
+    if (state.activeRound) {
+      nextQuestion();
+      el.answerInput.focus();
+    } else {
+      state.currentQuestion = null;
+    }
+  }
+
   function skipQuestion() {
     if (!state.activeRound) return;
     state.streak = 0;
@@ -464,8 +474,7 @@
       button.addEventListener("click", () => {
         state.selectedGrade = path.id;
         state.selectedStrand = "all";
-        state.currentQuestion = null;
-        refreshSelectedSkill();
+        refreshQuestionForCurrentSelection();
         saveProgress();
         render();
       });
@@ -482,7 +491,7 @@
       button.textContent = mode.label;
       button.addEventListener("click", () => {
         state.selectedMode = mode.id;
-        state.currentQuestion = null;
+        refreshQuestionForCurrentSelection();
         saveProgress();
         render();
       });
@@ -502,8 +511,7 @@
       button.textContent = strand.label;
       button.addEventListener("click", () => {
         state.selectedStrand = strand.id;
-        state.currentQuestion = null;
-        refreshSelectedSkill();
+        refreshQuestionForCurrentSelection();
         saveProgress();
         render();
       });
@@ -534,7 +542,7 @@
       ].join("");
       item.querySelector(".skill-item__action").addEventListener("click", () => {
         state.selectedSkillId = lesson.id;
-        state.currentQuestion = state.activeRound ? lesson.generate() : null;
+        refreshQuestionForCurrentSelection();
         saveProgress();
         render();
       });
