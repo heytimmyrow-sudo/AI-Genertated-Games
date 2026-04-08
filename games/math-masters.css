@@ -1,18 +1,13 @@
 .math-masters {
-  width: min(100%, 1020px);
-}
-
-.math-layout {
-  display: grid;
-  grid-template-columns: 1.3fr 1fr;
-  gap: 14px;
-  margin-bottom: 14px;
+  width: min(100%, 1180px);
 }
 
 .panel {
   border: 1px solid rgba(125, 227, 255, 0.18);
   border-radius: 18px;
-  background: linear-gradient(180deg, rgba(9, 22, 36, 0.8), rgba(7, 13, 20, 0.78));
+  background:
+    radial-gradient(circle at top right, rgba(125, 227, 255, 0.08), transparent 32%),
+    linear-gradient(180deg, rgba(9, 22, 36, 0.82), rgba(7, 13, 20, 0.82));
   padding: 16px;
 }
 
@@ -28,24 +23,145 @@
   margin-top: 14px;
 }
 
+.panel--pathway {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(280px, 1fr);
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+.pathway-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(1.2rem, 2.4vw, 1.7rem);
+}
+
+.pathway-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-content: start;
+}
+
+.pathway-badges span,
+.strand-button,
+.skill-item__tag {
+  border: 1px solid rgba(125, 227, 255, 0.18);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--accent-soft);
+  padding: 8px 12px;
+  font-size: 0.78rem;
+}
+
+.panel--filters {
+  margin-bottom: 14px;
+}
+
+.panel--grades {
+  margin-bottom: 14px;
+}
+
+.panel--modes {
+  margin-bottom: 14px;
+}
+
+.grade-filters,
+.mode-filters,
+.strand-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.grade-button,
+.mode-button,
+.strand-button {
+  cursor: pointer;
+  font: inherit;
+  font-weight: 700;
+}
+
+.grade-button {
+  border: 1px solid rgba(255, 214, 107, 0.24);
+  border-radius: 999px;
+  background: rgba(255, 214, 107, 0.05);
+  color: var(--warm);
+  padding: 10px 14px;
+}
+
+.grade-button.is-active {
+  background: linear-gradient(135deg, #ffd66b, #ffb347);
+  color: #251400;
+  border-color: transparent;
+}
+
+.mode-button {
+  border: 1px solid rgba(82, 210, 115, 0.22);
+  border-radius: 999px;
+  background: rgba(82, 210, 115, 0.05);
+  color: #bdf7ca;
+  padding: 10px 14px;
+}
+
+.mode-button.is-active {
+  background: linear-gradient(135deg, #52d273, #8ce0a0);
+  color: #08210f;
+  border-color: transparent;
+}
+
+.strand-button.is-active {
+  background: linear-gradient(135deg, var(--accent), #57c6e7);
+  color: #05212e;
+  border-color: transparent;
+}
+
+.math-layout {
+  display: grid;
+  grid-template-columns: 1.35fr 0.95fr;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
 .panel--question h2 {
-  margin: 0 0 8px;
+  margin: 0;
+}
+
+.tiny {
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 0.86rem;
+}
+
+.tiny--top {
+  margin-top: 6px;
+}
+
+.lesson-code {
+  margin: 10px 0 0;
+  color: var(--warm);
+  font-size: 0.82rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 .prompt {
-  margin: 6px 0 14px;
-  font-size: clamp(1.4rem, 3vw, 2rem);
+  margin: 14px 0 8px;
+  font-size: clamp(1.55rem, 3vw, 2.15rem);
   font-family: var(--font-display);
+  line-height: 1.25;
 }
 
 .answer-row {
   display: flex;
   gap: 10px;
+  margin-top: 14px;
 }
 
 .answer-row input,
 .answer-row button,
-.actions-row button {
+.actions-row button,
+.skill-item__action {
   border-radius: 12px;
   border: 1px solid rgba(125, 227, 255, 0.26);
   background: rgba(7, 15, 24, 0.86);
@@ -59,7 +175,8 @@
 }
 
 .answer-row button,
-.actions-row button {
+.actions-row button,
+.skill-item__action {
   cursor: pointer;
   font-weight: 700;
 }
@@ -79,6 +196,7 @@
 
 .feedback {
   min-height: 1.4rem;
+  margin-top: 12px;
   color: var(--accent-soft);
 }
 
@@ -119,12 +237,6 @@
   background: linear-gradient(90deg, #7de3ff, #52d273);
 }
 
-.tiny {
-  margin: 8px 0 0;
-  color: var(--muted);
-  font-size: 0.86rem;
-}
-
 .controls--compact {
   margin-top: 6px;
   display: flex;
@@ -132,31 +244,89 @@
   gap: 6px;
 }
 
-.skill-list {
+.math-bottom {
+  display: grid;
+  grid-template-columns: 1.2fr 0.8fr;
+  gap: 14px;
+}
+
+.skill-list,
+.roadmap-list {
   display: grid;
   gap: 10px;
 }
 
-.skill-item {
+.skill-item,
+.roadmap-item {
   border: 1px solid rgba(125, 227, 255, 0.14);
-  border-radius: 12px;
-  padding: 10px;
+  border-radius: 14px;
+  padding: 12px;
   background: rgba(5, 10, 16, 0.52);
 }
 
-.skill-item__top {
+.skill-item.is-selected {
+  border-color: rgba(125, 227, 255, 0.42);
+  box-shadow: inset 0 0 0 1px rgba(125, 227, 255, 0.24);
+}
+
+.skill-item__top,
+.roadmap-item__top {
   display: flex;
   justify-content: space-between;
   gap: 8px;
+  align-items: center;
 }
 
-.skill-item .xp-track {
-  margin-top: 8px;
-  height: 10px;
+.skill-item__name,
+.roadmap-item__title {
+  margin: 0;
+  font-size: 1rem;
 }
 
-@media (max-width: 860px) {
-  .math-layout {
+.skill-item__meta,
+.roadmap-item__meta {
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.skill-item__footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: center;
+  margin-top: 10px;
+}
+
+.skill-item__action {
+  min-width: 92px;
+}
+
+.roadmap-item__badge {
+  color: var(--warm);
+  font-size: 0.76rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+@media (max-width: 980px) {
+  .panel--pathway,
+  .math-layout,
+  .math-bottom {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .answer-row,
+  .actions-row,
+  .skill-item__footer {
+    flex-direction: column;
+  }
+
+  .answer-row button,
+  .actions-row button,
+  .skill-item__action {
+    width: 100%;
   }
 }

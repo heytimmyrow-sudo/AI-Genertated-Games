@@ -13,16 +13,58 @@
       <div class="title-block">
         <p class="eyebrow">Skill Builder</p>
         <h1>Math Masters</h1>
-        <p class="subtitle">IXL-style practice with more personality: streaks, focus quests, and mastery tracking without turning into a full arcade game.</p>
+        <p class="subtitle">A polished practice studio aligned by public lesson sequence to Big Ideas Math 2022 Accelerated Grade 7, with original practice sets, adaptive drills, and chapter-by-chapter progression.</p>
       </div>
+
+      <section class="panel panel--pathway" aria-label="Learning pathway">
+        <div>
+          <p class="panel__label">Pathway</p>
+          <h2 class="pathway-title">7th Grade Accelerated Track</h2>
+          <p class="tiny">Built to follow the public chapter flow for rational numbers, expressions, equations, probability, geometry, transformations, real numbers, and algebra preview topics.</p>
+        </div>
+        <div class="pathway-badges">
+          <span>Integers and Rational Numbers</span>
+          <span>Computation and Fluency</span>
+          <span>Ratios and Rates</span>
+          <span>Percents and Finance</span>
+          <span>Expressions and Equations</span>
+          <span>Geometry</span>
+          <span>Area, Surface Area, and Volume</span>
+          <span>Probability and Statistics</span>
+          <span>Transformations and Coordinates</span>
+          <span>Coordinate Plane</span>
+          <span>Word Problems</span>
+          <span>Inequalities and Graphs</span>
+          <span>Functions and Patterns</span>
+          <span>Advanced Algebra Preview</span>
+        </div>
+      </section>
+
+      <section class="panel panel--grades" aria-label="Grade level pathways">
+        <p class="panel__label">Choose Grade Path</p>
+        <div id="gradeFilters" class="grade-filters"></div>
+      </section>
+
+      <section class="panel panel--filters" aria-label="Skill strands">
+        <p class="panel__label">Choose Strand</p>
+        <div id="strandFilters" class="strand-filters"></div>
+      </section>
+
+      <section class="panel panel--modes" aria-label="Practice modes">
+        <p class="panel__label">Practice Mode</p>
+        <div id="modeFilters" class="mode-filters"></div>
+      </section>
 
       <section class="math-layout">
         <article class="panel panel--question">
           <p class="panel__label">Current Skill</p>
-          <h2 id="skillName">Mental Math Mix</h2>
+          <h2 id="skillName">Integer Operations</h2>
+          <p class="tiny tiny--top" id="skillMeta">Numbers and Operations</p>
+          <p class="lesson-code" id="lessonCode">Chapter 1 | Lesson 1.2</p>
           <p class="prompt" id="promptText">Press Start to begin.</p>
+          <p class="tiny" id="skillDescription">Build confidence with focused accelerated practice.</p>
           <form id="answerForm" class="answer-row" autocomplete="off">
-            <input id="answerInput" inputmode="numeric" aria-label="Answer" placeholder="Type your answer" disabled>
+            <input id="answerInput" inputmode="decimal" aria-label="Answer" placeholder="Type your answer" disabled>
             <button type="submit" id="submitButton" disabled>Check</button>
           </form>
           <p class="feedback" id="feedbackText">Build your streak by answering accurately.</p>
@@ -48,6 +90,12 @@
           <p class="panel__label panel__label--tight">Focus Quest</p>
           <p class="tiny" id="questText">Answer 5 in a row correctly to complete the quest.</p>
 
+          <p class="panel__label panel__label--tight">Current Standard Lens</p>
+          <p class="tiny" id="standardText">Practice tied to a standards-style topic label.</p>
+
+          <p class="panel__label panel__label--tight">Book Alignment</p>
+          <p class="tiny" id="alignmentText">Original problems aligned to the public lesson sequence, not copied textbook content.</p>
+
           <p class="panel__label panel__label--tight">Controls</p>
           <div class="controls controls--compact">
             <span>Submit: Enter</span>
@@ -57,9 +105,17 @@
         </article>
       </section>
 
-      <section class="panel panel--skills" aria-label="Skill mastery tracker">
-        <p class="panel__label">Mastery Tracker</p>
-        <div id="skillList" class="skill-list"></div>
+      <section class="math-bottom">
+        <section class="panel panel--skills" aria-label="Skill mastery tracker">
+          <p class="panel__label">Mastery Tracker</p>
+          <p class="tiny">Choose a lesson from rational numbers, computation, rates, finance, equations, word problems, geometry, measurement, statistics, transformations, coordinate plane, inequalities, functions, or advanced algebra preview.</p>
+          <div id="skillList" class="skill-list"></div>
+        </section>
+
+        <section class="panel panel--roadmap" aria-label="Course roadmap">
+          <p class="panel__label">Course Roadmap</p>
+          <div id="roadmapList" class="roadmap-list"></div>
+        </section>
       </section>
     </section>
   </main>
