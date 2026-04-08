@@ -15,7 +15,7 @@
         <div class="title-block">
           <p class="eyebrow">Codex Arena Vault x Arcade Workshop</p>
           <h1>Vault Workshop Nexus</h1>
-          <p class="subtitle">One launcher, two collections, fourteen games. Pick a lane fast, launch instantly, and jump back to the hub whenever you want.</p>
+          <p class="subtitle">One launcher, two collections, fourteen games. Browse faster, preview what is highlighted, search by vibe or genre, and jump back to the hub whenever you want.</p>
         </div>
 
         <aside class="vault-summary" aria-label="Vault summary">
@@ -34,6 +34,13 @@
               <span>Sports links</span>
             </div>
           </div>
+          <div class="vault-spotlight">
+            <p class="vault-summary__label">Currently Highlighted</p>
+            <h3 id="featuredTitle">Purple Square Panic</h3>
+            <p class="vault-spotlight__meta" id="featuredMeta">Codex Arena Vault</p>
+            <p class="vault-spotlight__description" id="featuredDescription">Slide across the floor, dodge the falling hazards, and catch yellow powerups to survive longer.</p>
+            <button class="play-button play-button--wide" type="button" id="featuredLaunch">Launch Highlighted Game</button>
+          </div>
         </aside>
       </section>
 
@@ -45,6 +52,31 @@
         <div class="status-strip__panel">
           <p class="status-strip__label">Flow</p>
           <p>`P` pauses inside supported games, while the shared fullscreen player and menu flow stay consistent across the hub.</p>
+        </div>
+        <div class="status-strip__panel">
+          <p class="status-strip__label">Shortcuts</p>
+          <p>Press `/` to jump into search, or hit the highlighted launch button when you already know what you want.</p>
+        </div>
+      </section>
+
+      <section class="launcher-deck" aria-label="Launcher controls">
+        <label class="launcher-search">
+          <span class="status-strip__label">Find A Game</span>
+          <input id="gameSearch" type="search" placeholder="Search math, builder, typing, fantasy, action...">
+        </label>
+        <div class="launcher-summary">
+          <div class="launcher-summary__card">
+            <span class="launcher-summary__label">Visible Games</span>
+            <strong id="visibleGameCount">14</strong>
+          </div>
+          <div class="launcher-summary__card">
+            <span class="launcher-summary__label">Highlighted Collection</span>
+            <strong id="featuredCollection">Codex Arena Vault</strong>
+          </div>
+          <div class="launcher-summary__actions">
+            <button class="collection-chip collection-chip--utility" type="button" id="launchMathMasters">Jump To Math Masters</button>
+            <button class="collection-chip collection-chip--utility" type="button" id="clearSearch">Clear Search</button>
+          </div>
         </div>
       </section>
 
@@ -61,7 +93,7 @@
         </div>
 
         <section class="hub-grid" aria-label="Codex Arena Vault games">
-          <article class="game-card game-card--void is-active" data-card="./games/dodge.html">
+          <article class="game-card game-card--void is-active" data-card="./games/dodge.html" data-collection-label="Codex Arena Vault">
             <p class="game-card__eyebrow">Arcade Dodge</p>
             <h2>Purple Square Panic</h2>
             <p>Slide across the floor, dodge the falling hazards, and catch yellow powerups to survive longer.</p>
@@ -72,7 +104,7 @@
             <button class="play-button" type="button" data-game="./games/dodge.html">Play Dodge</button>
           </article>
 
-          <article class="game-card game-card--ocean" data-card="./games/starforge.html">
+          <article class="game-card game-card--ocean" data-card="./games/starforge.html" data-collection-label="Codex Arena Vault">
             <p class="game-card__eyebrow">Top-Down Shooter</p>
             <h2>Starforge Salvage</h2>
             <p>Drift through a wreck field, collect energy cores, and blast down hostile drones before they close in.</p>
@@ -83,7 +115,7 @@
             <button class="play-button" type="button" data-game="./games/starforge.html">Play Starforge</button>
           </article>
 
-          <article class="game-card game-card--sanctum" data-card="./games/beastblade.html">
+          <article class="game-card game-card--sanctum" data-card="./games/beastblade.html" data-collection-label="Codex Arena Vault">
             <p class="game-card__eyebrow">PvE Swordfighting</p>
             <h2>Beastblade Ascent</h2>
             <p>Clear arena trials, spend upgrades, summon your beast ally, and survive the monster gauntlet.</p>
@@ -94,7 +126,7 @@
             <button class="play-button" type="button" data-game="./games/beastblade.html">Play Beastblade</button>
           </article>
 
-          <article class="game-card game-card--jungle" data-card="./games/relicbound.html">
+          <article class="game-card game-card--jungle" data-card="./games/relicbound.html" data-collection-label="Codex Arena Vault">
             <p class="game-card__eyebrow">Adventure Framework</p>
             <h2>Relicbound Vale</h2>
             <p>Explore a growing fantasy action-adventure with shrines, camps, dungeons, and room for much bigger systems later.</p>
@@ -107,7 +139,7 @@
 
 
 
-          <article class="game-card game-card--ocean" data-card="./games/math-masters.html">
+          <article class="game-card game-card--ocean" data-card="./games/math-masters.html" data-collection-label="Codex Arena Vault">
             <p class="game-card__eyebrow">Learning Experience</p>
             <h2>Math Masters</h2>
             <p>Practice adaptive mental math with streak quests, mastery tracking, and focused drill sessions that feel engaging without being an arcade game.</p>
@@ -118,7 +150,7 @@
             <button class="play-button" type="button" data-game="./games/math-masters.html">Play Math Masters</button>
           </article>
 
-          <article class="game-card game-card--marble" data-card="./games/typing.html">
+          <article class="game-card game-card--marble" data-card="./games/typing.html" data-collection-label="Codex Arena Vault">
             <p class="game-card__eyebrow">Typing Trainer</p>
             <h2>Typing Tempo</h2>
             <p>Practice typing speed, keep a clean streak, and build better accuracy in a focused word rush.</p>
@@ -129,7 +161,7 @@
             <button class="play-button" type="button" data-game="./games/typing.html">Play Typing</button>
           </article>
 
-          <article class="game-card game-card--void" data-card="./games/shadow-circuit.html">
+          <article class="game-card game-card--void" data-card="./games/shadow-circuit.html" data-collection-label="Codex Arena Vault">
             <p class="game-card__eyebrow">Sci-Fi Action Adventure</p>
             <h2>Shadow Circuit</h2>
             <p>Dash through a neon maze, collect power cores, unlock sealed gates, and fight hostile drones on the way out.</p>
@@ -140,7 +172,7 @@
             <button class="play-button" type="button" data-game="./games/shadow-circuit.html">Play Shadow Circuit</button>
           </article>
 
-          <article class="game-card game-card--marble" data-card="./games/board-arcade.html">
+          <article class="game-card game-card--marble" data-card="./games/board-arcade.html" data-collection-label="Codex Arena Vault">
             <p class="game-card__eyebrow">Strategy Collection</p>
             <h2>Board Blitz Arcade</h2>
             <p>Play chess, checkers, or tic-tac-toe in one board-game hub, with either local multiplayer or a computer opponent.</p>
@@ -151,7 +183,7 @@
             <button class="play-button" type="button" data-game="./games/board-arcade.html">Play Board Blitz</button>
           </article>
 
-          <article class="game-card game-card--ember" data-card="./games/sky-archer.html">
+          <article class="game-card game-card--ember" data-card="./games/sky-archer.html" data-collection-label="Codex Arena Vault">
             <p class="game-card__eyebrow">Fantasy Defense</p>
             <h2>Sky Archer</h2>
             <p>Draw the bow, arc arrows across floating bridges, and stop invading sky raiders before they strike the tower.</p>
@@ -162,7 +194,7 @@
             <button class="play-button" type="button" data-game="./games/sky-archer.html">Play Sky Archer</button>
           </article>
 
-          <article class="game-card game-card--jungle" data-card="./games/stillwake-house.html">
+          <article class="game-card game-card--jungle" data-card="./games/stillwake-house.html" data-collection-label="Codex Arena Vault">
             <p class="game-card__eyebrow">3D Mystery Scene</p>
             <h2>Stillwake House</h2>
             <p>Walk through one warm little house, read the letter on the table, and sit with the quiet feeling that something is wrong.</p>
@@ -182,7 +214,7 @@
         </div>
 
         <section class="hub-grid" aria-label="Arcade Workshop games">
-          <article class="game-card game-card--ocean" data-card="./workshop/Mobile%20Game/pirates.html">
+          <article class="game-card game-card--ocean" data-card="./workshop/Mobile%20Game/pirates.html" data-collection-label="Arcade Workshop">
             <p class="game-card__eyebrow">Arcade Workshop</p>
             <h2>Pirate Ship Battles</h2>
             <p>Sail, fight, board enemy ships, and spend coins on upgrades across the open water.</p>
@@ -193,7 +225,7 @@
             <button class="play-button" type="button" data-game="./workshop/Mobile%20Game/pirates.html">Play Pirates</button>
           </article>
 
-          <article class="game-card game-card--marble" data-card="./workshop/CatholicClickyGame/vatican.html">
+          <article class="game-card game-card--marble" data-card="./workshop/CatholicClickyGame/vatican.html" data-collection-label="Arcade Workshop">
             <p class="game-card__eyebrow">Arcade Workshop</p>
             <h2>Kingdom of Grace</h2>
             <p>Build a symbolic kingdom through idle growth, helpers, blessings, and long-form upgrades.</p>
@@ -204,7 +236,7 @@
             <button class="play-button" type="button" data-game="./workshop/CatholicClickyGame/vatican.html">Play Grace</button>
           </article>
 
-          <article class="game-card game-card--jungle" data-card="./workshop/CastawayArchitectsPrototype/castaway.html">
+          <article class="game-card game-card--jungle" data-card="./workshop/CastawayArchitectsPrototype/castaway.html" data-collection-label="Arcade Workshop">
             <p class="game-card__eyebrow">Arcade Workshop</p>
             <h2>Castaway Architects</h2>
             <p>Gather resources, place machines, and turn an island into a working settlement.</p>
@@ -215,7 +247,7 @@
             <button class="play-button" type="button" data-game="./workshop/CastawayArchitectsPrototype/castaway.html">Play Castaway</button>
           </article>
 
-          <article class="game-card game-card--sanctum" data-card="./workshop/sanctum-arena/sanctum-arena.html">
+          <article class="game-card game-card--sanctum" data-card="./workshop/sanctum-arena/sanctum-arena.html" data-collection-label="Arcade Workshop">
             <p class="game-card__eyebrow">Arcade Workshop</p>
             <h2>Sanctum Arena</h2>
             <p>Fight through a close-range action arena with dashes, swings, and escalating pressure.</p>
@@ -262,7 +294,18 @@
     const fullscreenTitle = document.getElementById("fullscreenTitle");
     const closeFullscreenPlayer = document.getElementById("closeFullscreenPlayer");
     const toggleImmersive = document.getElementById("toggleImmersive");
+    const gameSearch = document.getElementById("gameSearch");
+    const visibleGameCount = document.getElementById("visibleGameCount");
+    const featuredTitle = document.getElementById("featuredTitle");
+    const featuredMeta = document.getElementById("featuredMeta");
+    const featuredDescription = document.getElementById("featuredDescription");
+    const featuredLaunch = document.getElementById("featuredLaunch");
+    const featuredCollection = document.getElementById("featuredCollection");
+    const launchMathMasters = document.getElementById("launchMathMasters");
+    const clearSearch = document.getElementById("clearSearch");
     const assetVersion = "20260329a";
+    let activeFilter = "all";
+    let activeSearch = "";
 
     const gameData = {
       "./games/dodge.html": { title: "Purple Square Panic" },
@@ -281,6 +324,16 @@
       "./workshop/sanctum-arena/sanctum-arena.html": { title: "Sanctum Arena" }
     };
 
+    function updateFeaturedPanel(next) {
+      const card = [...cards].find((entry) => entry.getAttribute("data-card") === next);
+      if (!card) return;
+      featuredTitle.textContent = card.querySelector("h2")?.textContent || "Game";
+      featuredMeta.textContent = card.getAttribute("data-collection-label") + " | " + (card.querySelector(".game-card__eyebrow")?.textContent || "Featured");
+      featuredDescription.textContent = card.querySelector("p:not(.game-card__eyebrow)")?.textContent || "Pick a game and jump in.";
+      featuredCollection.textContent = card.getAttribute("data-collection-label") || "Collection";
+      featuredLaunch.setAttribute("data-game", next);
+    }
+
     function setActiveGame(next) {
       const entry = gameData[next];
       const separator = next.includes("?") ? "&" : "?";
@@ -290,17 +343,47 @@
       for (const card of cards) {
         card.classList.toggle("is-active", card.getAttribute("data-card") === next);
       }
+
+      updateFeaturedPanel(next);
     }
 
-    function setFilter(filter) {
+    function applyDiscoveryState() {
+      let visibleCount = 0;
+      let firstVisibleCard = null;
+
       for (const button of filterButtons) {
-        button.classList.toggle("is-active", button.getAttribute("data-filter") === filter);
+        button.classList.toggle("is-active", button.getAttribute("data-filter") === activeFilter);
       }
 
       for (const block of collectionBlocks) {
-        const show = filter === "all" || block.getAttribute("data-collection") === filter;
-        block.hidden = !show;
+        let blockHasVisibleCards = false;
+        const collectionMatches = activeFilter === "all" || block.getAttribute("data-collection") === activeFilter;
+        for (const card of block.querySelectorAll("[data-card]")) {
+          const text = card.textContent.toLowerCase();
+          const matchesSearch = !activeSearch || text.includes(activeSearch);
+          const show = collectionMatches && matchesSearch;
+          card.hidden = !show;
+          if (show) {
+            if (!firstVisibleCard) firstVisibleCard = card;
+            blockHasVisibleCards = true;
+            visibleCount += 1;
+          }
+        }
+        block.hidden = !blockHasVisibleCards;
       }
+
+      visibleGameCount.textContent = String(visibleCount);
+      if (firstVisibleCard) {
+        const activeCard = [...cards].find((card) => card.classList.contains("is-active") && !card.hidden);
+        if (!activeCard) {
+          setActiveGame(firstVisibleCard.getAttribute("data-card"));
+        }
+      }
+    }
+
+    function setFilter(filter) {
+      activeFilter = filter;
+      applyDiscoveryState();
     }
 
     function openFullscreenPlayer(next) {
@@ -345,7 +428,14 @@
     for (const card of cards) {
       card.addEventListener("click", (event) => {
         if (event.target.closest("button")) return;
+        setActiveGame(card.getAttribute("data-card"));
         openFullscreenPlayer(card.getAttribute("data-card"));
+      });
+      card.addEventListener("mouseenter", () => {
+        setActiveGame(card.getAttribute("data-card"));
+      });
+      card.addEventListener("focusin", () => {
+        setActiveGame(card.getAttribute("data-card"));
       });
     }
 
@@ -356,6 +446,22 @@
     }
 
     closeFullscreenPlayer.addEventListener("click", closePlayer);
+    featuredLaunch.addEventListener("click", () => {
+      openFullscreenPlayer(featuredLaunch.getAttribute("data-game"));
+    });
+    launchMathMasters.addEventListener("click", () => {
+      setActiveGame("./games/math-masters.html");
+      openFullscreenPlayer("./games/math-masters.html");
+    });
+    clearSearch.addEventListener("click", () => {
+      gameSearch.value = "";
+      activeSearch = "";
+      applyDiscoveryState();
+    });
+    gameSearch.addEventListener("input", () => {
+      activeSearch = gameSearch.value.trim().toLowerCase();
+      applyDiscoveryState();
+    });
     toggleImmersive.addEventListener("click", () => {
       toggleFullscreenMode().catch(() => {
         toggleImmersive.textContent = "Unavailable";
@@ -364,6 +470,10 @@
     });
 
     document.addEventListener("keydown", (event) => {
+      if (event.key === "/" && document.activeElement !== gameSearch) {
+        event.preventDefault();
+        gameSearch.focus();
+      }
       if (event.key === "Escape" && fullscreenPlayer.classList.contains("is-open")) {
         closePlayer();
       }
