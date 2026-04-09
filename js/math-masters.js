@@ -315,6 +315,7 @@
 
   let accountsMeta = loadAccountsMeta();
   let state = createState();
+  setupSectionToggles();
   refreshSelectedSkill();
   render();
   fetchOnlineLeaderboard();
@@ -399,6 +400,7 @@
       activeChapterTest: null,
       onlineSyncStatus: "Connecting to the online leaderboard...",
       tableReady: null,
+      collapsedSections: saved?.collapsedSections || {},
       profile: {
         name: saved?.profile?.name || "Math Master",
         color: saved?.profile?.color || "#7de3ff",
@@ -474,6 +476,72 @@
     state.visibleHint = "Hints will appear here when you need a nudge.";
     saveProgress();
     render();
+  }
+
+  function setupSectionToggles() {
+    const sections = Array.from(document.querySelectorAll([
+      ".math-masters > .panel",
+      ".math-layout > .panel",
+      ".math-bottom > .panel",
+      ".community-grid > .community-panel",
+      ".dashboard-lists > .dashboard-panel"
+    ].join(", ")));
+    sections.forEach((section, index) => {
+      if (section.dataset.toggleReady === "true") return;
+      section.dataset.toggleReady = "true";
+      const sectionId = section.id || section.dataset.sectionId || "section-" + index;
+      section.dataset.sectionId = sectionId;
+      const header = document.createElement("div");
+      header.className = "section-toggle__header";
+      const titleEl = document.createElement("span");
+      titleEl.className = "section-toggle__title";
+      titleEl.textContent = getSectionToggleTitle(section);
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "section-toggle__button";
+      header.append(titleEl, button);
+
+      const content = document.createElement("div");
+      content.className = "section-toggle__content";
+      while (section.firstChild) content.appendChild(section.firstChild);
+      section.append(header, content);
+      section.classList.add("section-toggle");
+
+      button.addEventListener("click", () => {
+        const nextCollapsed = !section.classList.contains("is-collapsed");
+        state.collapsedSections[sectionId] = nextCollapsed;
+        applySectionToggleState(section, nextCollapsed);
+        saveProgress();
+      });
+
+      applySectionToggleState(section, Boolean(state.collapsedSections[sectionId]));
+    });
+  }
+
+  function getSectionToggleTitle(section) {
+    const label = section.querySelector(".panel__label");
+    const title = section.getAttribute("aria-label")
+      || (label ? label.textContent : "")
+      || (section.querySelector("h2") ? section.querySelector("h2").textContent : "")
+      || "Section";
+    return String(title).replace(/\s+/g, " ").trim().replace(/\b\w/g, (letter) => letter.toUpperCase());
+  }
+
+  function applySectionToggleState(section, collapsed) {
+    const button = section.querySelector(".section-toggle__button");
+    const content = section.querySelector(".section-toggle__content");
+    section.classList.toggle("is-collapsed", collapsed);
+    if (content) content.hidden = collapsed;
+    if (button) {
+      button.textContent = collapsed ? "Show More" : "Hide";
+      button.setAttribute("aria-expanded", collapsed ? "false" : "true");
+    }
+  }
+
+  function syncSectionToggles() {
+    document.querySelectorAll(".section-toggle").forEach((section) => {
+      applySectionToggleState(section, Boolean(state.collapsedSections[section.dataset.sectionId]));
+    });
   }
 
   function updateSearch() {
@@ -904,6 +972,7 @@
   }
 
   function render() {
+    syncSectionToggles();
     syncDailyProgress();
     const lesson = getSkillById(state.selectedSkillId) || getVisibleSkills()[0];
     const accuracy = state.questionsAnswered === 0 ? 100 : Math.round((state.correctAnswers / state.questionsAnswered) * 100);
@@ -1269,6 +1338,7 @@
         streakHistory: state.streakHistory,
         importedLeaderboard: state.importedLeaderboard,
         curriculumMap: state.curriculumMap,
+        collapsedSections: state.collapsedSections,
         profile: state.profile,
         reflectionStatus: state.reflectionStatus,
         visibleExplanation: state.visibleExplanation,
