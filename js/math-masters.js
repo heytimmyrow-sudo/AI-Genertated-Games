@@ -1791,30 +1791,26 @@
     if (!entries.length) {
       const empty = document.createElement("p");
       empty.className = "tiny";
-      empty.textContent = "No online scores yet. Publish the first Math Masters score.";
+      empty.textContent = state.tableReady
+        ? "No online scores yet. Turn on the leaderboard option and publish the first Math Masters score."
+        : "Checking the live leaderboard connection...";
       el.leaderboardList.appendChild(empty);
     }
-    el.leaderboardStatus.textContent = state.tableReady
-      ? (state.profile.leaderboardOptIn
-        ? "This student is ready to publish to the live online leaderboard."
-        : "Turn on the leaderboard option in the student profile to publish this score online.")
-      : "Supabase is connected, but the leaderboard table is still missing.";
+    el.leaderboardStatus.textContent = state.tableReady === null
+      ? "Checking the live leaderboard..."
+      : state.tableReady
+        ? (state.onlineLeaderboard.length
+          ? "These are real shared Math Masters scores from the online leaderboard."
+          : (state.profile.leaderboardOptIn
+            ? "This student is ready to publish the first live online score."
+            : "Turn on the leaderboard option in the student profile, then publish this score online."))
+        : "Supabase is connected, but the leaderboard table is still missing.";
   }
 
   function buildLeaderboardEntries() {
     const entries = state.onlineLeaderboard.length
       ? [...state.onlineLeaderboard]
       : [...state.importedLeaderboard];
-    if (!state.onlineLeaderboard.length && state.profile.leaderboardOptIn) {
-      entries.push({
-        name: state.profile.name,
-        medal: getCurrentMedal().label,
-        xp: state.level * 10 + state.xp,
-        challengeClears: state.challengeClears,
-        mastery: averageMastery(),
-        you: true
-      });
-    }
     return entries;
   }
 
