@@ -1028,8 +1028,8 @@
 
     el.dashboardLeaderboardText.textContent =
       state.tableReady
-        ? "Community leaderboard can now sync through Supabase for shared Math Masters rankings."
-        : "The online leaderboard is wired, but Supabase still needs the leaderboard table setup.";
+        ? "Supabase is connected. Use Publish My Score in the Leaderboard Backend Sync panel to add this student to the live board."
+        : "The live leaderboard is wired, but Supabase still needs the leaderboard table setup.";
   }
 
   function renderAccounts() {
@@ -1540,7 +1540,7 @@
     el.leaderboardOptIn.checked = state.profile.leaderboardOptIn;
     el.soundToggle.checked = state.profile.soundOn;
     el.profileStatus.textContent = state.profile.leaderboardOptIn
-      ? "Profile saves on this device and appears in the leaderboard preview."
+      ? "Profile saves on this device and can be published to the live online leaderboard."
       : "Profile saves on this device.";
   }
 
