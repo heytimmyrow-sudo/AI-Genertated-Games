@@ -41,12 +41,6 @@
     { id: "lessons", label: "Start 2 lessons", target: 2 },
     { id: "challengeClears", label: "Clear 1 challenge quest", target: 1 }
   ];
-  const SAMPLE_LEADERBOARD = [
-    { name: "Avery", medal: "Diamond", xp: 94, challengeClears: 7, mastery: 91 },
-    { name: "Jordan", medal: "Platinum", xp: 76, challengeClears: 5, mastery: 84 },
-    { name: "Riley", medal: "Gold", xp: 58, challengeClears: 4, mastery: 79 },
-    { name: "Taylor", medal: "Silver", xp: 42, challengeClears: 2, mastery: 68 }
-  ];
   const SUPABASE_URL = "https://jbljqusdpifdyewlenun.supabase.co";
   const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpibGpxdXNkcGlmZHlld2xlbnVuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU2ODY5NTUsImV4cCI6MjA5MTI2Mjk1NX0.jwpLv3AtXP0PGdoOSSkhruDAY8vdJzcxklu-PauTjSE";
   const SUPABASE_TABLE = "math_masters_leaderboard";
@@ -1740,7 +1734,7 @@
   function buildLeaderboardEntries() {
     const entries = state.onlineLeaderboard.length
       ? [...state.onlineLeaderboard]
-      : [...SAMPLE_LEADERBOARD, ...state.importedLeaderboard];
+      : [...state.importedLeaderboard];
     if (!state.onlineLeaderboard.length && state.profile.leaderboardOptIn) {
       entries.push({
         name: state.profile.name,
