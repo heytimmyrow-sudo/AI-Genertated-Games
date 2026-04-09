@@ -400,7 +400,7 @@
       activeChapterTest: null,
       onlineSyncStatus: "Connecting to the online leaderboard...",
       tableReady: null,
-      collapsedSections: saved?.collapsedSections || {},
+      collapsedSections: {},
       profile: {
         name: saved?.profile?.name || "Math Master",
         color: saved?.profile?.color || "#7de3ff",
@@ -1338,7 +1338,6 @@
         streakHistory: state.streakHistory,
         importedLeaderboard: state.importedLeaderboard,
         curriculumMap: state.curriculumMap,
-        collapsedSections: state.collapsedSections,
         profile: state.profile,
         reflectionStatus: state.reflectionStatus,
         visibleExplanation: state.visibleExplanation,
