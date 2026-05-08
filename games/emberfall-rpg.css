@@ -1,0 +1,156 @@
+.emberfall-shell {
+  width: min(100%, 1100px);
+}
+
+.hub-link {
+  display: inline-flex;
+  margin-bottom: 16px;
+  color: var(--accent-soft);
+  text-decoration: none;
+  font-weight: 700;
+}
+
+.hub-link:hover,
+.hub-link:focus-visible {
+  text-decoration: underline;
+}
+
+.emberfall-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.45fr) minmax(280px, 0.8fr);
+  gap: 18px;
+}
+
+.emberfall-panel {
+  border: 1px solid rgba(125, 227, 255, 0.14);
+  border-radius: 22px;
+  background: linear-gradient(180deg, rgba(13, 26, 38, 0.82), rgba(7, 12, 19, 0.88));
+  padding: 18px;
+}
+
+.emberfall-panel--game {
+  display: grid;
+  gap: 16px;
+}
+
+.emberfall-status {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.status-card {
+  padding: 14px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.status-card span {
+  display: block;
+  color: var(--muted);
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+}
+
+.status-card strong {
+  display: block;
+  margin-top: 8px;
+  font-family: var(--font-display);
+  font-size: 1.65rem;
+}
+
+.emberfall-scene {
+  min-height: 220px;
+  padding: 22px;
+  border-radius: 22px;
+  background:
+    radial-gradient(circle at top right, rgba(255, 214, 107, 0.16), transparent 30%),
+    radial-gradient(circle at left, rgba(255, 94, 122, 0.12), transparent 28%),
+    linear-gradient(180deg, rgba(58, 23, 17, 0.72), rgba(15, 11, 17, 0.9));
+  border: 1px solid rgba(255, 214, 107, 0.12);
+}
+
+.emberfall-scene__label {
+  margin: 0 0 10px;
+  color: var(--warm);
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  font-size: 0.74rem;
+}
+
+.emberfall-scene h2 {
+  margin: 0 0 12px;
+  font-family: var(--font-display);
+  font-size: clamp(1.5rem, 2vw, 2.1rem);
+}
+
+.emberfall-scene p {
+  margin: 0;
+  color: var(--accent-soft);
+  max-width: 48rem;
+}
+
+.emberfall-log {
+  min-height: 52px;
+  padding: 14px 16px;
+  border-left: 3px solid var(--warm);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--muted);
+}
+
+.emberfall-actions {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.emberfall-panel--notes {
+  display: grid;
+  gap: 14px;
+}
+
+.sidebar-card {
+  padding: 16px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.sidebar-card h2 {
+  margin: 0 0 10px;
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+}
+
+.sidebar-card p {
+  margin: 0;
+  color: var(--muted);
+}
+
+.controls--stack {
+  display: grid;
+  gap: 8px;
+}
+
+.sidebar-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+@media (max-width: 860px) {
+  .emberfall-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .emberfall-status {
+    grid-template-columns: 1fr;
+  }
+
+  .emberfall-actions {
+    grid-template-columns: 1fr;
+  }
+}

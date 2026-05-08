@@ -31,13 +31,16 @@ jobs:
       - name: Build static site
         shell: bash
         run: |
-          mkdir -p site/games site/js
+          mkdir -p site
+          cp index.html site/index.html
           cp style.css site/style.css
           cp math-masters.html site/math-masters.html
           cp .nojekyll site/.nojekyll
-          cp games/math-masters.html site/games/math-masters.html
-          cp games/math-masters.css site/games/math-masters.css
-          cp js/math-masters.js site/js/math-masters.js
+          cp favicon.ico site/favicon.ico
+          cp -r games site/games
+          cp -r js site/js
+          cp -r vendor site/vendor
+          cp -r workshop site/workshop
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v4

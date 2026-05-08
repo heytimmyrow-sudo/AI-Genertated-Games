@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Emberfall Chronicles</title>
+  <link rel="stylesheet" href="../style.css">
+  <link rel="stylesheet" href="./emberfall-rpg.css">
+</head>
+<body>
+  <main class="shell">
+    <section class="hud-frame emberfall-shell">
+      <a class="hub-link" href="../index.html">&larr; Back to Vault Hub</a>
+
+      <div class="title-block">
+        <p class="eyebrow">Story RPG Prototype</p>
+        <h1>Emberfall Chronicles</h1>
+        <p class="subtitle">Scout the ash-choked ruins, choose your path, and survive three tight encounters in a lightweight fantasy RPG run.</p>
+      </div>
+
+      <section class="emberfall-layout">
+        <article class="emberfall-panel emberfall-panel--game">
+          <div class="emberfall-status">
+            <div class="status-card">
+              <span>Health</span>
+              <strong id="healthValue">24</strong>
+            </div>
+            <div class="status-card">
+              <span>Gold</span>
+              <strong id="goldValue">8</strong>
+            </div>
+            <div class="status-card">
+              <span>Stage</span>
+              <strong id="stageValue">1 / 3</strong>
+            </div>
+          </div>
+
+          <div class="emberfall-scene">
+            <p class="emberfall-scene__label" id="sceneLabel">Ashen Gate</p>
+            <h2 id="sceneTitle">The city walls still glow.</h2>
+            <p id="sceneText">A broken torch crackles in the wind while something moves beyond the barricade. You grip your blade and decide how to enter Emberfall.</p>
+          </div>
+
+          <div class="emberfall-log" id="eventLog" aria-live="polite"></div>
+
+          <div class="emberfall-actions" id="actionButtons"></div>
+        </article>
+
+        <aside class="emberfall-panel emberfall-panel--notes">
+          <section class="sidebar-card">
+            <h2>How It Works</h2>
+            <p>Each choice changes your health or gold, and some paths are safer than others. Reach the final stage with health left to win the run.</p>
+          </section>
+
+          <section class="sidebar-card">
+            <h2>Party Kit</h2>
+            <div class="controls controls--stack">
+              <span>Ironblade: reliable attack routes</span>
+              <span>Ember Charm: helps on ritual paths</span>
+              <span>Travel Pack: enough supplies for one run</span>
+            </div>
+          </section>
+
+          <section class="sidebar-card">
+            <h2>Run Controls</h2>
+            <div class="sidebar-actions">
+              <button class="play-button" id="restartButton" type="button">Restart Adventure</button>
+            </div>
+          </section>
+        </aside>
+      </section>
+    </section>
+  </main>
+
+  <script>
+    const scenes = [
+      {
+        label: "Ashen Gate",
+        title: "The city walls still glow.",
+        text: "A broken torch crackles in the wind while something moves beyond the barricade. You grip your blade and decide how to enter Emberfall.",
+        actions: [
+          { text: "Charge the gate", health: -6, gold: 3, log: "You break through a scavenger ambush and recover a pouch of coins." },
+          { text: "Climb the outer wall", health: -2, gold: 1, log: "You scrape through cracked stone and reach the inner path with only a minor wound." },
+          { text: "Search the old shrine", health: 0, gold: 0, log: "A soot-covered altar steadies your nerves. You find no treasure, but lose no blood either." }
+        ]
+      },
+      {
+        label: "Market of Cinders",
+        title: "Smoke hides the next threat.",
+        text: "Ruined stalls form a maze of shadows. A wounded merchant waves you closer while footsteps echo under the collapsed awnings.",
+        actions: [
+          { text: "Guard the merchant", health: -4, gold: 6, log: "You fend off raiders and the grateful merchant pays you with hidden coin." },
+          { text: "Slip through the alleys", health: -3, gold: 2, log: "You avoid the worst of the fighting and pocket a few abandoned trinkets." },
+          { text: "Investigate the bell tower", health: -7, gold: 8, log: "A hard climb ends with a fierce duel, but the tower cache is worth it." }
+        ]
+      },
+      {
+        label: "Ember Keep",
+        title: "The heart of Emberfall waits.",
+        text: "At the shattered keep, a firebound sentinel rises from the throne ash. One final decision will decide whether the city yields its secrets.",
+        actions: [
+          { text: "Duel the sentinel head-on", health: -8, gold: 10, log: "Steel meets flame. You win the duel and seize the keep's treasury key." },
+          { text: "Use the Ember Charm", health: -3, gold: 5, log: "The charm disrupts the sentinel long enough for a precise finishing strike." },
+          { text: "Take the hidden vault stair", health: -5, gold: 12, log: "The vault path is trapped, but it leads straight to the richest chamber in the keep." }
+        ]
+      }
+    ];
+
+    const initialState = {
+      stage: 0,
+      health: 24,
+      gold: 8,
+      over: false
+    };
+
+    const healthValue = document.getElementById("healthValue");
+    const goldValue = document.getElementById("goldValue");
+    const stageValue = document.getElementById("stageValue");
+    const sceneLabel = document.getElementById("sceneLabel");
+    const sceneTitle = document.getElementById("sceneTitle");
+    const sceneText = document.getElementById("sceneText");
+    const eventLog = document.getElementById("eventLog");
+    const actionButtons = document.getElementById("actionButtons");
+    const restartButton = document.getElementById("restartButton");
+
+    let state = { ...initialState };
+
+    function renderStatus() {
+      healthValue.textContent = Math.max(state.health, 0);
+      goldValue.textContent = state.gold;
+      stageValue.textContent = state.over ? "Complete" : (state.stage + 1) + " / " + scenes.length;
+    }
+
+    function renderScene() {
+      renderStatus();
+
+      if (state.over) {
+        sceneLabel.textContent = state.health > 0 ? "Victory" : "Defeat";
+        sceneTitle.textContent = state.health > 0 ? "Emberfall yields to your legend." : "The ruins claim another hero.";
+        sceneText.textContent = state.health > 0
+          ? "You leave with " + state.gold + " gold and a story worth singing in every border tavern."
+          : "Your run ends in ash, but the roads into Emberfall remain open for another attempt.";
+        actionButtons.innerHTML = "";
+        return;
+      }
+
+      const scene = scenes[state.stage];
+      sceneLabel.textContent = scene.label;
+      sceneTitle.textContent = scene.title;
+      sceneText.textContent = scene.text;
+      actionButtons.innerHTML = "";
+
+      scene.actions.forEach((action) => {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "play-button";
+        button.textContent = action.text;
+        button.addEventListener("click", () => advanceRun(action));
+        actionButtons.appendChild(button);
+      });
+    }
+
+    function advanceRun(action) {
+      state.health += action.health;
+      state.gold += action.gold;
+      eventLog.textContent = action.log;
+
+      if (state.health <= 0) {
+        state.over = true;
+        renderScene();
+        return;
+      }
+
+      state.stage += 1;
+      if (state.stage >= scenes.length) {
+        state.over = true;
+      }
+
+      renderScene();
+    }
+
+    function restartRun() {
+      state = { ...initialState };
+      eventLog.textContent = "A new run begins at the edge of the burning city.";
+      renderScene();
+    }
+
+    restartButton.addEventListener("click", restartRun);
+    restartRun();
+  </script>
+</body>
+</html>
