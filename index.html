@@ -15,14 +15,14 @@
         <div class="title-block">
           <p class="eyebrow">Codex Arena Vault x Arcade Workshop</p>
           <h1>Vault Workshop Nexus</h1>
-          <p class="subtitle">One launcher, two collections, fourteen games. Browse faster, preview what is highlighted, search by vibe or genre, and jump back to the hub whenever you want.</p>
+          <p class="subtitle">One launcher, two collections, fifteen games. Browse faster, preview what is highlighted, search by vibe or genre, and jump back to the hub whenever you want.</p>
         </div>
 
         <aside class="vault-summary" aria-label="Vault summary">
           <p class="vault-summary__label">Restoration Status</p>
           <div class="vault-stats">
             <div class="vault-stat">
-              <strong>14</strong>
+              <strong>15</strong>
               <span>Linked worlds</span>
             </div>
             <div class="vault-stat">
@@ -67,7 +67,7 @@
         <div class="launcher-summary">
           <div class="launcher-summary__card">
             <span class="launcher-summary__label">Visible Games</span>
-            <strong id="visibleGameCount">14</strong>
+            <strong id="visibleGameCount">15</strong>
           </div>
           <div class="launcher-summary__card">
             <span class="launcher-summary__label">Highlighted Track</span>
@@ -115,6 +115,17 @@
               <span>Dash movement</span>
             </div>
             <button class="play-button" type="button" data-game="./games/starforge.html">Play Starforge</button>
+          </article>
+
+          <article class="game-card game-card--void" data-card="./games/neon-siege.html" data-collection-label="Codex Arena Vault" data-group="action" data-track-label="Arcade Action">
+            <p class="game-card__eyebrow">Arena Survival</p>
+            <h2>Neon Siege</h2>
+            <p>Dash through waves, collect weapon drops, pick upgrades, dodge hazards, and push into boss rounds across multiple run modes.</p>
+            <div class="game-card__meta">
+              <span>Modes + Bosses</span>
+              <span>Upgrades</span>
+            </div>
+            <button class="play-button" type="button" data-game="./games/neon-siege.html">Play Neon Siege</button>
           </article>
 
           <article class="game-card game-card--sanctum" data-card="./games/beastblade.html" data-collection-label="Codex Arena Vault" data-group="action" data-track-label="Arcade Action">
@@ -312,6 +323,7 @@
     const gameData = {
       "./games/dodge.html": { title: "Purple Square Panic" },
       "./games/starforge.html": { title: "Starforge Salvage" },
+      "./games/neon-siege.html": { title: "Neon Siege" },
       "./games/beastblade.html": { title: "Beastblade Ascent" },
       "./games/relicbound.html": { title: "Relicbound Vale" },
       "./games/typing.html": { title: "Typing Tempo" },
