@@ -272,6 +272,36 @@ body.keyboard-open {
   width: min(100%, 420px);
 }
 
+.battleship {
+  display: grid;
+  gap: 14px;
+}
+
+.battleship__grids {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.battleship__grid-wrap {
+  display: grid;
+  gap: 8px;
+}
+
+.battleship__grid-wrap h4 {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.8rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.battleship-board {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 5px;
+}
+
 .tic-cell {
   aspect-ratio: 1;
   border: 1px solid rgba(125, 227, 255, 0.18);
@@ -293,6 +323,16 @@ body.keyboard-open {
   cursor: pointer;
 }
 
+.battle-cell {
+  aspect-ratio: 1;
+  border: 1px solid rgba(125, 227, 255, 0.16);
+  border-radius: 8px;
+  color: var(--text);
+  background: rgba(2, 7, 12, 0.72);
+  font: inherit;
+  cursor: pointer;
+}
+
 .connect-cell.is-x {
   background: rgba(255, 214, 107, 0.9);
 }
@@ -301,18 +341,35 @@ body.keyboard-open {
   background: rgba(125, 227, 255, 0.9);
 }
 
+.battle-cell.is-ship {
+  background: rgba(125, 227, 255, 0.18);
+}
+
+.battle-cell.is-hit {
+  color: #1b1000;
+  background: rgba(255, 214, 107, 0.92);
+}
+
+.battle-cell.is-miss {
+  color: var(--muted);
+  background: rgba(255, 255, 255, 0.08);
+}
+
 .tic-cell:disabled {
   cursor: default;
 }
 
-.connect-cell:disabled {
+.connect-cell:disabled,
+.battle-cell:disabled {
   cursor: default;
 }
 
 .tic-cell:not(:disabled):hover,
 .tic-cell:not(:disabled):focus-visible,
 .connect-cell:not(:disabled):hover,
-.connect-cell:not(:disabled):focus-visible {
+.connect-cell:not(:disabled):focus-visible,
+.battle-cell:not(:disabled):hover,
+.battle-cell:not(:disabled):focus-visible {
   border-color: rgba(255, 214, 107, 0.54);
   color: var(--warm);
 }
@@ -349,6 +406,12 @@ body.keyboard-open {
   color: var(--text);
   background: rgba(2, 7, 12, 0.82);
   font: inherit;
+}
+
+@media (max-width: 680px) {
+  .battleship__grids {
+    grid-template-columns: 1fr;
+  }
 }
 
 .threadmail-filter {

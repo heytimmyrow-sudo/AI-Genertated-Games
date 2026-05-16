@@ -57,6 +57,7 @@ const els = {
   composeBody: document.getElementById("composeBody"),
   attachTicTacToe: document.getElementById("attachTicTacToe"),
   attachConnectFour: document.getElementById("attachConnectFour"),
+  attachBattleship: document.getElementById("attachBattleship"),
   attachWordChain: document.getElementById("attachWordChain"),
   clearGameAttach: document.getElementById("clearGameAttach"),
   gameAttachLabel: document.getElementById("gameAttachLabel"),
@@ -377,6 +378,7 @@ function renderGameAttachment(thread) {
 
   const playArea = card.querySelector(".game-play-area");
   if (game.type === "connect_four") renderConnectFour(game, playArea);
+  else if (game.type === "battleship") renderBattleship(game, playArea);
   else if (game.type === "word_chain") renderWordChain(game, playArea);
   else renderTicTacToe(game, playArea);
   els.messageDetail.insertBefore(card, document.querySelector(".message-tools"));
@@ -445,8 +447,60 @@ function renderWordChain(game, container) {
   container.append(wrapper);
 }
 
+function renderBattleship(game, container) {
+  const board = normalizeBattleshipBoard(game.board);
+  const mark = identity.handle === game.x_handle ? "x" : "o";
+  const enemyMark = mark === "x" ? "o" : "x";
+  const canMove = game.status === "active" && game.turn_handle === identity.handle;
+  const wrapper = document.createElement("section");
+  wrapper.className = "battleship";
+  wrapper.innerHTML = `
+    <p>Fleet left: ${countBattleshipFleetLeft(board, mark)} yours, ${countBattleshipFleetLeft(board, enemyMark)} enemy.</p>
+    <div class="battleship__grids"></div>
+  `;
+
+  const grids = wrapper.querySelector(".battleship__grids");
+  grids.append(createBattleshipGrid("Your Fleet", board, mark, false, canMove));
+  grids.append(createBattleshipGrid("Enemy Waters", board, mark, true, canMove));
+  container.append(wrapper);
+}
+
+function createBattleshipGrid(title, board, mark, isEnemyGrid, canMove) {
+  const enemyMark = mark === "x" ? "o" : "x";
+  const targetMark = isEnemyGrid ? enemyMark : mark;
+  const shotMark = isEnemyGrid ? mark : enemyMark;
+  const wrap = document.createElement("section");
+  wrap.className = "battleship__grid-wrap";
+  wrap.innerHTML = `<h4>${escapeHtml(title)}</h4>`;
+
+  const grid = document.createElement("div");
+  grid.className = "battleship-board";
+  grid.setAttribute("aria-label", title);
+  const shots = board.shots[shotMark] || [];
+  const ships = board.ships[targetMark] || [];
+
+  for (let index = 0; index < board.size * board.size; index += 1) {
+    const wasShot = shots.includes(index);
+    const hasShip = ships.includes(index);
+    const cell = document.createElement("button");
+    cell.type = "button";
+    cell.className = "battle-cell";
+    if (!isEnemyGrid && hasShip) cell.classList.add("is-ship");
+    if (wasShot) cell.classList.add(hasShip ? "is-hit" : "is-miss");
+    cell.textContent = wasShot ? (hasShip ? "Hit" : "Miss") : (!isEnemyGrid && hasShip ? "Ship" : "");
+    cell.disabled = !isEnemyGrid || !canMove || wasShot;
+    cell.setAttribute("aria-label", `${title} square ${index + 1}`);
+    cell.addEventListener("click", () => playBattleshipMove(board, game, index));
+    grid.append(cell);
+  }
+
+  wrap.append(grid);
+  return wrap;
+}
+
 function getGameTitle(type) {
   if (type === "connect_four") return "Connect Four";
+  if (type === "battleship") return "Battleship";
   if (type === "word_chain") return "Word Chain";
   return "Tic-Tac-Toe";
 }
@@ -668,6 +722,8 @@ async function sendMessage() {
 async function createGame(sender, recipient, type) {
   const board = type === "connect_four"
     ? Array(42).fill("")
+    : type === "battleship"
+      ? createBattleshipBoard()
     : type === "word_chain"
       ? []
       : ["", "", "", "", "", "", "", "", ""];
@@ -807,6 +863,21 @@ async function playWordChainMove(game, rawWord) {
   await saveGameMove(game, words, "active", mark);
 }
 
+async function playBattleshipMove(board, game, index) {
+  if (game.status !== "active" || game.turn_handle !== identity.handle) return;
+  const mark = identity.handle === game.x_handle ? "x" : "o";
+  const enemyMark = mark === "x" ? "o" : "x";
+  const nextBoard = normalizeBattleshipBoard(board);
+  if (nextBoard.shots[mark].includes(index)) return;
+
+  nextBoard.shots[mark].push(index);
+  const enemyFleet = nextBoard.ships[enemyMark] || [];
+  const nextStatus = enemyFleet.every((shipIndex) => nextBoard.shots[mark].includes(shipIndex))
+    ? (mark === "x" ? "x_won" : "o_won")
+    : "active";
+  await saveGameMove(game, nextBoard, nextStatus, mark);
+}
+
 async function saveGameMove(game, board, nextStatus, mark) {
   const nextTurn = mark === "x" ? game.o_handle : game.x_handle;
   const response = await fetch(`${SUPABASE_URL}/rest/v1/${GAMES_TABLE}?id=eq.${encodeURIComponent(game.id)}`, {
@@ -903,6 +974,72 @@ function getConnectFourStatus(board) {
     }
   }
   return board.every(Boolean) ? "draw" : "active";
+}
+
+function createBattleshipBoard() {
+  return {
+    size: 5,
+    ships: {
+      x: createBattleshipFleet(),
+      o: createBattleshipFleet()
+    },
+    shots: {
+      x: [],
+      o: []
+    }
+  };
+}
+
+function createBattleshipFleet() {
+  const fleet = [];
+  const lengths = [3, 2];
+  for (const length of lengths) {
+    const ship = placeBattleshipShip(fleet, length);
+    fleet.push(...ship);
+  }
+  return fleet;
+}
+
+function placeBattleshipShip(existing, length) {
+  for (let attempt = 0; attempt < 80; attempt += 1) {
+    const horizontal = Math.random() > 0.5;
+    const row = Math.floor(Math.random() * 5);
+    const col = Math.floor(Math.random() * 5);
+    if (horizontal && col + length > 5) continue;
+    if (!horizontal && row + length > 5) continue;
+    const cells = Array.from({ length }, (_, offset) => (
+      horizontal ? row * 5 + col + offset : (row + offset) * 5 + col
+    ));
+    if (cells.every((cell) => !existing.includes(cell))) return cells;
+  }
+  return Array.from({ length }, (_, index) => index).filter((cell) => !existing.includes(cell));
+}
+
+function normalizeBattleshipBoard(board) {
+  const next = board && typeof board === "object" && !Array.isArray(board) ? board : createBattleshipBoard();
+  return {
+    size: 5,
+    ships: {
+      x: normalizeBattleshipCells(next.ships?.x),
+      o: normalizeBattleshipCells(next.ships?.o)
+    },
+    shots: {
+      x: normalizeBattleshipCells(next.shots?.x),
+      o: normalizeBattleshipCells(next.shots?.o)
+    }
+  };
+}
+
+function normalizeBattleshipCells(cells) {
+  return Array.isArray(cells)
+    ? cells.filter((cell) => Number.isInteger(cell) && cell >= 0 && cell < 25)
+    : [];
+}
+
+function countBattleshipFleetLeft(board, mark) {
+  const enemyMark = mark === "x" ? "o" : "x";
+  const hits = board.shots[enemyMark] || [];
+  return (board.ships[mark] || []).filter((cell) => !hits.includes(cell)).length;
 }
 
 async function markRemoteRead(id) {
@@ -1010,6 +1147,9 @@ els.attachTicTacToe.addEventListener("click", () => {
 });
 els.attachConnectFour.addEventListener("click", () => {
   selectGameAttachment("connect_four");
+});
+els.attachBattleship.addEventListener("click", () => {
+  selectGameAttachment("battleship");
 });
 els.attachWordChain.addEventListener("click", () => {
   selectGameAttachment("word_chain");
