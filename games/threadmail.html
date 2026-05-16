@@ -17,6 +17,7 @@
           <p class="subtitle">Sort live conversations, write replies, and keep the inbox clear from one compact command center.</p>
         </div>
         <div class="threadmail-actions">
+          <button class="play-button play-button--ghost" type="button" id="keyboardButton">Keyboard</button>
           <button class="play-button play-button--ghost" type="button" id="refreshButton">Refresh</button>
           <button class="play-button" type="button" id="composeButton">Compose</button>
         </div>
@@ -25,7 +26,7 @@
       <section class="identity-panel" aria-label="Threadmail identity">
         <label>
           <span>Your Handle</span>
-          <input id="identityHandle" type="text" placeholder="example: ari">
+          <input id="identityHandle" type="text" placeholder="example: ari" autocomplete="off" inputmode="text" data-touch-input>
         </label>
         <button class="play-button play-button--ghost" type="button" id="saveIdentity">Save Handle</button>
         <p id="syncStatus">Choose a handle to send and receive messages.</p>
@@ -54,7 +55,7 @@
         <aside class="threadmail-sidebar" aria-label="Mailbox controls">
           <label class="threadmail-search">
             <span>Search</span>
-            <input id="mailSearch" type="search" placeholder="Find people, subjects, tags...">
+            <input id="mailSearch" type="search" placeholder="Find people, subjects, tags..." data-touch-input>
           </label>
           <div class="threadmail-filter" role="tablist" aria-label="Mailbox filters">
             <button class="mail-filter is-active" type="button" data-filter="inbox">Inbox</button>
@@ -116,21 +117,84 @@
           </div>
           <label>
             <span>To Handle</span>
-            <input id="composeTo" type="text" required>
+            <input id="composeTo" type="text" required autocomplete="off" inputmode="text" data-touch-input>
           </label>
           <label>
             <span>Subject</span>
-            <input id="composeSubject" type="text" required>
+            <input id="composeSubject" type="text" required data-touch-input>
           </label>
           <label>
             <span>Message</span>
-            <textarea id="composeBody" rows="7" required></textarea>
+            <textarea id="composeBody" rows="7" required data-touch-input></textarea>
           </label>
           <div class="compose-actions">
             <button class="play-button play-button--ghost" type="button" id="saveDraft">Save Draft</button>
             <button class="play-button" type="submit">Send</button>
           </div>
         </form>
+      </section>
+
+      <section class="touch-keyboard" id="touchKeyboard" aria-label="Touch keyboard" hidden>
+        <div class="touch-keyboard__bar">
+          <span id="touchKeyboardTarget">Typing</span>
+          <button type="button" class="touch-keyboard__hide" id="hideTouchKeyboard">Hide</button>
+        </div>
+        <div class="touch-keyboard__row">
+          <button type="button" data-key="1">1</button>
+          <button type="button" data-key="2">2</button>
+          <button type="button" data-key="3">3</button>
+          <button type="button" data-key="4">4</button>
+          <button type="button" data-key="5">5</button>
+          <button type="button" data-key="6">6</button>
+          <button type="button" data-key="7">7</button>
+          <button type="button" data-key="8">8</button>
+          <button type="button" data-key="9">9</button>
+          <button type="button" data-key="0">0</button>
+        </div>
+        <div class="touch-keyboard__row">
+          <button type="button" data-key="q">q</button>
+          <button type="button" data-key="w">w</button>
+          <button type="button" data-key="e">e</button>
+          <button type="button" data-key="r">r</button>
+          <button type="button" data-key="t">t</button>
+          <button type="button" data-key="y">y</button>
+          <button type="button" data-key="u">u</button>
+          <button type="button" data-key="i">i</button>
+          <button type="button" data-key="o">o</button>
+          <button type="button" data-key="p">p</button>
+        </div>
+        <div class="touch-keyboard__row touch-keyboard__row--offset">
+          <button type="button" data-key="a">a</button>
+          <button type="button" data-key="s">s</button>
+          <button type="button" data-key="d">d</button>
+          <button type="button" data-key="f">f</button>
+          <button type="button" data-key="g">g</button>
+          <button type="button" data-key="h">h</button>
+          <button type="button" data-key="j">j</button>
+          <button type="button" data-key="k">k</button>
+          <button type="button" data-key="l">l</button>
+        </div>
+        <div class="touch-keyboard__row">
+          <button type="button" data-action="shift">Shift</button>
+          <button type="button" data-key="z">z</button>
+          <button type="button" data-key="x">x</button>
+          <button type="button" data-key="c">c</button>
+          <button type="button" data-key="v">v</button>
+          <button type="button" data-key="b">b</button>
+          <button type="button" data-key="n">n</button>
+          <button type="button" data-key="m">m</button>
+          <button type="button" data-action="backspace">Back</button>
+        </div>
+        <div class="touch-keyboard__row">
+          <button type="button" data-key="_">_</button>
+          <button type="button" data-key="-">-</button>
+          <button type="button" data-key=".">.</button>
+          <button type="button" data-key=",">,</button>
+          <button type="button" data-key="?">?</button>
+          <button type="button" data-key="!">!</button>
+          <button type="button" data-action="space" class="touch-keyboard__space">Space</button>
+          <button type="button" data-action="enter">Enter</button>
+        </div>
       </section>
     </section>
   </main>

@@ -2,6 +2,10 @@
   align-items: start;
 }
 
+body.keyboard-open {
+  padding-bottom: 292px;
+}
+
 .threadmail-frame {
   width: min(100%, 1180px);
 }
@@ -358,6 +362,10 @@ button:disabled {
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
 }
 
+body.keyboard-open .compose-panel {
+  bottom: 300px;
+}
+
 .compose-panel form {
   display: grid;
   gap: 12px;
@@ -368,6 +376,82 @@ button:disabled {
   align-items: center;
   justify-content: space-between;
   gap: 10px;
+}
+
+.touch-keyboard {
+  position: fixed;
+  left: 50%;
+  bottom: 12px;
+  z-index: 8;
+  width: min(96vw, 720px);
+  padding: 10px;
+  border: 1px solid rgba(125, 227, 255, 0.2);
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at top, rgba(125, 227, 255, 0.1), transparent 30%),
+    linear-gradient(180deg, rgba(10, 24, 36, 0.97), rgba(3, 8, 14, 0.98));
+  box-shadow: 0 20px 70px rgba(0, 0, 0, 0.62);
+  transform: translateX(-50%);
+}
+
+.touch-keyboard__bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.touch-keyboard__bar span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.touch-keyboard__hide,
+.touch-keyboard button {
+  border: 1px solid rgba(125, 227, 255, 0.16);
+  border-radius: 10px;
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.06);
+  font: inherit;
+  cursor: pointer;
+}
+
+.touch-keyboard__hide {
+  padding: 7px 10px;
+}
+
+.touch-keyboard__row {
+  display: grid;
+  grid-template-columns: repeat(10, minmax(0, 1fr));
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.touch-keyboard__row--offset {
+  padding: 0 5%;
+  grid-template-columns: repeat(9, minmax(0, 1fr));
+}
+
+.touch-keyboard__row button {
+  min-height: 38px;
+  padding: 8px 4px;
+  user-select: none;
+  touch-action: manipulation;
+}
+
+.touch-keyboard__row button:active,
+.touch-keyboard__row button.is-active {
+  border-color: rgba(255, 214, 107, 0.54);
+  color: var(--warm);
+  background: rgba(255, 214, 107, 0.1);
+}
+
+.touch-keyboard__space {
+  grid-column: span 3;
 }
 
 @media (max-width: 960px) {
@@ -402,5 +486,24 @@ button:disabled {
   .compose-panel {
     inset: auto 12px 12px;
     width: auto;
+  }
+
+  body.keyboard-open .compose-panel {
+    bottom: 292px;
+  }
+
+  .touch-keyboard {
+    bottom: 8px;
+    padding: 8px;
+  }
+
+  .touch-keyboard__row {
+    gap: 4px;
+  }
+
+  .touch-keyboard__row button {
+    min-height: 34px;
+    padding: 7px 2px;
+    font-size: 0.82rem;
   }
 }

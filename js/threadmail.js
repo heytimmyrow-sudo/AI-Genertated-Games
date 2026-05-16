@@ -15,6 +15,8 @@ let activeQuery = "";
 let activeId = null;
 let replyToId = null;
 let tableReady = false;
+let activeTextField = null;
+let touchShift = false;
 
 const els = {
   inboxCount: document.getElementById("inboxCount"),
@@ -36,6 +38,7 @@ const els = {
   unreadButton: document.getElementById("unreadButton"),
   deleteButton: document.getElementById("deleteButton"),
   replyButton: document.getElementById("replyButton"),
+  keyboardButton: document.getElementById("keyboardButton"),
   composeButton: document.getElementById("composeButton"),
   refreshButton: document.getElementById("refreshButton"),
   composePanel: document.getElementById("composePanel"),
@@ -49,7 +52,11 @@ const els = {
   mailSearch: document.getElementById("mailSearch"),
   identityHandle: document.getElementById("identityHandle"),
   saveIdentity: document.getElementById("saveIdentity"),
-  syncStatus: document.getElementById("syncStatus")
+  syncStatus: document.getElementById("syncStatus"),
+  touchKeyboard: document.getElementById("touchKeyboard"),
+  touchKeyboardTarget: document.getElementById("touchKeyboardTarget"),
+  hideTouchKeyboard: document.getElementById("hideTouchKeyboard"),
+  touchKeys: document.querySelectorAll("#touchKeyboard button")
 };
 
 els.identityHandle.value = identity.handle;
@@ -298,6 +305,89 @@ function closeComposePanel() {
   replyToId = null;
 }
 
+function showTouchKeyboard(field) {
+  activeTextField = field;
+  els.touchKeyboard.hidden = false;
+  document.body.classList.add("keyboard-open");
+  els.touchKeyboardTarget.textContent = getFieldLabel(field);
+}
+
+function hideTouchKeyboard() {
+  els.touchKeyboard.hidden = true;
+  document.body.classList.remove("keyboard-open");
+  activeTextField = null;
+}
+
+function getFieldLabel(field) {
+  const label = field.closest("label")?.querySelector("span")?.textContent;
+  return label ? `Typing: ${label}` : "Typing";
+}
+
+function syncTouchKeyboardCase() {
+  els.touchKeys.forEach((button) => {
+    const key = button.dataset.key;
+    if (!key || key.length !== 1 || !/[a-z]/.test(key)) return;
+    button.textContent = touchShift ? key.toUpperCase() : key;
+    button.classList.toggle("is-active", touchShift);
+  });
+}
+
+function insertTouchText(text) {
+  if (!activeTextField) return;
+  const start = activeTextField.selectionStart ?? activeTextField.value.length;
+  const end = activeTextField.selectionEnd ?? activeTextField.value.length;
+  const nextValue = activeTextField.value.slice(0, start) + text + activeTextField.value.slice(end);
+  activeTextField.value = nextValue;
+  const nextCursor = start + text.length;
+  activeTextField.focus({ preventScroll: true });
+  activeTextField.setSelectionRange(nextCursor, nextCursor);
+  activeTextField.dispatchEvent(new Event("input", { bubbles: true }));
+}
+
+function backspaceTouchText() {
+  if (!activeTextField) return;
+  const start = activeTextField.selectionStart ?? activeTextField.value.length;
+  const end = activeTextField.selectionEnd ?? activeTextField.value.length;
+  if (start === 0 && end === 0) return;
+  const deleteFrom = start === end ? Math.max(0, start - 1) : start;
+  activeTextField.value = activeTextField.value.slice(0, deleteFrom) + activeTextField.value.slice(end);
+  activeTextField.focus({ preventScroll: true });
+  activeTextField.setSelectionRange(deleteFrom, deleteFrom);
+  activeTextField.dispatchEvent(new Event("input", { bubbles: true }));
+}
+
+function pressTouchKey(button) {
+  const action = button.dataset.action;
+  if (action === "shift") {
+    touchShift = !touchShift;
+    syncTouchKeyboardCase();
+    return;
+  }
+  if (action === "backspace") {
+    backspaceTouchText();
+    return;
+  }
+  if (action === "space") {
+    insertTouchText(" ");
+    return;
+  }
+  if (action === "enter") {
+    if (activeTextField?.tagName === "TEXTAREA") {
+      insertTouchText("\n");
+    } else {
+      activeTextField?.blur();
+    }
+    return;
+  }
+
+  const key = button.dataset.key || "";
+  insertTouchText(touchShift && /[a-z]/.test(key) ? key.toUpperCase() : key);
+  if (touchShift && /[a-z]/.test(key)) {
+    touchShift = false;
+    syncTouchKeyboardCase();
+  }
+}
+
 async function sendMessage() {
   const sender = identity.handle;
   const recipient = normalizeHandle(els.composeTo.value);
@@ -475,6 +565,28 @@ els.saveIdentity.addEventListener("click", async () => {
 });
 
 els.refreshButton.addEventListener("click", fetchMessages);
+els.keyboardButton.addEventListener("click", () => {
+  const field = activeTextField || els.identityHandle;
+  field.focus({ preventScroll: true });
+  showTouchKeyboard(field);
+});
+
+document.querySelectorAll("[data-touch-input]").forEach((field) => {
+  field.addEventListener("focus", () => showTouchKeyboard(field));
+  field.addEventListener("pointerdown", () => showTouchKeyboard(field));
+});
+
+els.touchKeyboard.addEventListener("pointerdown", (event) => {
+  if (event.target.closest("button")) return;
+  event.preventDefault();
+});
+
+els.touchKeys.forEach((button) => {
+  if (button === els.hideTouchKeyboard) return;
+  button.addEventListener("click", () => pressTouchKey(button));
+});
+
+els.hideTouchKeyboard.addEventListener("click", hideTouchKeyboard);
 
 els.starButton.addEventListener("click", () => {
   const thread = currentThread();
