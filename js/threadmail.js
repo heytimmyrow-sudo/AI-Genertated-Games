@@ -344,7 +344,7 @@ async function sendMessage() {
     activeFilter = "sent";
     render();
   } catch {
-    setStatus("Network error while sending. Try again in a moment.", "error");
+    setStatus("Supabase project URL is not reachable. Check that the project is active and the URL/key in js/threadmail.js are correct.", "error");
   }
 }
 
@@ -395,7 +395,7 @@ async function fetchMessages() {
     setStatus(messageRows.length ? `Synced ${messageRows.length} message${messageRows.length === 1 ? "" : "s"} for ${handle}.` : `Inbox ready for ${handle}.`, "success");
     render();
   } catch {
-    setStatus("Could not reach Supabase right now.", "error");
+    setStatus("Supabase project URL is not reachable. Check that the project is active and the URL/key in js/threadmail.js are correct.", "error");
   }
 }
 
