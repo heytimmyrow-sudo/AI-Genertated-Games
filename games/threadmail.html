@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Threadmail</title>
+  <link rel="stylesheet" href="../style.css">
+  <link rel="stylesheet" href="./threadmail.css">
+</head>
+<body>
+  <main class="shell threadmail-shell">
+    <section class="hud-frame threadmail-frame">
+      <header class="threadmail-header">
+        <div class="title-block">
+          <p class="eyebrow">Messaging App</p>
+          <h1>Threadmail</h1>
+          <p class="subtitle">Sort live conversations, write replies, and keep the inbox clear from one compact command center.</p>
+        </div>
+        <div class="threadmail-actions">
+          <button class="play-button play-button--ghost" type="button" id="seedButton">Reset Demo</button>
+          <button class="play-button" type="button" id="composeButton">Compose</button>
+        </div>
+      </header>
+
+      <section class="threadmail-stats" aria-label="Mailbox stats">
+        <article>
+          <span>Inbox</span>
+          <strong id="inboxCount">0</strong>
+        </article>
+        <article>
+          <span>Unread</span>
+          <strong id="unreadCount">0</strong>
+        </article>
+        <article>
+          <span>Archived</span>
+          <strong id="archivedCount">0</strong>
+        </article>
+      </section>
+
+      <section class="threadmail-layout">
+        <aside class="threadmail-sidebar" aria-label="Mailbox controls">
+          <label class="threadmail-search">
+            <span>Search</span>
+            <input id="mailSearch" type="search" placeholder="Find people, subjects, tags...">
+          </label>
+          <div class="threadmail-filter" role="tablist" aria-label="Mailbox filters">
+            <button class="mail-filter is-active" type="button" data-filter="inbox">Inbox</button>
+            <button class="mail-filter" type="button" data-filter="unread">Unread</button>
+            <button class="mail-filter" type="button" data-filter="starred">Starred</button>
+            <button class="mail-filter" type="button" data-filter="archived">Archived</button>
+          </div>
+          <div class="threadmail-tip">
+            <strong>Shortcuts</strong>
+            <span>N compose</span>
+            <span>R reply</span>
+            <span>A archive</span>
+            <span>Esc menu</span>
+          </div>
+        </aside>
+
+        <section class="threadmail-list" aria-label="Message threads">
+          <div class="threadmail-list__top">
+            <h2 id="listTitle">Inbox</h2>
+            <span id="visibleCount">0 threads</span>
+          </div>
+          <div class="thread-list" id="threadList"></div>
+        </section>
+
+        <section class="threadmail-detail" aria-live="polite">
+          <div class="empty-state" id="emptyState">
+            <h2>No thread selected</h2>
+            <p>Pick a conversation or start a fresh message.</p>
+          </div>
+
+          <article class="message-detail" id="messageDetail" hidden>
+            <div class="message-detail__header">
+              <div>
+                <p class="message-detail__from" id="detailFrom"></p>
+                <h2 id="detailSubject"></h2>
+                <p class="message-detail__meta" id="detailMeta"></p>
+              </div>
+              <button class="star-button" type="button" id="starButton" aria-label="Toggle starred">☆</button>
+            </div>
+            <div class="tag-row" id="detailTags"></div>
+            <div class="message-body" id="detailBody"></div>
+            <div class="message-tools">
+              <button class="play-button play-button--ghost" type="button" id="replyButton">Reply</button>
+              <button class="play-button play-button--ghost" type="button" id="archiveButton">Archive</button>
+              <button class="play-button play-button--ghost" type="button" id="unreadButton">Mark Unread</button>
+              <button class="play-button play-button--ghost danger-action" type="button" id="deleteButton">Delete</button>
+            </div>
+          </article>
+        </section>
+      </section>
+
+      <section class="compose-panel" id="composePanel" aria-label="Compose message" hidden>
+        <form id="composeForm">
+          <div class="compose-head">
+            <h2 id="composeTitle">New Message</h2>
+            <button class="star-button" type="button" id="closeCompose" aria-label="Close compose">x</button>
+          </div>
+          <label>
+            <span>To</span>
+            <input id="composeTo" type="text" required>
+          </label>
+          <label>
+            <span>Subject</span>
+            <input id="composeSubject" type="text" required>
+          </label>
+          <label>
+            <span>Message</span>
+            <textarea id="composeBody" rows="7" required></textarea>
+          </label>
+          <div class="compose-actions">
+            <button class="play-button play-button--ghost" type="button" id="saveDraft">Save Draft</button>
+            <button class="play-button" type="submit">Send</button>
+          </div>
+        </form>
+      </section>
+    </section>
+  </main>
+  <script src="../js/threadmail.js"></script>
+</body>
+</html>
