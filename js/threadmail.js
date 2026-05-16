@@ -688,19 +688,21 @@ async function sendMessage() {
       if (!gameId) return;
     }
 
+    const message = {
+      sender_handle: sender,
+      recipient_handle: recipient,
+      subject,
+      body: replyToId ? `${body}\n\n--- Reply sent from Threadmail. ---` : body
+    };
+    if (gameId) message.game_id = gameId;
+
     const response = await fetch(`${SUPABASE_URL}/rest/v1/${SUPABASE_TABLE}`, {
       method: "POST",
       headers: getSupabaseHeaders({
         "Content-Type": "application/json",
         Prefer: "return=representation"
       }),
-      body: JSON.stringify([{
-        sender_handle: sender,
-        recipient_handle: recipient,
-        subject,
-        body: replyToId ? `${body}\n\n--- Reply sent from Threadmail. ---` : body,
-        game_id: gameId
-      }])
+      body: JSON.stringify([message])
     });
     const payload = await response.json().catch(() => ([]));
     if (!response.ok) {
@@ -783,12 +785,16 @@ async function fetchMessages() {
 
   setStatus(`Checking messages for ${handle}...`);
   try {
-    const query = `or=(sender_handle.eq.${encodeURIComponent(handle)},recipient_handle.eq.${encodeURIComponent(handle)})&select=id,sender_handle,recipient_handle,subject,body,created_at,read_at,game_id&order=created_at.desc&limit=100`;
+    const query = buildMessagesQuery(handle, true);
     const response = await fetch(`${SUPABASE_URL}/rest/v1/${SUPABASE_TABLE}?${query}`, {
       headers: getSupabaseHeaders()
     });
     const payload = await response.json().catch(() => ([]));
     if (!response.ok) {
+      if (isMissingColumnError(payload)) {
+        await fetchMessagesWithoutGames(handle);
+        return;
+      }
       handleSupabaseError(payload, "Could not load messages.");
       return;
     }
@@ -801,6 +807,30 @@ async function fetchMessages() {
   } catch {
     setStatus("Supabase project URL is not reachable. Check that the project is active and the URL/key in js/threadmail.js are correct.", "error");
   }
+}
+
+function buildMessagesQuery(handle, includeGameId) {
+  const columns = ["id", "sender_handle", "recipient_handle", "subject", "body", "created_at", "read_at"];
+  if (includeGameId) columns.push("game_id");
+  return `or=(sender_handle.eq.${encodeURIComponent(handle)},recipient_handle.eq.${encodeURIComponent(handle)})&select=${columns.join(",")}&order=created_at.desc&limit=100`;
+}
+
+async function fetchMessagesWithoutGames(handle) {
+  const query = buildMessagesQuery(handle, false);
+  const response = await fetch(`${SUPABASE_URL}/rest/v1/${SUPABASE_TABLE}?${query}`, {
+    headers: getSupabaseHeaders()
+  });
+  const payload = await response.json().catch(() => ([]));
+  if (!response.ok) {
+    handleSupabaseError(payload, "Could not load messages.");
+    return;
+  }
+  tableReady = true;
+  gameRows = [];
+  messageRows = Array.isArray(payload) ? payload.map((row) => ({ ...row, game_id: null })) : [];
+  setStatus("Messages loaded. Run supabase/threadmail-messages.sql once to turn game attachments back on.", "error");
+  render();
+  maybeNotifyUnreadChange();
 }
 
 async function fetchGames(handle) {
@@ -1084,12 +1114,16 @@ async function deleteThread() {
 
 function handleSupabaseError(payload, fallback) {
   const code = payload && typeof payload === "object" ? payload.code : "";
-  if (code === "PGRST205" || code === "42P01" || code === "42703") {
+  if (code === "PGRST205" || code === "42P01" || isMissingColumnError(payload)) {
     tableReady = false;
     setStatus("Threadmail needs the updated Supabase setup tables. Run supabase/threadmail-messages.sql once.", "error");
   } else {
     setStatus(fallback || "Supabase returned an error.", "error");
   }
+}
+
+function isMissingColumnError(payload) {
+  return payload?.code === "42703";
 }
 
 async function reserveHandle(handle) {
