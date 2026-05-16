@@ -56,6 +56,47 @@
         </article>
       </section>
 
+      <section class="threadmail-upgrades" aria-label="Threadmail tools">
+        <section class="tool-panel game-lobby" aria-label="Game lobby">
+          <div class="tool-panel__top">
+            <h2>Game Lobby</h2>
+            <span id="gameLobbyCount">0 active</span>
+          </div>
+          <div class="compact-list" id="gameLobbyList"></div>
+        </section>
+
+        <section class="tool-panel contacts-panel" aria-label="Contacts">
+          <div class="tool-panel__top">
+            <h2>Contacts</h2>
+            <span id="contactsCount">0 people</span>
+          </div>
+          <div class="compact-list" id="contactList"></div>
+        </section>
+
+        <section class="tool-panel history-panel" aria-label="Game history">
+          <div class="tool-panel__top">
+            <h2>Game History</h2>
+            <span id="gameHistorySummary">0 wins</span>
+          </div>
+          <div class="compact-list" id="gameHistoryList"></div>
+        </section>
+
+        <section class="tool-panel settings-panel" aria-label="Settings">
+          <div class="tool-panel__top">
+            <h2>Settings</h2>
+            <span>Local</span>
+          </div>
+          <label class="setting-toggle">
+            <input type="checkbox" id="soundToggle">
+            <span>Notification sounds</span>
+          </label>
+          <label class="setting-toggle">
+            <input type="checkbox" id="keyboardSoundToggle">
+            <span>Keyboard sounds</span>
+          </label>
+        </section>
+      </section>
+
       <section class="threadmail-layout">
         <aside class="threadmail-sidebar" aria-label="Mailbox controls">
           <label class="threadmail-search">
@@ -103,11 +144,14 @@
               <button class="star-button" type="button" id="starButton" aria-label="Toggle starred">*</button>
             </div>
             <div class="tag-row" id="detailTags"></div>
+            <div class="reaction-row" id="reactionRow" aria-label="Message reactions"></div>
             <div class="message-body" id="detailBody"></div>
             <div class="message-tools">
               <button class="play-button play-button--ghost" type="button" id="replyButton">Reply</button>
               <button class="play-button play-button--ghost" type="button" id="archiveButton">Archive</button>
               <button class="play-button play-button--ghost" type="button" id="unreadButton">Mark Unread</button>
+              <button class="play-button play-button--ghost" type="button" id="muteButton">Mute</button>
+              <button class="play-button play-button--ghost" type="button" id="blockButton">Block</button>
               <button class="play-button play-button--ghost danger-action" type="button" id="deleteButton">Delete</button>
             </div>
           </article>
@@ -124,6 +168,7 @@
             <span>To Handle</span>
             <input id="composeTo" type="text" required autocomplete="off" inputmode="text" data-touch-input>
           </label>
+          <p class="invite-link" id="inviteLink">Invite link appears after you enter a handle.</p>
           <div class="handle-suggestions" id="handleSuggestions" hidden></div>
           <label>
             <span>Subject</span>
@@ -143,6 +188,12 @@
             <button class="play-button play-button--ghost" type="button" id="attachBattleship">Battleship</button>
             <button class="play-button play-button--ghost" type="button" id="attachWordChain">Word Chain</button>
             <button class="play-button play-button--ghost" type="button" id="clearGameAttach">Clear</button>
+          </section>
+          <section class="message-extras" aria-label="Message extras">
+            <span>Extras</span>
+            <button class="play-button play-button--ghost" type="button" id="addPoll">Poll</button>
+            <button class="play-button play-button--ghost" type="button" id="addChecklist">Checklist</button>
+            <button class="play-button play-button--ghost" type="button" id="addChoice">Choose One</button>
           </section>
           <div class="compose-actions">
             <button class="play-button play-button--ghost" type="button" id="saveDraft">Save Draft</button>

@@ -14,11 +14,15 @@ body.keyboard-open {
 .threadmail-actions,
 .threadmail-stats,
 .threadmail-layout,
+.threadmail-upgrades,
 .threadmail-list__top,
 .message-detail__header,
 .message-tools,
 .compose-actions,
-.compose-head {
+.compose-head,
+.tool-panel__top,
+.reaction-row,
+.message-extras {
   display: flex;
 }
 
@@ -135,6 +139,81 @@ body.keyboard-open {
   font-size: 1.7rem;
 }
 
+.threadmail-upgrades {
+  gap: 12px;
+  margin: 0 0 18px;
+  align-items: stretch;
+}
+
+.tool-panel {
+  flex: 1;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid rgba(125, 227, 255, 0.14);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.tool-panel__top {
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.tool-panel h2 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1rem;
+}
+
+.tool-panel__top span,
+.invite-link,
+.setting-toggle,
+.compact-item p {
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.compact-list {
+  display: grid;
+  gap: 8px;
+  max-height: 150px;
+  overflow: auto;
+}
+
+.compact-item {
+  width: 100%;
+  border: 1px solid rgba(125, 227, 255, 0.12);
+  border-radius: 12px;
+  padding: 9px;
+  color: var(--text);
+  background: rgba(2, 7, 12, 0.34);
+  font: inherit;
+  text-align: left;
+}
+
+button.compact-item {
+  cursor: pointer;
+}
+
+.compact-item strong,
+.compact-item span {
+  display: block;
+}
+
+.compact-item p {
+  margin: 4px 0 0;
+  line-height: 1.35;
+}
+
+.setting-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+
 .threadmail-layout {
   gap: 14px;
   align-items: stretch;
@@ -178,6 +257,11 @@ body.keyboard-open {
   letter-spacing: 0.14em;
 }
 
+.invite-link {
+  margin: -4px 0 0;
+  overflow-wrap: anywhere;
+}
+
 .threadmail-search input,
 .compose-panel input,
 .compose-panel textarea {
@@ -214,6 +298,7 @@ body.keyboard-open {
 }
 
 .game-attach-panel,
+.message-extras,
 .game-cardlet {
   display: grid;
   gap: 10px;
@@ -229,12 +314,19 @@ body.keyboard-open {
 }
 
 .game-attach-panel span,
+.message-extras span,
 .game-cardlet__label {
   display: block;
   color: var(--accent-soft);
   font-size: 0.72rem;
   text-transform: uppercase;
   letter-spacing: 0.14em;
+}
+
+.message-extras {
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
 }
 
 .game-attach-panel strong {
@@ -577,6 +669,31 @@ body.keyboard-open {
   margin: 16px 0;
 }
 
+.reaction-row {
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 0 12px;
+}
+
+.reaction-row button {
+  border: 1px solid rgba(125, 227, 255, 0.16);
+  border-radius: 999px;
+  padding: 7px 10px;
+  color: var(--accent-soft);
+  background: rgba(125, 227, 255, 0.08);
+  font: inherit;
+  cursor: pointer;
+}
+
+.reaction-row button.is-active,
+.reaction-row button:hover,
+.reaction-row button:focus-visible,
+button.compact-item:hover,
+button.compact-item:focus-visible {
+  border-color: rgba(255, 214, 107, 0.5);
+  color: var(--warm);
+}
+
 .message-body {
   min-height: 230px;
   padding: 16px;
@@ -708,6 +825,7 @@ body.keyboard-open .compose-panel {
 @media (max-width: 960px) {
   .threadmail-header,
   .threadmail-layout,
+  .threadmail-upgrades,
   .identity-panel {
     display: grid;
     grid-template-columns: 1fr;

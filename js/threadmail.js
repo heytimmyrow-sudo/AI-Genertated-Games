@@ -6,13 +6,17 @@ const GAMES_TABLE = "threadmail_games";
 const IDENTITY_KEY = "codex-threadmail-identity-v1";
 const PREFS_KEY = "codex-threadmail-prefs-v1";
 const DRAFTS_KEY = "codex-threadmail-drafts-v1";
+const AUTOSAVE_KEY = "codex-threadmail-autosave-v1";
+const SETTINGS_KEY = "codex-threadmail-settings-v1";
 const BASE_TITLE = "Threadmail";
+const REACTIONS = ["Nice", "OK", "?", "Haha"];
 
 let identity = loadIdentity();
 let messageRows = [];
 let gameRows = [];
 let drafts = loadDrafts();
 let prefs = loadPrefs();
+let settings = loadSettings();
 let threads = [];
 let activeFilter = "inbox";
 let activeQuery = "";
@@ -31,6 +35,14 @@ const els = {
   archivedCount: document.getElementById("archivedCount"),
   sentCount: document.getElementById("sentCount"),
   visibleCount: document.getElementById("visibleCount"),
+  gameLobbyCount: document.getElementById("gameLobbyCount"),
+  gameLobbyList: document.getElementById("gameLobbyList"),
+  contactsCount: document.getElementById("contactsCount"),
+  contactList: document.getElementById("contactList"),
+  gameHistorySummary: document.getElementById("gameHistorySummary"),
+  gameHistoryList: document.getElementById("gameHistoryList"),
+  soundToggle: document.getElementById("soundToggle"),
+  keyboardSoundToggle: document.getElementById("keyboardSoundToggle"),
   listTitle: document.getElementById("listTitle"),
   threadList: document.getElementById("threadList"),
   emptyState: document.getElementById("emptyState"),
@@ -39,10 +51,13 @@ const els = {
   detailSubject: document.getElementById("detailSubject"),
   detailMeta: document.getElementById("detailMeta"),
   detailTags: document.getElementById("detailTags"),
+  reactionRow: document.getElementById("reactionRow"),
   detailBody: document.getElementById("detailBody"),
   starButton: document.getElementById("starButton"),
   archiveButton: document.getElementById("archiveButton"),
   unreadButton: document.getElementById("unreadButton"),
+  muteButton: document.getElementById("muteButton"),
+  blockButton: document.getElementById("blockButton"),
   deleteButton: document.getElementById("deleteButton"),
   replyButton: document.getElementById("replyButton"),
   keyboardButton: document.getElementById("keyboardButton"),
@@ -52,6 +67,7 @@ const els = {
   composeForm: document.getElementById("composeForm"),
   composeTitle: document.getElementById("composeTitle"),
   composeTo: document.getElementById("composeTo"),
+  inviteLink: document.getElementById("inviteLink"),
   handleSuggestions: document.getElementById("handleSuggestions"),
   composeSubject: document.getElementById("composeSubject"),
   composeBody: document.getElementById("composeBody"),
@@ -61,6 +77,9 @@ const els = {
   attachWordChain: document.getElementById("attachWordChain"),
   clearGameAttach: document.getElementById("clearGameAttach"),
   gameAttachLabel: document.getElementById("gameAttachLabel"),
+  addPoll: document.getElementById("addPoll"),
+  addChecklist: document.getElementById("addChecklist"),
+  addChoice: document.getElementById("addChoice"),
   closeCompose: document.getElementById("closeCompose"),
   saveDraft: document.getElementById("saveDraft"),
   mailSearch: document.getElementById("mailSearch"),
@@ -133,6 +152,22 @@ function saveDrafts() {
   localStorage.setItem(DRAFTS_KEY, JSON.stringify(drafts));
 }
 
+function loadSettings() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(SETTINGS_KEY));
+    return {
+      notificationSounds: saved?.notificationSounds !== false,
+      keyboardSounds: Boolean(saved?.keyboardSounds)
+    };
+  } catch {
+    return { notificationSounds: true, keyboardSounds: false };
+  }
+}
+
+function saveSettings() {
+  localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+}
+
 function getSupabaseHeaders(extra = {}) {
   return {
     apikey: SUPABASE_ANON_KEY,
@@ -147,8 +182,14 @@ function setStatus(message, tone = "neutral") {
 }
 
 function threadPrefs(id) {
-  prefs[id] ||= { starred: false, archived: false };
+  prefs[id] ||= { starred: false, archived: false, reactions: [] };
   return prefs[id];
+}
+
+function handlePrefs(handle) {
+  prefs.handles ||= {};
+  prefs.handles[handle] ||= { muted: false, blocked: false };
+  return prefs.handles[handle];
 }
 
 function rebuildThreads() {
@@ -156,20 +197,24 @@ function rebuildThreads() {
     const pref = threadPrefs(row.id);
     const isSent = row.sender_handle === identity.handle;
     const isReceived = row.recipient_handle === identity.handle;
+    const otherHandle = isSent ? row.recipient_handle : row.sender_handle;
+    const game = row.game_id ? gameRows.find((entry) => entry.id === row.game_id) : null;
     return {
       id: row.id,
       gameId: row.game_id || "",
       from: isSent ? `You to ${row.recipient_handle}` : row.sender_handle,
+      otherHandle,
       subject: row.subject,
       body: row.body,
       time: formatTime(row.created_at),
       unread: isReceived && !row.read_at,
       starred: Boolean(pref.starred),
       archived: Boolean(pref.archived),
+      reactions: Array.isArray(pref.reactions) ? pref.reactions : [],
       sent: isSent,
       received: isReceived,
       draft: false,
-      tags: [isSent ? "sent" : "inbox", row.recipient_handle]
+      tags: [isSent ? "sent" : "inbox", otherHandle, game ? getGameTitle(game.type) : ""].filter(Boolean)
     };
   });
 
@@ -195,6 +240,7 @@ function currentThread() {
 }
 
 function matchesFilter(thread) {
+  if (!thread.draft && handlePrefs(thread.otherHandle || "").blocked) return false;
   if (activeFilter === "inbox") return thread.received && !thread.archived;
   if (activeFilter === "unread") return thread.unread && !thread.archived;
   if (activeFilter === "starred") return thread.starred && !thread.archived;
@@ -205,7 +251,8 @@ function matchesFilter(thread) {
 
 function matchesQuery(thread) {
   if (!activeQuery) return true;
-  const haystack = [thread.from, thread.subject, thread.body, ...thread.tags].join(" ").toLowerCase();
+  const game = gameForThread(thread);
+  const haystack = [thread.from, thread.subject, thread.body, game ? getGameTitle(game.type) : "", ...thread.tags].join(" ").toLowerCase();
   return haystack.includes(activeQuery);
 }
 
@@ -227,7 +274,7 @@ function renderStats() {
 }
 
 function getUnreadCount() {
-  return threads.filter((thread) => thread.unread && !thread.archived).length;
+  return threads.filter((thread) => thread.unread && !thread.archived && !handlePrefs(thread.otherHandle || "").muted).length;
 }
 
 function updateNotifications(unreadCount) {
@@ -251,6 +298,7 @@ function maybeNotifyUnreadChange() {
 }
 
 function playNotificationChime() {
+  if (!settings.notificationSounds) return;
   try {
     const AudioContext = window.AudioContext || window.webkitAudioContext;
     if (!AudioContext) return;
@@ -272,6 +320,27 @@ function playNotificationChime() {
     });
   } catch {
     // The title and in-app badge still handle the notification if audio is blocked.
+  }
+}
+
+function playKeyClick() {
+  if (!settings.keyboardSounds) return;
+  try {
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContext) return;
+    const audio = new AudioContext();
+    const osc = audio.createOscillator();
+    const gain = audio.createGain();
+    osc.type = "triangle";
+    osc.frequency.setValueAtTime(520, audio.currentTime);
+    gain.gain.setValueAtTime(0.025, audio.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.0001, audio.currentTime + 0.06);
+    osc.connect(gain);
+    gain.connect(audio.destination);
+    osc.start();
+    osc.stop(audio.currentTime + 0.06);
+  } catch {
+    // Keyboard input still works if audio is blocked.
   }
 }
 
@@ -324,6 +393,7 @@ function renderDetail() {
   els.detailMeta.textContent = `${thread.time} | ${thread.draft ? "Draft" : thread.archived ? "Archived" : thread.sent ? "Sent" : "Inbox"}`;
   els.detailBody.textContent = thread.body;
   renderGameAttachment(thread);
+  renderReactions(thread);
   els.detailTags.innerHTML = "";
   for (const tag of thread.tags) {
     const item = document.createElement("span");
@@ -333,8 +403,38 @@ function renderDetail() {
   els.starButton.textContent = thread.starred ? "Starred" : "*";
   els.archiveButton.textContent = thread.archived ? "Move To Inbox" : "Archive";
   els.unreadButton.textContent = thread.unread ? "Mark Read" : "Mark Unread";
+  const handleState = handlePrefs(thread.otherHandle || "");
+  els.muteButton.textContent = handleState.muted ? "Unmute" : "Mute";
+  els.blockButton.textContent = handleState.blocked ? "Unblock" : "Block";
   els.unreadButton.disabled = thread.sent || thread.draft;
   els.replyButton.disabled = thread.sent || thread.draft;
+}
+
+function renderReactions(thread) {
+  els.reactionRow.innerHTML = "";
+  if (thread.draft) return;
+  const pref = threadPrefs(thread.id);
+  for (const reaction of REACTIONS) {
+    const active = pref.reactions?.includes(reaction);
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = active ? "is-active" : "";
+    button.textContent = `${reaction}${active ? " 1" : ""}`;
+    button.addEventListener("click", () => toggleReaction(thread.id, reaction));
+    els.reactionRow.append(button);
+  }
+}
+
+function toggleReaction(threadId, reaction) {
+  const pref = threadPrefs(threadId);
+  pref.reactions = Array.isArray(pref.reactions) ? pref.reactions : [];
+  if (pref.reactions.includes(reaction)) {
+    pref.reactions = pref.reactions.filter((item) => item !== reaction);
+  } else {
+    pref.reactions.push(reaction);
+  }
+  savePrefs();
+  render();
 }
 
 function renderFilters() {
@@ -346,10 +446,87 @@ function renderFilters() {
 function render() {
   rebuildThreads();
   renderStats();
+  renderUpgradePanels();
+  renderSettings();
   renderFilters();
   renderList();
   renderDetail();
   renderHandleSuggestions();
+  updateInviteLink();
+}
+
+function renderUpgradePanels() {
+  renderGameLobby();
+  renderContacts();
+  renderGameHistory();
+}
+
+function renderGameLobby() {
+  const activeGames = gameRows.filter((game) => game.status === "active");
+  els.gameLobbyCount.textContent = `${activeGames.length} active`;
+  els.gameLobbyList.innerHTML = activeGames.length ? "" : `<div class="compact-item"><strong>No active games</strong><p>Send one from compose.</p></div>`;
+  for (const game of activeGames.slice(0, 8)) {
+    const other = game.x_handle === identity.handle ? game.o_handle : game.x_handle;
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "compact-item";
+    button.innerHTML = `<strong>${escapeHtml(getGameTitle(game.type))} vs ${escapeHtml(other)}</strong><p>${game.turn_handle === identity.handle ? "Your move" : `${escapeHtml(game.turn_handle)}'s move`}</p>`;
+    button.addEventListener("click", () => openGameThread(game.id));
+    els.gameLobbyList.append(button);
+  }
+}
+
+function renderContacts() {
+  const contacts = getKnownHandles();
+  els.contactsCount.textContent = `${contacts.length} ${contacts.length === 1 ? "person" : "people"}`;
+  els.contactList.innerHTML = contacts.length ? "" : `<div class="compact-item"><strong>No contacts yet</strong><p>Message someone to add them here.</p></div>`;
+  for (const handle of contacts.slice(0, 8)) {
+    const state = handlePrefs(handle);
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "compact-item";
+    button.innerHTML = `<strong>${escapeHtml(handle)}</strong><p>${state.blocked ? "Blocked" : state.muted ? "Muted" : "Tap to compose"}</p>`;
+    button.addEventListener("click", () => {
+      openCompose("new");
+      els.composeTo.value = handle;
+      updateInviteLink();
+      els.composeSubject.focus();
+    });
+    els.contactList.append(button);
+  }
+}
+
+function renderGameHistory() {
+  const finished = gameRows.filter((game) => game.status !== "active");
+  const wins = finished.filter((game) => (
+    (game.status === "x_won" && game.x_handle === identity.handle) ||
+    (game.status === "o_won" && game.o_handle === identity.handle)
+  )).length;
+  els.gameHistorySummary.textContent = `${wins} wins`;
+  els.gameHistoryList.innerHTML = finished.length ? "" : `<div class="compact-item"><strong>No finished games</strong><p>Results will appear here.</p></div>`;
+  for (const game of finished.slice(0, 8)) {
+    const other = game.x_handle === identity.handle ? game.o_handle : game.x_handle;
+    const item = document.createElement("div");
+    item.className = "compact-item";
+    item.innerHTML = `<strong>${escapeHtml(getGameTitle(game.type))} vs ${escapeHtml(other)}</strong><p>${escapeHtml(getGameStatusText(game))}</p>`;
+    els.gameHistoryList.append(item);
+  }
+}
+
+function renderSettings() {
+  els.soundToggle.checked = settings.notificationSounds;
+  els.keyboardSoundToggle.checked = settings.keyboardSounds;
+}
+
+function openGameThread(gameId) {
+  const thread = threads.find((entry) => entry.gameId === gameId);
+  if (!thread) {
+    setStatus("That game has no visible message yet.", "error");
+    return;
+  }
+  activeId = thread.id;
+  activeFilter = thread.sent ? "sent" : "inbox";
+  render();
 }
 
 function gameForThread(thread) {
@@ -462,6 +639,14 @@ function renderBattleship(game, container) {
   const grids = wrapper.querySelector(".battleship__grids");
   grids.append(createBattleshipGrid("Your Fleet", board, mark, false, canMove));
   grids.append(createBattleshipGrid("Enemy Waters", board, mark, true, canMove));
+  if (!(board.shots[enemyMark] || []).length && game.status === "active") {
+    const shuffle = document.createElement("button");
+    shuffle.type = "button";
+    shuffle.className = "play-button play-button--ghost";
+    shuffle.textContent = "Shuffle Fleet";
+    shuffle.addEventListener("click", () => shuffleBattleshipFleet(game, mark));
+    wrapper.append(shuffle);
+  }
   container.append(wrapper);
 }
 
@@ -530,13 +715,15 @@ function formatTime(value) {
 
 function openCompose(mode = "new") {
   const thread = currentThread();
+  const saved = mode === "new" ? loadComposeAutosave() : null;
   replyToId = mode === "reply" ? activeId : null;
   els.composeTitle.textContent = mode === "reply" ? "Reply" : "New Message";
-  els.composeTo.value = mode === "reply" && thread ? thread.from.replace(/^You to\s+/i, "") : "";
-  els.composeSubject.value = mode === "reply" && thread ? `Re: ${thread.subject.replace(/^Re:\s*/i, "")}` : "";
-  els.composeBody.value = "";
+  els.composeTo.value = mode === "reply" && thread ? thread.from.replace(/^You to\s+/i, "") : (saved?.to || getInviteHandle());
+  els.composeSubject.value = mode === "reply" && thread ? `Re: ${thread.subject.replace(/^Re:\s*/i, "")}` : (saved?.subject || "");
+  els.composeBody.value = mode === "reply" ? "" : (saved?.body || "");
   els.composePanel.hidden = false;
   els.composeTo.focus();
+  updateInviteLink();
   renderHandleSuggestions();
 }
 
@@ -546,6 +733,44 @@ function closeComposePanel() {
   els.handleSuggestions.hidden = true;
   pendingGameType = "";
   updateGameAttachLabel();
+  saveComposeAutosave();
+}
+
+function loadComposeAutosave() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(AUTOSAVE_KEY));
+    return saved && typeof saved === "object" ? saved : null;
+  } catch {
+    return null;
+  }
+}
+
+function saveComposeAutosave() {
+  if (els.composePanel.hidden) return;
+  localStorage.setItem(AUTOSAVE_KEY, JSON.stringify({
+    to: els.composeTo.value,
+    subject: els.composeSubject.value,
+    body: els.composeBody.value
+  }));
+}
+
+function clearComposeAutosave() {
+  localStorage.removeItem(AUTOSAVE_KEY);
+}
+
+function getInviteHandle() {
+  return normalizeHandle(new URLSearchParams(window.location.search).get("to") || "");
+}
+
+function updateInviteLink() {
+  const handle = normalizeHandle(els.composeTo.value);
+  if (!handle) {
+    els.inviteLink.textContent = "Invite link appears after you enter a handle.";
+    return;
+  }
+  const url = new URL(window.location.href);
+  url.searchParams.set("to", handle);
+  els.inviteLink.textContent = url.toString();
 }
 
 function getKnownHandles() {
@@ -573,6 +798,8 @@ function renderHandleSuggestions() {
     button.addEventListener("click", () => {
       els.composeTo.value = handle;
       els.handleSuggestions.hidden = true;
+      updateInviteLink();
+      saveComposeAutosave();
       els.composeSubject.focus();
     });
     els.handleSuggestions.append(button);
@@ -608,6 +835,7 @@ function syncTouchKeyboardCase() {
 
 function insertTouchText(text) {
   if (!activeTextField) return;
+  playKeyClick();
   const start = activeTextField.selectionStart ?? activeTextField.value.length;
   const end = activeTextField.selectionEnd ?? activeTextField.value.length;
   const nextValue = activeTextField.value.slice(0, start) + text + activeTextField.value.slice(end);
@@ -620,6 +848,7 @@ function insertTouchText(text) {
 
 function backspaceTouchText() {
   if (!activeTextField) return;
+  playKeyClick();
   const start = activeTextField.selectionStart ?? activeTextField.value.length;
   const end = activeTextField.selectionEnd ?? activeTextField.value.length;
   if (start === 0 && end === 0) return;
@@ -678,6 +907,10 @@ async function sendMessage() {
     els.composeTo.focus();
     return;
   }
+  if (handlePrefs(recipient).blocked) {
+    setStatus("Unblock that handle before sending.", "error");
+    return;
+  }
   if (!subject || !body) return;
 
   setStatus("Sending message...", "neutral");
@@ -710,6 +943,7 @@ async function sendMessage() {
       return;
     }
     tableReady = true;
+    clearComposeAutosave();
     closeComposePanel();
     setStatus(`Message sent to ${recipient}.`, "success");
     await fetchMessages();
@@ -767,6 +1001,7 @@ function saveDraft() {
   };
   drafts.unshift(draft);
   saveDrafts();
+  clearComposeAutosave();
   closeComposePanel();
   activeId = draft.id;
   activeFilter = "sent";
@@ -906,6 +1141,34 @@ async function playBattleshipMove(board, game, index) {
     ? (mark === "x" ? "x_won" : "o_won")
     : "active";
   await saveGameMove(game, nextBoard, nextStatus, mark);
+}
+
+async function shuffleBattleshipFleet(game, mark) {
+  const board = normalizeBattleshipBoard(game.board);
+  const enemyMark = mark === "x" ? "o" : "x";
+  if ((board.shots[enemyMark] || []).length) {
+    setStatus("Fleet is locked after your opponent fires.", "error");
+    return;
+  }
+  board.ships[mark] = createBattleshipFleet();
+  const response = await fetch(`${SUPABASE_URL}/rest/v1/${GAMES_TABLE}?id=eq.${encodeURIComponent(game.id)}`, {
+    method: "PATCH",
+    headers: getSupabaseHeaders({
+      "Content-Type": "application/json",
+      Prefer: "return=minimal"
+    }),
+    body: JSON.stringify({
+      board,
+      updated_at: new Date().toISOString()
+    })
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    handleSupabaseError(payload, "Could not shuffle your fleet.");
+    return;
+  }
+  setStatus("Fleet shuffled.", "success");
+  await fetchMessages();
 }
 
 async function saveGameMove(game, board, nextStatus, mark) {
@@ -1175,7 +1438,21 @@ els.mailSearch.addEventListener("input", () => {
   render();
 });
 
-els.composeTo.addEventListener("input", renderHandleSuggestions);
+els.composeTo.addEventListener("input", () => {
+  renderHandleSuggestions();
+  updateInviteLink();
+  saveComposeAutosave();
+});
+els.composeSubject.addEventListener("input", saveComposeAutosave);
+els.composeBody.addEventListener("input", saveComposeAutosave);
+els.soundToggle.addEventListener("change", () => {
+  settings.notificationSounds = els.soundToggle.checked;
+  saveSettings();
+});
+els.keyboardSoundToggle.addEventListener("change", () => {
+  settings.keyboardSounds = els.keyboardSoundToggle.checked;
+  saveSettings();
+});
 els.attachTicTacToe.addEventListener("click", () => {
   selectGameAttachment("tic_tac_toe");
 });
@@ -1192,6 +1469,9 @@ els.clearGameAttach.addEventListener("click", () => {
   pendingGameType = "";
   updateGameAttachLabel();
 });
+els.addPoll.addEventListener("click", () => appendMessageExtra("Poll", ["Option A", "Option B"]));
+els.addChecklist.addEventListener("click", () => appendMessageExtra("Checklist", ["[ ] First item", "[ ] Second item"]));
+els.addChoice.addEventListener("click", () => appendMessageExtra("Choose one", ["A:", "B:"]));
 
 function selectGameAttachment(type) {
   pendingGameType = type;
@@ -1199,10 +1479,18 @@ function selectGameAttachment(type) {
   if (!els.composeSubject.value.trim()) els.composeSubject.value = `${title} challenge`;
   if (!els.composeBody.value.trim()) els.composeBody.value = `I started a ${title} game. Your move after mine.`;
   updateGameAttachLabel();
+  saveComposeAutosave();
 }
 
 function updateGameAttachLabel() {
   els.gameAttachLabel.textContent = pendingGameType ? getGameTitle(pendingGameType) : "None";
+}
+
+function appendMessageExtra(title, lines) {
+  const block = `\n\n${title}\n${lines.join("\n")}`;
+  els.composeBody.value = `${els.composeBody.value}${block}`.trimStart();
+  els.composeBody.focus();
+  saveComposeAutosave();
 }
 
 els.saveIdentity.addEventListener("click", async () => {
@@ -1283,6 +1571,25 @@ els.unreadButton.addEventListener("click", async () => {
   render();
 });
 
+els.muteButton.addEventListener("click", () => {
+  const thread = currentThread();
+  if (!thread?.otherHandle) return;
+  const state = handlePrefs(thread.otherHandle);
+  state.muted = !state.muted;
+  savePrefs();
+  render();
+});
+
+els.blockButton.addEventListener("click", () => {
+  const thread = currentThread();
+  if (!thread?.otherHandle) return;
+  const state = handlePrefs(thread.otherHandle);
+  state.blocked = !state.blocked;
+  savePrefs();
+  activeId = null;
+  render();
+});
+
 els.deleteButton.addEventListener("click", deleteThread);
 els.replyButton.addEventListener("click", () => openCompose("reply"));
 els.composeButton.addEventListener("click", () => openCompose("new"));
@@ -1309,4 +1616,5 @@ document.addEventListener("keydown", (event) => {
 });
 
 render();
+if (getInviteHandle()) openCompose("new");
 fetchMessages();
