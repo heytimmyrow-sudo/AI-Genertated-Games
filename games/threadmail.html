@@ -30,6 +30,7 @@
           <p class="subtitle">Sort live conversations, write replies, and keep the inbox clear from one compact command center.</p>
         </div>
         <div class="threadmail-actions">
+          <button class="play-button play-button--ghost sidebar-toggle" type="button" id="sidebarToggle" aria-expanded="false">Sidebar</button>
           <button class="play-button play-button--ghost" type="button" id="keyboardButton">Keyboard</button>
           <button class="play-button play-button--ghost" type="button" id="refreshButton">Refresh</button>
           <button class="play-button" type="button" id="composeButton">Compose</button>
@@ -49,6 +50,8 @@
         <strong id="notificationCount">0</strong>
         <span id="notificationText">No unread messages.</span>
       </section>
+
+      <button class="sidebar-scrim" type="button" id="sidebarScrim" aria-label="Close sidebar"></button>
 
       <section class="threadmail-layout">
         <aside class="threadmail-sidebar" aria-label="Mailbox controls">

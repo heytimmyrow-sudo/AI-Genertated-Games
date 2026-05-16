@@ -1,4 +1,4 @@
-const THREADMAIL_CACHE = "threadmail-pwa-v1";
+const THREADMAIL_CACHE = "threadmail-pwa-v2";
 const THREADMAIL_ASSETS = [
   "./threadmail.html",
   "./threadmail.css",

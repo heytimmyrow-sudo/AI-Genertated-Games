@@ -28,6 +28,8 @@ let touchShift = false;
 let lastUnreadCount = 0;
 let notificationReady = false;
 let pendingGameType = "";
+let touchStartX = 0;
+let touchStartY = 0;
 
 const els = {
   inboxCount: document.getElementById("inboxCount"),
@@ -61,6 +63,8 @@ const els = {
   deleteButton: document.getElementById("deleteButton"),
   replyButton: document.getElementById("replyButton"),
   keyboardButton: document.getElementById("keyboardButton"),
+  sidebarToggle: document.getElementById("sidebarToggle"),
+  sidebarScrim: document.getElementById("sidebarScrim"),
   composeButton: document.getElementById("composeButton"),
   sidebarComposeButton: document.getElementById("sidebarComposeButton"),
   refreshButton: document.getElementById("refreshButton"),
@@ -180,6 +184,11 @@ function getSupabaseHeaders(extra = {}) {
 function setStatus(message, tone = "neutral") {
   els.syncStatus.textContent = message;
   els.syncStatus.dataset.tone = tone;
+}
+
+function setSidebarOpen(open) {
+  document.body.classList.toggle("sidebar-open", open);
+  els.sidebarToggle.setAttribute("aria-expanded", String(open));
 }
 
 function threadPrefs(id) {
@@ -492,6 +501,7 @@ function renderContacts() {
       els.composeTo.value = handle;
       updateInviteLink();
       els.composeSubject.focus();
+      setSidebarOpen(false);
     });
     els.contactList.append(button);
   }
@@ -527,6 +537,7 @@ function openGameThread(gameId) {
   }
   activeId = thread.id;
   activeFilter = thread.sent ? "sent" : "inbox";
+  setSidebarOpen(false);
   render();
 }
 
@@ -1430,6 +1441,7 @@ async function reserveHandle(handle) {
 document.querySelectorAll("[data-filter]").forEach((button) => {
   button.addEventListener("click", () => {
     activeFilter = button.dataset.filter;
+    setSidebarOpen(false);
     render();
   });
 });
@@ -1594,7 +1606,14 @@ els.blockButton.addEventListener("click", () => {
 els.deleteButton.addEventListener("click", deleteThread);
 els.replyButton.addEventListener("click", () => openCompose("reply"));
 els.composeButton.addEventListener("click", () => openCompose("new"));
-els.sidebarComposeButton.addEventListener("click", () => openCompose("new"));
+els.sidebarComposeButton.addEventListener("click", () => {
+  openCompose("new");
+  setSidebarOpen(false);
+});
+els.sidebarToggle.addEventListener("click", () => {
+  setSidebarOpen(!document.body.classList.contains("sidebar-open"));
+});
+els.sidebarScrim.addEventListener("click", () => setSidebarOpen(false));
 els.closeCompose.addEventListener("click", closeComposePanel);
 els.saveDraft.addEventListener("click", saveDraft);
 els.composeForm.addEventListener("submit", (event) => {
@@ -1616,6 +1635,21 @@ document.addEventListener("keydown", (event) => {
     window.parent.postMessage({ type: "codex-menu-exit" }, window.location.origin);
   }
 });
+
+document.addEventListener("touchstart", (event) => {
+  const touch = event.touches[0];
+  touchStartX = touch.clientX;
+  touchStartY = touch.clientY;
+}, { passive: true });
+
+document.addEventListener("touchend", (event) => {
+  const touch = event.changedTouches[0];
+  const deltaX = touch.clientX - touchStartX;
+  const deltaY = Math.abs(touch.clientY - touchStartY);
+  if (deltaY > 70 || Math.abs(deltaX) < 80) return;
+  if (touchStartX < 36 && deltaX > 0) setSidebarOpen(true);
+  if (deltaX < 0 && document.body.classList.contains("sidebar-open")) setSidebarOpen(false);
+}, { passive: true });
 
 render();
 if (getInviteHandle()) openCompose("new");

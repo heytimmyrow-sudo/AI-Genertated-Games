@@ -45,6 +45,11 @@ body.keyboard-open {
   justify-content: flex-end;
 }
 
+.sidebar-toggle,
+.sidebar-scrim {
+  display: none;
+}
+
 .threadmail-stats {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -850,12 +855,61 @@ body.keyboard-open .compose-panel {
     grid-template-columns: 1fr;
   }
 
+  body.sidebar-open {
+    overflow: hidden;
+  }
+
   .threadmail-actions {
     justify-content: flex-start;
   }
 
+  .sidebar-toggle {
+    display: inline-flex;
+  }
+
+  .sidebar-scrim {
+    position: fixed;
+    inset: 0;
+    z-index: 10;
+    border: 0;
+    padding: 0;
+    background: rgba(0, 0, 0, 0.46);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 160ms ease;
+  }
+
+  body.sidebar-open .sidebar-scrim {
+    display: block;
+    opacity: 1;
+    pointer-events: auto;
+  }
+
   .threadmail-sidebar {
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 11;
+    width: min(86vw, 340px);
     max-height: none;
+    border-radius: 0 18px 18px 0;
+    padding: max(16px, env(safe-area-inset-top)) 14px max(16px, env(safe-area-inset-bottom));
+    transform: translateX(-105%);
+    transition: transform 180ms ease;
+    box-shadow: 24px 0 70px rgba(0, 0, 0, 0.55);
+  }
+
+  body.sidebar-open .threadmail-sidebar {
+    transform: translateX(0);
+  }
+
+  .threadmail-list {
+    height: auto;
+  }
+
+  .thread-list {
+    max-height: 420px;
   }
 
   .threadmail-detail {
