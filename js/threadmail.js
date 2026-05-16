@@ -4,6 +4,7 @@ const SUPABASE_TABLE = "threadmail_messages";
 const IDENTITY_KEY = "codex-threadmail-identity-v1";
 const PREFS_KEY = "codex-threadmail-prefs-v1";
 const DRAFTS_KEY = "codex-threadmail-drafts-v1";
+const BASE_TITLE = "Threadmail";
 
 let identity = loadIdentity();
 let messageRows = [];
@@ -17,6 +18,8 @@ let replyToId = null;
 let tableReady = false;
 let activeTextField = null;
 let touchShift = false;
+let lastUnreadCount = 0;
+let notificationReady = false;
 
 const els = {
   inboxCount: document.getElementById("inboxCount"),
@@ -53,6 +56,9 @@ const els = {
   identityHandle: document.getElementById("identityHandle"),
   saveIdentity: document.getElementById("saveIdentity"),
   syncStatus: document.getElementById("syncStatus"),
+  notificationStrip: document.getElementById("notificationStrip"),
+  notificationCount: document.getElementById("notificationCount"),
+  notificationText: document.getElementById("notificationText"),
   touchKeyboard: document.getElementById("touchKeyboard"),
   touchKeyboardTarget: document.getElementById("touchKeyboardTarget"),
   hideTouchKeyboard: document.getElementById("hideTouchKeyboard"),
@@ -192,10 +198,61 @@ function filterLabel() {
 }
 
 function renderStats() {
+  const unreadCount = getUnreadCount();
   els.inboxCount.textContent = String(threads.filter((thread) => thread.received && !thread.archived).length);
-  els.unreadCount.textContent = String(threads.filter((thread) => thread.unread && !thread.archived).length);
+  els.unreadCount.textContent = String(unreadCount);
   els.archivedCount.textContent = String(threads.filter((thread) => thread.archived).length);
   els.sentCount.textContent = String(threads.filter((thread) => thread.sent || thread.draft).length);
+  updateNotifications(unreadCount);
+}
+
+function getUnreadCount() {
+  return threads.filter((thread) => thread.unread && !thread.archived).length;
+}
+
+function updateNotifications(unreadCount) {
+  document.title = unreadCount > 0 ? `(${unreadCount}) ${BASE_TITLE}` : BASE_TITLE;
+  els.notificationStrip.hidden = unreadCount === 0;
+  els.notificationCount.textContent = String(unreadCount);
+  els.notificationText.textContent = unreadCount === 1
+    ? "You have 1 unread message."
+    : `You have ${unreadCount} unread messages.`;
+}
+
+function maybeNotifyUnreadChange() {
+  const unreadCount = getUnreadCount();
+  if (notificationReady && unreadCount > lastUnreadCount) {
+    playNotificationChime();
+    setStatus(unreadCount === 1 ? "New message received." : `${unreadCount - lastUnreadCount} new messages received.`, "success");
+  }
+  lastUnreadCount = unreadCount;
+  notificationReady = true;
+  updateNotifications(unreadCount);
+}
+
+function playNotificationChime() {
+  try {
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContext) return;
+    const audio = new AudioContext();
+    const now = audio.currentTime;
+    const gain = audio.createGain();
+    gain.gain.setValueAtTime(0.0001, now);
+    gain.gain.exponentialRampToValueAtTime(0.08, now + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.32);
+    gain.connect(audio.destination);
+
+    [660, 880].forEach((frequency, index) => {
+      const osc = audio.createOscillator();
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(frequency, now + index * 0.09);
+      osc.connect(gain);
+      osc.start(now + index * 0.09);
+      osc.stop(now + 0.24 + index * 0.09);
+    });
+  } catch {
+    // The title and in-app badge still handle the notification if audio is blocked.
+  }
 }
 
 function renderList() {
@@ -484,6 +541,7 @@ async function fetchMessages() {
     messageRows = Array.isArray(payload) ? payload : [];
     setStatus(messageRows.length ? `Synced ${messageRows.length} message${messageRows.length === 1 ? "" : "s"} for ${handle}.` : `Inbox ready for ${handle}.`, "success");
     render();
+    maybeNotifyUnreadChange();
   } catch {
     setStatus("Supabase project URL is not reachable. Check that the project is active and the URL/key in js/threadmail.js are correct.", "error");
   }

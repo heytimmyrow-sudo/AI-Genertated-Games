@@ -84,6 +84,33 @@ body.keyboard-open {
   color: #ffd9df;
 }
 
+.notification-strip {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0 0 18px;
+  padding: 12px 14px;
+  border: 1px solid rgba(255, 214, 107, 0.3);
+  border-radius: 16px;
+  color: var(--accent-soft);
+  background: rgba(255, 214, 107, 0.08);
+}
+
+.notification-strip strong {
+  display: grid;
+  min-width: 34px;
+  height: 34px;
+  place-items: center;
+  border-radius: 999px;
+  color: #111827;
+  background: var(--warm);
+  font-family: var(--font-display);
+}
+
+.notification-strip span {
+  color: var(--text);
+}
+
 .threadmail-stats article {
   flex: 1;
   min-width: 120px;
