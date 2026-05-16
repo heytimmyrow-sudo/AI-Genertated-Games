@@ -1084,7 +1084,7 @@ async function deleteThread() {
 
 function handleSupabaseError(payload, fallback) {
   const code = payload && typeof payload === "object" ? payload.code : "";
-  if (code === "PGRST205" || code === "42P01") {
+  if (code === "PGRST205" || code === "42P01" || code === "42703") {
     tableReady = false;
     setStatus("Threadmail needs the updated Supabase setup tables. Run supabase/threadmail-messages.sql once.", "error");
   } else {
