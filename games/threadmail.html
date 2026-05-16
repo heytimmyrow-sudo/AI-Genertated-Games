@@ -50,68 +50,29 @@
         <span id="notificationText">No unread messages.</span>
       </section>
 
-      <section class="threadmail-stats" aria-label="Mailbox stats">
-        <article>
-          <span>Inbox</span>
-          <strong id="inboxCount">0</strong>
-        </article>
-        <article>
-          <span>Unread</span>
-          <strong id="unreadCount">0</strong>
-        </article>
-        <article>
-          <span>Archived</span>
-          <strong id="archivedCount">0</strong>
-        </article>
-        <article>
-          <span>Sent</span>
-          <strong id="sentCount">0</strong>
-        </article>
-      </section>
-
-      <section class="threadmail-upgrades" aria-label="Threadmail tools">
-        <section class="tool-panel game-lobby" aria-label="Game lobby">
-          <div class="tool-panel__top">
-            <h2>Game Lobby</h2>
-            <span id="gameLobbyCount">0 active</span>
-          </div>
-          <div class="compact-list" id="gameLobbyList"></div>
-        </section>
-
-        <section class="tool-panel contacts-panel" aria-label="Contacts">
-          <div class="tool-panel__top">
-            <h2>Contacts</h2>
-            <span id="contactsCount">0 people</span>
-          </div>
-          <div class="compact-list" id="contactList"></div>
-        </section>
-
-        <section class="tool-panel history-panel" aria-label="Game history">
-          <div class="tool-panel__top">
-            <h2>Game History</h2>
-            <span id="gameHistorySummary">0 wins</span>
-          </div>
-          <div class="compact-list" id="gameHistoryList"></div>
-        </section>
-
-        <section class="tool-panel settings-panel" aria-label="Settings">
-          <div class="tool-panel__top">
-            <h2>Settings</h2>
-            <span>Local</span>
-          </div>
-          <label class="setting-toggle">
-            <input type="checkbox" id="soundToggle">
-            <span>Notification sounds</span>
-          </label>
-          <label class="setting-toggle">
-            <input type="checkbox" id="keyboardSoundToggle">
-            <span>Keyboard sounds</span>
-          </label>
-        </section>
-      </section>
-
       <section class="threadmail-layout">
         <aside class="threadmail-sidebar" aria-label="Mailbox controls">
+          <button class="play-button sidebar-compose" type="button" id="sidebarComposeButton">Compose</button>
+
+          <section class="threadmail-stats" aria-label="Mailbox stats">
+            <article>
+              <span>Inbox</span>
+              <strong id="inboxCount">0</strong>
+            </article>
+            <article>
+              <span>Unread</span>
+              <strong id="unreadCount">0</strong>
+            </article>
+            <article>
+              <span>Archived</span>
+              <strong id="archivedCount">0</strong>
+            </article>
+            <article>
+              <span>Sent</span>
+              <strong id="sentCount">0</strong>
+            </article>
+          </section>
+
           <label class="threadmail-search">
             <span>Search</span>
             <input id="mailSearch" type="search" placeholder="Find people, subjects, tags..." data-touch-input>
@@ -131,6 +92,47 @@
             <span>F refresh</span>
             <span>Esc menu</span>
           </div>
+
+          <section class="threadmail-upgrades" aria-label="Threadmail tools">
+            <section class="tool-panel game-lobby" aria-label="Game lobby">
+              <div class="tool-panel__top">
+                <h2>Game Lobby</h2>
+                <span id="gameLobbyCount">0 active</span>
+              </div>
+              <div class="compact-list" id="gameLobbyList"></div>
+            </section>
+
+            <section class="tool-panel contacts-panel" aria-label="Contacts">
+              <div class="tool-panel__top">
+                <h2>Contacts</h2>
+                <span id="contactsCount">0 people</span>
+              </div>
+              <div class="compact-list" id="contactList"></div>
+            </section>
+
+            <section class="tool-panel history-panel" aria-label="Game history">
+              <div class="tool-panel__top">
+                <h2>Game History</h2>
+                <span id="gameHistorySummary">0 wins</span>
+              </div>
+              <div class="compact-list" id="gameHistoryList"></div>
+            </section>
+
+            <section class="tool-panel settings-panel" aria-label="Settings">
+              <div class="tool-panel__top">
+                <h2>Settings</h2>
+                <span>Local</span>
+              </div>
+              <label class="setting-toggle">
+                <input type="checkbox" id="soundToggle">
+                <span>Notification sounds</span>
+              </label>
+              <label class="setting-toggle">
+                <input type="checkbox" id="keyboardSoundToggle">
+                <span>Keyboard sounds</span>
+              </label>
+            </section>
+          </section>
         </aside>
 
         <section class="threadmail-list" aria-label="Message threads">

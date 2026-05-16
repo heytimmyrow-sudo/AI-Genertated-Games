@@ -62,6 +62,7 @@ const els = {
   replyButton: document.getElementById("replyButton"),
   keyboardButton: document.getElementById("keyboardButton"),
   composeButton: document.getElementById("composeButton"),
+  sidebarComposeButton: document.getElementById("sidebarComposeButton"),
   refreshButton: document.getElementById("refreshButton"),
   composePanel: document.getElementById("composePanel"),
   composeForm: document.getElementById("composeForm"),
@@ -1593,6 +1594,7 @@ els.blockButton.addEventListener("click", () => {
 els.deleteButton.addEventListener("click", deleteThread);
 els.replyButton.addEventListener("click", () => openCompose("reply"));
 els.composeButton.addEventListener("click", () => openCompose("new"));
+els.sidebarComposeButton.addEventListener("click", () => openCompose("new"));
 els.closeCompose.addEventListener("click", closeComposePanel);
 els.saveDraft.addEventListener("click", saveDraft);
 els.composeForm.addEventListener("submit", (event) => {

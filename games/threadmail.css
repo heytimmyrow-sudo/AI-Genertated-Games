@@ -14,7 +14,7 @@ body.keyboard-open {
 }
 
 .threadmail-frame {
-  width: min(100%, 1180px);
+  width: min(100%, 1320px);
 }
 
 .threadmail-header,
@@ -46,8 +46,10 @@ body.keyboard-open {
 }
 
 .threadmail-stats {
-  gap: 12px;
-  margin: 12px 0 18px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
 }
 
 .identity-panel {
@@ -123,11 +125,10 @@ body.keyboard-open {
 }
 
 .threadmail-stats article {
-  flex: 1;
   min-width: 120px;
-  padding: 14px;
+  padding: 10px;
   border: 1px solid rgba(125, 227, 255, 0.16);
-  border-radius: 16px;
+  border-radius: 12px;
   background: rgba(255, 255, 255, 0.04);
 }
 
@@ -141,15 +142,15 @@ body.keyboard-open {
 
 .threadmail-stats strong {
   display: block;
-  margin-top: 5px;
+  margin-top: 3px;
   font-family: var(--font-display);
-  font-size: 1.7rem;
+  font-size: 1.2rem;
 }
 
 .threadmail-upgrades {
-  gap: 12px;
-  margin: 0 0 18px;
-  align-items: stretch;
+  display: grid;
+  gap: 10px;
+  margin: 0;
 }
 
 .tool-panel {
@@ -185,7 +186,7 @@ body.keyboard-open {
 .compact-list {
   display: grid;
   gap: 8px;
-  max-height: 150px;
+  max-height: 96px;
   overflow: auto;
 }
 
@@ -222,9 +223,11 @@ button.compact-item {
 }
 
 .threadmail-layout {
-  gap: 14px;
-  align-items: stretch;
-  min-height: 560px;
+  display: grid;
+  grid-template-columns: 280px minmax(300px, 380px) minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+  min-height: 650px;
 }
 
 .threadmail-sidebar,
@@ -237,21 +240,31 @@ button.compact-item {
 }
 
 .threadmail-sidebar {
-  width: 220px;
+  width: auto;
   padding: 14px;
+  display: grid;
+  align-content: start;
+  gap: 12px;
+  overflow: auto;
+  max-height: 720px;
 }
 
 .threadmail-list {
-  flex: 0 0 360px;
   padding: 14px;
   overflow: hidden;
+  height: 720px;
 }
 
 .threadmail-detail {
-  flex: 1;
   min-width: 0;
   padding: 18px;
   position: relative;
+  min-height: 720px;
+}
+
+.sidebar-compose {
+  width: 100%;
+  justify-content: center;
 }
 
 .threadmail-search span,
@@ -515,8 +528,8 @@ button.compact-item {
 
 .threadmail-filter {
   display: grid;
-  gap: 8px;
-  margin: 14px 0;
+  gap: 6px;
+  margin: 0;
 }
 
 .mail-filter {
@@ -542,8 +555,8 @@ button.compact-item {
 .threadmail-tip {
   display: grid;
   gap: 6px;
-  padding: 12px;
-  border-radius: 14px;
+  padding: 10px;
+  border-radius: 12px;
   color: var(--muted);
   background: rgba(255, 255, 255, 0.04);
   font-size: 0.82rem;
@@ -576,7 +589,7 @@ button.compact-item {
 .thread-list {
   display: grid;
   gap: 10px;
-  max-height: 500px;
+  max-height: 640px;
   overflow: auto;
   padding-right: 4px;
 }
@@ -832,7 +845,6 @@ body.keyboard-open .compose-panel {
 @media (max-width: 960px) {
   .threadmail-header,
   .threadmail-layout,
-  .threadmail-upgrades,
   .identity-panel {
     display: grid;
     grid-template-columns: 1fr;
@@ -842,13 +854,8 @@ body.keyboard-open .compose-panel {
     justify-content: flex-start;
   }
 
-  .threadmail-sidebar,
-  .threadmail-list {
-    width: 100%;
-  }
-
-  .threadmail-list {
-    flex-basis: auto;
+  .threadmail-sidebar {
+    max-height: none;
   }
 
   .threadmail-detail {
