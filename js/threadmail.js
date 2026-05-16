@@ -1,15 +1,26 @@
-const STORAGE_KEY = "codex-threadmail-mailbox-v2";
+const SUPABASE_URL = "https://jbljqusdpifdyewlenun.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpibGpxdXNkcGlmZHlld2xlbnVuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU2ODY5NTUsImV4cCI6MjA5MTI2Mjk1NX0.jwpLv3AtXP0PGdoOSSkhruDAY8vdJzcxklu-PauTjSE";
+const SUPABASE_TABLE = "threadmail_messages";
+const IDENTITY_KEY = "codex-threadmail-identity-v1";
+const PREFS_KEY = "codex-threadmail-prefs-v1";
+const DRAFTS_KEY = "codex-threadmail-drafts-v1";
 
-let threads = loadThreads();
+let identity = loadIdentity();
+let messageRows = [];
+let drafts = loadDrafts();
+let prefs = loadPrefs();
+let threads = [];
 let activeFilter = "inbox";
 let activeQuery = "";
-let activeId = threads[0]?.id || null;
+let activeId = null;
 let replyToId = null;
+let tableReady = false;
 
 const els = {
   inboxCount: document.getElementById("inboxCount"),
   unreadCount: document.getElementById("unreadCount"),
   archivedCount: document.getElementById("archivedCount"),
+  sentCount: document.getElementById("sentCount"),
   visibleCount: document.getElementById("visibleCount"),
   listTitle: document.getElementById("listTitle"),
   threadList: document.getElementById("threadList"),
@@ -26,6 +37,7 @@ const els = {
   deleteButton: document.getElementById("deleteButton"),
   replyButton: document.getElementById("replyButton"),
   composeButton: document.getElementById("composeButton"),
+  refreshButton: document.getElementById("refreshButton"),
   composePanel: document.getElementById("composePanel"),
   composeForm: document.getElementById("composeForm"),
   composeTitle: document.getElementById("composeTitle"),
@@ -34,20 +46,115 @@ const els = {
   composeBody: document.getElementById("composeBody"),
   closeCompose: document.getElementById("closeCompose"),
   saveDraft: document.getElementById("saveDraft"),
-  mailSearch: document.getElementById("mailSearch")
+  mailSearch: document.getElementById("mailSearch"),
+  identityHandle: document.getElementById("identityHandle"),
+  saveIdentity: document.getElementById("saveIdentity"),
+  syncStatus: document.getElementById("syncStatus")
 };
 
-function loadThreads() {
+els.identityHandle.value = identity.handle;
+
+function normalizeHandle(value) {
+  return value.trim().toLowerCase().replace(/[^a-z0-9_]/g, "").slice(0, 24);
+}
+
+function isValidHandle(value) {
+  return /^[a-z0-9_]{3,24}$/.test(value);
+}
+
+function loadIdentity() {
   try {
-    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
+    const saved = JSON.parse(localStorage.getItem(IDENTITY_KEY));
+    return { handle: normalizeHandle(saved?.handle || "") };
+  } catch {
+    return { handle: "" };
+  }
+}
+
+function saveIdentity() {
+  localStorage.setItem(IDENTITY_KEY, JSON.stringify(identity));
+}
+
+function loadPrefs() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(PREFS_KEY));
+    return saved && typeof saved === "object" ? saved : {};
+  } catch {
+    return {};
+  }
+}
+
+function savePrefs() {
+  localStorage.setItem(PREFS_KEY, JSON.stringify(prefs));
+}
+
+function loadDrafts() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(DRAFTS_KEY));
     return Array.isArray(saved) ? saved : [];
   } catch {
     return [];
   }
 }
 
-function persist() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(threads));
+function saveDrafts() {
+  localStorage.setItem(DRAFTS_KEY, JSON.stringify(drafts));
+}
+
+function getSupabaseHeaders(extra = {}) {
+  return {
+    apikey: SUPABASE_ANON_KEY,
+    Authorization: "Bearer " + SUPABASE_ANON_KEY,
+    ...extra
+  };
+}
+
+function setStatus(message, tone = "neutral") {
+  els.syncStatus.textContent = message;
+  els.syncStatus.dataset.tone = tone;
+}
+
+function threadPrefs(id) {
+  prefs[id] ||= { starred: false, archived: false };
+  return prefs[id];
+}
+
+function rebuildThreads() {
+  const remoteThreads = messageRows.map((row) => {
+    const pref = threadPrefs(row.id);
+    const isSent = row.sender_handle === identity.handle;
+    const isReceived = row.recipient_handle === identity.handle;
+    return {
+      id: row.id,
+      from: isSent ? `You to ${row.recipient_handle}` : row.sender_handle,
+      subject: row.subject,
+      body: row.body,
+      time: formatTime(row.created_at),
+      unread: isReceived && !row.read_at,
+      starred: Boolean(pref.starred),
+      archived: Boolean(pref.archived),
+      sent: isSent,
+      received: isReceived,
+      draft: false,
+      tags: [isSent ? "sent" : "inbox", row.recipient_handle]
+    };
+  });
+
+  const localDrafts = drafts.map((draft) => ({
+    ...draft,
+    unread: false,
+    starred: Boolean(threadPrefs(draft.id).starred),
+    archived: Boolean(threadPrefs(draft.id).archived),
+    sent: false,
+    received: false,
+    draft: true,
+    tags: ["draft"]
+  }));
+
+  threads = [...remoteThreads, ...localDrafts].sort((a, b) => String(b.id).localeCompare(String(a.id)));
+  if (!threads.some((thread) => thread.id === activeId)) {
+    activeId = visibleThreads()[0]?.id || null;
+  }
 }
 
 function currentThread() {
@@ -55,10 +162,11 @@ function currentThread() {
 }
 
 function matchesFilter(thread) {
-  if (activeFilter === "inbox") return !thread.archived;
+  if (activeFilter === "inbox") return thread.received && !thread.archived;
   if (activeFilter === "unread") return thread.unread && !thread.archived;
   if (activeFilter === "starred") return thread.starred && !thread.archived;
   if (activeFilter === "archived") return thread.archived;
+  if (activeFilter === "sent") return thread.sent || thread.draft;
   return true;
 }
 
@@ -77,9 +185,10 @@ function filterLabel() {
 }
 
 function renderStats() {
-  els.inboxCount.textContent = String(threads.filter((thread) => !thread.archived).length);
+  els.inboxCount.textContent = String(threads.filter((thread) => thread.received && !thread.archived).length);
   els.unreadCount.textContent = String(threads.filter((thread) => thread.unread && !thread.archived).length);
   els.archivedCount.textContent = String(threads.filter((thread) => thread.archived).length);
+  els.sentCount.textContent = String(threads.filter((thread) => thread.sent || thread.draft).length);
 }
 
 function renderList() {
@@ -101,18 +210,23 @@ function renderList() {
         <span>${thread.time}</span>
         ${thread.starred ? "<span>Starred</span>" : ""}
         ${thread.unread ? "<span>Unread</span>" : ""}
+        ${thread.draft ? "<span>Draft</span>" : ""}
       </div>
       <h3>${escapeHtml(thread.subject)}</h3>
       <p>${escapeHtml(thread.from)} - ${escapeHtml(thread.body.slice(0, 92))}${thread.body.length > 92 ? "..." : ""}</p>
     `;
-    button.addEventListener("click", () => {
-      activeId = thread.id;
-      thread.unread = false;
-      persist();
-      render();
-    });
+    button.addEventListener("click", () => selectThread(thread.id));
     els.threadList.append(button);
   }
+}
+
+async function selectThread(id) {
+  activeId = id;
+  const thread = currentThread();
+  if (thread?.unread && !thread.draft) {
+    await markRemoteRead(thread.id);
+  }
+  render();
 }
 
 function renderDetail() {
@@ -123,7 +237,7 @@ function renderDetail() {
 
   els.detailFrom.textContent = thread.from;
   els.detailSubject.textContent = thread.subject;
-  els.detailMeta.textContent = `${thread.time} | ${thread.archived ? "Archived" : "Inbox"}`;
+  els.detailMeta.textContent = `${thread.time} | ${thread.draft ? "Draft" : thread.archived ? "Archived" : thread.sent ? "Sent" : "Inbox"}`;
   els.detailBody.textContent = thread.body;
   els.detailTags.innerHTML = "";
   for (const tag of thread.tags) {
@@ -134,6 +248,8 @@ function renderDetail() {
   els.starButton.textContent = thread.starred ? "Starred" : "*";
   els.archiveButton.textContent = thread.archived ? "Move To Inbox" : "Archive";
   els.unreadButton.textContent = thread.unread ? "Mark Read" : "Mark Unread";
+  els.unreadButton.disabled = thread.sent || thread.draft;
+  els.replyButton.disabled = thread.sent || thread.draft;
 }
 
 function renderFilters() {
@@ -143,6 +259,7 @@ function renderFilters() {
 }
 
 function render() {
+  rebuildThreads();
   renderStats();
   renderFilters();
   renderList();
@@ -150,7 +267,7 @@ function render() {
 }
 
 function escapeHtml(value) {
-  return value.replace(/[&<>"']/g, (char) => ({
+  return String(value).replace(/[&<>"']/g, (char) => ({
     "&": "&amp;",
     "<": "&lt;",
     ">": "&gt;",
@@ -159,11 +276,17 @@ function escapeHtml(value) {
   })[char]);
 }
 
+function formatTime(value) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "Just now";
+  return date.toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+}
+
 function openCompose(mode = "new") {
   const thread = currentThread();
   replyToId = mode === "reply" ? activeId : null;
   els.composeTitle.textContent = mode === "reply" ? "Reply" : "New Message";
-  els.composeTo.value = mode === "reply" && thread ? thread.from : "";
+  els.composeTo.value = mode === "reply" && thread ? thread.from.replace(/^You to\s+/i, "") : "";
   els.composeSubject.value = mode === "reply" && thread ? `Re: ${thread.subject.replace(/^Re:\s*/i, "")}` : "";
   els.composeBody.value = "";
   els.composePanel.hidden = false;
@@ -175,30 +298,155 @@ function closeComposePanel() {
   replyToId = null;
 }
 
-function addMessage(isDraft = false) {
+async function sendMessage() {
+  const sender = identity.handle;
+  const recipient = normalizeHandle(els.composeTo.value);
   const subject = els.composeSubject.value.trim();
-  const to = els.composeTo.value.trim();
   const body = els.composeBody.value.trim();
-  if (!subject || !to || !body) return;
 
-  const newThread = {
-    id: `t${Date.now()}`,
-    from: isDraft ? `Draft to ${to}` : `You to ${to}`,
+  if (!isValidHandle(sender)) {
+    setStatus("Save your handle before sending.", "error");
+    els.identityHandle.focus();
+    return;
+  }
+  if (!isValidHandle(recipient)) {
+    setStatus("Use a recipient handle with 3-24 letters, numbers, or underscores.", "error");
+    els.composeTo.focus();
+    return;
+  }
+  if (!subject || !body) return;
+
+  setStatus("Sending message...", "neutral");
+  try {
+    const response = await fetch(`${SUPABASE_URL}/rest/v1/${SUPABASE_TABLE}`, {
+      method: "POST",
+      headers: getSupabaseHeaders({
+        "Content-Type": "application/json",
+        Prefer: "return=representation"
+      }),
+      body: JSON.stringify([{
+        sender_handle: sender,
+        recipient_handle: recipient,
+        subject,
+        body: replyToId ? `${body}\n\n--- Reply sent from Threadmail. ---` : body
+      }])
+    });
+    const payload = await response.json().catch(() => ([]));
+    if (!response.ok) {
+      handleSupabaseError(payload, "Message could not be sent.");
+      return;
+    }
+    tableReady = true;
+    closeComposePanel();
+    setStatus(`Message sent to ${recipient}.`, "success");
+    await fetchMessages();
+    activeId = Array.isArray(payload) ? payload[0]?.id || activeId : activeId;
+    activeFilter = "sent";
+    render();
+  } catch {
+    setStatus("Network error while sending. Try again in a moment.", "error");
+  }
+}
+
+function saveDraft() {
+  const recipient = normalizeHandle(els.composeTo.value);
+  const subject = els.composeSubject.value.trim();
+  const body = els.composeBody.value.trim();
+  if (!recipient || !subject || !body) return;
+  const draft = {
+    id: `draft-${Date.now()}`,
+    from: `Draft to ${recipient}`,
     subject,
-    body: replyToId ? `${body}\n\n--- Original thread updated in Threadmail. ---` : body,
-    time: isDraft ? "Draft" : "Just now",
-    unread: false,
-    starred: false,
-    archived: false,
-    tags: isDraft ? ["draft"] : ["sent"]
+    body,
+    time: "Draft",
+    tags: ["draft", recipient]
   };
-
-  threads.unshift(newThread);
-  activeFilter = "inbox";
-  activeId = newThread.id;
-  persist();
+  drafts.unshift(draft);
+  saveDrafts();
   closeComposePanel();
+  activeId = draft.id;
+  activeFilter = "sent";
+  setStatus("Draft saved on this device.", "success");
   render();
+}
+
+async function fetchMessages() {
+  const handle = identity.handle;
+  if (!isValidHandle(handle)) {
+    messageRows = [];
+    setStatus("Choose a handle to send and receive messages.");
+    render();
+    return;
+  }
+
+  setStatus(`Checking messages for ${handle}...`);
+  try {
+    const query = `or=(sender_handle.eq.${encodeURIComponent(handle)},recipient_handle.eq.${encodeURIComponent(handle)})&select=id,sender_handle,recipient_handle,subject,body,created_at,read_at&order=created_at.desc&limit=100`;
+    const response = await fetch(`${SUPABASE_URL}/rest/v1/${SUPABASE_TABLE}?${query}`, {
+      headers: getSupabaseHeaders()
+    });
+    const payload = await response.json().catch(() => ([]));
+    if (!response.ok) {
+      handleSupabaseError(payload, "Could not load messages.");
+      return;
+    }
+    tableReady = true;
+    messageRows = Array.isArray(payload) ? payload : [];
+    setStatus(messageRows.length ? `Synced ${messageRows.length} message${messageRows.length === 1 ? "" : "s"} for ${handle}.` : `Inbox ready for ${handle}.`, "success");
+    render();
+  } catch {
+    setStatus("Could not reach Supabase right now.", "error");
+  }
+}
+
+async function markRemoteRead(id) {
+  const row = messageRows.find((entry) => entry.id === id);
+  if (!row || row.read_at) return;
+  row.read_at = new Date().toISOString();
+  try {
+    await fetch(`${SUPABASE_URL}/rest/v1/${SUPABASE_TABLE}?id=eq.${encodeURIComponent(id)}`, {
+      method: "PATCH",
+      headers: getSupabaseHeaders({
+        "Content-Type": "application/json",
+        Prefer: "return=minimal"
+      }),
+      body: JSON.stringify({ read_at: row.read_at })
+    });
+  } catch {
+    setStatus("Message opened locally. Read status could not sync.", "error");
+  }
+}
+
+async function deleteThread() {
+  const thread = currentThread();
+  if (!thread) return;
+  if (thread.draft) {
+    drafts = drafts.filter((draft) => draft.id !== thread.id);
+    saveDrafts();
+  } else {
+    try {
+      await fetch(`${SUPABASE_URL}/rest/v1/${SUPABASE_TABLE}?id=eq.${encodeURIComponent(thread.id)}`, {
+        method: "DELETE",
+        headers: getSupabaseHeaders({ Prefer: "return=minimal" })
+      });
+      messageRows = messageRows.filter((row) => row.id !== thread.id);
+      setStatus("Message deleted.", "success");
+    } catch {
+      setStatus("Could not delete that message from Supabase.", "error");
+    }
+  }
+  activeId = null;
+  render();
+}
+
+function handleSupabaseError(payload, fallback) {
+  const code = payload && typeof payload === "object" ? payload.code : "";
+  if (code === "PGRST205" || code === "42P01") {
+    tableReady = false;
+    setStatus("Threadmail needs the Supabase threadmail_messages table. Run supabase/threadmail-messages.sql once.", "error");
+  } else {
+    setStatus(fallback || "Supabase returned an error.", "error");
+  }
 }
 
 document.querySelectorAll("[data-filter]").forEach((button) => {
@@ -213,44 +461,66 @@ els.mailSearch.addEventListener("input", () => {
   render();
 });
 
+els.saveIdentity.addEventListener("click", async () => {
+  const nextHandle = normalizeHandle(els.identityHandle.value);
+  if (!isValidHandle(nextHandle)) {
+    setStatus("Handle must be 3-24 letters, numbers, or underscores.", "error");
+    return;
+  }
+  identity.handle = nextHandle;
+  els.identityHandle.value = nextHandle;
+  activeId = null;
+  saveIdentity();
+  await fetchMessages();
+});
+
+els.refreshButton.addEventListener("click", fetchMessages);
+
 els.starButton.addEventListener("click", () => {
   const thread = currentThread();
   if (!thread) return;
-  thread.starred = !thread.starred;
-  persist();
+  threadPrefs(thread.id).starred = !thread.starred;
+  savePrefs();
   render();
 });
 
 els.archiveButton.addEventListener("click", () => {
   const thread = currentThread();
   if (!thread) return;
-  thread.archived = !thread.archived;
-  persist();
+  threadPrefs(thread.id).archived = !thread.archived;
+  savePrefs();
   render();
 });
 
-els.unreadButton.addEventListener("click", () => {
+els.unreadButton.addEventListener("click", async () => {
   const thread = currentThread();
-  if (!thread) return;
-  thread.unread = !thread.unread;
-  persist();
+  if (!thread || thread.sent || thread.draft) return;
+  const row = messageRows.find((entry) => entry.id === thread.id);
+  if (!row) return;
+  row.read_at = thread.unread ? new Date().toISOString() : null;
+  try {
+    await fetch(`${SUPABASE_URL}/rest/v1/${SUPABASE_TABLE}?id=eq.${encodeURIComponent(thread.id)}`, {
+      method: "PATCH",
+      headers: getSupabaseHeaders({
+        "Content-Type": "application/json",
+        Prefer: "return=minimal"
+      }),
+      body: JSON.stringify({ read_at: row.read_at })
+    });
+  } catch {
+    setStatus("Could not update read status.", "error");
+  }
   render();
 });
 
-els.deleteButton.addEventListener("click", () => {
-  threads = threads.filter((thread) => thread.id !== activeId);
-  activeId = visibleThreads()[0]?.id || null;
-  persist();
-  render();
-});
-
+els.deleteButton.addEventListener("click", deleteThread);
 els.replyButton.addEventListener("click", () => openCompose("reply"));
 els.composeButton.addEventListener("click", () => openCompose("new"));
 els.closeCompose.addEventListener("click", closeComposePanel);
-els.saveDraft.addEventListener("click", () => addMessage(true));
+els.saveDraft.addEventListener("click", saveDraft);
 els.composeForm.addEventListener("submit", (event) => {
   event.preventDefault();
-  addMessage(false);
+  sendMessage();
 });
 
 document.addEventListener("keydown", (event) => {
@@ -258,6 +528,7 @@ document.addEventListener("keydown", (event) => {
   if (event.key.toLowerCase() === "n") openCompose("new");
   if (event.key.toLowerCase() === "r") openCompose("reply");
   if (event.key.toLowerCase() === "a") els.archiveButton.click();
+  if (event.key.toLowerCase() === "f") fetchMessages();
   if (event.key === "Escape") {
     if (!els.composePanel.hidden) {
       closeComposePanel();
@@ -268,3 +539,4 @@ document.addEventListener("keydown", (event) => {
 });
 
 render();
+fetchMessages();

@@ -17,9 +17,19 @@
           <p class="subtitle">Sort live conversations, write replies, and keep the inbox clear from one compact command center.</p>
         </div>
         <div class="threadmail-actions">
+          <button class="play-button play-button--ghost" type="button" id="refreshButton">Refresh</button>
           <button class="play-button" type="button" id="composeButton">Compose</button>
         </div>
       </header>
+
+      <section class="identity-panel" aria-label="Threadmail identity">
+        <label>
+          <span>Your Handle</span>
+          <input id="identityHandle" type="text" placeholder="example: ari">
+        </label>
+        <button class="play-button play-button--ghost" type="button" id="saveIdentity">Save Handle</button>
+        <p id="syncStatus">Choose a handle to send and receive messages.</p>
+      </section>
 
       <section class="threadmail-stats" aria-label="Mailbox stats">
         <article>
@@ -34,6 +44,10 @@
           <span>Archived</span>
           <strong id="archivedCount">0</strong>
         </article>
+        <article>
+          <span>Sent</span>
+          <strong id="sentCount">0</strong>
+        </article>
       </section>
 
       <section class="threadmail-layout">
@@ -47,12 +61,14 @@
             <button class="mail-filter" type="button" data-filter="unread">Unread</button>
             <button class="mail-filter" type="button" data-filter="starred">Starred</button>
             <button class="mail-filter" type="button" data-filter="archived">Archived</button>
+            <button class="mail-filter" type="button" data-filter="sent">Sent</button>
           </div>
           <div class="threadmail-tip">
             <strong>Shortcuts</strong>
             <span>N compose</span>
             <span>R reply</span>
             <span>A archive</span>
+            <span>F refresh</span>
             <span>Esc menu</span>
           </div>
         </aside>
@@ -99,7 +115,7 @@
             <button class="star-button" type="button" id="closeCompose" aria-label="Close compose">x</button>
           </div>
           <label>
-            <span>To</span>
+            <span>To Handle</span>
             <input id="composeTo" type="text" required>
           </label>
           <label>
