@@ -1,51 +1,4 @@
-const STORAGE_KEY = "codex-threadmail-state";
-
-const seedThreads = [
-  {
-    id: "t1",
-    from: "Ari Control",
-    subject: "Launch checklist for the new hub tile",
-    body: "The missing file should live under games/threadmail.html and the launcher card needs to point there.\n\nOnce it opens cleanly from the hub, we can treat this as recovered.",
-    time: "Today 2:14 PM",
-    unread: true,
-    starred: true,
-    archived: false,
-    tags: ["hub", "launch"]
-  },
-  {
-    id: "t2",
-    from: "Mina QA",
-    subject: "Quick pass on mobile layout",
-    body: "Checked the compact view. The inbox stacks correctly, compose stays reachable, and the thread cards keep enough spacing for taps.",
-    time: "Today 1:02 PM",
-    unread: true,
-    starred: false,
-    archived: false,
-    tags: ["mobile", "qa"]
-  },
-  {
-    id: "t3",
-    from: "Dev Desk",
-    subject: "Draft: welcome copy",
-    body: "Welcome to Threadmail. This little static app saves its demo state in localStorage, so messages remain after refresh until Reset Demo is pressed.",
-    time: "Yesterday",
-    unread: false,
-    starred: false,
-    archived: false,
-    tags: ["draft", "local"]
-  },
-  {
-    id: "t4",
-    from: "Archive Bot",
-    subject: "Old status note",
-    body: "This thread starts archived so the Archived filter has something useful to show.",
-    time: "May 14",
-    unread: false,
-    starred: false,
-    archived: true,
-    tags: ["archive"]
-  }
-];
+const STORAGE_KEY = "codex-threadmail-mailbox-v2";
 
 let threads = loadThreads();
 let activeFilter = "inbox";
@@ -81,16 +34,15 @@ const els = {
   composeBody: document.getElementById("composeBody"),
   closeCompose: document.getElementById("closeCompose"),
   saveDraft: document.getElementById("saveDraft"),
-  seedButton: document.getElementById("seedButton"),
   mailSearch: document.getElementById("mailSearch")
 };
 
 function loadThreads() {
   try {
     const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
-    return Array.isArray(saved) && saved.length ? saved : structuredClone(seedThreads);
+    return Array.isArray(saved) ? saved : [];
   } catch {
-    return structuredClone(seedThreads);
+    return [];
   }
 }
 
@@ -179,7 +131,7 @@ function renderDetail() {
     item.textContent = tag;
     els.detailTags.append(item);
   }
-  els.starButton.textContent = thread.starred ? "★" : "☆";
+  els.starButton.textContent = thread.starred ? "Starred" : "*";
   els.archiveButton.textContent = thread.archived ? "Move To Inbox" : "Archive";
   els.unreadButton.textContent = thread.unread ? "Mark Read" : "Mark Unread";
 }
@@ -299,16 +251,6 @@ els.saveDraft.addEventListener("click", () => addMessage(true));
 els.composeForm.addEventListener("submit", (event) => {
   event.preventDefault();
   addMessage(false);
-});
-
-els.seedButton.addEventListener("click", () => {
-  threads = structuredClone(seedThreads);
-  activeFilter = "inbox";
-  activeQuery = "";
-  activeId = threads[0].id;
-  els.mailSearch.value = "";
-  persist();
-  render();
 });
 
 document.addEventListener("keydown", (event) => {
