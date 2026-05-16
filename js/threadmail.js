@@ -2,6 +2,7 @@ const SUPABASE_URL = "https://jbljqusdpifdyewlenun.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_RYq_rDXqj_Ate8B66PcJEQ_a6yv1YUl";
 const SUPABASE_TABLE = "threadmail_messages";
 const HANDLES_TABLE = "threadmail_handles";
+const GAMES_TABLE = "threadmail_games";
 const IDENTITY_KEY = "codex-threadmail-identity-v1";
 const PREFS_KEY = "codex-threadmail-prefs-v1";
 const DRAFTS_KEY = "codex-threadmail-drafts-v1";
@@ -9,6 +10,7 @@ const BASE_TITLE = "Threadmail";
 
 let identity = loadIdentity();
 let messageRows = [];
+let gameRows = [];
 let drafts = loadDrafts();
 let prefs = loadPrefs();
 let threads = [];
@@ -21,6 +23,7 @@ let activeTextField = null;
 let touchShift = false;
 let lastUnreadCount = 0;
 let notificationReady = false;
+let pendingGameType = "";
 
 const els = {
   inboxCount: document.getElementById("inboxCount"),
@@ -52,6 +55,9 @@ const els = {
   handleSuggestions: document.getElementById("handleSuggestions"),
   composeSubject: document.getElementById("composeSubject"),
   composeBody: document.getElementById("composeBody"),
+  attachTicTacToe: document.getElementById("attachTicTacToe"),
+  clearGameAttach: document.getElementById("clearGameAttach"),
+  gameAttachLabel: document.getElementById("gameAttachLabel"),
   closeCompose: document.getElementById("closeCompose"),
   saveDraft: document.getElementById("saveDraft"),
   mailSearch: document.getElementById("mailSearch"),
@@ -149,6 +155,7 @@ function rebuildThreads() {
     const isReceived = row.recipient_handle === identity.handle;
     return {
       id: row.id,
+      gameId: row.game_id || "",
       from: isSent ? `You to ${row.recipient_handle}` : row.sender_handle,
       subject: row.subject,
       body: row.body,
@@ -313,6 +320,7 @@ function renderDetail() {
   els.detailSubject.textContent = thread.subject;
   els.detailMeta.textContent = `${thread.time} | ${thread.draft ? "Draft" : thread.archived ? "Archived" : thread.sent ? "Sent" : "Inbox"}`;
   els.detailBody.textContent = thread.body;
+  renderGameAttachment(thread);
   els.detailTags.innerHTML = "";
   for (const tag of thread.tags) {
     const item = document.createElement("span");
@@ -339,6 +347,53 @@ function render() {
   renderList();
   renderDetail();
   renderHandleSuggestions();
+}
+
+function gameForThread(thread) {
+  if (!thread?.gameId) return null;
+  return gameRows.find((game) => game.id === thread.gameId) || null;
+}
+
+function renderGameAttachment(thread) {
+  document.querySelector(".game-cardlet")?.remove();
+  const game = gameForThread(thread);
+  if (!game) return;
+
+  const card = document.createElement("section");
+  card.className = "game-cardlet";
+  const board = Array.isArray(game.board) ? game.board : ["", "", "", "", "", "", "", "", ""];
+  const statusText = getGameStatusText(game);
+  const canMove = game.status === "active" && game.turn_handle === identity.handle;
+  card.innerHTML = `
+    <div class="game-cardlet__top">
+      <div>
+        <span class="game-cardlet__label">Attached Game</span>
+        <h3>Tic-Tac-Toe</h3>
+      </div>
+      <span>${escapeHtml(statusText)}</span>
+    </div>
+    <div class="tic-board" aria-label="Tic-Tac-Toe board"></div>
+  `;
+
+  const boardEl = card.querySelector(".tic-board");
+  board.forEach((value, index) => {
+    const cell = document.createElement("button");
+    cell.type = "button";
+    cell.className = "tic-cell";
+    cell.textContent = value.toUpperCase();
+    cell.disabled = Boolean(value) || !canMove;
+    cell.setAttribute("aria-label", `Square ${index + 1}`);
+    cell.addEventListener("click", () => playTicTacToeMove(game, index));
+    boardEl.append(cell);
+  });
+  els.messageDetail.insertBefore(card, document.querySelector(".message-tools"));
+}
+
+function getGameStatusText(game) {
+  if (game.status === "draw") return "Draw";
+  if (game.status === "x_won") return `${game.x_handle} won`;
+  if (game.status === "o_won") return `${game.o_handle} won`;
+  return game.turn_handle === identity.handle ? "Your move" : `${game.turn_handle}'s move`;
 }
 
 function escapeHtml(value) {
@@ -373,6 +428,8 @@ function closeComposePanel() {
   els.composePanel.hidden = true;
   replyToId = null;
   els.handleSuggestions.hidden = true;
+  pendingGameType = "";
+  updateGameAttachLabel();
 }
 
 function getKnownHandles() {
@@ -509,6 +566,12 @@ async function sendMessage() {
 
   setStatus("Sending message...", "neutral");
   try {
+    let gameId = null;
+    if (pendingGameType === "tic_tac_toe") {
+      gameId = await createTicTacToeGame(sender, recipient);
+      if (!gameId) return;
+    }
+
     const response = await fetch(`${SUPABASE_URL}/rest/v1/${SUPABASE_TABLE}`, {
       method: "POST",
       headers: getSupabaseHeaders({
@@ -519,7 +582,8 @@ async function sendMessage() {
         sender_handle: sender,
         recipient_handle: recipient,
         subject,
-        body: replyToId ? `${body}\n\n--- Reply sent from Threadmail. ---` : body
+        body: replyToId ? `${body}\n\n--- Reply sent from Threadmail. ---` : body,
+        game_id: gameId
       }])
     });
     const payload = await response.json().catch(() => ([]));
@@ -537,6 +601,30 @@ async function sendMessage() {
   } catch {
     setStatus("Supabase project URL is not reachable. Check that the project is active and the URL/key in js/threadmail.js are correct.", "error");
   }
+}
+
+async function createTicTacToeGame(sender, recipient) {
+  const response = await fetch(`${SUPABASE_URL}/rest/v1/${GAMES_TABLE}`, {
+    method: "POST",
+    headers: getSupabaseHeaders({
+      "Content-Type": "application/json",
+      Prefer: "return=representation"
+    }),
+    body: JSON.stringify([{
+      type: "tic_tac_toe",
+      x_handle: sender,
+      o_handle: recipient,
+      turn_handle: sender,
+      board: ["", "", "", "", "", "", "", "", ""],
+      status: "active"
+    }])
+  });
+  const payload = await response.json().catch(() => ([]));
+  if (!response.ok) {
+    handleSupabaseError(payload, "Could not create Tic-Tac-Toe game.");
+    return null;
+  }
+  return Array.isArray(payload) ? payload[0]?.id || null : null;
 }
 
 function saveDraft() {
@@ -572,7 +660,7 @@ async function fetchMessages() {
 
   setStatus(`Checking messages for ${handle}...`);
   try {
-    const query = `or=(sender_handle.eq.${encodeURIComponent(handle)},recipient_handle.eq.${encodeURIComponent(handle)})&select=id,sender_handle,recipient_handle,subject,body,created_at,read_at&order=created_at.desc&limit=100`;
+    const query = `or=(sender_handle.eq.${encodeURIComponent(handle)},recipient_handle.eq.${encodeURIComponent(handle)})&select=id,sender_handle,recipient_handle,subject,body,created_at,read_at,game_id&order=created_at.desc&limit=100`;
     const response = await fetch(`${SUPABASE_URL}/rest/v1/${SUPABASE_TABLE}?${query}`, {
       headers: getSupabaseHeaders()
     });
@@ -583,12 +671,98 @@ async function fetchMessages() {
     }
     tableReady = true;
     messageRows = Array.isArray(payload) ? payload : [];
+    await fetchGames(handle);
     setStatus(messageRows.length ? `Synced ${messageRows.length} message${messageRows.length === 1 ? "" : "s"} for ${handle}.` : `Inbox ready for ${handle}.`, "success");
     render();
     maybeNotifyUnreadChange();
   } catch {
     setStatus("Supabase project URL is not reachable. Check that the project is active and the URL/key in js/threadmail.js are correct.", "error");
   }
+}
+
+async function fetchGames(handle) {
+  const query = `or=(x_handle.eq.${encodeURIComponent(handle)},o_handle.eq.${encodeURIComponent(handle)})&select=id,type,x_handle,o_handle,board,turn_handle,status,last_message_id,created_at,updated_at&order=updated_at.desc&limit=100`;
+  const response = await fetch(`${SUPABASE_URL}/rest/v1/${GAMES_TABLE}?${query}`, {
+    headers: getSupabaseHeaders()
+  });
+  const payload = await response.json().catch(() => ([]));
+  if (!response.ok) {
+    handleSupabaseError(payload, "Could not load games.");
+    gameRows = [];
+    return;
+  }
+  gameRows = Array.isArray(payload) ? payload : [];
+}
+
+async function playTicTacToeMove(game, index) {
+  const board = Array.isArray(game.board) ? [...game.board] : ["", "", "", "", "", "", "", "", ""];
+  if (game.status !== "active" || game.turn_handle !== identity.handle || board[index]) return;
+  const mark = identity.handle === game.x_handle ? "x" : "o";
+  board[index] = mark;
+  const nextStatus = getTicTacToeStatus(board);
+  const nextTurn = mark === "x" ? game.o_handle : game.x_handle;
+  const response = await fetch(`${SUPABASE_URL}/rest/v1/${GAMES_TABLE}?id=eq.${encodeURIComponent(game.id)}`, {
+    method: "PATCH",
+    headers: getSupabaseHeaders({
+      "Content-Type": "application/json",
+      Prefer: "return=minimal"
+    }),
+    body: JSON.stringify({
+      board,
+      turn_handle: nextStatus === "active" ? nextTurn : game.turn_handle,
+      status: nextStatus,
+      updated_at: new Date().toISOString()
+    })
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    handleSupabaseError(payload, "Could not save that move.");
+    return;
+  }
+  await sendGameMoveMessage(game, nextStatus, nextTurn);
+  setStatus("Move sent.", "success");
+  await fetchMessages();
+}
+
+async function sendGameMoveMessage(game, nextStatus, nextTurn) {
+  const recipient = nextStatus === "active"
+    ? nextTurn
+    : (identity.handle === game.x_handle ? game.o_handle : game.x_handle);
+  const body = nextStatus === "active"
+    ? `${identity.handle} made a Tic-Tac-Toe move. Your turn.`
+    : `${identity.handle} made the final Tic-Tac-Toe move. ${getGameStatusText({ ...game, status: nextStatus })}.`;
+  const response = await fetch(`${SUPABASE_URL}/rest/v1/${SUPABASE_TABLE}`, {
+    method: "POST",
+    headers: getSupabaseHeaders({
+      "Content-Type": "application/json",
+      Prefer: "return=minimal"
+    }),
+    body: JSON.stringify([{
+      sender_handle: identity.handle,
+      recipient_handle: recipient,
+      subject: "Tic-Tac-Toe move",
+      body,
+      game_id: game.id
+    }])
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    handleSupabaseError(payload, "Move saved, but the turn message could not be sent.");
+  }
+}
+
+function getTicTacToeStatus(board) {
+  const wins = [
+    [0, 1, 2], [3, 4, 5], [6, 7, 8],
+    [0, 3, 6], [1, 4, 7], [2, 5, 8],
+    [0, 4, 8], [2, 4, 6]
+  ];
+  for (const [a, b, c] of wins) {
+    if (board[a] && board[a] === board[b] && board[a] === board[c]) {
+      return board[a] === "x" ? "x_won" : "o_won";
+    }
+  }
+  return board.every(Boolean) ? "draw" : "active";
 }
 
 async function markRemoteRead(id) {
@@ -691,6 +865,20 @@ els.mailSearch.addEventListener("input", () => {
 });
 
 els.composeTo.addEventListener("input", renderHandleSuggestions);
+els.attachTicTacToe.addEventListener("click", () => {
+  pendingGameType = "tic_tac_toe";
+  if (!els.composeSubject.value.trim()) els.composeSubject.value = "Tic-Tac-Toe challenge";
+  if (!els.composeBody.value.trim()) els.composeBody.value = "I started a Tic-Tac-Toe game. Your move after mine.";
+  updateGameAttachLabel();
+});
+els.clearGameAttach.addEventListener("click", () => {
+  pendingGameType = "";
+  updateGameAttachLabel();
+});
+
+function updateGameAttachLabel() {
+  els.gameAttachLabel.textContent = pendingGameType === "tic_tac_toe" ? "Tic-Tac-Toe" : "None";
+}
 
 els.saveIdentity.addEventListener("click", async () => {
   const nextHandle = normalizeHandle(els.identityHandle.value);

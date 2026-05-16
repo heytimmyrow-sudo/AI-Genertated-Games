@@ -213,6 +213,79 @@ body.keyboard-open {
   color: var(--warm);
 }
 
+.game-attach-panel,
+.game-cardlet {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid rgba(125, 227, 255, 0.14);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.game-attach-panel {
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+}
+
+.game-attach-panel span,
+.game-cardlet__label {
+  display: block;
+  color: var(--accent-soft);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+}
+
+.game-attach-panel strong {
+  display: block;
+  margin-top: 4px;
+}
+
+.game-cardlet {
+  margin-top: 16px;
+}
+
+.game-cardlet__top {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: start;
+}
+
+.game-cardlet__top h3 {
+  margin: 4px 0 0;
+  font-family: var(--font-display);
+}
+
+.tic-board {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  width: min(100%, 320px);
+}
+
+.tic-cell {
+  aspect-ratio: 1;
+  border: 1px solid rgba(125, 227, 255, 0.18);
+  border-radius: 12px;
+  color: var(--accent-soft);
+  background: rgba(2, 7, 12, 0.7);
+  font-family: var(--font-display);
+  font-size: 2rem;
+  cursor: pointer;
+}
+
+.tic-cell:disabled {
+  cursor: default;
+}
+
+.tic-cell:not(:disabled):hover,
+.tic-cell:not(:disabled):focus-visible {
+  border-color: rgba(255, 214, 107, 0.54);
+  color: var(--warm);
+}
+
 .threadmail-filter {
   display: grid;
   gap: 8px;
@@ -536,6 +609,10 @@ body.keyboard-open .compose-panel {
   .compose-panel {
     inset: auto 12px 12px;
     width: auto;
+  }
+
+  .game-attach-panel {
+    grid-template-columns: 1fr;
   }
 
   body.keyboard-open .compose-panel {
