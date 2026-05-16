@@ -168,25 +168,6 @@ body.keyboard-open {
   position: relative;
 }
 
-.detail-back {
-  display: none;
-  width: fit-content;
-  margin: 0 0 14px;
-  border: 1px solid rgba(125, 227, 255, 0.18);
-  border-radius: 12px;
-  padding: 10px 12px;
-  color: var(--accent-soft);
-  background: rgba(125, 227, 255, 0.08);
-  font: inherit;
-  cursor: pointer;
-}
-
-.detail-back:hover,
-.detail-back:focus-visible {
-  border-color: rgba(255, 214, 107, 0.5);
-  color: var(--warm);
-}
-
 .threadmail-search span,
 .compose-panel label span {
   display: block;
@@ -745,17 +726,9 @@ body.keyboard-open .compose-panel {
     flex-basis: auto;
   }
 
-  .threadmail-layout.is-reading .threadmail-sidebar,
-  .threadmail-layout.is-reading .threadmail-list {
-    display: none;
-  }
-
-  .threadmail-layout.is-reading .threadmail-detail {
-    min-height: 520px;
-  }
-
-  .threadmail-layout.is-reading .detail-back {
-    display: inline-flex;
+  .threadmail-detail {
+    order: -1;
+    min-height: 260px;
   }
 }
 

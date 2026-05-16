@@ -24,7 +24,6 @@ let touchShift = false;
 let lastUnreadCount = 0;
 let notificationReady = false;
 let pendingGameType = "";
-let readingThread = false;
 
 const els = {
   inboxCount: document.getElementById("inboxCount"),
@@ -34,10 +33,6 @@ const els = {
   visibleCount: document.getElementById("visibleCount"),
   listTitle: document.getElementById("listTitle"),
   threadList: document.getElementById("threadList"),
-  threadLayout: document.querySelector(".threadmail-layout"),
-  threadListPanel: document.getElementById("threadListPanel"),
-  threadDetailPanel: document.getElementById("threadDetailPanel"),
-  detailBack: document.getElementById("detailBack"),
   emptyState: document.getElementById("emptyState"),
   messageDetail: document.getElementById("messageDetail"),
   detailFrom: document.getElementById("detailFrom"),
@@ -311,7 +306,6 @@ function renderList() {
 
 async function selectThread(id) {
   activeId = id;
-  readingThread = true;
   const thread = currentThread();
   if (thread?.unread && !thread.draft) {
     await markRemoteRead(thread.id);
@@ -321,7 +315,6 @@ async function selectThread(id) {
 
 function renderDetail() {
   const thread = currentThread();
-  els.threadLayout.classList.toggle("is-reading", readingThread && Boolean(thread));
   els.emptyState.hidden = Boolean(thread);
   els.messageDetail.hidden = !thread;
   if (!thread) return;
@@ -1173,19 +1166,12 @@ async function reserveHandle(handle) {
 document.querySelectorAll("[data-filter]").forEach((button) => {
   button.addEventListener("click", () => {
     activeFilter = button.dataset.filter;
-    readingThread = false;
     render();
   });
 });
 
 els.mailSearch.addEventListener("input", () => {
   activeQuery = els.mailSearch.value.trim().toLowerCase();
-  readingThread = false;
-  render();
-});
-
-els.detailBack.addEventListener("click", () => {
-  readingThread = false;
   render();
 });
 
