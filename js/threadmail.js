@@ -1618,3 +1618,11 @@ document.addEventListener("keydown", (event) => {
 render();
 if (getInviteHandle()) openCompose("new");
 fetchMessages();
+
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("./threadmail-sw.js").catch(() => {
+      setStatus("Install mode is unavailable in this browser right now.", "error");
+    });
+  });
+}

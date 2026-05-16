@@ -6,6 +6,13 @@ body.keyboard-open {
   padding-bottom: 292px;
 }
 
+@media (display-mode: standalone) {
+  .threadmail-shell {
+    padding-top: max(16px, env(safe-area-inset-top));
+    padding-bottom: max(16px, env(safe-area-inset-bottom));
+  }
+}
+
 .threadmail-frame {
   width: min(100%, 1180px);
 }
