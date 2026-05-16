@@ -1,5 +1,5 @@
 const SUPABASE_URL = "https://jbljqusdpifdyewlenun.supabase.co";
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpibGpxdXNkcGlmZHlld2xlbnVuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU2ODY5NTUsImV4cCI6MjA5MTI2Mjk1NX0.jwpLv3AtXP0PGdoOSSkhruDAY8vdJzcxklu-PauTjSE";
+const SUPABASE_ANON_KEY = "sb_publishable_RYq_rDXqj_Ate8B66PcJEQ_a6yv1YUl";
 const SUPABASE_TABLE = "threadmail_messages";
 const IDENTITY_KEY = "codex-threadmail-identity-v1";
 const PREFS_KEY = "codex-threadmail-prefs-v1";
