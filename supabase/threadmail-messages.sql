@@ -81,7 +81,7 @@ with check (true);
 
 create table if not exists public.threadmail_games (
   id uuid primary key default gen_random_uuid(),
-  type text not null default 'tic_tac_toe' check (type in ('tic_tac_toe')),
+  type text not null default 'tic_tac_toe' check (type in ('tic_tac_toe','connect_four','word_chain')),
   x_handle text not null check (x_handle ~ '^[a-z0-9_]{3,24}$'),
   o_handle text not null check (o_handle ~ '^[a-z0-9_]{3,24}$'),
   board jsonb not null default '["","","","","","","","",""]'::jsonb,
@@ -121,3 +121,10 @@ create index if not exists threadmail_games_x_idx
 
 create index if not exists threadmail_games_o_idx
   on public.threadmail_games (o_handle, updated_at desc);
+
+alter table public.threadmail_games
+  drop constraint if exists threadmail_games_type_check;
+
+alter table public.threadmail_games
+  add constraint threadmail_games_type_check
+  check (type in ('tic_tac_toe','connect_four','word_chain'));

@@ -56,6 +56,8 @@ const els = {
   composeSubject: document.getElementById("composeSubject"),
   composeBody: document.getElementById("composeBody"),
   attachTicTacToe: document.getElementById("attachTicTacToe"),
+  attachConnectFour: document.getElementById("attachConnectFour"),
+  attachWordChain: document.getElementById("attachWordChain"),
   clearGameAttach: document.getElementById("clearGameAttach"),
   gameAttachLabel: document.getElementById("gameAttachLabel"),
   closeCompose: document.getElementById("closeCompose"),
@@ -361,21 +363,31 @@ function renderGameAttachment(thread) {
 
   const card = document.createElement("section");
   card.className = "game-cardlet";
-  const board = Array.isArray(game.board) ? game.board : ["", "", "", "", "", "", "", "", ""];
   const statusText = getGameStatusText(game);
-  const canMove = game.status === "active" && game.turn_handle === identity.handle;
   card.innerHTML = `
     <div class="game-cardlet__top">
       <div>
         <span class="game-cardlet__label">Attached Game</span>
-        <h3>Tic-Tac-Toe</h3>
+        <h3>${escapeHtml(getGameTitle(game.type))}</h3>
       </div>
       <span>${escapeHtml(statusText)}</span>
     </div>
-    <div class="tic-board" aria-label="Tic-Tac-Toe board"></div>
+    <div class="game-play-area"></div>
   `;
 
-  const boardEl = card.querySelector(".tic-board");
+  const playArea = card.querySelector(".game-play-area");
+  if (game.type === "connect_four") renderConnectFour(game, playArea);
+  else if (game.type === "word_chain") renderWordChain(game, playArea);
+  else renderTicTacToe(game, playArea);
+  els.messageDetail.insertBefore(card, document.querySelector(".message-tools"));
+}
+
+function renderTicTacToe(game, container) {
+  const boardEl = document.createElement("div");
+  boardEl.className = "tic-board";
+  boardEl.setAttribute("aria-label", "Tic-Tac-Toe board");
+  const board = Array.isArray(game.board) ? game.board : ["", "", "", "", "", "", "", "", ""];
+  const canMove = game.status === "active" && game.turn_handle === identity.handle;
   board.forEach((value, index) => {
     const cell = document.createElement("button");
     cell.type = "button";
@@ -386,7 +398,57 @@ function renderGameAttachment(thread) {
     cell.addEventListener("click", () => playTicTacToeMove(game, index));
     boardEl.append(cell);
   });
-  els.messageDetail.insertBefore(card, document.querySelector(".message-tools"));
+  container.append(boardEl);
+}
+
+function renderConnectFour(game, container) {
+  const boardEl = document.createElement("div");
+  boardEl.className = "connect-board";
+  boardEl.setAttribute("aria-label", "Connect Four board");
+  const board = normalizeConnectBoard(game.board);
+  const canMove = game.status === "active" && game.turn_handle === identity.handle;
+  board.forEach((value, index) => {
+    const column = index % 7;
+    const cell = document.createElement("button");
+    cell.type = "button";
+    cell.className = `connect-cell${value ? ` is-${value}` : ""}`;
+    cell.disabled = !canMove || Boolean(value) || !canDropInColumn(board, column);
+    cell.setAttribute("aria-label", `Column ${column + 1}`);
+    cell.addEventListener("click", () => playConnectFourMove(game, column));
+    boardEl.append(cell);
+  });
+  container.append(boardEl);
+}
+
+function renderWordChain(game, container) {
+  const words = Array.isArray(game.board) ? game.board : [];
+  const canMove = game.status === "active" && game.turn_handle === identity.handle;
+  const wrapper = document.createElement("section");
+  wrapper.className = "word-chain";
+  const lastWord = words[words.length - 1] || "";
+  wrapper.innerHTML = `
+    <div class="word-chain__words">${words.length ? words.map((word) => `<span>${escapeHtml(word)}</span>`).join("") : "<span>No words yet</span>"}</div>
+    <p>${lastWord ? `Next word must start with "${escapeHtml(lastWord.slice(-1).toUpperCase())}".` : "Start with any word."}</p>
+  `;
+  if (canMove) {
+    const entry = document.createElement("div");
+    entry.className = "word-chain__entry";
+    entry.innerHTML = `
+      <input type="text" placeholder="Type a word" data-touch-input>
+      <button class="play-button play-button--ghost" type="button">Send Word</button>
+    `;
+    const input = entry.querySelector("input");
+    bindTouchInput(input);
+    entry.querySelector("button").addEventListener("click", () => playWordChainMove(game, input.value));
+    wrapper.append(entry);
+  }
+  container.append(wrapper);
+}
+
+function getGameTitle(type) {
+  if (type === "connect_four") return "Connect Four";
+  if (type === "word_chain") return "Word Chain";
+  return "Tic-Tac-Toe";
 }
 
 function getGameStatusText(game) {
@@ -567,8 +629,8 @@ async function sendMessage() {
   setStatus("Sending message...", "neutral");
   try {
     let gameId = null;
-    if (pendingGameType === "tic_tac_toe") {
-      gameId = await createTicTacToeGame(sender, recipient);
+    if (pendingGameType) {
+      gameId = await createGame(sender, recipient, pendingGameType);
       if (!gameId) return;
     }
 
@@ -603,7 +665,12 @@ async function sendMessage() {
   }
 }
 
-async function createTicTacToeGame(sender, recipient) {
+async function createGame(sender, recipient, type) {
+  const board = type === "connect_four"
+    ? Array(42).fill("")
+    : type === "word_chain"
+      ? []
+      : ["", "", "", "", "", "", "", "", ""];
   const response = await fetch(`${SUPABASE_URL}/rest/v1/${GAMES_TABLE}`, {
     method: "POST",
     headers: getSupabaseHeaders({
@@ -611,17 +678,17 @@ async function createTicTacToeGame(sender, recipient) {
       Prefer: "return=representation"
     }),
     body: JSON.stringify([{
-      type: "tic_tac_toe",
+      type,
       x_handle: sender,
       o_handle: recipient,
       turn_handle: sender,
-      board: ["", "", "", "", "", "", "", "", ""],
+      board,
       status: "active"
     }])
   });
   const payload = await response.json().catch(() => ([]));
   if (!response.ok) {
-    handleSupabaseError(payload, "Could not create Tic-Tac-Toe game.");
+    handleSupabaseError(payload, `Could not create ${getGameTitle(type)} game.`);
     return null;
   }
   return Array.isArray(payload) ? payload[0]?.id || null : null;
@@ -700,6 +767,47 @@ async function playTicTacToeMove(game, index) {
   const mark = identity.handle === game.x_handle ? "x" : "o";
   board[index] = mark;
   const nextStatus = getTicTacToeStatus(board);
+  await saveGameMove(game, board, nextStatus, mark);
+}
+
+async function playConnectFourMove(game, column) {
+  const board = normalizeConnectBoard(game.board);
+  if (game.status !== "active" || game.turn_handle !== identity.handle || !canDropInColumn(board, column)) return;
+  const mark = identity.handle === game.x_handle ? "x" : "o";
+  for (let row = 5; row >= 0; row -= 1) {
+    const index = row * 7 + column;
+    if (!board[index]) {
+      board[index] = mark;
+      break;
+    }
+  }
+  const nextStatus = getConnectFourStatus(board);
+  await saveGameMove(game, board, nextStatus, mark);
+}
+
+async function playWordChainMove(game, rawWord) {
+  const word = rawWord.trim().toLowerCase().replace(/[^a-z]/g, "");
+  const words = Array.isArray(game.board) ? [...game.board] : [];
+  const lastWord = words[words.length - 1] || "";
+  if (game.status !== "active" || game.turn_handle !== identity.handle) return;
+  if (word.length < 2) {
+    setStatus("Word must be at least 2 letters.", "error");
+    return;
+  }
+  if (words.includes(word)) {
+    setStatus("That word was already used.", "error");
+    return;
+  }
+  if (lastWord && word[0] !== lastWord.slice(-1)) {
+    setStatus(`Word must start with "${lastWord.slice(-1).toUpperCase()}".`, "error");
+    return;
+  }
+  words.push(word);
+  const mark = identity.handle === game.x_handle ? "x" : "o";
+  await saveGameMove(game, words, "active", mark);
+}
+
+async function saveGameMove(game, board, nextStatus, mark) {
   const nextTurn = mark === "x" ? game.o_handle : game.x_handle;
   const response = await fetch(`${SUPABASE_URL}/rest/v1/${GAMES_TABLE}?id=eq.${encodeURIComponent(game.id)}`, {
     method: "PATCH",
@@ -729,8 +837,8 @@ async function sendGameMoveMessage(game, nextStatus, nextTurn) {
     ? nextTurn
     : (identity.handle === game.x_handle ? game.o_handle : game.x_handle);
   const body = nextStatus === "active"
-    ? `${identity.handle} made a Tic-Tac-Toe move. Your turn.`
-    : `${identity.handle} made the final Tic-Tac-Toe move. ${getGameStatusText({ ...game, status: nextStatus })}.`;
+    ? `${identity.handle} made a ${getGameTitle(game.type)} move. Your turn.`
+    : `${identity.handle} made the final ${getGameTitle(game.type)} move. ${getGameStatusText({ ...game, status: nextStatus })}.`;
   const response = await fetch(`${SUPABASE_URL}/rest/v1/${SUPABASE_TABLE}`, {
     method: "POST",
     headers: getSupabaseHeaders({
@@ -740,7 +848,7 @@ async function sendGameMoveMessage(game, nextStatus, nextTurn) {
     body: JSON.stringify([{
       sender_handle: identity.handle,
       recipient_handle: recipient,
-      subject: "Tic-Tac-Toe move",
+      subject: `${getGameTitle(game.type)} move`,
       body,
       game_id: game.id
     }])
@@ -760,6 +868,38 @@ function getTicTacToeStatus(board) {
   for (const [a, b, c] of wins) {
     if (board[a] && board[a] === board[b] && board[a] === board[c]) {
       return board[a] === "x" ? "x_won" : "o_won";
+    }
+  }
+  return board.every(Boolean) ? "draw" : "active";
+}
+
+function normalizeConnectBoard(board) {
+  const next = Array.isArray(board) ? [...board] : [];
+  while (next.length < 42) next.push("");
+  return next.slice(0, 42);
+}
+
+function canDropInColumn(board, column) {
+  return !board[column];
+}
+
+function getConnectFourStatus(board) {
+  const directions = [[1, 0], [0, 1], [1, 1], [1, -1]];
+  for (let row = 0; row < 6; row += 1) {
+    for (let col = 0; col < 7; col += 1) {
+      const mark = board[row * 7 + col];
+      if (!mark) continue;
+      for (const [dc, dr] of directions) {
+        let count = 1;
+        for (let step = 1; step < 4; step += 1) {
+          const nextRow = row + dr * step;
+          const nextCol = col + dc * step;
+          if (nextRow < 0 || nextRow >= 6 || nextCol < 0 || nextCol >= 7) break;
+          if (board[nextRow * 7 + nextCol] !== mark) break;
+          count += 1;
+        }
+        if (count === 4) return mark === "x" ? "x_won" : "o_won";
+      }
     }
   }
   return board.every(Boolean) ? "draw" : "active";
@@ -866,18 +1006,29 @@ els.mailSearch.addEventListener("input", () => {
 
 els.composeTo.addEventListener("input", renderHandleSuggestions);
 els.attachTicTacToe.addEventListener("click", () => {
-  pendingGameType = "tic_tac_toe";
-  if (!els.composeSubject.value.trim()) els.composeSubject.value = "Tic-Tac-Toe challenge";
-  if (!els.composeBody.value.trim()) els.composeBody.value = "I started a Tic-Tac-Toe game. Your move after mine.";
-  updateGameAttachLabel();
+  selectGameAttachment("tic_tac_toe");
+});
+els.attachConnectFour.addEventListener("click", () => {
+  selectGameAttachment("connect_four");
+});
+els.attachWordChain.addEventListener("click", () => {
+  selectGameAttachment("word_chain");
 });
 els.clearGameAttach.addEventListener("click", () => {
   pendingGameType = "";
   updateGameAttachLabel();
 });
 
+function selectGameAttachment(type) {
+  pendingGameType = type;
+  const title = getGameTitle(type);
+  if (!els.composeSubject.value.trim()) els.composeSubject.value = `${title} challenge`;
+  if (!els.composeBody.value.trim()) els.composeBody.value = `I started a ${title} game. Your move after mine.`;
+  updateGameAttachLabel();
+}
+
 function updateGameAttachLabel() {
-  els.gameAttachLabel.textContent = pendingGameType === "tic_tac_toe" ? "Tic-Tac-Toe" : "None";
+  els.gameAttachLabel.textContent = pendingGameType ? getGameTitle(pendingGameType) : "None";
 }
 
 els.saveIdentity.addEventListener("click", async () => {
@@ -902,10 +1053,12 @@ els.keyboardButton.addEventListener("click", () => {
   showTouchKeyboard(field);
 });
 
-document.querySelectorAll("[data-touch-input]").forEach((field) => {
+function bindTouchInput(field) {
   field.addEventListener("focus", () => showTouchKeyboard(field));
   field.addEventListener("pointerdown", () => showTouchKeyboard(field));
-});
+}
+
+document.querySelectorAll("[data-touch-input]").forEach(bindTouchInput);
 
 els.touchKeyboard.addEventListener("pointerdown", (event) => {
   if (event.target.closest("button")) return;

@@ -265,6 +265,13 @@ body.keyboard-open {
   width: min(100%, 320px);
 }
 
+.connect-board {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 6px;
+  width: min(100%, 420px);
+}
+
 .tic-cell {
   aspect-ratio: 1;
   border: 1px solid rgba(125, 227, 255, 0.18);
@@ -276,14 +283,72 @@ body.keyboard-open {
   cursor: pointer;
 }
 
+.connect-cell {
+  aspect-ratio: 1;
+  border: 1px solid rgba(125, 227, 255, 0.16);
+  border-radius: 50%;
+  color: var(--text);
+  background: rgba(2, 7, 12, 0.72);
+  font: inherit;
+  cursor: pointer;
+}
+
+.connect-cell.is-x {
+  background: rgba(255, 214, 107, 0.9);
+}
+
+.connect-cell.is-o {
+  background: rgba(125, 227, 255, 0.9);
+}
+
 .tic-cell:disabled {
   cursor: default;
 }
 
+.connect-cell:disabled {
+  cursor: default;
+}
+
 .tic-cell:not(:disabled):hover,
-.tic-cell:not(:disabled):focus-visible {
+.tic-cell:not(:disabled):focus-visible,
+.connect-cell:not(:disabled):hover,
+.connect-cell:not(:disabled):focus-visible {
   border-color: rgba(255, 214, 107, 0.54);
   color: var(--warm);
+}
+
+.word-chain {
+  display: grid;
+  gap: 10px;
+}
+
+.word-chain__words {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.word-chain__words span {
+  border-radius: 999px;
+  padding: 7px 10px;
+  color: var(--accent-soft);
+  background: rgba(125, 227, 255, 0.09);
+}
+
+.word-chain__entry {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+}
+
+.word-chain__entry input {
+  min-width: 0;
+  border: 1px solid rgba(125, 227, 255, 0.18);
+  border-radius: 12px;
+  padding: 12px;
+  color: var(--text);
+  background: rgba(2, 7, 12, 0.82);
+  font: inherit;
 }
 
 .threadmail-filter {
