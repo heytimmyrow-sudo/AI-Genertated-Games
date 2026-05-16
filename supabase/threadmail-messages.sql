@@ -44,3 +44,34 @@ create index if not exists threadmail_recipient_idx
 
 create index if not exists threadmail_sender_idx
   on public.threadmail_messages (sender_handle, created_at desc);
+
+create table if not exists public.threadmail_handles (
+  handle text primary key check (handle ~ '^[a-z0-9_]{3,24}$'),
+  owner_token text not null check (char_length(owner_token) between 24 and 80),
+  created_at timestamptz not null default timezone('utc', now()),
+  updated_at timestamptz not null default timezone('utc', now())
+);
+
+alter table public.threadmail_handles enable row level security;
+
+drop policy if exists "threadmail handles public read" on public.threadmail_handles;
+create policy "threadmail handles public read"
+on public.threadmail_handles
+for select
+to anon
+using (true);
+
+drop policy if exists "threadmail handles public reserve" on public.threadmail_handles;
+create policy "threadmail handles public reserve"
+on public.threadmail_handles
+for insert
+to anon
+with check (true);
+
+drop policy if exists "threadmail handles owner update" on public.threadmail_handles;
+create policy "threadmail handles owner update"
+on public.threadmail_handles
+for update
+to anon
+using (true)
+with check (true);

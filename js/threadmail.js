@@ -1,6 +1,7 @@
 const SUPABASE_URL = "https://jbljqusdpifdyewlenun.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_RYq_rDXqj_Ate8B66PcJEQ_a6yv1YUl";
 const SUPABASE_TABLE = "threadmail_messages";
+const HANDLES_TABLE = "threadmail_handles";
 const IDENTITY_KEY = "codex-threadmail-identity-v1";
 const PREFS_KEY = "codex-threadmail-prefs-v1";
 const DRAFTS_KEY = "codex-threadmail-drafts-v1";
@@ -48,6 +49,7 @@ const els = {
   composeForm: document.getElementById("composeForm"),
   composeTitle: document.getElementById("composeTitle"),
   composeTo: document.getElementById("composeTo"),
+  handleSuggestions: document.getElementById("handleSuggestions"),
   composeSubject: document.getElementById("composeSubject"),
   composeBody: document.getElementById("composeBody"),
   closeCompose: document.getElementById("closeCompose"),
@@ -78,14 +80,22 @@ function isValidHandle(value) {
 function loadIdentity() {
   try {
     const saved = JSON.parse(localStorage.getItem(IDENTITY_KEY));
-    return { handle: normalizeHandle(saved?.handle || "") };
+    return {
+      handle: normalizeHandle(saved?.handle || ""),
+      ownerToken: saved?.ownerToken || createOwnerToken()
+    };
   } catch {
-    return { handle: "" };
+    return { handle: "", ownerToken: createOwnerToken() };
   }
 }
 
 function saveIdentity() {
   localStorage.setItem(IDENTITY_KEY, JSON.stringify(identity));
+}
+
+function createOwnerToken() {
+  if (window.crypto?.randomUUID) return window.crypto.randomUUID() + "-" + Date.now();
+  return "owner-" + Date.now() + "-" + Math.random().toString(16).slice(2);
 }
 
 function loadPrefs() {
@@ -328,6 +338,7 @@ function render() {
   renderFilters();
   renderList();
   renderDetail();
+  renderHandleSuggestions();
 }
 
 function escapeHtml(value) {
@@ -355,11 +366,44 @@ function openCompose(mode = "new") {
   els.composeBody.value = "";
   els.composePanel.hidden = false;
   els.composeTo.focus();
+  renderHandleSuggestions();
 }
 
 function closeComposePanel() {
   els.composePanel.hidden = true;
   replyToId = null;
+  els.handleSuggestions.hidden = true;
+}
+
+function getKnownHandles() {
+  const handles = new Set();
+  for (const row of messageRows) {
+    if (row.sender_handle && row.sender_handle !== identity.handle) handles.add(row.sender_handle);
+    if (row.recipient_handle && row.recipient_handle !== identity.handle) handles.add(row.recipient_handle);
+  }
+  return [...handles].sort();
+}
+
+function renderHandleSuggestions() {
+  const query = normalizeHandle(els.composeTo.value);
+  const matches = query
+    ? getKnownHandles().filter((handle) => handle.startsWith(query)).slice(0, 5)
+    : [];
+  els.handleSuggestions.innerHTML = "";
+  els.handleSuggestions.hidden = matches.length === 0 || els.composePanel.hidden;
+
+  for (const handle of matches) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "handle-suggestion";
+    button.textContent = handle;
+    button.addEventListener("click", () => {
+      els.composeTo.value = handle;
+      els.handleSuggestions.hidden = true;
+      els.composeSubject.focus();
+    });
+    els.handleSuggestions.append(button);
+  }
 }
 
 function showTouchKeyboard(field) {
@@ -591,10 +635,47 @@ function handleSupabaseError(payload, fallback) {
   const code = payload && typeof payload === "object" ? payload.code : "";
   if (code === "PGRST205" || code === "42P01") {
     tableReady = false;
-    setStatus("Threadmail needs the Supabase threadmail_messages table. Run supabase/threadmail-messages.sql once.", "error");
+    setStatus("Threadmail needs the updated Supabase setup tables. Run supabase/threadmail-messages.sql once.", "error");
   } else {
     setStatus(fallback || "Supabase returned an error.", "error");
   }
+}
+
+async function reserveHandle(handle) {
+  const existing = await fetch(`${SUPABASE_URL}/rest/v1/${HANDLES_TABLE}?handle=eq.${encodeURIComponent(handle)}&select=handle,owner_token&limit=1`, {
+    headers: getSupabaseHeaders()
+  });
+  const existingPayload = await existing.json().catch(() => ([]));
+  if (!existing.ok) {
+    handleSupabaseError(existingPayload, "Could not check whether that handle is available.");
+    return false;
+  }
+  const reserved = Array.isArray(existingPayload) ? existingPayload[0] : null;
+  if (reserved && reserved.owner_token !== identity.ownerToken) {
+    setStatus("Handle Taken", "error");
+    return false;
+  }
+  if (reserved && reserved.owner_token === identity.ownerToken) return true;
+
+  const response = await fetch(`${SUPABASE_URL}/rest/v1/${HANDLES_TABLE}`, {
+    method: "POST",
+    headers: getSupabaseHeaders({
+      "Content-Type": "application/json",
+      Prefer: "return=minimal"
+    }),
+    body: JSON.stringify([{
+      handle,
+      owner_token: identity.ownerToken,
+      updated_at: new Date().toISOString()
+    }])
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    if (payload?.code === "23505") setStatus("Handle Taken", "error");
+    else handleSupabaseError(payload, "Could not reserve that handle.");
+    return false;
+  }
+  return true;
 }
 
 document.querySelectorAll("[data-filter]").forEach((button) => {
@@ -609,12 +690,16 @@ els.mailSearch.addEventListener("input", () => {
   render();
 });
 
+els.composeTo.addEventListener("input", renderHandleSuggestions);
+
 els.saveIdentity.addEventListener("click", async () => {
   const nextHandle = normalizeHandle(els.identityHandle.value);
   if (!isValidHandle(nextHandle)) {
     setStatus("Handle must be 3-24 letters, numbers, or underscores.", "error");
     return;
   }
+  setStatus("Checking handle...");
+  if (!(await reserveHandle(nextHandle))) return;
   identity.handle = nextHandle;
   els.identityHandle.value = nextHandle;
   activeId = null;
