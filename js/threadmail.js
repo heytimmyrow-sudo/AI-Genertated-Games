@@ -2281,21 +2281,54 @@ async function insertAiAssistantReply({ recipient, subject, reply }) {
   return payload;
 }
 
+function buildBasicAiReply(body) {
+  const text = String(body || "").toLowerCase();
+  if (/\b(hi|hello|hey)\b/.test(text)) {
+    return "Hello. I am ThreadAI. I can help brainstorm messages, suggest Threadmail upgrades, explain features, or help you decide what to build next.";
+  }
+  if (text.includes("game")) {
+    return "For games, I would make invites look like chat cards, add a clear turn indicator, and keep the board inside the conversation so it feels like you are playing while messaging.";
+  }
+  if (text.includes("upgrade") || text.includes("add") || text.includes("feature")) {
+    return "A good next upgrade would be message search inside each conversation, cleaner game invite cards, or custom themes. My pick: game invite cards, because they would make Threadmail feel more polished fast.";
+  }
+  if (text.includes("help")) {
+    return "I can help with Threadmail ideas, wording a message, planning a feature, or figuring out what to improve next. Ask me something like: what should I add next?";
+  }
+  if (text.includes("thank")) {
+    return "You are welcome. Threadmail is coming together nicely.";
+  }
+  return "I am here. The full AI brain still needs its backend key, but I can answer in basic mode for now. Tell me what you want help with.";
+}
+
+async function finishAiAssistantReply({ sender, subject, reply, statusMessage }) {
+  await insertAiAssistantReply({ recipient: sender, subject, reply });
+  rebuildThreads();
+  activeId = findConversationThreadId(AI_HANDLE, subject) || activeId;
+  activeFilter = "inbox";
+  setStatus(statusMessage, "success");
+  render();
+  await fetchMessages();
+  activeId = findConversationThreadId(AI_HANDLE, subject) || activeId;
+  render();
+}
+
 async function handleAiAssistantMessage({ sender, subject, body }) {
   setStatus("ThreadAI is thinking...", "neutral");
   try {
     const reply = await requestAiAssistantReply({ sender, subject, body });
-    await insertAiAssistantReply({ recipient: sender, subject, reply });
-    rebuildThreads();
-    activeId = findConversationThreadId(AI_HANDLE, subject) || activeId;
-    activeFilter = "inbox";
-    setStatus("ThreadAI replied.", "success");
-    render();
-    await fetchMessages();
-    activeId = findConversationThreadId(AI_HANDLE, subject) || activeId;
-    render();
+    await finishAiAssistantReply({ sender, subject, reply, statusMessage: "ThreadAI replied." });
   } catch {
-    setStatus("ThreadAI needs its backend function and OpenAI key before it can reply.", "error");
+    try {
+      await finishAiAssistantReply({
+        sender,
+        subject,
+        reply: buildBasicAiReply(body),
+        statusMessage: "ThreadAI replied in basic mode."
+      });
+    } catch {
+      setStatus("ThreadAI could not save a reply right now.", "error");
+    }
   }
 }
 
