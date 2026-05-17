@@ -1,12 +1,12 @@
-const THREADMAIL_CACHE = "threadmail-pwa-v22";
+const THREADMAIL_CACHE = "threadmail-pwa-v23";
 const THREADMAIL_ASSETS = [
   "./threadmail.html",
-  "./threadmail.css?v=22",
-  "./threadmail.webmanifest?v=22",
+  "./threadmail.css?v=23",
+  "./threadmail.webmanifest?v=23",
   "./threadmail-icon-192.png",
   "./threadmail-icon-512.png",
   "../style.css",
-  "../js/threadmail.js?v=22"
+  "../js/threadmail.js?v=23"
 ];
 
 self.addEventListener("install", (event) => {

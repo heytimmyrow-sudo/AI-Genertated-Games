@@ -265,10 +265,11 @@ function updateTimeGreeting() {
 }
 
 function dismissTimeGreeting() {
+  const delay = window.matchMedia("(max-width: 620px)").matches ? 1700 : 2600;
   window.setTimeout(() => {
     document.body.classList.add("greeting-dismissed");
     els.greetingSplash.hidden = true;
-  }, 2600);
+  }, delay);
 }
 
 function setSidebarOpen(open) {

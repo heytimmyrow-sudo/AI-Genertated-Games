@@ -1426,6 +1426,11 @@ body.keyboard-open .compose-panel {
     display: grid;
   }
 
+  .greeting-splash {
+    font-size: clamp(3rem, 18vw, 6rem);
+    transition-duration: 0.28s;
+  }
+
   .compose-panel {
     inset: max(10px, env(safe-area-inset-top)) 10px auto;
     width: auto;
@@ -1435,16 +1440,28 @@ body.keyboard-open .compose-panel {
   }
 
   .threadmail-frame {
-    padding: 12px;
-    border-radius: 18px;
+    padding: 10px;
+    border-radius: 16px;
   }
 
   .threadmail-header .title-block {
-    margin-bottom: 6px;
+    margin-bottom: 4px;
   }
 
   .threadmail-header h1 {
-    font-size: 2rem;
+    font-size: 1.72rem;
+  }
+
+  .threadmail-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 7px;
+  }
+
+  .threadmail-actions .play-button {
+    min-height: 38px;
+    padding: 9px 8px;
+    justify-content: center;
+    font-size: 0.82rem;
   }
 
   .threadmail-header .subtitle,
@@ -1453,7 +1470,13 @@ body.keyboard-open .compose-panel {
   }
 
   .identity-panel {
+    grid-template-columns: 1fr;
     margin: 8px 0 12px;
+    padding: 10px;
+    gap: 8px;
+  }
+
+  .identity-panel input {
     padding: 10px;
   }
 
@@ -1463,13 +1486,13 @@ body.keyboard-open .compose-panel {
   }
 
   .thread-list {
-    max-height: 48dvh;
+    max-height: 34dvh;
   }
 
   .thread-item {
-    min-height: 76px;
+    min-height: 68px;
     border-radius: 18px;
-    padding: 10px;
+    padding: 9px;
   }
 
   .thread-item h3 {
@@ -1496,15 +1519,20 @@ body.keyboard-open .compose-panel {
   .threadmail-detail {
     padding: 12px;
     border-radius: 18px;
-    min-height: min(74dvh, 620px);
+    min-height: min(66dvh, 560px);
   }
 
   .message-detail__header {
     align-items: center;
   }
 
+  .message-detail__header h2 {
+    font-size: 1.05rem;
+  }
+
   .message-body {
-    min-height: 160px;
+    min-height: 190px;
+    max-height: 38dvh;
     padding: 12px;
   }
 
@@ -1515,15 +1543,30 @@ body.keyboard-open .compose-panel {
   }
 
   .inline-reply {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    gap: 6px;
     border-radius: 20px;
     margin-top: 10px;
+    padding: 8px;
   }
 
   .inline-reply .play-button {
     justify-self: end;
-    min-width: 74px;
-    padding: 10px 12px;
+    min-width: 62px;
+    padding: 9px 8px;
+    font-size: 0.78rem;
+  }
+
+  .message-tools {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 7px;
+  }
+
+  .message-tools .play-button {
+    min-height: 36px;
+    padding: 8px 7px;
+    justify-content: center;
+    font-size: 0.78rem;
   }
 
   .game-attach-panel {
@@ -1554,12 +1597,12 @@ body.keyboard-open .compose-panel {
     position: fixed;
     left: 10px;
     right: 10px;
-    bottom: 10px;
+    bottom: max(8px, env(safe-area-inset-bottom));
     z-index: 7;
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 6px;
-    padding: 8px;
+    padding: 7px;
     border: 1px solid rgba(125, 227, 255, 0.18);
     border-radius: 16px;
     background: rgba(4, 12, 18, 0.94);
@@ -1569,7 +1612,7 @@ body.keyboard-open .compose-panel {
   .mobile-tabbar button {
     border: 0;
     border-radius: 12px;
-    padding: 9px 4px;
+    padding: 8px 3px;
     color: var(--accent-soft);
     background: rgba(125, 227, 255, 0.08);
     font: inherit;
@@ -1587,6 +1630,6 @@ body.keyboard-open .compose-panel {
   }
 
   .threadmail-shell {
-    padding-bottom: 86px;
+    padding-bottom: calc(78px + env(safe-area-inset-bottom));
   }
 }
