@@ -9,6 +9,7 @@ const AUTOSAVE_KEY = "codex-threadmail-autosave-v1";
 const SETTINGS_KEY = "codex-threadmail-settings-v1";
 const LOCK_KEY = "codex-threadmail-lock-v1";
 const BASE_TITLE = "Threadmail";
+const AI_HANDLE = "threadai";
 const REACTIONS = ["Nice", "OK", "?", "Haha"];
 const QUICK_REPLIES = ["OK", "On it", "Your turn", "Haha"];
 
@@ -140,6 +141,10 @@ function normalizeHandle(value) {
 
 function isValidHandle(value) {
   return /^[a-z0-9_]{3,24}$/.test(value);
+}
+
+function isAiHandle(value) {
+  return normalizeHandle(value) === AI_HANDLE;
 }
 
 function loadIdentity() {
@@ -734,7 +739,7 @@ function renderContacts() {
     item.innerHTML = `
       <span class="avatar-dot" style="--avatar-color: ${avatar.color}">${escapeHtml(avatar.initials)}</span>
       <strong>${escapeHtml(handle)}${state.pinned ? " *" : ""}</strong>
-      <p>${escapeHtml(getContactGameSummary(handle))}</p>
+      <p>${escapeHtml(isAiHandle(handle) ? "AI assistant" : getContactGameSummary(handle))}</p>
       <div class="contact-actions">
         <button type="button" data-action="pin">${state.pinned ? "Unpin" : "Pin"}</button>
       </div>`;
@@ -1190,7 +1195,7 @@ function updateInviteLink() {
 }
 
 function getKnownHandles() {
-  const handles = new Set();
+  const handles = new Set([AI_HANDLE]);
   for (const row of messageRows) {
     if (row.sender_handle && row.sender_handle !== identity.handle) handles.add(row.sender_handle);
     if (row.recipient_handle && row.recipient_handle !== identity.handle) handles.add(row.recipient_handle);
@@ -1363,6 +1368,14 @@ async function sendMessage() {
     clearComposeAutosave();
     closeComposePanel();
     setStatus(`Message sent to ${recipient}.`, "success");
+    mergeReturnedMessages(payload);
+    if (isAiHandle(recipient)) {
+      activeId = findConversationThreadId(recipient, subject) || (Array.isArray(payload) ? payload[0]?.id || activeId : activeId);
+      activeFilter = "sent";
+      render();
+      await handleAiAssistantMessage({ sender, subject, body });
+      return;
+    }
     await fetchMessages();
     activeId = Array.isArray(payload) ? payload[0]?.id || activeId : activeId;
     activeFilter = "sent";
@@ -1425,9 +1438,15 @@ async function sendInlineReply() {
     mergeReturnedMessages(payload);
     rebuildThreads();
     activeId = findConversationThreadId(recipient, subject) || (Array.isArray(payload) ? payload[0]?.id || activeId : activeId);
-    if (activeFilter === "unread") activeFilter = "inbox";
+    if (isAiHandle(recipient)) activeFilter = "sent";
+    else if (activeFilter === "unread") activeFilter = "inbox";
     render();
     focusInlineReply();
+    if (isAiHandle(recipient)) {
+      await handleAiAssistantMessage({ sender, subject, body });
+      focusInlineReply();
+      return;
+    }
     await fetchMessages();
     activeId = findConversationThreadId(recipient, subject) || activeId;
     render();
@@ -2131,6 +2150,71 @@ function selectGameAttachment(type) {
 
 function updateGameAttachLabel() {
   els.gameAttachLabel.textContent = pendingGameType ? getGameTitle(pendingGameType) : "None";
+}
+
+async function requestAiAssistantReply({ sender, subject, body }) {
+  const response = await fetch(`${SUPABASE_URL}/functions/v1/threadmail-ai`, {
+    method: "POST",
+    headers: getSupabaseHeaders({ "Content-Type": "application/json" }),
+    body: JSON.stringify({
+      handle: sender,
+      subject,
+      message: body,
+      recent: messageRows
+        .filter((row) => (
+          (row.sender_handle === sender && row.recipient_handle === AI_HANDLE) ||
+          (row.sender_handle === AI_HANDLE && row.recipient_handle === sender)
+        ))
+        .slice(0, 8)
+        .reverse()
+        .map((row) => ({
+          from: row.sender_handle,
+          body: row.body
+        }))
+    })
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(payload.error || "AI assistant is not connected yet.");
+  return String(payload.reply || "").trim();
+}
+
+async function insertAiAssistantReply({ recipient, subject, reply }) {
+  if (!reply) return null;
+  const response = await fetch(`${SUPABASE_URL}/rest/v1/${SUPABASE_TABLE}`, {
+    method: "POST",
+    headers: getSupabaseHeaders({
+      "Content-Type": "application/json",
+      Prefer: "return=representation"
+    }),
+    body: JSON.stringify([{
+      sender_handle: AI_HANDLE,
+      recipient_handle: recipient,
+      subject,
+      body: reply
+    }])
+  });
+  const payload = await response.json().catch(() => ([]));
+  if (!response.ok) throw new Error("AI reply could not be saved.");
+  mergeReturnedMessages(payload);
+  return payload;
+}
+
+async function handleAiAssistantMessage({ sender, subject, body }) {
+  setStatus("ThreadAI is thinking...", "neutral");
+  try {
+    const reply = await requestAiAssistantReply({ sender, subject, body });
+    await insertAiAssistantReply({ recipient: sender, subject, reply });
+    rebuildThreads();
+    activeId = findConversationThreadId(AI_HANDLE, subject) || activeId;
+    activeFilter = "inbox";
+    setStatus("ThreadAI replied.", "success");
+    render();
+    await fetchMessages();
+    activeId = findConversationThreadId(AI_HANDLE, subject) || activeId;
+    render();
+  } catch {
+    setStatus("ThreadAI needs its backend function and OpenAI key before it can reply.", "error");
+  }
 }
 
 function appendMessageExtra(title, lines) {
