@@ -540,15 +540,16 @@ function renderList() {
   for (const thread of list) {
     const button = document.createElement("button");
     button.type = "button";
-    button.className = `thread-item${thread.unread ? " is-unread" : ""}${thread.id === activeId ? " is-active" : ""}`;
     const avatar = getHandleAvatar(thread.otherHandle || thread.from);
     const game = gameForThread(thread);
+    const yourMove = game?.status === "active" && game.turn_handle === identity.handle;
+    button.className = `thread-item${thread.unread ? " is-unread" : ""}${thread.id === activeId ? " is-active" : ""}${game ? " has-game" : ""}${yourMove ? " is-your-move" : ""}`;
     button.innerHTML = `
       <span class="avatar-dot" style="--avatar-color: ${avatar.color}">${escapeHtml(avatar.initials)}</span>
       <div class="thread-item__meta">
         <span>${thread.time}</span>
         <span>${escapeHtml(thread.statusLabel || "")}</span>
-        ${game ? `<span class="game-chip">${escapeHtml(getGameTitle(game.type))}${game.turn_handle === identity.handle ? " - Your move" : ""}</span>` : ""}
+        ${game ? `<span class="game-chip${yourMove ? " game-chip--move" : ""}">${escapeHtml(getGameTitle(game.type))} - ${escapeHtml(getGameBadgeText(game))}</span>` : ""}
         ${thread.starred ? "<span>Starred</span>" : ""}
         ${thread.unread ? "<span>Unread</span>" : ""}
         ${thread.draft ? "<span>Draft</span>" : ""}
@@ -565,12 +566,13 @@ async function selectThread(id) {
   activeId = id;
   const thread = currentThread();
   if (thread?.unread && !thread.draft) {
-    await markRemoteRead(thread.id);
+    await markRemoteRead(thread.messageIds || [thread.id]);
   }
   render();
 }
 
 function renderDetail() {
+  document.querySelector(".game-cardlet")?.remove();
   const thread = currentThread();
   els.emptyState.hidden = Boolean(thread);
   els.messageDetail.hidden = !thread;
@@ -646,6 +648,7 @@ function renderProfileCard(container, handle, options = {}) {
       <h3>${escapeHtml(displayNameFor(handle))}</h3>
       <p>@${escapeHtml(handle)}${profile.status ? ` - ${escapeHtml(profile.status)}` : ""}</p>
       <p>${messageCount} ${messageCount === 1 ? "message" : "messages"} together</p>
+      <p>${escapeHtml(getContactGameSummary(handle))}</p>
     </div>
     ${options.actions ? `<div class="profile-card__actions"><button type="button" data-profile-message="${escapeHtml(handle)}">Message</button><button type="button" data-profile-pin="${escapeHtml(handle)}">${handlePrefs(handle).pinned ? "Unpin" : "Pin"}</button></div>` : ""}
   `;
@@ -731,11 +734,11 @@ function renderGameLobby() {
   els.gameLobbyCount.textContent = `${yourMove} your move`;
   els.gameLobbyList.innerHTML = activeGames.length ? "" : `<div class="compact-item"><strong>No active games</strong><p>Send one from compose.</p></div>`;
   for (const game of activeGames.slice(0, 8)) {
-    const other = game.x_handle === identity.handle ? game.o_handle : game.x_handle;
+    const other = getGameOtherHandle(game);
     const button = document.createElement("button");
     button.type = "button";
     button.className = "compact-item";
-    button.innerHTML = `<strong>${escapeHtml(getGameTitle(game.type))} vs ${escapeHtml(other)}</strong><p>${game.turn_handle === identity.handle ? "Your move" : `${escapeHtml(game.turn_handle)}'s move`}</p>`;
+    button.innerHTML = `<strong>${escapeHtml(getGameTitle(game.type))} vs ${escapeHtml(displayNameFor(other))}</strong><p>${escapeHtml(getGameBadgeText(game))} - ${escapeHtml(getGameRulesShort(game.type))}</p>`;
     button.addEventListener("click", () => openGameThread(game.id));
     els.gameLobbyList.append(button);
   }
@@ -786,13 +789,21 @@ function renderGameHistory() {
     (game.status === "x_won" && game.x_handle === identity.handle) ||
     (game.status === "o_won" && game.o_handle === identity.handle)
   )).length;
-  els.gameHistorySummary.textContent = `${wins} wins`;
+  const draws = finished.filter((game) => game.status === "draw").length;
+  const losses = Math.max(0, finished.length - wins - draws);
+  els.gameHistorySummary.textContent = `${wins}W ${losses}L ${draws}D`;
   els.gameHistoryList.innerHTML = finished.length ? "" : `<div class="compact-item"><strong>No finished games</strong><p>Results will appear here.</p></div>`;
+  if (finished.length) {
+    const summary = document.createElement("div");
+    summary.className = "compact-item";
+    summary.innerHTML = `<strong>Record</strong><p>${wins} wins, ${losses} losses, ${draws} draws</p>`;
+    els.gameHistoryList.append(summary);
+  }
   for (const game of finished.slice(0, 8)) {
-    const other = game.x_handle === identity.handle ? game.o_handle : game.x_handle;
+    const other = getGameOtherHandle(game);
     const item = document.createElement("div");
     item.className = "compact-item";
-    item.innerHTML = `<strong>${escapeHtml(getGameTitle(game.type))} vs ${escapeHtml(other)}</strong><p>${escapeHtml(getGameStatusText(game))}</p>`;
+    item.innerHTML = `<strong>${escapeHtml(getGameTitle(game.type))} vs ${escapeHtml(displayNameFor(other))}</strong><p>${escapeHtml(getGameOutcomeText(game))}</p>`;
     els.gameHistoryList.append(item);
   }
 }
@@ -855,23 +866,45 @@ function gameForThread(thread) {
   return gameRows.find((game) => game.id === thread.gameId) || null;
 }
 
+function getGameOtherHandle(game) {
+  return game.x_handle === identity.handle ? game.o_handle : game.x_handle;
+}
+
+function getGameMyMark(game) {
+  return identity.handle === game.x_handle ? "x" : "o";
+}
+
 function renderGameAttachment(thread) {
-  document.querySelector(".game-cardlet")?.remove();
   const game = gameForThread(thread);
   if (!game) return;
 
   const card = document.createElement("section");
   card.className = "game-cardlet";
   const statusText = getGameStatusText(game);
+  const other = getGameOtherHandle(game);
+  const myMark = getGameMyMark(game).toUpperCase();
   card.innerHTML = `
     <div class="game-cardlet__top">
       <div>
         <span class="game-cardlet__label">Attached Game</span>
         <h3>${escapeHtml(getGameTitle(game.type))}</h3>
       </div>
-      <span>${escapeHtml(statusText)}</span>
+      <span class="game-cardlet__status">${escapeHtml(statusText)}</span>
     </div>
+    <div class="game-cardlet__players">
+      <span>You are ${escapeHtml(myMark)}</span>
+      <span>Opponent: ${escapeHtml(displayNameFor(other))}</span>
+      <span>${escapeHtml(getGameOutcomeText(game))}</span>
+    </div>
+    <details class="game-rules">
+      <summary>Rules</summary>
+      <p>${escapeHtml(getGameRules(game.type))}</p>
+    </details>
     <div class="game-play-area"></div>
+    <div class="game-cardlet__actions">
+      <button type="button" data-game-action="rematch">Rematch</button>
+      <button type="button" data-game-action="message">Message ${escapeHtml(displayNameFor(other))}</button>
+    </div>
   `;
 
   const playArea = card.querySelector(".game-play-area");
@@ -879,6 +912,8 @@ function renderGameAttachment(thread) {
   else if (game.type === "battleship") renderBattleship(game, playArea);
   else if (game.type === "word_chain") renderWordChain(game, playArea);
   else renderTicTacToe(game, playArea);
+  card.querySelector("[data-game-action='rematch']").addEventListener("click", () => openRematch(game));
+  card.querySelector("[data-game-action='message']").addEventListener("click", () => composeToHandle(other));
   els.messageDetail.insertBefore(card, document.querySelector(".message-tools"));
 }
 
@@ -888,6 +923,7 @@ function renderTicTacToe(game, container) {
   boardEl.setAttribute("aria-label", "Tic-Tac-Toe board");
   const board = Array.isArray(game.board) ? game.board : ["", "", "", "", "", "", "", "", ""];
   const canMove = game.status === "active" && game.turn_handle === identity.handle;
+  container.append(createGameHint(canMove ? "Your move: choose an empty square." : getWaitingHint(game)));
   board.forEach((value, index) => {
     const cell = document.createElement("button");
     cell.type = "button";
@@ -907,6 +943,7 @@ function renderConnectFour(game, container) {
   boardEl.setAttribute("aria-label", "Connect Four board");
   const board = normalizeConnectBoard(game.board);
   const canMove = game.status === "active" && game.turn_handle === identity.handle;
+  container.append(createGameHint(canMove ? "Your move: tap a column to drop your disc." : getWaitingHint(game)));
   board.forEach((value, index) => {
     const column = index % 7;
     const cell = document.createElement("button");
@@ -927,6 +964,7 @@ function renderWordChain(game, container) {
   wrapper.className = "word-chain";
   const lastWord = words[words.length - 1] || "";
   wrapper.innerHTML = `
+    <p class="game-hint">${escapeHtml(canMove ? "Your move: send a word that follows the chain." : getWaitingHint(game))}</p>
     <div class="word-chain__words">${words.length ? words.map((word) => `<span>${escapeHtml(word)}</span>`).join("") : "<span>No words yet</span>"}</div>
     <p>${lastWord ? `Next word must start with "${escapeHtml(lastWord.slice(-1).toUpperCase())}".` : "Start with any word."}</p>
   `;
@@ -953,6 +991,7 @@ function renderBattleship(game, container) {
   const wrapper = document.createElement("section");
   wrapper.className = "battleship";
   wrapper.innerHTML = `
+    <p class="game-hint">${escapeHtml(canMove ? "Your move: fire at Enemy Waters." : getWaitingHint(game))}</p>
     <p>Fleet left: ${countBattleshipFleetLeft(board, mark)} yours, ${countBattleshipFleetLeft(board, enemyMark)} enemy.</p>
     <div class="battleship__grids"></div>
   `;
@@ -1011,11 +1050,75 @@ function getGameTitle(type) {
   return "Tic-Tac-Toe";
 }
 
+function getGameRulesShort(type) {
+  if (type === "connect_four") return "drop four in a row";
+  if (type === "battleship") return "sink the fleet";
+  if (type === "word_chain") return "chain valid words";
+  return "three in a row";
+}
+
+function getGameRules(type) {
+  if (type === "connect_four") return "Players take turns dropping discs into columns. First to connect four horizontally, vertically, or diagonally wins.";
+  if (type === "battleship") return "Each player has a hidden fleet. Fire at enemy waters on your turn. Hits reveal ships, misses mark water. Sink every enemy ship to win.";
+  if (type === "word_chain") return "Players take turns sending words. Each new word must start with the last letter of the previous word and cannot repeat an earlier word.";
+  return "Players take turns placing marks. First to get three in a row wins. If all squares fill with no winner, it is a draw.";
+}
+
 function getGameStatusText(game) {
   if (game.status === "draw") return "Draw";
   if (game.status === "x_won") return `${game.x_handle} won`;
   if (game.status === "o_won") return `${game.o_handle} won`;
   return game.turn_handle === identity.handle ? "Your move" : `${game.turn_handle}'s move`;
+}
+
+function getGameBadgeText(game) {
+  if (game.status === "active") return game.turn_handle === identity.handle ? "Your move" : "Waiting";
+  if (game.status === "draw") return "Draw";
+  const myMark = getGameMyMark(game);
+  return game.status === `${myMark}_won` ? "You won" : "You lost";
+}
+
+function getGameOutcomeText(game) {
+  if (game.status === "active") return game.turn_handle === identity.handle ? "Your move" : `Waiting for ${displayNameFor(game.turn_handle)}`;
+  if (game.status === "draw") return "Finished as a draw";
+  const winner = game.status === "x_won" ? game.x_handle : game.o_handle;
+  return winner === identity.handle ? "You won" : `${displayNameFor(winner)} won`;
+}
+
+function getWaitingHint(game) {
+  if (game.status !== "active") return getGameOutcomeText(game);
+  return game.turn_handle === identity.handle ? "Your move." : `Waiting for ${displayNameFor(game.turn_handle)}.`;
+}
+
+function createGameHint(text) {
+  const hint = document.createElement("p");
+  hint.className = "game-hint";
+  hint.textContent = text;
+  return hint;
+}
+
+function getContactGameSummary(handle) {
+  const games = gameRows.filter((game) => game.x_handle === handle || game.o_handle === handle);
+  if (!games.length) return "No games together yet";
+  const finished = games.filter((game) => game.status !== "active");
+  const wins = finished.filter((game) => (
+    (game.status === "x_won" && game.x_handle === identity.handle) ||
+    (game.status === "o_won" && game.o_handle === identity.handle)
+  )).length;
+  const draws = finished.filter((game) => game.status === "draw").length;
+  const losses = Math.max(0, finished.length - wins - draws);
+  const active = games.length - finished.length;
+  return `${games.length} games: ${wins}W ${losses}L ${draws}D${active ? `, ${active} active` : ""}`;
+}
+
+function openRematch(game) {
+  const other = getGameOtherHandle(game);
+  composeToHandle(other);
+  pendingGameType = game.type;
+  els.composeSubject.value = `${getGameTitle(game.type)} rematch`;
+  els.composeBody.value = `Rematch? I started another ${getGameTitle(game.type)} game.`;
+  updateGameAttachLabel();
+  saveComposeAutosave();
 }
 
 function escapeHtml(value) {
@@ -1537,8 +1640,8 @@ async function sendGameMoveMessage(game, nextStatus, nextTurn) {
     ? nextTurn
     : (identity.handle === game.x_handle ? game.o_handle : game.x_handle);
   const body = nextStatus === "active"
-    ? `${identity.handle} made a ${getGameTitle(game.type)} move. Your turn.`
-    : `${identity.handle} made the final ${getGameTitle(game.type)} move. ${getGameStatusText({ ...game, status: nextStatus })}.`;
+    ? `${identity.handle} made a ${getGameTitle(game.type)} move. Your turn.\n\n${getGameRulesShort(game.type)}.`
+    : `${identity.handle} made the final ${getGameTitle(game.type)} move. ${getGameOutcomeText({ ...game, status: nextStatus })}.`;
   const response = await fetch(`${SUPABASE_URL}/rest/v1/${SUPABASE_TABLE}`, {
     method: "POST",
     headers: getSupabaseHeaders({
@@ -1548,7 +1651,7 @@ async function sendGameMoveMessage(game, nextStatus, nextTurn) {
     body: JSON.stringify([{
       sender_handle: identity.handle,
       recipient_handle: recipient,
-      subject: `${getGameTitle(game.type)} move`,
+      subject: nextStatus === "active" ? `${getGameTitle(game.type)} move` : `${getGameTitle(game.type)} finished`,
       body,
       game_id: game.id
     }])
@@ -1671,18 +1774,20 @@ function countBattleshipFleetLeft(board, mark) {
   return (board.ships[mark] || []).filter((cell) => !hits.includes(cell)).length;
 }
 
-async function markRemoteRead(id) {
-  const row = messageRows.find((entry) => entry.id === id);
-  if (!row || row.read_at) return;
-  row.read_at = new Date().toISOString();
+async function markRemoteRead(ids) {
+  const idList = Array.isArray(ids) ? ids : [ids];
+  const now = new Date().toISOString();
+  const unreadRows = messageRows.filter((entry) => idList.includes(entry.id) && entry.recipient_handle === identity.handle && !entry.read_at);
+  if (!unreadRows.length) return;
+  unreadRows.forEach((row) => { row.read_at = now; });
   try {
-    await fetch(`${SUPABASE_URL}/rest/v1/${SUPABASE_TABLE}?id=eq.${encodeURIComponent(id)}`, {
+    await fetch(`${SUPABASE_URL}/rest/v1/${SUPABASE_TABLE}?id=in.(${unreadRows.map((row) => encodeURIComponent(row.id)).join(",")})`, {
       method: "PATCH",
       headers: getSupabaseHeaders({
         "Content-Type": "application/json",
         Prefer: "return=minimal"
       }),
-      body: JSON.stringify({ read_at: row.read_at })
+      body: JSON.stringify({ read_at: now })
     });
   } catch {
     setStatus("Message opened locally. Read status could not sync.", "error");
@@ -1914,7 +2019,7 @@ function selectGameAttachment(type) {
   pendingGameType = type;
   const title = getGameTitle(type);
   if (!els.composeSubject.value.trim()) els.composeSubject.value = `${title} challenge`;
-  if (!els.composeBody.value.trim()) els.composeBody.value = `I started a ${title} game. Your move after mine.`;
+  if (!els.composeBody.value.trim()) els.composeBody.value = `I started a ${title} game. ${getGameRules(type)}`;
   updateGameAttachLabel();
   saveComposeAutosave();
 }
@@ -1989,17 +2094,19 @@ els.archiveButton.addEventListener("click", () => {
 els.unreadButton.addEventListener("click", async () => {
   const thread = currentThread();
   if (!thread || thread.sent || thread.draft) return;
-  const row = messageRows.find((entry) => entry.id === thread.id);
-  if (!row) return;
-  row.read_at = thread.unread ? new Date().toISOString() : null;
+  const ids = thread.messageIds || [thread.id];
+  const rows = messageRows.filter((entry) => ids.includes(entry.id) && entry.recipient_handle === identity.handle);
+  if (!rows.length) return;
+  const nextReadAt = thread.unread ? new Date().toISOString() : null;
+  rows.forEach((row) => { row.read_at = nextReadAt; });
   try {
-    await fetch(`${SUPABASE_URL}/rest/v1/${SUPABASE_TABLE}?id=eq.${encodeURIComponent(thread.id)}`, {
+    await fetch(`${SUPABASE_URL}/rest/v1/${SUPABASE_TABLE}?id=in.(${rows.map((row) => encodeURIComponent(row.id)).join(",")})`, {
       method: "PATCH",
       headers: getSupabaseHeaders({
         "Content-Type": "application/json",
         Prefer: "return=minimal"
       }),
-      body: JSON.stringify({ read_at: row.read_at })
+      body: JSON.stringify({ read_at: nextReadAt })
     });
   } catch {
     setStatus("Could not update read status.", "error");

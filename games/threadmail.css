@@ -550,6 +550,34 @@ button.compact-item {
   align-items: center;
 }
 
+.game-attach-panel button {
+  min-width: 116px;
+}
+
+.game-attach-panel button::after {
+  display: block;
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 400;
+}
+
+#attachTicTacToe::after {
+  content: "3 in a row";
+}
+
+#attachConnectFour::after {
+  content: "drop discs";
+}
+
+#attachBattleship::after {
+  content: "sink ships";
+}
+
+#attachWordChain::after {
+  content: "word turns";
+}
+
 .game-attach-panel span,
 .message-extras span,
 .game-cardlet__label {
@@ -573,6 +601,7 @@ button.compact-item {
 
 .game-cardlet {
   margin-top: 16px;
+  overflow: hidden;
 }
 
 .game-cardlet__top {
@@ -582,9 +611,65 @@ button.compact-item {
   align-items: start;
 }
 
+.game-cardlet__status {
+  border-radius: 999px;
+  padding: 6px 9px;
+  color: #111827;
+  background: var(--warm);
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
 .game-cardlet__top h3 {
   margin: 4px 0 0;
   font-family: var(--font-display);
+}
+
+.game-cardlet__players,
+.game-cardlet__actions,
+.game-stat-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.game-cardlet__players span,
+.game-stat-row span {
+  border-radius: 999px;
+  padding: 6px 9px;
+  color: var(--accent-soft);
+  background: rgba(125, 227, 255, 0.09);
+  font-size: 0.8rem;
+}
+
+.game-rules {
+  border: 1px solid rgba(125, 227, 255, 0.14);
+  border-radius: 12px;
+  padding: 9px 10px;
+  color: var(--muted);
+  background: rgba(2, 7, 12, 0.28);
+}
+
+.game-rules summary {
+  color: var(--accent-soft);
+  cursor: pointer;
+}
+
+.game-rules p,
+.game-hint {
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 0.86rem;
+  line-height: 1.4;
+}
+
+.game-cardlet__actions button {
+  border: 1px solid rgba(125, 227, 255, 0.16);
+  border-radius: 999px;
+  padding: 8px 11px;
+  color: var(--accent-soft);
+  background: rgba(125, 227, 255, 0.08);
+  font: inherit;
 }
 
 .tic-board {
@@ -848,6 +933,19 @@ button.compact-item {
 .game-chip {
   color: #111827 !important;
   background: var(--warm) !important;
+}
+
+.game-chip--move {
+  background: var(--safe) !important;
+}
+
+.thread-item.has-game {
+  border-color: rgba(255, 214, 107, 0.26);
+}
+
+.thread-item.is-your-move {
+  background:
+    linear-gradient(90deg, rgba(255, 214, 107, 0.12), rgba(125, 227, 255, 0.04));
 }
 
 .thread-item.is-active,
