@@ -332,6 +332,9 @@ button.compact-item {
   align-content: start;
   gap: 12px;
   overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+  -webkit-overflow-scrolling: touch;
   max-height: 720px;
 }
 
@@ -1025,7 +1028,8 @@ body.keyboard-open .compose-panel {
     left: 0;
     z-index: 11;
     width: min(86vw, 340px);
-    max-height: none;
+    height: 100dvh;
+    max-height: 100dvh;
     border-radius: 0 18px 18px 0;
     padding: max(16px, env(safe-area-inset-top)) 14px max(16px, env(safe-area-inset-bottom));
     transform: translateX(-105%);
