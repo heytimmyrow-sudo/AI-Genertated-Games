@@ -35,8 +35,12 @@ let pendingGameType = "";
 let touchStartX = 0;
 let touchStartY = 0;
 let pendingResetCode = "";
+let speechRecognizer = null;
+let speechTarget = null;
+let speechButton = null;
 
 const els = {
+  greetingSplash: document.getElementById("greetingSplash"),
   timeGreeting: document.getElementById("timeGreeting"),
   inboxCount: document.getElementById("inboxCount"),
   unreadCount: document.getElementById("unreadCount"),
@@ -76,6 +80,7 @@ const els = {
   inlineReplyForm: document.getElementById("inlineReplyForm"),
   inlineReplyBody: document.getElementById("inlineReplyBody"),
   inlineReplySend: document.getElementById("inlineReplySend"),
+  inlineDictateButton: document.getElementById("inlineDictateButton"),
   inlineGamePicker: document.getElementById("inlineGamePicker"),
   addGameButton: document.getElementById("addGameButton"),
   starButton: document.getElementById("starButton"),
@@ -108,6 +113,7 @@ const els = {
   addPoll: document.getElementById("addPoll"),
   addChecklist: document.getElementById("addChecklist"),
   addChoice: document.getElementById("addChoice"),
+  composeDictateButton: document.getElementById("composeDictateButton"),
   closeCompose: document.getElementById("closeCompose"),
   saveDraft: document.getElementById("saveDraft"),
   mailSearch: document.getElementById("mailSearch"),
@@ -261,6 +267,7 @@ function updateTimeGreeting() {
 function dismissTimeGreeting() {
   window.setTimeout(() => {
     document.body.classList.add("greeting-dismissed");
+    els.greetingSplash.hidden = true;
   }, 2600);
 }
 
@@ -1286,6 +1293,65 @@ function backspaceTouchText() {
   activeTextField.dispatchEvent(new Event("input", { bubbles: true }));
 }
 
+function getSpeechRecognition() {
+  return window.SpeechRecognition || window.webkitSpeechRecognition || null;
+}
+
+function stopDictation() {
+  if (speechRecognizer) speechRecognizer.stop();
+}
+
+function clearDictationState() {
+  speechButton?.classList.remove("is-listening");
+  speechButton = null;
+  speechTarget = null;
+  speechRecognizer = null;
+}
+
+function appendDictatedText(field, text) {
+  const clean = String(text || "").trim();
+  if (!field || !clean) return;
+  const spacer = field.value && !/\s$/.test(field.value) ? " " : "";
+  field.value = `${field.value}${spacer}${clean}`;
+  field.dispatchEvent(new Event("input", { bubbles: true }));
+  field.focus();
+}
+
+function startDictation(field, button) {
+  const SpeechRecognition = getSpeechRecognition();
+  if (!SpeechRecognition) {
+    setStatus("Dictation is not available in this browser.", "error");
+    field.focus();
+    return;
+  }
+  if (speechRecognizer) {
+    const sameTarget = speechTarget === field;
+    stopDictation();
+    clearDictationState();
+    if (sameTarget) return;
+  }
+
+  speechTarget = field;
+  speechButton = button;
+  speechRecognizer = new SpeechRecognition();
+  speechRecognizer.lang = navigator.language || "en-US";
+  speechRecognizer.interimResults = false;
+  speechRecognizer.maxAlternatives = 1;
+  speechButton.classList.add("is-listening");
+  setStatus("Listening...", "neutral");
+
+  speechRecognizer.addEventListener("result", (event) => {
+    const transcript = event.results?.[0]?.[0]?.transcript || "";
+    appendDictatedText(field, transcript);
+    setStatus("Dictation added.", "success");
+  });
+  speechRecognizer.addEventListener("error", () => {
+    setStatus("Could not hear dictation. Try again.", "error");
+  });
+  speechRecognizer.addEventListener("end", clearDictationState);
+  speechRecognizer.start();
+}
+
 function pressTouchKey(button) {
   const action = button.dataset.action;
   if (action === "shift") {
@@ -1997,6 +2063,7 @@ els.composeTo.addEventListener("input", () => {
 });
 els.composeSubject.addEventListener("input", saveComposeAutosave);
 els.composeBody.addEventListener("input", saveComposeAutosave);
+els.composeDictateButton.addEventListener("click", () => startDictation(els.composeBody, els.composeDictateButton));
 els.soundToggle.addEventListener("change", () => {
   settings.notificationSounds = els.soundToggle.checked;
   saveSettings();
@@ -2353,6 +2420,7 @@ els.inlineReplyForm.addEventListener("submit", (event) => {
   event.preventDefault();
   sendInlineReply();
 });
+els.inlineDictateButton.addEventListener("click", () => startDictation(els.inlineReplyBody, els.inlineDictateButton));
 els.inlineReplyBody.addEventListener("input", () => {
   els.inlineReplySend.disabled = !els.inlineReplyBody.value.trim();
   els.inlineReplyBody.style.height = "auto";

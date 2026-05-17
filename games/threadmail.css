@@ -45,7 +45,7 @@ body.keyboard-open {
   justify-content: flex-end;
 }
 
-.time-greeting {
+.greeting-splash {
   position: fixed;
   inset: 0;
   z-index: 40;
@@ -71,7 +71,11 @@ body.keyboard-open {
   transition: opacity 0.42s ease, visibility 0.42s ease;
 }
 
-body.greeting-dismissed .time-greeting {
+.greeting-splash p {
+  margin: 0;
+}
+
+body.greeting-dismissed .greeting-splash {
   visibility: hidden;
   opacity: 0;
   pointer-events: none;
@@ -1106,7 +1110,7 @@ button.compact-item:focus-visible {
 
 .inline-reply {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) auto auto;
   gap: 10px;
   align-items: end;
   margin-top: 14px;
@@ -1160,6 +1164,12 @@ button.compact-item:focus-visible {
   min-height: 42px;
   padding: 10px 16px;
   border-radius: 999px;
+}
+
+.play-button.is-listening {
+  border-color: rgba(27, 242, 206, 0.58);
+  color: #06111a;
+  background: linear-gradient(135deg, var(--accent), #86f7d6);
 }
 
 body.keyboard-open .inline-reply {
@@ -1510,7 +1520,7 @@ body.keyboard-open .compose-panel {
   }
 
   .inline-reply {
-    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-columns: 1fr;
     border-radius: 20px;
     bottom: max(8px, env(safe-area-inset-bottom));
     margin-top: 10px;

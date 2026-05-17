@@ -15,12 +15,15 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="Threadmail">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <link rel="manifest" href="./threadmail.webmanifest?v=19">
+  <link rel="manifest" href="./threadmail.webmanifest?v=20">
   <link rel="apple-touch-icon" href="./threadmail-icon-192.png">
   <link rel="stylesheet" href="../style.css">
-  <link rel="stylesheet" href="./threadmail.css?v=19">
+  <link rel="stylesheet" href="./threadmail.css?v=20">
 </head>
 <body>
+  <section class="greeting-splash" id="greetingSplash" aria-live="polite">
+    <p id="timeGreeting">Good Morning</p>
+  </section>
   <main class="shell threadmail-shell">
     <section class="app-lock" id="appLock" aria-label="Threadmail lock" hidden>
       <form class="app-lock__card" id="unlockForm">
@@ -43,7 +46,6 @@
         <div class="title-block">
           <p class="eyebrow">Messaging App</p>
           <h1>Threadmail</h1>
-          <p class="time-greeting" id="timeGreeting" aria-live="polite">Good Morning</p>
           <p class="subtitle">Sort live conversations, write replies, and keep the inbox clear from one compact command center.</p>
         </div>
         <div class="threadmail-actions">
@@ -221,6 +223,7 @@
                 <span>Reply</span>
                 <textarea id="inlineReplyBody" rows="1" placeholder="Message..." required data-touch-input></textarea>
               </label>
+              <button class="play-button play-button--ghost" type="button" id="inlineDictateButton">Dictate</button>
               <button class="play-button" type="submit" id="inlineReplySend">Send</button>
             </form>
             <section class="inline-game-picker" id="inlineGamePicker" aria-label="Add game" hidden>
@@ -282,6 +285,7 @@
             <button class="play-button play-button--ghost" type="button" id="addChoice">Choose One</button>
           </section>
           <div class="compose-actions">
+            <button class="play-button play-button--ghost" type="button" id="composeDictateButton">Dictate</button>
             <button class="play-button play-button--ghost" type="button" id="saveDraft">Save Draft</button>
             <button class="play-button" type="submit">Send</button>
           </div>
@@ -359,6 +363,6 @@
       </nav>
     </section>
   </main>
-  <script src="../js/threadmail.js?v=19"></script>
+  <script src="../js/threadmail.js?v=20"></script>
 </body>
 </html>
