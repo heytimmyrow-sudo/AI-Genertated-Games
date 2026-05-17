@@ -1114,6 +1114,24 @@ button.compact-item:focus-visible {
   color: rgba(6, 17, 26, 0.72);
 }
 
+.chat-bubble--typing {
+  color: var(--accent-soft);
+  border: 1px solid rgba(125, 227, 255, 0.14);
+  background: rgba(125, 227, 255, 0.08);
+  animation: typingPulse 1.15s ease-in-out infinite;
+}
+
+@keyframes typingPulse {
+  0%,
+  100% {
+    opacity: 0.68;
+  }
+
+  50% {
+    opacity: 1;
+  }
+}
+
 .inline-reply {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto auto;

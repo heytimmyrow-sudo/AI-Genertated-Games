@@ -12,6 +12,12 @@ const BASE_TITLE = "Threadmail";
 const AI_HANDLE = "threadai";
 const REACTIONS = ["Nice", "OK", "?", "Haha"];
 const QUICK_REPLIES = ["OK", "On it", "Your turn", "Haha"];
+const AI_QUICK_ACTIONS = [
+  { label: "Suggest Reply", prompt: "Suggest a short reply I could send." },
+  { label: "Rewrite This", prompt: "Help me rewrite my next message so it sounds clearer and friendlier." },
+  { label: "Summarize", prompt: "Summarize this conversation in a few simple bullets." },
+  { label: "Ideas", prompt: "Give me three good ideas for improving Threadmail." }
+];
 
 let identity = loadIdentity();
 let messageRows = [];
@@ -38,6 +44,7 @@ let pendingResetCode = "";
 let speechRecognizer = null;
 let speechTarget = null;
 let speechButton = null;
+let aiTyping = false;
 
 const els = {
   greetingSplash: document.getElementById("greetingSplash"),
@@ -647,6 +654,16 @@ function renderMessageBody(thread) {
     bubble.append(label, body);
     els.detailBody.append(bubble);
   }
+  if (isAiHandle(thread.otherHandle) && aiTyping) {
+    const bubble = document.createElement("div");
+    bubble.className = "chat-bubble chat-bubble--them chat-bubble--typing";
+    const label = document.createElement("strong");
+    label.textContent = "ThreadAI";
+    const body = document.createElement("span");
+    body.textContent = "is typing...";
+    bubble.append(label, body);
+    els.detailBody.append(bubble);
+  }
 }
 
 function getHandleAvatar(handle) {
@@ -676,7 +693,18 @@ function renderReactions(thread) {
 
 function renderQuickReplies(thread) {
   els.quickReplies.innerHTML = "";
-  if (thread.draft || thread.sent) return;
+  if (thread.draft) return;
+  if (isAiHandle(thread.otherHandle)) {
+    for (const action of AI_QUICK_ACTIONS) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.textContent = action.label;
+      button.addEventListener("click", () => focusInlineReply(action.prompt));
+      els.quickReplies.append(button);
+    }
+    return;
+  }
+  if (thread.sent) return;
   for (const reply of QUICK_REPLIES) {
     const button = document.createElement("button");
     button.type = "button";
@@ -2303,6 +2331,7 @@ function buildBasicAiReply(body) {
 
 async function finishAiAssistantReply({ sender, subject, reply, statusMessage }) {
   await insertAiAssistantReply({ recipient: sender, subject, reply });
+  aiTyping = false;
   rebuildThreads();
   activeId = findConversationThreadId(AI_HANDLE, subject) || activeId;
   activeFilter = "inbox";
@@ -2314,7 +2343,9 @@ async function finishAiAssistantReply({ sender, subject, reply, statusMessage })
 }
 
 async function handleAiAssistantMessage({ sender, subject, body }) {
+  aiTyping = true;
   setStatus("ThreadAI is thinking...", "neutral");
+  render();
   try {
     const reply = await requestAiAssistantReply({ sender, subject, body });
     await finishAiAssistantReply({ sender, subject, reply, statusMessage: "ThreadAI replied." });
@@ -2327,7 +2358,9 @@ async function handleAiAssistantMessage({ sender, subject, body }) {
         statusMessage: "ThreadAI replied in basic mode."
       });
     } catch {
+      aiTyping = false;
       setStatus("ThreadAI could not save a reply right now.", "error");
+      render();
     }
   }
 }
