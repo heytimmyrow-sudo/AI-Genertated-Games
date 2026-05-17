@@ -577,7 +577,7 @@ function renderDetail() {
   els.muteButton.textContent = handleState.muted ? "Unmute" : "Mute";
   els.blockButton.textContent = handleState.blocked ? "Unblock" : "Block";
   els.unreadButton.disabled = thread.sent || thread.draft;
-  els.replyButton.disabled = thread.sent || thread.draft;
+  els.replyButton.disabled = thread.draft || !thread.otherHandle;
 }
 
 function renderMessageBody(thread) {
@@ -707,14 +707,9 @@ function renderContacts() {
       <strong>${escapeHtml(handle)}${state.pinned ? " *" : ""}</strong>
       <p>${escapeHtml(getContactGameSummary(handle))}</p>
       <div class="contact-actions">
-        <button type="button" data-action="message">Msg</button>
         <button type="button" data-action="pin">${state.pinned ? "Unpin" : "Pin"}</button>
       </div>`;
     item.addEventListener("click", (event) => {
-      if (event.target.closest("[data-action='message']")) {
-        composeToHandle(handle);
-        return;
-      }
       if (event.target.closest("[data-action='pin']")) {
         state.pinned = !state.pinned;
         savePrefs();
@@ -1082,7 +1077,7 @@ function openCompose(mode = "new") {
   const saved = mode === "new" ? loadComposeAutosave() : null;
   replyToId = mode === "reply" ? activeId : null;
   els.composeTitle.textContent = mode === "reply" ? "Reply" : "New Message";
-  els.composeTo.value = mode === "reply" && thread ? thread.from.replace(/^You to\s+/i, "") : (saved?.to || getInviteHandle());
+  els.composeTo.value = mode === "reply" && thread ? (thread.otherHandle || thread.from.replace(/^You to\s+/i, "")) : (saved?.to || getInviteHandle());
   els.composeSubject.value = mode === "reply" && thread ? `Re: ${thread.subject.replace(/^Re:\s*/i, "")}` : (saved?.subject || "");
   els.composeBody.value = mode === "reply" ? "" : (saved?.body || "");
   els.composePanel.hidden = false;
