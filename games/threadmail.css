@@ -45,6 +45,17 @@ body.keyboard-open {
   justify-content: flex-end;
 }
 
+.time-greeting {
+  width: fit-content;
+  margin: 6px 0 8px;
+  padding: 6px 10px;
+  border: 1px solid rgba(125, 227, 255, 0.18);
+  border-radius: 999px;
+  color: var(--accent-soft);
+  background: rgba(125, 227, 255, 0.08);
+  font-size: 0.86rem;
+}
+
 .sidebar-toggle,
 .sidebar-scrim,
 .mobile-tabbar {

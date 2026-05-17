@@ -36,6 +36,7 @@ let touchStartY = 0;
 let pendingResetCode = "";
 
 const els = {
+  timeGreeting: document.getElementById("timeGreeting"),
   inboxCount: document.getElementById("inboxCount"),
   unreadCount: document.getElementById("unreadCount"),
   archivedCount: document.getElementById("archivedCount"),
@@ -244,6 +245,12 @@ function getSupabaseHeaders(extra = {}) {
 function setStatus(message, tone = "neutral") {
   els.syncStatus.textContent = message;
   els.syncStatus.dataset.tone = tone;
+}
+
+function updateTimeGreeting() {
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? "Good Morning" : hour < 18 ? "Good Afternoon" : "Good Evening";
+  els.timeGreeting.textContent = greeting;
 }
 
 function setSidebarOpen(open) {
@@ -2297,12 +2304,14 @@ document.addEventListener("touchend", (event) => {
   if (deltaX < 0 && document.body.classList.contains("sidebar-open")) setSidebarOpen(false);
 }, { passive: true });
 
+updateTimeGreeting();
 render();
 setLockedView(!appUnlocked);
 if (appUnlocked) {
   if (getInviteHandle()) openCompose("new");
   fetchMessages();
 }
+setInterval(updateTimeGreeting, 60000);
 setInterval(fetchMessages, 15000);
 
 if ("serviceWorker" in navigator) {
