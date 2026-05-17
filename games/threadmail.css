@@ -1089,6 +1089,23 @@ button:disabled {
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
 }
 
+.compose-panel.is-chat-reply {
+  width: min(92vw, 520px);
+}
+
+.compose-panel.is-chat-reply [data-compose-field="to"],
+.compose-panel.is-chat-reply [data-compose-field="subject"],
+.compose-panel.is-chat-reply [data-compose-field="new-only"],
+.compose-panel.is-chat-reply .game-attach-panel,
+.compose-panel.is-chat-reply .message-extras {
+  display: none;
+}
+
+.compose-panel.is-chat-reply textarea {
+  min-height: 150px;
+  border-radius: 18px;
+}
+
 .shared-handle-warning,
 .install-help {
   margin: 0;

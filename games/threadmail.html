@@ -15,10 +15,10 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="Threadmail">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <link rel="manifest" href="./threadmail.webmanifest?v=11">
+  <link rel="manifest" href="./threadmail.webmanifest?v=12">
   <link rel="apple-touch-icon" href="./threadmail-icon-192.png">
   <link rel="stylesheet" href="../style.css">
-  <link rel="stylesheet" href="./threadmail.css?v=11">
+  <link rel="stylesheet" href="./threadmail.css?v=12">
 </head>
 <body>
   <main class="shell threadmail-shell">
@@ -233,14 +233,14 @@
             <h2 id="composeTitle">New Message</h2>
             <button class="star-button" type="button" id="closeCompose" aria-label="Close compose">x</button>
           </div>
-          <label>
+          <label data-compose-field="to">
             <span>To Handle</span>
             <input id="composeTo" type="text" required autocomplete="off" inputmode="text" data-touch-input>
           </label>
-          <p class="shared-handle-warning">Shared handle: anyone using this handle can read messages sent to it.</p>
-          <p class="invite-link" id="inviteLink">Invite link appears after you enter a handle.</p>
-          <div class="handle-suggestions" id="handleSuggestions" hidden></div>
-          <label>
+          <p class="shared-handle-warning" data-compose-field="new-only">Shared handle: anyone using this handle can read messages sent to it.</p>
+          <p class="invite-link" id="inviteLink" data-compose-field="new-only">Invite link appears after you enter a handle.</p>
+          <div class="handle-suggestions" id="handleSuggestions" data-compose-field="new-only" hidden></div>
+          <label data-compose-field="subject">
             <span>Subject</span>
             <input id="composeSubject" type="text" required data-touch-input>
           </label>
@@ -343,6 +343,6 @@
       </nav>
     </section>
   </main>
-  <script src="../js/threadmail.js?v=11"></script>
+  <script src="../js/threadmail.js?v=12"></script>
 </body>
 </html>

@@ -1076,12 +1076,15 @@ function openCompose(mode = "new") {
   const thread = currentThread();
   const saved = mode === "new" ? loadComposeAutosave() : null;
   replyToId = mode === "reply" ? activeId : null;
-  els.composeTitle.textContent = mode === "reply" ? "Reply" : "New Message";
+  const isReply = mode === "reply";
+  els.composePanel.classList.toggle("is-chat-reply", isReply);
+  els.composeTitle.textContent = isReply && thread?.otherHandle ? `Reply to ${thread.otherHandle}` : "New Message";
   els.composeTo.value = mode === "reply" && thread ? (thread.otherHandle || thread.from.replace(/^You to\s+/i, "")) : (saved?.to || getInviteHandle());
   els.composeSubject.value = mode === "reply" && thread ? `Re: ${thread.subject.replace(/^Re:\s*/i, "")}` : (saved?.subject || "");
   els.composeBody.value = mode === "reply" ? "" : (saved?.body || "");
   els.composePanel.hidden = false;
-  els.composeTo.focus();
+  if (isReply) els.composeBody.focus();
+  else els.composeTo.focus();
   updateInviteLink();
   renderHandleSuggestions();
 }
@@ -1097,6 +1100,7 @@ function composeToHandle(handle) {
 
 function closeComposePanel() {
   els.composePanel.hidden = true;
+  els.composePanel.classList.remove("is-chat-reply");
   replyToId = null;
   els.handleSuggestions.hidden = true;
   pendingGameType = "";
