@@ -33,6 +33,7 @@ let notificationReady = false;
 let pendingGameType = "";
 let touchStartX = 0;
 let touchStartY = 0;
+let pendingResetCode = "";
 
 const els = {
   inboxCount: document.getElementById("inboxCount"),
@@ -118,7 +119,8 @@ const els = {
   unlockCode: document.getElementById("unlockCode"),
   forgotLockButton: document.getElementById("forgotLockButton"),
   lockRecovery: document.getElementById("lockRecovery"),
-  recoveryEmailCheck: document.getElementById("recoveryEmailCheck"),
+  recoveryEmailHint: document.getElementById("recoveryEmailHint"),
+  sendCodeEmailButton: document.getElementById("sendCodeEmailButton"),
   resetLockButton: document.getElementById("resetLockButton"),
   lockStatus: document.getElementById("lockStatus"),
   mobileTabs: document.querySelectorAll("[data-mobile-tab]")
@@ -222,6 +224,10 @@ function normalizeEmail(value) {
   return String(value || "").trim().toLowerCase();
 }
 
+function createResetCode() {
+  return String(Math.floor(100000 + Math.random() * 900000));
+}
+
 function getSupabaseHeaders(extra = {}) {
   return {
     apikey: SUPABASE_ANON_KEY,
@@ -243,7 +249,12 @@ function setSidebarOpen(open) {
 function setLockedView(locked) {
   els.appLock.hidden = !locked;
   document.body.classList.toggle("is-locked", locked);
-  if (locked) window.setTimeout(() => els.unlockCode.focus(), 80);
+  if (locked) {
+    els.lockRecovery.hidden = true;
+    els.resetLockButton.hidden = true;
+    els.lockStatus.textContent = "This device is locked.";
+    window.setTimeout(() => els.unlockCode.focus(), 80);
+  }
 }
 
 function unlockApp() {
@@ -259,6 +270,9 @@ function renderLockSetting() {
   }
   els.lockSettingStatus.textContent = lockSettings.enabled ? "App lock is on for this device." : "App lock is off.";
   els.disableLockButton.disabled = !lockSettings.enabled;
+  els.recoveryEmailHint.textContent = lockSettings.recoveryEmail
+    ? `Code will be sent to ${lockSettings.recoveryEmail}.`
+    : "No recovery email is saved.";
 }
 
 function applyTheme() {
@@ -1713,21 +1727,35 @@ els.unlockForm.addEventListener("submit", (event) => {
 });
 els.forgotLockButton.addEventListener("click", () => {
   els.lockRecovery.hidden = !els.lockRecovery.hidden;
-  if (!els.lockRecovery.hidden) els.recoveryEmailCheck.focus();
+  renderLockSetting();
 });
-els.resetLockButton.addEventListener("click", () => {
-  const email = normalizeEmail(els.recoveryEmailCheck.value);
-  if (!lockSettings.recoveryEmail || email !== lockSettings.recoveryEmail) {
-    els.lockStatus.textContent = "Recovery email does not match.";
+els.sendCodeEmailButton.addEventListener("click", () => {
+  if (!lockSettings.recoveryEmail) {
+    els.lockStatus.textContent = "No recovery email was saved.";
     return;
   }
-  lockSettings = { enabled: false, codeHash: "", recoveryEmail: email };
+  pendingResetCode = createResetCode();
+  els.resetLockButton.hidden = false;
+  els.lockStatus.textContent = `Reset code sent to ${lockSettings.recoveryEmail}.`;
+  window.location.href = `mailto:${encodeURIComponent(lockSettings.recoveryEmail)}?subject=Threadmail%20reset%20code&body=Your%20Threadmail%20reset%20code%20is%20${encodeURIComponent(pendingResetCode)}.%0A%0AEnter%20it%20on%20the%20locked%20screen%20to%20reset%20your%20app%20code.`;
+});
+els.resetLockButton.addEventListener("click", () => {
+  if (!pendingResetCode) {
+    els.lockStatus.textContent = "Send a reset code first.";
+    return;
+  }
+  if (els.unlockCode.value.trim() !== pendingResetCode) {
+    els.lockStatus.textContent = "Enter the emailed reset code in the code box.";
+    els.unlockCode.focus();
+    return;
+  }
+  lockSettings = { enabled: false, codeHash: "", recoveryEmail: lockSettings.recoveryEmail };
   appUnlocked = true;
+  pendingResetCode = "";
   saveLockSettings();
   setLockedView(false);
   setStatus("App lock reset. Add a new code in Settings.", "success");
   renderSettings();
-  window.location.href = `mailto:${encodeURIComponent(email)}?subject=Threadmail%20code%20reset&body=Your%20Threadmail%20app%20lock%20was%20reset%20on%20this%20device.`;
 });
 els.themeSelect.addEventListener("change", () => {
   settings.theme = els.themeSelect.value;

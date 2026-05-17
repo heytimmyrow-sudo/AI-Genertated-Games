@@ -15,10 +15,10 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="Threadmail">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <link rel="manifest" href="./threadmail.webmanifest?v=6">
+  <link rel="manifest" href="./threadmail.webmanifest?v=7">
   <link rel="apple-touch-icon" href="./threadmail-icon-192.png">
   <link rel="stylesheet" href="../style.css">
-  <link rel="stylesheet" href="./threadmail.css?v=6">
+  <link rel="stylesheet" href="./threadmail.css?v=7">
 </head>
 <body>
   <main class="shell threadmail-shell">
@@ -30,8 +30,9 @@
         <button class="play-button" type="submit">Unlock</button>
         <button class="play-button play-button--ghost" type="button" id="forgotLockButton">Forgot Password?</button>
         <div class="lock-recovery" id="lockRecovery" hidden>
-          <input id="recoveryEmailCheck" type="email" autocomplete="email" placeholder="Recovery email" data-touch-input>
-          <button class="play-button play-button--ghost" type="button" id="resetLockButton">Reset Code</button>
+          <p id="recoveryEmailHint">Recovery email is saved in Settings.</p>
+          <button class="play-button play-button--ghost" type="button" id="sendCodeEmailButton">Send Code to Email</button>
+          <button class="play-button play-button--ghost" type="button" id="resetLockButton" hidden>Reset Code</button>
         </div>
         <p id="lockStatus">This device is locked.</p>
       </form>
@@ -342,6 +343,6 @@
       </nav>
     </section>
   </main>
-  <script src="../js/threadmail.js?v=6"></script>
+  <script src="../js/threadmail.js?v=7"></script>
 </body>
 </html>
