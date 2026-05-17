@@ -752,6 +752,8 @@ button:disabled {
   z-index: 5;
   width: min(92vw, 460px);
   padding: 16px;
+  max-height: min(86vh, 760px);
+  overflow: auto;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
 }
 
@@ -926,8 +928,11 @@ body.keyboard-open .compose-panel {
   }
 
   .compose-panel {
-    inset: auto 12px 12px;
+    inset: max(10px, env(safe-area-inset-top)) 10px auto;
     width: auto;
+    max-height: calc(100dvh - 24px - env(safe-area-inset-top));
+    border-radius: 16px;
+    overflow: auto;
   }
 
   .game-attach-panel {
@@ -935,7 +940,8 @@ body.keyboard-open .compose-panel {
   }
 
   body.keyboard-open .compose-panel {
-    bottom: 292px;
+    bottom: auto;
+    max-height: calc(100dvh - 306px - env(safe-area-inset-top));
   }
 
   .touch-keyboard {
