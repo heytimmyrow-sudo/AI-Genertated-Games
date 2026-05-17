@@ -185,12 +185,16 @@ body[data-theme="neon"] {
   display: flex;
   align-items: center;
   gap: 12px;
+  width: 100%;
   margin: 0 0 18px;
   padding: 12px 14px;
   border: 1px solid rgba(255, 214, 107, 0.3);
   border-radius: 16px;
   color: var(--accent-soft);
   background: rgba(255, 214, 107, 0.08);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
 }
 
 .offline-banner {
@@ -222,6 +226,12 @@ body[data-theme="neon"] {
 
 .notification-strip span {
   color: var(--text);
+}
+
+.notification-strip:hover,
+.notification-strip:focus-visible {
+  border-color: rgba(255, 214, 107, 0.62);
+  background: rgba(255, 214, 107, 0.13);
 }
 
 .threadmail-stats article {
@@ -317,23 +327,79 @@ button.compact-item {
 
 .contact-item {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   gap: 6px;
   align-items: center;
 }
 
 .contact-item p {
-  grid-column: 1;
+  grid-column: 2;
 }
 
-.contact-item button {
+.contact-item .avatar-dot {
   grid-row: 1 / span 2;
-  grid-column: 2;
+}
+
+.contact-actions {
+  grid-row: 1 / span 2;
+  grid-column: 3;
+  display: grid;
+  gap: 6px;
+}
+
+.contact-actions button {
   border: 1px solid rgba(125, 227, 255, 0.16);
   border-radius: 999px;
   padding: 6px 8px;
   color: var(--accent-soft);
   background: rgba(125, 227, 255, 0.08);
+}
+
+.profile-card {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+  margin-top: 10px;
+  padding: 10px;
+  border: 1px solid rgba(125, 227, 255, 0.14);
+  border-radius: 14px;
+  background: rgba(2, 7, 12, 0.34);
+}
+
+.profile-card[hidden] {
+  display: none;
+}
+
+.profile-card h3,
+.profile-card p {
+  margin: 0;
+}
+
+.profile-card p {
+  color: var(--muted);
+  font-size: 0.84rem;
+  line-height: 1.35;
+}
+
+.profile-card__actions {
+  grid-column: 1 / -1;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.profile-card__actions button {
+  border: 1px solid rgba(125, 227, 255, 0.16);
+  border-radius: 999px;
+  padding: 7px 10px;
+  color: var(--accent-soft);
+  background: rgba(125, 227, 255, 0.08);
+  font: inherit;
+}
+
+.profile-card--detail {
+  margin: 12px 0 0;
 }
 
 .setting-toggle {
@@ -359,6 +425,15 @@ button.compact-item {
   color: var(--text);
   background: rgba(2, 7, 12, 0.82);
   font: inherit;
+}
+
+.setting-select input[type="color"] {
+  width: 100%;
+  min-height: 42px;
+  border: 1px solid rgba(125, 227, 255, 0.18);
+  border-radius: 10px;
+  padding: 4px;
+  background: rgba(2, 7, 12, 0.82);
 }
 
 .threadmail-layout {

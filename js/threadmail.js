@@ -34,6 +34,7 @@ let pendingGameType = "";
 let touchStartX = 0;
 let touchStartY = 0;
 let pendingResetCode = "";
+let activeProfileHandle = "";
 
 const els = {
   inboxCount: document.getElementById("inboxCount"),
@@ -45,6 +46,7 @@ const els = {
   gameLobbyList: document.getElementById("gameLobbyList"),
   contactsCount: document.getElementById("contactsCount"),
   contactList: document.getElementById("contactList"),
+  contactProfile: document.getElementById("contactProfile"),
   gameHistorySummary: document.getElementById("gameHistorySummary"),
   gameHistoryList: document.getElementById("gameHistoryList"),
   soundToggle: document.getElementById("soundToggle"),
@@ -52,6 +54,10 @@ const els = {
   phoneNotificationButton: document.getElementById("phoneNotificationButton"),
   phoneNotificationStatus: document.getElementById("phoneNotificationStatus"),
   themeSelect: document.getElementById("themeSelect"),
+  profileNameInput: document.getElementById("profileNameInput"),
+  profileStatusInput: document.getElementById("profileStatusInput"),
+  profileColorInput: document.getElementById("profileColorInput"),
+  saveProfileButton: document.getElementById("saveProfileButton"),
   lockCodeInput: document.getElementById("lockCodeInput"),
   lockEmailInput: document.getElementById("lockEmailInput"),
   saveLockButton: document.getElementById("saveLockButton"),
@@ -70,6 +76,7 @@ const els = {
   detailTags: document.getElementById("detailTags"),
   reactionRow: document.getElementById("reactionRow"),
   quickReplies: document.getElementById("quickReplies"),
+  detailProfileCard: document.getElementById("detailProfileCard"),
   detailBody: document.getElementById("detailBody"),
   starButton: document.getElementById("starButton"),
   archiveButton: document.getElementById("archiveButton"),
@@ -290,6 +297,20 @@ function handlePrefs(handle) {
   return prefs.handles[handle];
 }
 
+function profileFor(handle) {
+  const normalized = normalizeHandle(handle || "");
+  const avatar = getHandleAvatar(normalized || "tm");
+  prefs.profiles ||= {};
+  prefs.profiles[normalized] ||= { displayName: "", status: "", color: avatar.color };
+  if (!prefs.profiles[normalized].color) prefs.profiles[normalized].color = avatar.color;
+  return prefs.profiles[normalized];
+}
+
+function displayNameFor(handle) {
+  const profile = profileFor(handle);
+  return profile.displayName?.trim() || handle || "Unknown";
+}
+
 function rebuildThreads() {
   const grouped = new Map();
   for (const row of messageRows) {
@@ -401,10 +422,21 @@ function getYourMoveCount() {
 function updateNotifications(unreadCount) {
   document.title = unreadCount > 0 ? `(${unreadCount}) ${BASE_TITLE}` : BASE_TITLE;
   els.notificationStrip.hidden = unreadCount === 0;
+  els.notificationStrip.setAttribute("aria-label", unreadCount ? "Show unread messages" : "No unread messages");
   els.notificationCount.textContent = String(unreadCount);
   els.notificationText.textContent = unreadCount === 1
     ? "You have 1 unread message."
     : `You have ${unreadCount} unread messages.`;
+}
+
+function showUnreadMessages() {
+  const unread = threads.filter((thread) => thread.unread && !thread.archived && !handlePrefs(thread.otherHandle || "").muted);
+  if (!unread.length) return;
+  activeFilter = "unread";
+  activeId = unread[0].id;
+  setSidebarOpen(false);
+  render();
+  document.querySelector(".threadmail-list")?.scrollIntoView({ block: "start" });
 }
 
 function maybeNotifyUnreadChange() {
@@ -547,6 +579,7 @@ function renderDetail() {
   els.detailFrom.textContent = thread.from;
   els.detailSubject.textContent = thread.subject;
   els.detailMeta.textContent = `${thread.time} | ${thread.statusLabel || (thread.draft ? "Draft" : thread.archived ? "Archived" : thread.sent ? "Sent" : "Inbox")}`;
+  renderProfileCard(els.detailProfileCard, thread.otherHandle);
   renderMessageBody(thread);
   renderGameAttachment(thread);
   renderReactions(thread);
@@ -588,12 +621,41 @@ function renderMessageBody(thread) {
 
 function getHandleAvatar(handle) {
   const value = normalizeHandle(handle || "tm") || "tm";
+  const profile = prefs.profiles?.[value];
   let hash = 0;
   for (const char of value) hash = (hash * 31 + char.charCodeAt(0)) % 360;
   return {
     initials: value.slice(0, 2).toUpperCase(),
-    color: `hsl(${hash} 74% 52%)`
+    color: profile?.color || `hsl(${hash} 74% 52%)`
   };
+}
+
+function renderProfileCard(container, handle, options = {}) {
+  if (!handle) {
+    container.hidden = true;
+    container.innerHTML = "";
+    return;
+  }
+  const profile = profileFor(handle);
+  const avatar = getHandleAvatar(handle);
+  const messageCount = messageRows.filter((row) => row.sender_handle === handle || row.recipient_handle === handle).length;
+  container.hidden = false;
+  container.innerHTML = `
+    <span class="avatar-dot" style="--avatar-color: ${avatar.color}">${escapeHtml(avatar.initials)}</span>
+    <div>
+      <h3>${escapeHtml(displayNameFor(handle))}</h3>
+      <p>@${escapeHtml(handle)}${profile.status ? ` - ${escapeHtml(profile.status)}` : ""}</p>
+      <p>${messageCount} ${messageCount === 1 ? "message" : "messages"} together</p>
+    </div>
+    ${options.actions ? `<div class="profile-card__actions"><button type="button" data-profile-message="${escapeHtml(handle)}">Message</button><button type="button" data-profile-pin="${escapeHtml(handle)}">${handlePrefs(handle).pinned ? "Unpin" : "Pin"}</button></div>` : ""}
+  `;
+  container.querySelector("[data-profile-message]")?.addEventListener("click", () => composeToHandle(handle));
+  container.querySelector("[data-profile-pin]")?.addEventListener("click", () => {
+    const state = handlePrefs(handle);
+    state.pinned = !state.pinned;
+    savePrefs();
+    renderContacts();
+  });
 }
 
 function renderReactions(thread) {
@@ -684,26 +746,38 @@ function renderContacts() {
   els.contactsCount.textContent = `${contacts.length} ${contacts.length === 1 ? "person" : "people"}`;
   els.contactList.innerHTML = contacts.length ? "" : `<div class="compact-item"><strong>No contacts yet</strong><p>Message someone to add them here.</p></div>`;
   contacts.sort((a, b) => Number(handlePrefs(b).pinned) - Number(handlePrefs(a).pinned) || a.localeCompare(b));
+  if (!activeProfileHandle || !contacts.includes(activeProfileHandle)) activeProfileHandle = contacts[0] || "";
   for (const handle of contacts.slice(0, 8)) {
     const state = handlePrefs(handle);
+    const avatar = getHandleAvatar(handle);
+    const profile = profileFor(handle);
     const item = document.createElement("div");
     item.className = "compact-item contact-item";
-    item.innerHTML = `<strong>${escapeHtml(handle)}${state.pinned ? " *" : ""}</strong><p>${state.blocked ? "Blocked" : state.muted ? "Muted" : "Tap to compose"}</p><button type="button">${state.pinned ? "Unpin" : "Pin"}</button>`;
+    item.innerHTML = `
+      <span class="avatar-dot" style="--avatar-color: ${avatar.color}">${escapeHtml(avatar.initials)}</span>
+      <strong>${escapeHtml(displayNameFor(handle))}${state.pinned ? " *" : ""}</strong>
+      <p>@${escapeHtml(handle)}${profile.status ? ` - ${escapeHtml(profile.status)}` : ""}</p>
+      <div class="contact-actions">
+        <button type="button" data-action="message">Msg</button>
+        <button type="button" data-action="pin">${state.pinned ? "Unpin" : "Pin"}</button>
+      </div>`;
     item.addEventListener("click", (event) => {
-      if (event.target.closest("button")) return;
-      openCompose("new");
-      els.composeTo.value = handle;
-      updateInviteLink();
-      els.composeSubject.focus();
-      setSidebarOpen(false);
-    });
-    item.querySelector("button").addEventListener("click", () => {
-      state.pinned = !state.pinned;
-      savePrefs();
+      if (event.target.closest("[data-action='message']")) {
+        composeToHandle(handle);
+        return;
+      }
+      if (event.target.closest("[data-action='pin']")) {
+        state.pinned = !state.pinned;
+        savePrefs();
+        renderContacts();
+        return;
+      }
+      activeProfileHandle = handle;
       renderContacts();
     });
     els.contactList.append(item);
   }
+  renderProfileCard(els.contactProfile, activeProfileHandle, { actions: true });
 }
 
 function renderGameHistory() {
@@ -728,6 +802,10 @@ function renderSettings() {
   els.keyboardSoundToggle.checked = settings.keyboardSounds;
   renderPhoneNotificationSetting();
   renderLockSetting();
+  const ownProfile = profileFor(identity.handle || "me");
+  if (document.activeElement !== els.profileNameInput) els.profileNameInput.value = ownProfile.displayName || "";
+  if (document.activeElement !== els.profileStatusInput) els.profileStatusInput.value = ownProfile.status || "";
+  els.profileColorInput.value = ownProfile.color && ownProfile.color.startsWith("#") ? ownProfile.color : "#20d6c7";
   els.themeSelect.value = settings.theme || "dark";
   applyTheme();
 }
@@ -968,6 +1046,15 @@ function openCompose(mode = "new") {
   els.composeTo.focus();
   updateInviteLink();
   renderHandleSuggestions();
+}
+
+function composeToHandle(handle) {
+  openCompose("new");
+  els.composeTo.value = handle;
+  updateInviteLink();
+  saveComposeAutosave();
+  els.composeSubject.focus();
+  setSidebarOpen(false);
 }
 
 function closeComposePanel() {
@@ -1650,6 +1737,13 @@ els.mailSearch.addEventListener("input", () => {
   activeQuery = els.mailSearch.value.trim().toLowerCase();
   render();
 });
+els.notificationStrip.addEventListener("click", showUnreadMessages);
+els.notificationStrip.addEventListener("keydown", (event) => {
+  if (event.key === "Enter" || event.key === " ") {
+    event.preventDefault();
+    showUnreadMessages();
+  }
+});
 
 els.composeTo.addEventListener("input", () => {
   renderHandleSuggestions();
@@ -1756,6 +1850,16 @@ els.resetLockButton.addEventListener("click", () => {
   setLockedView(false);
   setStatus("App lock reset. Add a new code in Settings.", "success");
   renderSettings();
+});
+els.saveProfileButton.addEventListener("click", () => {
+  const handle = identity.handle || "me";
+  const profile = profileFor(handle);
+  profile.displayName = els.profileNameInput.value.trim().slice(0, 32);
+  profile.status = els.profileStatusInput.value.trim().slice(0, 80);
+  profile.color = els.profileColorInput.value || profile.color;
+  savePrefs();
+  setStatus("Profile saved on this device.", "success");
+  render();
 });
 els.themeSelect.addEventListener("change", () => {
   settings.theme = els.themeSelect.value;
