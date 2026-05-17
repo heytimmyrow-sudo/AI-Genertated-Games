@@ -9,6 +9,7 @@ const AUTOSAVE_KEY = "codex-threadmail-autosave-v1";
 const SETTINGS_KEY = "codex-threadmail-settings-v1";
 const BASE_TITLE = "Threadmail";
 const REACTIONS = ["Nice", "OK", "?", "Haha"];
+const QUICK_REPLIES = ["OK", "On it", "Your turn", "Haha"];
 
 let identity = loadIdentity();
 let messageRows = [];
@@ -44,6 +45,10 @@ const els = {
   gameHistoryList: document.getElementById("gameHistoryList"),
   soundToggle: document.getElementById("soundToggle"),
   keyboardSoundToggle: document.getElementById("keyboardSoundToggle"),
+  themeSelect: document.getElementById("themeSelect"),
+  clearLocalData: document.getElementById("clearLocalData"),
+  mobileGameBadge: document.getElementById("mobileGameBadge"),
+  offlineBanner: document.getElementById("offlineBanner"),
   listTitle: document.getElementById("listTitle"),
   threadList: document.getElementById("threadList"),
   emptyState: document.getElementById("emptyState"),
@@ -53,6 +58,7 @@ const els = {
   detailMeta: document.getElementById("detailMeta"),
   detailTags: document.getElementById("detailTags"),
   reactionRow: document.getElementById("reactionRow"),
+  quickReplies: document.getElementById("quickReplies"),
   detailBody: document.getElementById("detailBody"),
   starButton: document.getElementById("starButton"),
   archiveButton: document.getElementById("archiveButton"),
@@ -96,7 +102,8 @@ const els = {
   touchKeyboard: document.getElementById("touchKeyboard"),
   touchKeyboardTarget: document.getElementById("touchKeyboardTarget"),
   hideTouchKeyboard: document.getElementById("hideTouchKeyboard"),
-  touchKeys: document.querySelectorAll("#touchKeyboard button")
+  touchKeys: document.querySelectorAll("#touchKeyboard button"),
+  mobileTabs: document.querySelectorAll("[data-mobile-tab]")
 };
 
 els.identityHandle.value = identity.handle;
@@ -161,10 +168,11 @@ function loadSettings() {
     const saved = JSON.parse(localStorage.getItem(SETTINGS_KEY));
     return {
       notificationSounds: saved?.notificationSounds !== false,
-      keyboardSounds: Boolean(saved?.keyboardSounds)
+      keyboardSounds: Boolean(saved?.keyboardSounds),
+      theme: ["dark", "light", "neon"].includes(saved?.theme) ? saved.theme : "dark"
     };
   } catch {
-    return { notificationSounds: true, keyboardSounds: false };
+    return { notificationSounds: true, keyboardSounds: false, theme: "dark" };
   }
 }
 
@@ -190,6 +198,10 @@ function setSidebarOpen(open) {
   els.sidebarToggle.setAttribute("aria-expanded", String(open));
 }
 
+function applyTheme() {
+  document.body.dataset.theme = settings.theme || "dark";
+}
+
 function threadPrefs(id) {
   prefs[id] ||= { starred: false, archived: false, reactions: [] };
   return prefs[id];
@@ -202,28 +214,41 @@ function handlePrefs(handle) {
 }
 
 function rebuildThreads() {
-  const remoteThreads = messageRows.map((row) => {
-    const pref = threadPrefs(row.id);
+  const grouped = new Map();
+  for (const row of messageRows) {
     const isSent = row.sender_handle === identity.handle;
     const isReceived = row.recipient_handle === identity.handle;
     const otherHandle = isSent ? row.recipient_handle : row.sender_handle;
+    const key = `${otherHandle}|${normalizeConversationSubject(row.subject)}`;
+    if (!grouped.has(key)) grouped.set(key, []);
+    grouped.get(key).push({ ...row, isSent, isReceived, otherHandle });
+  }
+
+  const remoteThreads = [...grouped.values()].map((rows) => {
+    rows.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    const row = rows[0];
+    const pref = threadPrefs(row.id);
     const game = row.game_id ? gameRows.find((entry) => entry.id === row.game_id) : null;
+    const unread = rows.some((entry) => entry.isReceived && !entry.read_at);
+    const readByAnyRecipient = rows.some((entry) => entry.sender_handle === identity.handle && entry.read_at);
     return {
       id: row.id,
+      messageIds: rows.map((entry) => entry.id),
       gameId: row.game_id || "",
-      from: isSent ? `You to ${row.recipient_handle}` : row.sender_handle,
-      otherHandle,
+      from: row.isSent ? `You to ${row.recipient_handle}` : row.sender_handle,
+      otherHandle: row.otherHandle,
       subject: row.subject,
-      body: row.body,
+      body: rows.map((entry) => `${entry.isSent ? "You" : entry.sender_handle}:\n${entry.body}`).reverse().join("\n\n---\n\n"),
       time: formatTime(row.created_at),
-      unread: isReceived && !row.read_at,
+      unread,
       starred: Boolean(pref.starred),
       archived: Boolean(pref.archived),
       reactions: Array.isArray(pref.reactions) ? pref.reactions : [],
-      sent: isSent,
-      received: isReceived,
+      sent: row.isSent,
+      received: rows.some((entry) => entry.isReceived),
+      statusLabel: row.isSent ? (readByAnyRecipient ? "Read" : "Delivered") : (unread ? "Unread" : "Read"),
       draft: false,
-      tags: [isSent ? "sent" : "inbox", otherHandle, game ? getGameTitle(game.type) : ""].filter(Boolean)
+      tags: [row.isSent ? "sent" : "inbox", row.otherHandle, game ? getGameTitle(game.type) : "", rows.length > 1 ? `${rows.length} messages` : ""].filter(Boolean)
     };
   });
 
@@ -242,6 +267,10 @@ function rebuildThreads() {
   if (!threads.some((thread) => thread.id === activeId)) {
     activeId = visibleThreads()[0]?.id || null;
   }
+}
+
+function normalizeConversationSubject(subject) {
+  return String(subject || "").replace(/^re:\s*/i, "").trim().toLowerCase();
 }
 
 function currentThread() {
@@ -275,15 +304,21 @@ function filterLabel() {
 
 function renderStats() {
   const unreadCount = getUnreadCount();
+  const yourMoveCount = getYourMoveCount();
   els.inboxCount.textContent = String(threads.filter((thread) => thread.received && !thread.archived).length);
   els.unreadCount.textContent = String(unreadCount);
   els.archivedCount.textContent = String(threads.filter((thread) => thread.archived).length);
   els.sentCount.textContent = String(threads.filter((thread) => thread.sent || thread.draft).length);
+  els.mobileGameBadge.textContent = String(yourMoveCount);
   updateNotifications(unreadCount);
 }
 
 function getUnreadCount() {
   return threads.filter((thread) => thread.unread && !thread.archived && !handlePrefs(thread.otherHandle || "").muted).length;
+}
+
+function getYourMoveCount() {
+  return gameRows.filter((game) => game.status === "active" && game.turn_handle === identity.handle).length;
 }
 
 function updateNotifications(unreadCount) {
@@ -367,9 +402,14 @@ function renderList() {
     const button = document.createElement("button");
     button.type = "button";
     button.className = `thread-item${thread.unread ? " is-unread" : ""}${thread.id === activeId ? " is-active" : ""}`;
+    const avatar = getHandleAvatar(thread.otherHandle || thread.from);
+    const game = gameForThread(thread);
     button.innerHTML = `
+      <span class="avatar-dot" style="--avatar-color: ${avatar.color}">${escapeHtml(avatar.initials)}</span>
       <div class="thread-item__meta">
         <span>${thread.time}</span>
+        <span>${escapeHtml(thread.statusLabel || "")}</span>
+        ${game ? `<span class="game-chip">${escapeHtml(getGameTitle(game.type))}${game.turn_handle === identity.handle ? " - Your move" : ""}</span>` : ""}
         ${thread.starred ? "<span>Starred</span>" : ""}
         ${thread.unread ? "<span>Unread</span>" : ""}
         ${thread.draft ? "<span>Draft</span>" : ""}
@@ -399,10 +439,11 @@ function renderDetail() {
 
   els.detailFrom.textContent = thread.from;
   els.detailSubject.textContent = thread.subject;
-  els.detailMeta.textContent = `${thread.time} | ${thread.draft ? "Draft" : thread.archived ? "Archived" : thread.sent ? "Sent" : "Inbox"}`;
+  els.detailMeta.textContent = `${thread.time} | ${thread.statusLabel || (thread.draft ? "Draft" : thread.archived ? "Archived" : thread.sent ? "Sent" : "Inbox")}`;
   els.detailBody.textContent = thread.body;
   renderGameAttachment(thread);
   renderReactions(thread);
+  renderQuickReplies(thread);
   els.detailTags.innerHTML = "";
   for (const tag of thread.tags) {
     const item = document.createElement("span");
@@ -419,6 +460,16 @@ function renderDetail() {
   els.replyButton.disabled = thread.sent || thread.draft;
 }
 
+function getHandleAvatar(handle) {
+  const value = normalizeHandle(handle || "tm") || "tm";
+  let hash = 0;
+  for (const char of value) hash = (hash * 31 + char.charCodeAt(0)) % 360;
+  return {
+    initials: value.slice(0, 2).toUpperCase(),
+    color: `hsl(${hash} 74% 52%)`
+  };
+}
+
 function renderReactions(thread) {
   els.reactionRow.innerHTML = "";
   if (thread.draft) return;
@@ -431,6 +482,22 @@ function renderReactions(thread) {
     button.textContent = `${reaction}${active ? " 1" : ""}`;
     button.addEventListener("click", () => toggleReaction(thread.id, reaction));
     els.reactionRow.append(button);
+  }
+}
+
+function renderQuickReplies(thread) {
+  els.quickReplies.innerHTML = "";
+  if (thread.draft || thread.sent) return;
+  for (const reply of QUICK_REPLIES) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.textContent = reply;
+    button.addEventListener("click", () => {
+      openCompose("reply");
+      els.composeBody.value = reply;
+      saveComposeAutosave();
+    });
+    els.quickReplies.append(button);
   }
 }
 
@@ -472,7 +539,8 @@ function renderUpgradePanels() {
 
 function renderGameLobby() {
   const activeGames = gameRows.filter((game) => game.status === "active");
-  els.gameLobbyCount.textContent = `${activeGames.length} active`;
+  const yourMove = getYourMoveCount();
+  els.gameLobbyCount.textContent = `${yourMove} your move`;
   els.gameLobbyList.innerHTML = activeGames.length ? "" : `<div class="compact-item"><strong>No active games</strong><p>Send one from compose.</p></div>`;
   for (const game of activeGames.slice(0, 8)) {
     const other = game.x_handle === identity.handle ? game.o_handle : game.x_handle;
@@ -489,20 +557,26 @@ function renderContacts() {
   const contacts = getKnownHandles();
   els.contactsCount.textContent = `${contacts.length} ${contacts.length === 1 ? "person" : "people"}`;
   els.contactList.innerHTML = contacts.length ? "" : `<div class="compact-item"><strong>No contacts yet</strong><p>Message someone to add them here.</p></div>`;
+  contacts.sort((a, b) => Number(handlePrefs(b).pinned) - Number(handlePrefs(a).pinned) || a.localeCompare(b));
   for (const handle of contacts.slice(0, 8)) {
     const state = handlePrefs(handle);
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = "compact-item";
-    button.innerHTML = `<strong>${escapeHtml(handle)}</strong><p>${state.blocked ? "Blocked" : state.muted ? "Muted" : "Tap to compose"}</p>`;
-    button.addEventListener("click", () => {
+    const item = document.createElement("div");
+    item.className = "compact-item contact-item";
+    item.innerHTML = `<strong>${escapeHtml(handle)}${state.pinned ? " *" : ""}</strong><p>${state.blocked ? "Blocked" : state.muted ? "Muted" : "Tap to compose"}</p><button type="button">${state.pinned ? "Unpin" : "Pin"}</button>`;
+    item.addEventListener("click", (event) => {
+      if (event.target.closest("button")) return;
       openCompose("new");
       els.composeTo.value = handle;
       updateInviteLink();
       els.composeSubject.focus();
       setSidebarOpen(false);
     });
-    els.contactList.append(button);
+    item.querySelector("button").addEventListener("click", () => {
+      state.pinned = !state.pinned;
+      savePrefs();
+      renderContacts();
+    });
+    els.contactList.append(item);
   }
 }
 
@@ -526,6 +600,8 @@ function renderGameHistory() {
 function renderSettings() {
   els.soundToggle.checked = settings.notificationSounds;
   els.keyboardSoundToggle.checked = settings.keyboardSounds;
+  els.themeSelect.value = settings.theme || "dark";
+  applyTheme();
 }
 
 function openGameThread(gameId) {
@@ -953,6 +1029,7 @@ async function sendMessage() {
       handleSupabaseError(payload, "Message could not be sent.");
       return;
     }
+    els.offlineBanner.hidden = true;
     tableReady = true;
     clearComposeAutosave();
     closeComposePanel();
@@ -962,6 +1039,7 @@ async function sendMessage() {
     activeFilter = "sent";
     render();
   } catch {
+    els.offlineBanner.hidden = false;
     setStatus("Supabase project URL is not reachable. Check that the project is active and the URL/key in js/threadmail.js are correct.", "error");
   }
 }
@@ -1051,6 +1129,7 @@ async function fetchMessages() {
     render();
     maybeNotifyUnreadChange();
   } catch {
+    els.offlineBanner.hidden = false;
     setStatus("Supabase project URL is not reachable. Check that the project is active and the URL/key in js/threadmail.js are correct.", "error");
   }
 }
@@ -1071,6 +1150,7 @@ async function fetchMessagesWithoutGames(handle) {
     handleSupabaseError(payload, "Could not load messages.");
     return;
   }
+  els.offlineBanner.hidden = true;
   tableReady = true;
   gameRows = [];
   messageRows = Array.isArray(payload) ? payload.map((row) => ({ ...row, game_id: null })) : [];
@@ -1090,6 +1170,7 @@ async function fetchGames(handle) {
     gameRows = [];
     return;
   }
+  els.offlineBanner.hidden = true;
   gameRows = Array.isArray(payload) ? payload : [];
 }
 
@@ -1428,6 +1509,22 @@ els.keyboardSoundToggle.addEventListener("change", () => {
   settings.keyboardSounds = els.keyboardSoundToggle.checked;
   saveSettings();
 });
+els.themeSelect.addEventListener("change", () => {
+  settings.theme = els.themeSelect.value;
+  saveSettings();
+  applyTheme();
+});
+els.clearLocalData.addEventListener("click", () => {
+  localStorage.removeItem(PREFS_KEY);
+  localStorage.removeItem(DRAFTS_KEY);
+  localStorage.removeItem(AUTOSAVE_KEY);
+  localStorage.removeItem(SETTINGS_KEY);
+  prefs = {};
+  drafts = [];
+  settings = loadSettings();
+  setStatus("Local drafts, reactions, settings, and pins cleared.", "success");
+  render();
+});
 els.attachTicTacToe.addEventListener("click", () => {
   selectGameAttachment("tic_tac_toe");
 });
@@ -1443,6 +1540,19 @@ els.attachWordChain.addEventListener("click", () => {
 els.clearGameAttach.addEventListener("click", () => {
   pendingGameType = "";
   updateGameAttachLabel();
+});
+els.mobileTabs.forEach((button) => {
+  button.addEventListener("click", () => {
+    const tab = button.dataset.mobileTab;
+    if (tab === "inbox") {
+      activeFilter = "inbox";
+      setSidebarOpen(false);
+      render();
+      return;
+    }
+    setSidebarOpen(true);
+    document.querySelector(`.${tab === "games" ? "game-lobby" : tab === "contacts" ? "contacts-panel" : "settings-panel"}`)?.scrollIntoView({ block: "start" });
+  });
 });
 els.addPoll.addEventListener("click", () => appendMessageExtra("Poll", ["Option A", "Option B"]));
 els.addChecklist.addEventListener("click", () => appendMessageExtra("Checklist", ["[ ] First item", "[ ] Second item"]));
@@ -1615,6 +1725,7 @@ document.addEventListener("touchend", (event) => {
 render();
 if (getInviteHandle()) openCompose("new");
 fetchMessages();
+setInterval(fetchMessages, 15000);
 
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {

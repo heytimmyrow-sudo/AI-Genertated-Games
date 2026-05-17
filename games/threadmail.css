@@ -46,8 +46,34 @@ body.keyboard-open {
 }
 
 .sidebar-toggle,
-.sidebar-scrim {
+.sidebar-scrim,
+.mobile-tabbar {
   display: none;
+}
+
+body[data-theme="light"] {
+  background: #eef7fb;
+  color: #0f1b24;
+}
+
+body[data-theme="light"] .hud-frame,
+body[data-theme="light"] .threadmail-sidebar,
+body[data-theme="light"] .threadmail-list,
+body[data-theme="light"] .threadmail-detail,
+body[data-theme="light"] .compose-panel {
+  background: rgba(255, 255, 255, 0.92);
+  color: #0f1b24;
+}
+
+body[data-theme="light"] .message-body,
+body[data-theme="light"] .thread-item,
+body[data-theme="light"] .compact-item {
+  background: rgba(13, 26, 38, 0.06);
+  color: #0f1b24;
+}
+
+body[data-theme="neon"] {
+  filter: saturate(1.18);
 }
 
 .threadmail-stats {
@@ -112,6 +138,22 @@ body.keyboard-open {
   border-radius: 16px;
   color: var(--accent-soft);
   background: rgba(255, 214, 107, 0.08);
+}
+
+.offline-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 14px;
+  padding: 10px 12px;
+  border: 1px solid rgba(255, 94, 122, 0.36);
+  border-radius: 14px;
+  color: #ffd9df;
+  background: rgba(255, 94, 122, 0.08);
+}
+
+.offline-banner[hidden] {
+  display: none;
 }
 
 .notification-strip strong {
@@ -220,11 +262,50 @@ button.compact-item {
   line-height: 1.35;
 }
 
+.contact-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 6px;
+  align-items: center;
+}
+
+.contact-item p {
+  grid-column: 1;
+}
+
+.contact-item button {
+  grid-row: 1 / span 2;
+  grid-column: 2;
+  border: 1px solid rgba(125, 227, 255, 0.16);
+  border-radius: 999px;
+  padding: 6px 8px;
+  color: var(--accent-soft);
+  background: rgba(125, 227, 255, 0.08);
+}
+
 .setting-toggle {
   display: flex;
   align-items: center;
   gap: 8px;
   margin-top: 8px;
+}
+
+.setting-select {
+  display: grid;
+  gap: 6px;
+  margin-top: 10px;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.setting-select select {
+  width: 100%;
+  border: 1px solid rgba(125, 227, 255, 0.18);
+  border-radius: 10px;
+  padding: 9px;
+  color: var(--text);
+  background: rgba(2, 7, 12, 0.82);
+  font: inherit;
 }
 
 .threadmail-layout {
@@ -609,6 +690,33 @@ button.compact-item {
   font: inherit;
   text-align: left;
   cursor: pointer;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 10px;
+}
+
+.thread-item__meta,
+.thread-item h3,
+.thread-item p {
+  grid-column: 2;
+}
+
+.avatar-dot {
+  grid-row: 1 / span 3;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  color: #fff;
+  background: var(--avatar-color);
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.game-chip {
+  color: #111827 !important;
+  background: var(--warm) !important;
 }
 
 .thread-item.is-active,
@@ -700,6 +808,21 @@ button.compact-item {
   margin: 0 0 12px;
 }
 
+.quick-replies {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 0 12px;
+}
+
+.quick-replies button {
+  border: 1px solid rgba(125, 227, 255, 0.16);
+  border-radius: 999px;
+  padding: 7px 10px;
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.06);
+}
+
 .reaction-row button {
   border: 1px solid rgba(125, 227, 255, 0.16);
   border-radius: 999px;
@@ -755,6 +878,14 @@ button:disabled {
   max-height: min(86vh, 760px);
   overflow: auto;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+}
+
+.shared-handle-warning,
+.install-help {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.4;
 }
 
 body.keyboard-open .compose-panel {
@@ -957,5 +1088,45 @@ body.keyboard-open .compose-panel {
     min-height: 34px;
     padding: 7px 2px;
     font-size: 0.82rem;
+  }
+
+  .mobile-tabbar {
+    position: fixed;
+    left: 10px;
+    right: 10px;
+    bottom: 10px;
+    z-index: 7;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 6px;
+    padding: 8px;
+    border: 1px solid rgba(125, 227, 255, 0.18);
+    border-radius: 16px;
+    background: rgba(4, 12, 18, 0.94);
+    box-shadow: 0 18px 50px rgba(0, 0, 0, 0.48);
+  }
+
+  .mobile-tabbar button {
+    border: 0;
+    border-radius: 12px;
+    padding: 9px 4px;
+    color: var(--accent-soft);
+    background: rgba(125, 227, 255, 0.08);
+    font: inherit;
+    font-size: 0.78rem;
+  }
+
+  .mobile-tabbar span {
+    display: inline-grid;
+    min-width: 18px;
+    height: 18px;
+    place-items: center;
+    border-radius: 999px;
+    color: #111827;
+    background: var(--warm);
+  }
+
+  .threadmail-shell {
+    padding-bottom: 86px;
   }
 }

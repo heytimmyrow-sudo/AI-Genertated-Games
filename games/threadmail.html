@@ -50,6 +50,10 @@
         <strong id="notificationCount">0</strong>
         <span id="notificationText">No unread messages.</span>
       </section>
+      <section class="offline-banner" id="offlineBanner" aria-live="polite" hidden>
+        <strong>Offline</strong>
+        <span>Threadmail is using local data until the network comes back.</span>
+      </section>
 
       <button class="sidebar-scrim" type="button" id="sidebarScrim" aria-label="Close sidebar"></button>
 
@@ -134,6 +138,23 @@
                 <input type="checkbox" id="keyboardSoundToggle">
                 <span>Keyboard sounds</span>
               </label>
+              <label class="setting-select">
+                <span>Theme</span>
+                <select id="themeSelect">
+                  <option value="dark">Dark</option>
+                  <option value="light">Light</option>
+                  <option value="neon">Neon</option>
+                </select>
+              </label>
+              <button class="play-button play-button--ghost" type="button" id="clearLocalData">Clear Local Data</button>
+            </section>
+
+            <section class="tool-panel install-panel" aria-label="Install help">
+              <div class="tool-panel__top">
+                <h2>Install Help</h2>
+                <span>Phone</span>
+              </div>
+              <p class="install-help">iPhone: Safari Share, Add to Home Screen. Android: Chrome menu, Install app.</p>
             </section>
           </section>
         </aside>
@@ -163,6 +184,7 @@
             </div>
             <div class="tag-row" id="detailTags"></div>
             <div class="reaction-row" id="reactionRow" aria-label="Message reactions"></div>
+            <div class="quick-replies" id="quickReplies" aria-label="Quick replies"></div>
             <div class="message-body" id="detailBody"></div>
             <div class="message-tools">
               <button class="play-button play-button--ghost" type="button" id="replyButton">Reply</button>
@@ -186,6 +208,7 @@
             <span>To Handle</span>
             <input id="composeTo" type="text" required autocomplete="off" inputmode="text" data-touch-input>
           </label>
+          <p class="shared-handle-warning">Shared handle: anyone using this handle can read messages sent to it.</p>
           <p class="invite-link" id="inviteLink">Invite link appears after you enter a handle.</p>
           <div class="handle-suggestions" id="handleSuggestions" hidden></div>
           <label>
@@ -282,6 +305,13 @@
           <button type="button" data-action="enter">Enter</button>
         </div>
       </section>
+
+      <nav class="mobile-tabbar" aria-label="Mobile navigation">
+        <button type="button" data-mobile-tab="inbox">Inbox</button>
+        <button type="button" data-mobile-tab="games">Games <span id="mobileGameBadge">0</span></button>
+        <button type="button" data-mobile-tab="contacts">Contacts</button>
+        <button type="button" data-mobile-tab="settings">Settings</button>
+      </nav>
     </section>
   </main>
   <script src="../js/threadmail.js"></script>
