@@ -45,6 +45,8 @@ const els = {
   gameHistoryList: document.getElementById("gameHistoryList"),
   soundToggle: document.getElementById("soundToggle"),
   keyboardSoundToggle: document.getElementById("keyboardSoundToggle"),
+  phoneNotificationButton: document.getElementById("phoneNotificationButton"),
+  phoneNotificationStatus: document.getElementById("phoneNotificationStatus"),
   themeSelect: document.getElementById("themeSelect"),
   clearLocalData: document.getElementById("clearLocalData"),
   mobileGameBadge: document.getElementById("mobileGameBadge"),
@@ -169,10 +171,11 @@ function loadSettings() {
     return {
       notificationSounds: saved?.notificationSounds !== false,
       keyboardSounds: Boolean(saved?.keyboardSounds),
+      phoneNotifications: Boolean(saved?.phoneNotifications),
       theme: ["dark", "light", "neon"].includes(saved?.theme) ? saved.theme : "dark"
     };
   } catch {
-    return { notificationSounds: true, keyboardSounds: false, theme: "dark" };
+    return { notificationSounds: true, keyboardSounds: false, phoneNotifications: false, theme: "dark" };
   }
 }
 
@@ -334,11 +337,41 @@ function maybeNotifyUnreadChange() {
   const unreadCount = getUnreadCount();
   if (notificationReady && unreadCount > lastUnreadCount) {
     playNotificationChime();
+    showPhoneNotification(unreadCount, unreadCount - lastUnreadCount);
     setStatus(unreadCount === 1 ? "New message received." : `${unreadCount - lastUnreadCount} new messages received.`, "success");
   }
   lastUnreadCount = unreadCount;
   notificationReady = true;
   updateNotifications(unreadCount);
+}
+
+async function showPhoneNotification(unreadCount, newCount) {
+  if (!settings.phoneNotifications || !("Notification" in window) || Notification.permission !== "granted") return;
+  const newestUnread = threads.find((thread) => thread.unread && !thread.archived && !handlePrefs(thread.otherHandle || "").muted);
+  const body = newestUnread
+    ? `${newestUnread.from}: ${newestUnread.subject}`
+    : newCount === 1
+      ? "You have 1 new Threadmail message."
+      : `You have ${newCount} new Threadmail messages.`;
+  const options = {
+    body,
+    tag: "threadmail-unread",
+    icon: "./threadmail-icon-192.png",
+    badge: "./threadmail-icon-192.png",
+    renotify: true,
+    data: { url: "./threadmail.html", unreadCount }
+  };
+
+  try {
+    const registration = "serviceWorker" in navigator ? await navigator.serviceWorker.getRegistration("./") : null;
+    if (registration?.showNotification) {
+      await registration.showNotification(unreadCount === 1 ? "New Threadmail" : `${unreadCount} unread Threadmail messages`, options);
+      return;
+    }
+    new Notification(unreadCount === 1 ? "New Threadmail" : `${unreadCount} unread Threadmail messages`, options);
+  } catch {
+    setStatus("Phone notification could not be shown, but the in-app badge still updated.", "error");
+  }
 }
 
 function playNotificationChime() {
@@ -600,8 +633,37 @@ function renderGameHistory() {
 function renderSettings() {
   els.soundToggle.checked = settings.notificationSounds;
   els.keyboardSoundToggle.checked = settings.keyboardSounds;
+  renderPhoneNotificationSetting();
   els.themeSelect.value = settings.theme || "dark";
   applyTheme();
+}
+
+function renderPhoneNotificationSetting() {
+  if (!("Notification" in window)) {
+    els.phoneNotificationButton.disabled = true;
+    els.phoneNotificationButton.textContent = "Notifications Unavailable";
+    els.phoneNotificationStatus.textContent = "This browser does not support phone notifications for Threadmail.";
+    return;
+  }
+
+  const permission = Notification.permission;
+  if (permission === "granted" && settings.phoneNotifications) {
+    els.phoneNotificationButton.disabled = false;
+    els.phoneNotificationButton.textContent = "Phone Notifications On";
+    els.phoneNotificationStatus.textContent = "Threadmail will pop up new-message notifications while it is running.";
+    return;
+  }
+
+  if (permission === "denied") {
+    els.phoneNotificationButton.disabled = true;
+    els.phoneNotificationButton.textContent = "Notifications Blocked";
+    els.phoneNotificationStatus.textContent = "Turn notifications back on in your browser or phone settings.";
+    return;
+  }
+
+  els.phoneNotificationButton.disabled = false;
+  els.phoneNotificationButton.textContent = "Enable Phone Notifications";
+  els.phoneNotificationStatus.textContent = "Tap once to allow Threadmail pop-up notifications.";
 }
 
 function openGameThread(gameId) {
@@ -1508,6 +1570,27 @@ els.soundToggle.addEventListener("change", () => {
 els.keyboardSoundToggle.addEventListener("change", () => {
   settings.keyboardSounds = els.keyboardSoundToggle.checked;
   saveSettings();
+});
+els.phoneNotificationButton.addEventListener("click", async () => {
+  if (!("Notification" in window)) {
+    setStatus("This browser does not support phone notifications.", "error");
+    return;
+  }
+
+  let permission = Notification.permission;
+  if (permission === "default") {
+    permission = await Notification.requestPermission();
+  }
+
+  settings.phoneNotifications = permission === "granted";
+  saveSettings();
+  renderSettings();
+  setStatus(
+    settings.phoneNotifications
+      ? "Phone notifications are on. Keep Threadmail installed or open to receive pop-ups."
+      : "Phone notifications were not enabled.",
+    settings.phoneNotifications ? "success" : "error"
+  );
 });
 els.themeSelect.addEventListener("change", () => {
   settings.theme = els.themeSelect.value;

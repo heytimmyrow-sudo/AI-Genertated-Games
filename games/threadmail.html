@@ -15,10 +15,10 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="Threadmail">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <link rel="manifest" href="./threadmail.webmanifest">
+  <link rel="manifest" href="./threadmail.webmanifest?v=5">
   <link rel="apple-touch-icon" href="./threadmail-icon-192.png">
   <link rel="stylesheet" href="../style.css">
-  <link rel="stylesheet" href="./threadmail.css">
+  <link rel="stylesheet" href="./threadmail.css?v=5">
 </head>
 <body>
   <main class="shell threadmail-shell">
@@ -138,6 +138,8 @@
                 <input type="checkbox" id="keyboardSoundToggle">
                 <span>Keyboard sounds</span>
               </label>
+              <button class="play-button play-button--ghost" type="button" id="phoneNotificationButton">Enable Phone Notifications</button>
+              <p class="install-help" id="phoneNotificationStatus">Notifications are off.</p>
               <label class="setting-select">
                 <span>Theme</span>
                 <select id="themeSelect">
@@ -314,6 +316,6 @@
       </nav>
     </section>
   </main>
-  <script src="../js/threadmail.js"></script>
+  <script src="../js/threadmail.js?v=5"></script>
 </body>
 </html>
