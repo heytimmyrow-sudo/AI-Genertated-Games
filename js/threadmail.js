@@ -359,6 +359,15 @@ function currentThread() {
   return threads.find((thread) => thread.id === activeId);
 }
 
+function findConversationThreadId(otherHandle, subject) {
+  const normalizedOther = normalizeHandle(otherHandle);
+  const normalizedSubject = normalizeConversationSubject(subject);
+  return threads.find((thread) => (
+    normalizeHandle(thread.otherHandle) === normalizedOther &&
+    normalizeConversationSubject(thread.subject) === normalizedSubject
+  ))?.id || null;
+}
+
 function matchesFilter(thread) {
   if (!thread.draft && handlePrefs(thread.otherHandle || "").blocked) return false;
   if (activeFilter === "inbox") return thread.received && !thread.archived;
@@ -1406,9 +1415,14 @@ async function sendInlineReply() {
     els.offlineBanner.hidden = true;
     tableReady = true;
     setStatus(`Reply sent to ${recipient}.`, "success");
-    await fetchMessages();
-    activeId = Array.isArray(payload) ? payload[0]?.id || activeId : activeId;
+    mergeReturnedMessages(payload);
+    rebuildThreads();
+    activeId = findConversationThreadId(recipient, subject) || (Array.isArray(payload) ? payload[0]?.id || activeId : activeId);
     if (activeFilter === "unread") activeFilter = "inbox";
+    render();
+    focusInlineReply();
+    await fetchMessages();
+    activeId = findConversationThreadId(recipient, subject) || activeId;
     render();
     focusInlineReply();
   } catch {
@@ -1423,6 +1437,7 @@ async function sendInlineGame(type) {
   const sender = identity.handle;
   const recipient = normalizeHandle(thread?.otherHandle || "");
   const title = getGameTitle(type);
+  const subject = thread?.subject || `${title} challenge`;
 
   if (!thread || thread.draft || !recipient) return;
   if (!isValidHandle(sender)) {
@@ -1449,7 +1464,7 @@ async function sendInlineGame(type) {
       body: JSON.stringify([{
         sender_handle: sender,
         recipient_handle: recipient,
-        subject: `${title} challenge`,
+        subject,
         body: `I started a ${title} game. ${getGameRules(type)}`,
         game_id: gameId
       }])
@@ -1463,9 +1478,13 @@ async function sendInlineGame(type) {
     els.offlineBanner.hidden = true;
     tableReady = true;
     setStatus(`${title} sent to ${recipient}.`, "success");
+    mergeReturnedMessages(payload);
+    rebuildThreads();
+    activeId = findConversationThreadId(recipient, subject) || (Array.isArray(payload) ? payload[0]?.id || activeId : activeId);
+    if (activeFilter === "unread") activeFilter = "inbox";
+    render();
     await fetchMessages();
-    activeId = Array.isArray(payload) ? payload[0]?.id || activeId : activeId;
-    activeFilter = "sent";
+    activeId = findConversationThreadId(recipient, subject) || activeId;
     render();
   } catch {
     els.offlineBanner.hidden = false;
@@ -1568,6 +1587,12 @@ function buildMessagesQuery(handle, includeGameId) {
   const columns = ["id", "sender_handle", "recipient_handle", "subject", "body", "created_at", "read_at"];
   if (includeGameId) columns.push("game_id");
   return `or=(sender_handle.eq.${encodeURIComponent(handle)},recipient_handle.eq.${encodeURIComponent(handle)})&select=${columns.join(",")}&order=created_at.desc&limit=100`;
+}
+
+function mergeReturnedMessages(payload) {
+  if (!Array.isArray(payload) || !payload.length) return;
+  const returnedIds = new Set(payload.map((row) => row.id));
+  messageRows = [...payload, ...messageRows.filter((row) => !returnedIds.has(row.id))];
 }
 
 async function fetchMessagesWithoutGames(handle) {
@@ -2235,6 +2260,11 @@ els.inlineReplyBody.addEventListener("input", () => {
   els.inlineReplySend.disabled = !els.inlineReplyBody.value.trim();
   els.inlineReplyBody.style.height = "auto";
   els.inlineReplyBody.style.height = `${Math.min(130, els.inlineReplyBody.scrollHeight)}px`;
+});
+els.inlineReplyBody.addEventListener("keydown", (event) => {
+  if (event.key !== "Enter" || event.shiftKey || event.isComposing) return;
+  event.preventDefault();
+  if (!els.inlineReplySend.disabled) sendInlineReply();
 });
 
 document.addEventListener("keydown", (event) => {

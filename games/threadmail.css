@@ -423,6 +423,12 @@ button.compact-item {
   min-height: 720px;
 }
 
+.message-detail {
+  display: flex;
+  flex-direction: column;
+  min-height: calc(720px - 36px);
+}
+
 .sidebar-compose {
   width: 100%;
   justify-content: center;
@@ -1017,14 +1023,19 @@ button.compact-item:focus-visible {
 
 .message-body {
   display: grid;
+  align-content: start;
   gap: 10px;
+  flex: 1;
   min-height: 230px;
+  overflow: auto;
   padding: 16px;
   border-radius: 16px;
   color: var(--accent-soft);
   background: rgba(2, 7, 12, 0.48);
   line-height: 1.65;
   white-space: normal;
+  scrollbar-gutter: stable;
+  -webkit-overflow-scrolling: touch;
 }
 
 .chat-bubble {
@@ -1071,6 +1082,10 @@ button.compact-item:focus-visible {
   border: 1px solid rgba(125, 227, 255, 0.16);
   border-radius: 26px;
   background: rgba(2, 7, 12, 0.56);
+  position: sticky;
+  bottom: 10px;
+  z-index: 2;
+  box-shadow: 0 16px 34px rgba(0, 0, 0, 0.28);
 }
 
 .inline-reply[hidden] {
@@ -1116,7 +1131,7 @@ button.compact-item:focus-visible {
 }
 
 body.keyboard-open .inline-reply {
-  margin-bottom: 300px;
+  bottom: 300px;
 }
 
 .inline-game-picker {
@@ -1361,6 +1376,10 @@ body.keyboard-open .compose-panel {
     order: -1;
     min-height: 260px;
   }
+
+  .message-detail {
+    min-height: 0;
+  }
 }
 
 @media (max-width: 620px) {
@@ -1440,6 +1459,7 @@ body.keyboard-open .compose-panel {
   .threadmail-detail {
     padding: 12px;
     border-radius: 18px;
+    min-height: min(74dvh, 620px);
   }
 
   .message-detail__header {
@@ -1458,12 +1478,16 @@ body.keyboard-open .compose-panel {
   }
 
   .inline-reply {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr) auto;
     border-radius: 20px;
+    bottom: max(8px, env(safe-area-inset-bottom));
+    margin-top: 10px;
   }
 
   .inline-reply .play-button {
     justify-self: end;
+    min-width: 74px;
+    padding: 10px 12px;
   }
 
   .game-attach-panel {
@@ -1473,6 +1497,10 @@ body.keyboard-open .compose-panel {
   body.keyboard-open .compose-panel {
     bottom: auto;
     max-height: calc(100dvh - 306px - env(safe-area-inset-top));
+  }
+
+  body.keyboard-open .inline-reply {
+    bottom: 292px;
   }
 
   .touch-keyboard {
