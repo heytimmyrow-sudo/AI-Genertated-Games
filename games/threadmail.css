@@ -87,6 +87,12 @@ body.greeting-dismissed .greeting-splash {
   display: none;
 }
 
+.thread-ai-button {
+  border-color: rgba(27, 242, 206, 0.34);
+  color: var(--accent-soft);
+  background: rgba(27, 242, 206, 0.08);
+}
+
 body.is-locked {
   overflow: hidden;
 }

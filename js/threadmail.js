@@ -94,6 +94,7 @@ const els = {
   sidebarToggle: document.getElementById("sidebarToggle"),
   sidebarScrim: document.getElementById("sidebarScrim"),
   composeButton: document.getElementById("composeButton"),
+  threadAiButton: document.getElementById("threadAiButton"),
   sidebarComposeButton: document.getElementById("sidebarComposeButton"),
   refreshButton: document.getElementById("refreshButton"),
   composePanel: document.getElementById("composePanel"),
@@ -1158,6 +1159,14 @@ function composeToHandle(handle) {
   saveComposeAutosave();
   els.composeSubject.focus();
   setSidebarOpen(false);
+}
+
+function composeToAi() {
+  composeToHandle(AI_HANDLE);
+  if (!els.composeSubject.value.trim()) els.composeSubject.value = "Chat with ThreadAI";
+  els.composeBody.focus();
+  setStatus("ThreadAI chat ready. Type a message to begin.", "success");
+  saveComposeAutosave();
 }
 
 function closeComposePanel() {
@@ -2401,6 +2410,7 @@ els.inlineGamePicker.querySelectorAll("[data-inline-game]").forEach((button) => 
   button.addEventListener("click", () => sendInlineGame(button.dataset.inlineGame));
 });
 els.composeButton.addEventListener("click", () => openCompose("new"));
+els.threadAiButton.addEventListener("click", composeToAi);
 els.sidebarComposeButton.addEventListener("click", () => {
   openCompose("new");
   setSidebarOpen(false);
