@@ -1119,6 +1119,33 @@ body.keyboard-open .inline-reply {
   margin-bottom: 300px;
 }
 
+.inline-game-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-top: 10px;
+  padding: 10px;
+  border: 1px solid rgba(255, 214, 107, 0.16);
+  border-radius: 18px;
+  background: rgba(255, 214, 107, 0.06);
+}
+
+.inline-game-picker[hidden] {
+  display: none;
+}
+
+.inline-game-picker span {
+  color: var(--warm);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+}
+
+.inline-game-picker button {
+  padding: 9px 12px;
+}
+
 .message-tools {
   flex-wrap: wrap;
   gap: 10px;

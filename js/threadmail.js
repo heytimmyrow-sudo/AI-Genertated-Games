@@ -74,6 +74,8 @@ const els = {
   inlineReplyForm: document.getElementById("inlineReplyForm"),
   inlineReplyBody: document.getElementById("inlineReplyBody"),
   inlineReplySend: document.getElementById("inlineReplySend"),
+  inlineGamePicker: document.getElementById("inlineGamePicker"),
+  addGameButton: document.getElementById("addGameButton"),
   starButton: document.getElementById("starButton"),
   archiveButton: document.getElementById("archiveButton"),
   unreadButton: document.getElementById("unreadButton"),
@@ -549,6 +551,7 @@ async function selectThread(id) {
     els.inlineReplyBody.value = "";
     els.inlineReplyBody.style.height = "";
     els.inlineReplySend.disabled = true;
+    els.inlineGamePicker.hidden = true;
   }
   activeId = id;
   const thread = currentThread();
@@ -588,6 +591,8 @@ function renderDetail() {
   els.replyButton.disabled = thread.draft || !thread.otherHandle;
   els.inlineReplyForm.hidden = thread.draft || !thread.otherHandle;
   els.inlineReplySend.disabled = !els.inlineReplyBody.value.trim();
+  els.addGameButton.disabled = thread.draft || !thread.otherHandle;
+  if (els.addGameButton.disabled) els.inlineGamePicker.hidden = true;
 }
 
 function renderMessageBody(thread) {
@@ -1102,7 +1107,14 @@ function focusInlineReply(text = "") {
   if (!thread || thread.draft || !thread.otherHandle) return;
   if (text) els.inlineReplyBody.value = text;
   els.inlineReplySend.disabled = !els.inlineReplyBody.value.trim();
+  els.inlineGamePicker.hidden = true;
   els.inlineReplyBody.focus();
+}
+
+function toggleInlineGamePicker() {
+  const thread = currentThread();
+  if (!thread || thread.draft || !thread.otherHandle) return;
+  els.inlineGamePicker.hidden = !els.inlineGamePicker.hidden;
 }
 
 function composeToHandle(handle) {
@@ -1401,6 +1413,61 @@ async function sendInlineReply() {
     focusInlineReply();
   } catch {
     els.inlineReplySend.disabled = false;
+    els.offlineBanner.hidden = false;
+    setStatus("Supabase project URL is not reachable. Check that the project is active and the URL/key in js/threadmail.js are correct.", "error");
+  }
+}
+
+async function sendInlineGame(type) {
+  const thread = currentThread();
+  const sender = identity.handle;
+  const recipient = normalizeHandle(thread?.otherHandle || "");
+  const title = getGameTitle(type);
+
+  if (!thread || thread.draft || !recipient) return;
+  if (!isValidHandle(sender)) {
+    setStatus("Save your handle before sending a game.", "error");
+    els.identityHandle.focus();
+    return;
+  }
+  if (handlePrefs(recipient).blocked) {
+    setStatus("Unblock that handle before sending a game.", "error");
+    return;
+  }
+
+  setStatus(`Starting ${title}...`, "neutral");
+  try {
+    const gameId = await createGame(sender, recipient, type);
+    if (!gameId) return;
+
+    const response = await fetch(`${SUPABASE_URL}/rest/v1/${SUPABASE_TABLE}`, {
+      method: "POST",
+      headers: getSupabaseHeaders({
+        "Content-Type": "application/json",
+        Prefer: "return=representation"
+      }),
+      body: JSON.stringify([{
+        sender_handle: sender,
+        recipient_handle: recipient,
+        subject: `${title} challenge`,
+        body: `I started a ${title} game. ${getGameRules(type)}`,
+        game_id: gameId
+      }])
+    });
+    const payload = await response.json().catch(() => ([]));
+    if (!response.ok) {
+      handleSupabaseError(payload, "Game message could not be sent.");
+      return;
+    }
+    els.inlineGamePicker.hidden = true;
+    els.offlineBanner.hidden = true;
+    tableReady = true;
+    setStatus(`${title} sent to ${recipient}.`, "success");
+    await fetchMessages();
+    activeId = Array.isArray(payload) ? payload[0]?.id || activeId : activeId;
+    activeFilter = "sent";
+    render();
+  } catch {
     els.offlineBanner.hidden = false;
     setStatus("Supabase project URL is not reachable. Check that the project is active and the URL/key in js/threadmail.js are correct.", "error");
   }
@@ -2141,6 +2208,10 @@ els.blockButton.addEventListener("click", () => {
 
 els.deleteButton.addEventListener("click", deleteThread);
 els.replyButton.addEventListener("click", () => focusInlineReply());
+els.addGameButton.addEventListener("click", toggleInlineGamePicker);
+els.inlineGamePicker.querySelectorAll("[data-inline-game]").forEach((button) => {
+  button.addEventListener("click", () => sendInlineGame(button.dataset.inlineGame));
+});
 els.composeButton.addEventListener("click", () => openCompose("new"));
 els.sidebarComposeButton.addEventListener("click", () => {
   openCompose("new");

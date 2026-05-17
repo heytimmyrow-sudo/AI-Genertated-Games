@@ -15,10 +15,10 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="Threadmail">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <link rel="manifest" href="./threadmail.webmanifest?v=13">
+  <link rel="manifest" href="./threadmail.webmanifest?v=14">
   <link rel="apple-touch-icon" href="./threadmail-icon-192.png">
   <link rel="stylesheet" href="../style.css">
-  <link rel="stylesheet" href="./threadmail.css?v=13">
+  <link rel="stylesheet" href="./threadmail.css?v=14">
 </head>
 <body>
   <main class="shell threadmail-shell">
@@ -222,8 +222,16 @@
               </label>
               <button class="play-button" type="submit" id="inlineReplySend">Send</button>
             </form>
+            <section class="inline-game-picker" id="inlineGamePicker" aria-label="Add game" hidden>
+              <span>Send a game</span>
+              <button class="play-button play-button--ghost" type="button" data-inline-game="tic_tac_toe">Tic-Tac-Toe</button>
+              <button class="play-button play-button--ghost" type="button" data-inline-game="connect_four">Connect Four</button>
+              <button class="play-button play-button--ghost" type="button" data-inline-game="battleship">Battleship</button>
+              <button class="play-button play-button--ghost" type="button" data-inline-game="word_chain">Word Chain</button>
+            </section>
             <div class="message-tools">
               <button class="play-button play-button--ghost" type="button" id="replyButton">Reply</button>
+              <button class="play-button play-button--ghost" type="button" id="addGameButton">Add Game</button>
               <button class="play-button play-button--ghost" type="button" id="archiveButton">Archive</button>
               <button class="play-button play-button--ghost" type="button" id="unreadButton">Mark Unread</button>
               <button class="play-button play-button--ghost" type="button" id="muteButton">Mute</button>
@@ -350,6 +358,6 @@
       </nav>
     </section>
   </main>
-  <script src="../js/threadmail.js?v=13"></script>
+  <script src="../js/threadmail.js?v=14"></script>
 </body>
 </html>
