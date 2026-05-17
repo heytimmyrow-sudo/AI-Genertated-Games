@@ -1061,6 +1061,64 @@ button.compact-item:focus-visible {
   color: rgba(6, 17, 26, 0.72);
 }
 
+.inline-reply {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: end;
+  margin-top: 14px;
+  padding: 10px;
+  border: 1px solid rgba(125, 227, 255, 0.16);
+  border-radius: 26px;
+  background: rgba(2, 7, 12, 0.56);
+}
+
+.inline-reply[hidden] {
+  display: none;
+}
+
+.inline-reply label {
+  display: block;
+}
+
+.inline-reply label span {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.inline-reply textarea {
+  width: 100%;
+  min-height: 42px;
+  max-height: 130px;
+  padding: 11px 14px;
+  resize: vertical;
+  border: 1px solid rgba(125, 227, 255, 0.16);
+  border-radius: 20px;
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.07);
+  font: inherit;
+  line-height: 1.4;
+}
+
+.inline-reply textarea:focus {
+  outline: 2px solid rgba(125, 227, 255, 0.34);
+  outline-offset: 2px;
+}
+
+.inline-reply .play-button {
+  min-height: 42px;
+  padding: 10px 16px;
+  border-radius: 999px;
+}
+
+body.keyboard-open .inline-reply {
+  margin-bottom: 300px;
+}
+
 .message-tools {
   flex-wrap: wrap;
   gap: 10px;
@@ -1370,6 +1428,15 @@ body.keyboard-open .compose-panel {
     max-width: 88%;
     font-size: 0.92rem;
     line-height: 1.45;
+  }
+
+  .inline-reply {
+    grid-template-columns: 1fr;
+    border-radius: 20px;
+  }
+
+  .inline-reply .play-button {
+    justify-self: end;
   }
 
   .game-attach-panel {

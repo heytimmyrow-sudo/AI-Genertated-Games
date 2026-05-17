@@ -71,6 +71,9 @@ const els = {
   reactionRow: document.getElementById("reactionRow"),
   quickReplies: document.getElementById("quickReplies"),
   detailBody: document.getElementById("detailBody"),
+  inlineReplyForm: document.getElementById("inlineReplyForm"),
+  inlineReplyBody: document.getElementById("inlineReplyBody"),
+  inlineReplySend: document.getElementById("inlineReplySend"),
   starButton: document.getElementById("starButton"),
   archiveButton: document.getElementById("archiveButton"),
   unreadButton: document.getElementById("unreadButton"),
@@ -542,6 +545,11 @@ function renderList() {
 }
 
 async function selectThread(id) {
+  if (id !== activeId) {
+    els.inlineReplyBody.value = "";
+    els.inlineReplyBody.style.height = "";
+    els.inlineReplySend.disabled = true;
+  }
   activeId = id;
   const thread = currentThread();
   if (thread?.unread && !thread.draft) {
@@ -578,6 +586,8 @@ function renderDetail() {
   els.blockButton.textContent = handleState.blocked ? "Unblock" : "Block";
   els.unreadButton.disabled = thread.sent || thread.draft;
   els.replyButton.disabled = thread.draft || !thread.otherHandle;
+  els.inlineReplyForm.hidden = thread.draft || !thread.otherHandle;
+  els.inlineReplySend.disabled = !els.inlineReplyBody.value.trim();
 }
 
 function renderMessageBody(thread) {
@@ -632,9 +642,7 @@ function renderQuickReplies(thread) {
     button.type = "button";
     button.textContent = reply;
     button.addEventListener("click", () => {
-      openCompose("reply");
-      els.composeBody.value = reply;
-      saveComposeAutosave();
+      focusInlineReply(reply);
     });
     els.quickReplies.append(button);
   }
@@ -1089,6 +1097,14 @@ function openCompose(mode = "new") {
   renderHandleSuggestions();
 }
 
+function focusInlineReply(text = "") {
+  const thread = currentThread();
+  if (!thread || thread.draft || !thread.otherHandle) return;
+  if (text) els.inlineReplyBody.value = text;
+  els.inlineReplySend.disabled = !els.inlineReplyBody.value.trim();
+  els.inlineReplyBody.focus();
+}
+
 function composeToHandle(handle) {
   openCompose("new");
   els.composeTo.value = handle;
@@ -1324,6 +1340,67 @@ async function sendMessage() {
     activeFilter = "sent";
     render();
   } catch {
+    els.offlineBanner.hidden = false;
+    setStatus("Supabase project URL is not reachable. Check that the project is active and the URL/key in js/threadmail.js are correct.", "error");
+  }
+}
+
+async function sendInlineReply() {
+  const thread = currentThread();
+  const sender = identity.handle;
+  const recipient = normalizeHandle(thread?.otherHandle || "");
+  const subject = thread?.subject ? `Re: ${thread.subject.replace(/^Re:\s*/i, "")}` : "";
+  const body = els.inlineReplyBody.value.trim();
+
+  if (!thread || thread.draft || !recipient) return;
+  if (!isValidHandle(sender)) {
+    setStatus("Save your handle before replying.", "error");
+    els.identityHandle.focus();
+    return;
+  }
+  if (handlePrefs(recipient).blocked) {
+    setStatus("Unblock that handle before replying.", "error");
+    return;
+  }
+  if (!body) {
+    els.inlineReplyBody.focus();
+    return;
+  }
+
+  els.inlineReplySend.disabled = true;
+  setStatus("Sending reply...", "neutral");
+  try {
+    const response = await fetch(`${SUPABASE_URL}/rest/v1/${SUPABASE_TABLE}`, {
+      method: "POST",
+      headers: getSupabaseHeaders({
+        "Content-Type": "application/json",
+        Prefer: "return=representation"
+      }),
+      body: JSON.stringify([{
+        sender_handle: sender,
+        recipient_handle: recipient,
+        subject,
+        body
+      }])
+    });
+    const payload = await response.json().catch(() => ([]));
+    if (!response.ok) {
+      handleSupabaseError(payload, "Reply could not be sent.");
+      els.inlineReplySend.disabled = false;
+      return;
+    }
+    els.inlineReplyBody.value = "";
+    els.inlineReplyBody.style.height = "";
+    els.offlineBanner.hidden = true;
+    tableReady = true;
+    setStatus(`Reply sent to ${recipient}.`, "success");
+    await fetchMessages();
+    activeId = Array.isArray(payload) ? payload[0]?.id || activeId : activeId;
+    if (activeFilter === "unread") activeFilter = "inbox";
+    render();
+    focusInlineReply();
+  } catch {
+    els.inlineReplySend.disabled = false;
     els.offlineBanner.hidden = false;
     setStatus("Supabase project URL is not reachable. Check that the project is active and the URL/key in js/threadmail.js are correct.", "error");
   }
@@ -2063,7 +2140,7 @@ els.blockButton.addEventListener("click", () => {
 });
 
 els.deleteButton.addEventListener("click", deleteThread);
-els.replyButton.addEventListener("click", () => openCompose("reply"));
+els.replyButton.addEventListener("click", () => focusInlineReply());
 els.composeButton.addEventListener("click", () => openCompose("new"));
 els.sidebarComposeButton.addEventListener("click", () => {
   openCompose("new");
@@ -2079,11 +2156,20 @@ els.composeForm.addEventListener("submit", (event) => {
   event.preventDefault();
   sendMessage();
 });
+els.inlineReplyForm.addEventListener("submit", (event) => {
+  event.preventDefault();
+  sendInlineReply();
+});
+els.inlineReplyBody.addEventListener("input", () => {
+  els.inlineReplySend.disabled = !els.inlineReplyBody.value.trim();
+  els.inlineReplyBody.style.height = "auto";
+  els.inlineReplyBody.style.height = `${Math.min(130, els.inlineReplyBody.scrollHeight)}px`;
+});
 
 document.addEventListener("keydown", (event) => {
   if (event.target.matches("input, textarea")) return;
   if (event.key.toLowerCase() === "n") openCompose("new");
-  if (event.key.toLowerCase() === "r") openCompose("reply");
+  if (event.key.toLowerCase() === "r") focusInlineReply();
   if (event.key.toLowerCase() === "a") els.archiveButton.click();
   if (event.key.toLowerCase() === "f") fetchMessages();
   if (event.key === "Escape") {

@@ -15,10 +15,10 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="Threadmail">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <link rel="manifest" href="./threadmail.webmanifest?v=12">
+  <link rel="manifest" href="./threadmail.webmanifest?v=13">
   <link rel="apple-touch-icon" href="./threadmail-icon-192.png">
   <link rel="stylesheet" href="../style.css">
-  <link rel="stylesheet" href="./threadmail.css?v=12">
+  <link rel="stylesheet" href="./threadmail.css?v=13">
 </head>
 <body>
   <main class="shell threadmail-shell">
@@ -215,6 +215,13 @@
             <div class="reaction-row" id="reactionRow" aria-label="Message reactions"></div>
             <div class="quick-replies" id="quickReplies" aria-label="Quick replies"></div>
             <div class="message-body" id="detailBody"></div>
+            <form class="inline-reply" id="inlineReplyForm" hidden>
+              <label>
+                <span>Reply</span>
+                <textarea id="inlineReplyBody" rows="1" placeholder="Message..." required data-touch-input></textarea>
+              </label>
+              <button class="play-button" type="submit" id="inlineReplySend">Send</button>
+            </form>
             <div class="message-tools">
               <button class="play-button play-button--ghost" type="button" id="replyButton">Reply</button>
               <button class="play-button play-button--ghost" type="button" id="archiveButton">Archive</button>
@@ -343,6 +350,6 @@
       </nav>
     </section>
   </main>
-  <script src="../js/threadmail.js?v=12"></script>
+  <script src="../js/threadmail.js?v=13"></script>
 </body>
 </html>
