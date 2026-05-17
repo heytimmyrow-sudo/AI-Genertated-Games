@@ -583,7 +583,6 @@ function renderList() {
 async function selectThread(id) {
   if (id !== activeId) {
     els.inlineReplyBody.value = "";
-    els.inlineReplyBody.style.height = "";
     els.inlineReplySend.disabled = true;
     els.inlineGamePicker.hidden = true;
   }
@@ -1503,7 +1502,6 @@ async function sendInlineReply() {
       return;
     }
     els.inlineReplyBody.value = "";
-    els.inlineReplyBody.style.height = "";
     els.offlineBanner.hidden = true;
     tableReady = true;
     setStatus(`Reply sent to ${recipient}.`, "success");
@@ -2423,8 +2421,6 @@ els.inlineReplyForm.addEventListener("submit", (event) => {
 els.inlineDictateButton.addEventListener("click", () => startDictation(els.inlineReplyBody, els.inlineDictateButton));
 els.inlineReplyBody.addEventListener("input", () => {
   els.inlineReplySend.disabled = !els.inlineReplyBody.value.trim();
-  els.inlineReplyBody.style.height = "auto";
-  els.inlineReplyBody.style.height = `${Math.min(130, els.inlineReplyBody.scrollHeight)}px`;
 });
 els.inlineReplyBody.addEventListener("keydown", (event) => {
   if (event.key !== "Enter" || !event.shiftKey || event.isComposing) return;
