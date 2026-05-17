@@ -7,6 +7,7 @@ const PREFS_KEY = "codex-threadmail-prefs-v1";
 const DRAFTS_KEY = "codex-threadmail-drafts-v1";
 const AUTOSAVE_KEY = "codex-threadmail-autosave-v1";
 const SETTINGS_KEY = "codex-threadmail-settings-v1";
+const LOCK_KEY = "codex-threadmail-lock-v1";
 const BASE_TITLE = "Threadmail";
 const REACTIONS = ["Nice", "OK", "?", "Haha"];
 const QUICK_REPLIES = ["OK", "On it", "Your turn", "Haha"];
@@ -17,6 +18,8 @@ let gameRows = [];
 let drafts = loadDrafts();
 let prefs = loadPrefs();
 let settings = loadSettings();
+let lockSettings = loadLockSettings();
+let appUnlocked = !lockSettings.enabled;
 let threads = [];
 let activeFilter = "inbox";
 let activeQuery = "";
@@ -48,6 +51,11 @@ const els = {
   phoneNotificationButton: document.getElementById("phoneNotificationButton"),
   phoneNotificationStatus: document.getElementById("phoneNotificationStatus"),
   themeSelect: document.getElementById("themeSelect"),
+  lockCodeInput: document.getElementById("lockCodeInput"),
+  lockEmailInput: document.getElementById("lockEmailInput"),
+  saveLockButton: document.getElementById("saveLockButton"),
+  disableLockButton: document.getElementById("disableLockButton"),
+  lockSettingStatus: document.getElementById("lockSettingStatus"),
   clearLocalData: document.getElementById("clearLocalData"),
   mobileGameBadge: document.getElementById("mobileGameBadge"),
   offlineBanner: document.getElementById("offlineBanner"),
@@ -105,6 +113,14 @@ const els = {
   touchKeyboardTarget: document.getElementById("touchKeyboardTarget"),
   hideTouchKeyboard: document.getElementById("hideTouchKeyboard"),
   touchKeys: document.querySelectorAll("#touchKeyboard button"),
+  appLock: document.getElementById("appLock"),
+  unlockForm: document.getElementById("unlockForm"),
+  unlockCode: document.getElementById("unlockCode"),
+  forgotLockButton: document.getElementById("forgotLockButton"),
+  lockRecovery: document.getElementById("lockRecovery"),
+  recoveryEmailCheck: document.getElementById("recoveryEmailCheck"),
+  resetLockButton: document.getElementById("resetLockButton"),
+  lockStatus: document.getElementById("lockStatus"),
   mobileTabs: document.querySelectorAll("[data-mobile-tab]")
 };
 
@@ -183,6 +199,29 @@ function saveSettings() {
   localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
 }
 
+function loadLockSettings() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(LOCK_KEY));
+    return saved && typeof saved === "object"
+      ? { enabled: Boolean(saved.enabled), codeHash: saved.codeHash || "", recoveryEmail: String(saved.recoveryEmail || "").toLowerCase() }
+      : { enabled: false, codeHash: "", recoveryEmail: "" };
+  } catch {
+    return { enabled: false, codeHash: "", recoveryEmail: "" };
+  }
+}
+
+function saveLockSettings() {
+  localStorage.setItem(LOCK_KEY, JSON.stringify(lockSettings));
+}
+
+function encodeCode(value) {
+  return btoa(unescape(encodeURIComponent(String(value || ""))));
+}
+
+function normalizeEmail(value) {
+  return String(value || "").trim().toLowerCase();
+}
+
 function getSupabaseHeaders(extra = {}) {
   return {
     apikey: SUPABASE_ANON_KEY,
@@ -199,6 +238,27 @@ function setStatus(message, tone = "neutral") {
 function setSidebarOpen(open) {
   document.body.classList.toggle("sidebar-open", open);
   els.sidebarToggle.setAttribute("aria-expanded", String(open));
+}
+
+function setLockedView(locked) {
+  els.appLock.hidden = !locked;
+  document.body.classList.toggle("is-locked", locked);
+  if (locked) window.setTimeout(() => els.unlockCode.focus(), 80);
+}
+
+function unlockApp() {
+  appUnlocked = true;
+  setLockedView(false);
+  setStatus(identity.handle ? `Unlocked ${identity.handle}.` : "Unlocked Threadmail.", "success");
+  fetchMessages();
+}
+
+function renderLockSetting() {
+  if (document.activeElement !== els.lockEmailInput) {
+    els.lockEmailInput.value = lockSettings.recoveryEmail || "";
+  }
+  els.lockSettingStatus.textContent = lockSettings.enabled ? "App lock is on for this device." : "App lock is off.";
+  els.disableLockButton.disabled = !lockSettings.enabled;
 }
 
 function applyTheme() {
@@ -473,7 +533,7 @@ function renderDetail() {
   els.detailFrom.textContent = thread.from;
   els.detailSubject.textContent = thread.subject;
   els.detailMeta.textContent = `${thread.time} | ${thread.statusLabel || (thread.draft ? "Draft" : thread.archived ? "Archived" : thread.sent ? "Sent" : "Inbox")}`;
-  els.detailBody.textContent = thread.body;
+  renderMessageBody(thread);
   renderGameAttachment(thread);
   renderReactions(thread);
   renderQuickReplies(thread);
@@ -491,6 +551,25 @@ function renderDetail() {
   els.blockButton.textContent = handleState.blocked ? "Unblock" : "Block";
   els.unreadButton.disabled = thread.sent || thread.draft;
   els.replyButton.disabled = thread.sent || thread.draft;
+}
+
+function renderMessageBody(thread) {
+  els.detailBody.innerHTML = "";
+  const parts = String(thread.body || "").split("\n\n---\n\n");
+  for (const part of parts) {
+    const lines = part.split("\n");
+    const header = lines[0] || thread.from;
+    const text = lines.slice(1).join("\n").trim() || part;
+    const isMine = header.toLowerCase() === "you" || header.toLowerCase().startsWith("you:");
+    const bubble = document.createElement("div");
+    bubble.className = `chat-bubble ${isMine ? "chat-bubble--me" : "chat-bubble--them"}`;
+    const label = document.createElement("strong");
+    label.textContent = header.replace(/:$/, "");
+    const body = document.createElement("span");
+    body.textContent = text;
+    bubble.append(label, body);
+    els.detailBody.append(bubble);
+  }
 }
 
 function getHandleAvatar(handle) {
@@ -634,6 +713,7 @@ function renderSettings() {
   els.soundToggle.checked = settings.notificationSounds;
   els.keyboardSoundToggle.checked = settings.keyboardSounds;
   renderPhoneNotificationSetting();
+  renderLockSetting();
   els.themeSelect.value = settings.theme || "dark";
   applyTheme();
 }
@@ -1161,6 +1241,7 @@ function saveDraft() {
 }
 
 async function fetchMessages() {
+  if (!appUnlocked) return;
   const handle = identity.handle;
   if (!isValidHandle(handle)) {
     messageRows = [];
@@ -1592,6 +1673,62 @@ els.phoneNotificationButton.addEventListener("click", async () => {
     settings.phoneNotifications ? "success" : "error"
   );
 });
+els.saveLockButton.addEventListener("click", () => {
+  const code = els.lockCodeInput.value.trim();
+  const recoveryEmail = normalizeEmail(els.lockEmailInput.value);
+  if (code.length < 4) {
+    setStatus("Use at least 4 numbers or letters for the app code.", "error");
+    els.lockCodeInput.focus();
+    return;
+  }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(recoveryEmail)) {
+    setStatus("Add a recovery email before turning on app lock.", "error");
+    els.lockEmailInput.focus();
+    return;
+  }
+  lockSettings = { enabled: true, codeHash: encodeCode(code), recoveryEmail };
+  appUnlocked = true;
+  saveLockSettings();
+  els.lockCodeInput.value = "";
+  setStatus("App lock saved for this device.", "success");
+  renderSettings();
+});
+els.disableLockButton.addEventListener("click", () => {
+  lockSettings = { enabled: false, codeHash: "", recoveryEmail: "" };
+  appUnlocked = true;
+  saveLockSettings();
+  setLockedView(false);
+  setStatus("App lock disabled.", "success");
+  renderSettings();
+});
+els.unlockForm.addEventListener("submit", (event) => {
+  event.preventDefault();
+  if (encodeCode(els.unlockCode.value.trim()) === lockSettings.codeHash) {
+    els.unlockCode.value = "";
+    unlockApp();
+    return;
+  }
+  els.lockStatus.textContent = "Wrong code.";
+  els.unlockCode.select();
+});
+els.forgotLockButton.addEventListener("click", () => {
+  els.lockRecovery.hidden = !els.lockRecovery.hidden;
+  if (!els.lockRecovery.hidden) els.recoveryEmailCheck.focus();
+});
+els.resetLockButton.addEventListener("click", () => {
+  const email = normalizeEmail(els.recoveryEmailCheck.value);
+  if (!lockSettings.recoveryEmail || email !== lockSettings.recoveryEmail) {
+    els.lockStatus.textContent = "Recovery email does not match.";
+    return;
+  }
+  lockSettings = { enabled: false, codeHash: "", recoveryEmail: email };
+  appUnlocked = true;
+  saveLockSettings();
+  setLockedView(false);
+  setStatus("App lock reset. Add a new code in Settings.", "success");
+  renderSettings();
+  window.location.href = `mailto:${encodeURIComponent(email)}?subject=Threadmail%20code%20reset&body=Your%20Threadmail%20app%20lock%20was%20reset%20on%20this%20device.`;
+});
 els.themeSelect.addEventListener("change", () => {
   settings.theme = els.themeSelect.value;
   saveSettings();
@@ -1806,8 +1943,11 @@ document.addEventListener("touchend", (event) => {
 }, { passive: true });
 
 render();
-if (getInviteHandle()) openCompose("new");
-fetchMessages();
+setLockedView(!appUnlocked);
+if (appUnlocked) {
+  if (getInviteHandle()) openCompose("new");
+  fetchMessages();
+}
 setInterval(fetchMessages, 15000);
 
 if ("serviceWorker" in navigator) {

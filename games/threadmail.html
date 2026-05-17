@@ -15,13 +15,28 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="Threadmail">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <link rel="manifest" href="./threadmail.webmanifest?v=5">
+  <link rel="manifest" href="./threadmail.webmanifest?v=6">
   <link rel="apple-touch-icon" href="./threadmail-icon-192.png">
   <link rel="stylesheet" href="../style.css">
-  <link rel="stylesheet" href="./threadmail.css?v=5">
+  <link rel="stylesheet" href="./threadmail.css?v=6">
 </head>
 <body>
   <main class="shell threadmail-shell">
+    <section class="app-lock" id="appLock" aria-label="Threadmail lock" hidden>
+      <form class="app-lock__card" id="unlockForm">
+        <p class="eyebrow">Threadmail</p>
+        <h2>Enter Code</h2>
+        <input id="unlockCode" type="password" inputmode="numeric" autocomplete="current-password" placeholder="Code" data-touch-input>
+        <button class="play-button" type="submit">Unlock</button>
+        <button class="play-button play-button--ghost" type="button" id="forgotLockButton">Forgot Password?</button>
+        <div class="lock-recovery" id="lockRecovery" hidden>
+          <input id="recoveryEmailCheck" type="email" autocomplete="email" placeholder="Recovery email" data-touch-input>
+          <button class="play-button play-button--ghost" type="button" id="resetLockButton">Reset Code</button>
+        </div>
+        <p id="lockStatus">This device is locked.</p>
+      </form>
+    </section>
+
     <section class="hud-frame threadmail-frame">
       <header class="threadmail-header">
         <div class="title-block">
@@ -148,6 +163,17 @@
                   <option value="neon">Neon</option>
                 </select>
               </label>
+              <label class="setting-select">
+                <span>App Code</span>
+                <input id="lockCodeInput" type="password" inputmode="numeric" autocomplete="new-password" placeholder="Optional code" data-touch-input>
+              </label>
+              <label class="setting-select">
+                <span>Recovery Email</span>
+                <input id="lockEmailInput" type="email" autocomplete="email" placeholder="you@gmail.com" data-touch-input>
+              </label>
+              <button class="play-button play-button--ghost" type="button" id="saveLockButton">Save App Lock</button>
+              <button class="play-button play-button--ghost" type="button" id="disableLockButton">Disable App Lock</button>
+              <p class="install-help" id="lockSettingStatus">App lock is off.</p>
               <button class="play-button play-button--ghost" type="button" id="clearLocalData">Clear Local Data</button>
             </section>
 
@@ -316,6 +342,6 @@
       </nav>
     </section>
   </main>
-  <script src="../js/threadmail.js?v=5"></script>
+  <script src="../js/threadmail.js?v=6"></script>
 </body>
 </html>
