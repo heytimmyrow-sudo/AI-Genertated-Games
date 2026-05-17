@@ -258,6 +258,12 @@ function updateTimeGreeting() {
   els.timeGreeting.textContent = greeting;
 }
 
+function dismissTimeGreeting() {
+  window.setTimeout(() => {
+    document.body.classList.add("greeting-dismissed");
+  }, 2600);
+}
+
 function setSidebarOpen(open) {
   document.body.classList.toggle("sidebar-open", open);
   els.sidebarToggle.setAttribute("aria-expanded", String(open));
@@ -2389,6 +2395,7 @@ document.addEventListener("touchend", (event) => {
 }, { passive: true });
 
 updateTimeGreeting();
+dismissTimeGreeting();
 render();
 setLockedView(!appUnlocked);
 if (appUnlocked) {
