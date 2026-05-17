@@ -1217,11 +1217,12 @@ function updateInviteLink() {
 }
 
 function getKnownHandles() {
-  const handles = new Set([AI_HANDLE]);
+  const handles = new Set();
   for (const row of messageRows) {
     if (row.sender_handle && row.sender_handle !== identity.handle) handles.add(row.sender_handle);
     if (row.recipient_handle && row.recipient_handle !== identity.handle) handles.add(row.recipient_handle);
   }
+  handles.delete(AI_HANDLE);
   return [...handles].sort();
 }
 
