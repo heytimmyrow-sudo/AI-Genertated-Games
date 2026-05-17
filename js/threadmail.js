@@ -34,7 +34,6 @@ let pendingGameType = "";
 let touchStartX = 0;
 let touchStartY = 0;
 let pendingResetCode = "";
-let activeProfileHandle = "";
 
 const els = {
   inboxCount: document.getElementById("inboxCount"),
@@ -46,7 +45,6 @@ const els = {
   gameLobbyList: document.getElementById("gameLobbyList"),
   contactsCount: document.getElementById("contactsCount"),
   contactList: document.getElementById("contactList"),
-  contactProfile: document.getElementById("contactProfile"),
   gameHistorySummary: document.getElementById("gameHistorySummary"),
   gameHistoryList: document.getElementById("gameHistoryList"),
   soundToggle: document.getElementById("soundToggle"),
@@ -54,10 +52,6 @@ const els = {
   phoneNotificationButton: document.getElementById("phoneNotificationButton"),
   phoneNotificationStatus: document.getElementById("phoneNotificationStatus"),
   themeSelect: document.getElementById("themeSelect"),
-  profileNameInput: document.getElementById("profileNameInput"),
-  profileStatusInput: document.getElementById("profileStatusInput"),
-  profileColorInput: document.getElementById("profileColorInput"),
-  saveProfileButton: document.getElementById("saveProfileButton"),
   lockCodeInput: document.getElementById("lockCodeInput"),
   lockEmailInput: document.getElementById("lockEmailInput"),
   saveLockButton: document.getElementById("saveLockButton"),
@@ -76,7 +70,6 @@ const els = {
   detailTags: document.getElementById("detailTags"),
   reactionRow: document.getElementById("reactionRow"),
   quickReplies: document.getElementById("quickReplies"),
-  detailProfileCard: document.getElementById("detailProfileCard"),
   detailBody: document.getElementById("detailBody"),
   starButton: document.getElementById("starButton"),
   archiveButton: document.getElementById("archiveButton"),
@@ -295,20 +288,6 @@ function handlePrefs(handle) {
   prefs.handles ||= {};
   prefs.handles[handle] ||= { muted: false, blocked: false };
   return prefs.handles[handle];
-}
-
-function profileFor(handle) {
-  const normalized = normalizeHandle(handle || "");
-  const avatar = getHandleAvatar(normalized || "tm");
-  prefs.profiles ||= {};
-  prefs.profiles[normalized] ||= { displayName: "", status: "", color: avatar.color };
-  if (!prefs.profiles[normalized].color) prefs.profiles[normalized].color = avatar.color;
-  return prefs.profiles[normalized];
-}
-
-function displayNameFor(handle) {
-  const profile = profileFor(handle);
-  return profile.displayName?.trim() || handle || "Unknown";
 }
 
 function rebuildThreads() {
@@ -581,7 +560,6 @@ function renderDetail() {
   els.detailFrom.textContent = thread.from;
   els.detailSubject.textContent = thread.subject;
   els.detailMeta.textContent = `${thread.time} | ${thread.statusLabel || (thread.draft ? "Draft" : thread.archived ? "Archived" : thread.sent ? "Sent" : "Inbox")}`;
-  renderProfileCard(els.detailProfileCard, thread.otherHandle);
   renderMessageBody(thread);
   renderGameAttachment(thread);
   renderReactions(thread);
@@ -623,42 +601,12 @@ function renderMessageBody(thread) {
 
 function getHandleAvatar(handle) {
   const value = normalizeHandle(handle || "tm") || "tm";
-  const profile = prefs.profiles?.[value];
   let hash = 0;
   for (const char of value) hash = (hash * 31 + char.charCodeAt(0)) % 360;
   return {
     initials: value.slice(0, 2).toUpperCase(),
-    color: profile?.color || `hsl(${hash} 74% 52%)`
+    color: `hsl(${hash} 74% 52%)`
   };
-}
-
-function renderProfileCard(container, handle, options = {}) {
-  if (!handle) {
-    container.hidden = true;
-    container.innerHTML = "";
-    return;
-  }
-  const profile = profileFor(handle);
-  const avatar = getHandleAvatar(handle);
-  const messageCount = messageRows.filter((row) => row.sender_handle === handle || row.recipient_handle === handle).length;
-  container.hidden = false;
-  container.innerHTML = `
-    <span class="avatar-dot" style="--avatar-color: ${avatar.color}">${escapeHtml(avatar.initials)}</span>
-    <div>
-      <h3>${escapeHtml(displayNameFor(handle))}</h3>
-      <p>@${escapeHtml(handle)}${profile.status ? ` - ${escapeHtml(profile.status)}` : ""}</p>
-      <p>${messageCount} ${messageCount === 1 ? "message" : "messages"} together</p>
-      <p>${escapeHtml(getContactGameSummary(handle))}</p>
-    </div>
-    ${options.actions ? `<div class="profile-card__actions"><button type="button" data-profile-message="${escapeHtml(handle)}">Message</button><button type="button" data-profile-pin="${escapeHtml(handle)}">${handlePrefs(handle).pinned ? "Unpin" : "Pin"}</button></div>` : ""}
-  `;
-  container.querySelector("[data-profile-message]")?.addEventListener("click", () => composeToHandle(handle));
-  container.querySelector("[data-profile-pin]")?.addEventListener("click", () => {
-    const state = handlePrefs(handle);
-    state.pinned = !state.pinned;
-    savePrefs();
-    renderContacts();
-  });
 }
 
 function renderReactions(thread) {
@@ -738,7 +686,7 @@ function renderGameLobby() {
     const button = document.createElement("button");
     button.type = "button";
     button.className = "compact-item";
-    button.innerHTML = `<strong>${escapeHtml(getGameTitle(game.type))} vs ${escapeHtml(displayNameFor(other))}</strong><p>${escapeHtml(getGameBadgeText(game))} - ${escapeHtml(getGameRulesShort(game.type))}</p>`;
+    button.innerHTML = `<strong>${escapeHtml(getGameTitle(game.type))} vs ${escapeHtml(other)}</strong><p>${escapeHtml(getGameBadgeText(game))} - ${escapeHtml(getGameRulesShort(game.type))}</p>`;
     button.addEventListener("click", () => openGameThread(game.id));
     els.gameLobbyList.append(button);
   }
@@ -749,17 +697,15 @@ function renderContacts() {
   els.contactsCount.textContent = `${contacts.length} ${contacts.length === 1 ? "person" : "people"}`;
   els.contactList.innerHTML = contacts.length ? "" : `<div class="compact-item"><strong>No contacts yet</strong><p>Message someone to add them here.</p></div>`;
   contacts.sort((a, b) => Number(handlePrefs(b).pinned) - Number(handlePrefs(a).pinned) || a.localeCompare(b));
-  if (!activeProfileHandle || !contacts.includes(activeProfileHandle)) activeProfileHandle = contacts[0] || "";
   for (const handle of contacts.slice(0, 8)) {
     const state = handlePrefs(handle);
     const avatar = getHandleAvatar(handle);
-    const profile = profileFor(handle);
     const item = document.createElement("div");
     item.className = "compact-item contact-item";
     item.innerHTML = `
       <span class="avatar-dot" style="--avatar-color: ${avatar.color}">${escapeHtml(avatar.initials)}</span>
-      <strong>${escapeHtml(displayNameFor(handle))}${state.pinned ? " *" : ""}</strong>
-      <p>@${escapeHtml(handle)}${profile.status ? ` - ${escapeHtml(profile.status)}` : ""}</p>
+      <strong>${escapeHtml(handle)}${state.pinned ? " *" : ""}</strong>
+      <p>${escapeHtml(getContactGameSummary(handle))}</p>
       <div class="contact-actions">
         <button type="button" data-action="message">Msg</button>
         <button type="button" data-action="pin">${state.pinned ? "Unpin" : "Pin"}</button>
@@ -775,12 +721,10 @@ function renderContacts() {
         renderContacts();
         return;
       }
-      activeProfileHandle = handle;
-      renderContacts();
+      composeToHandle(handle);
     });
     els.contactList.append(item);
   }
-  renderProfileCard(els.contactProfile, activeProfileHandle, { actions: true });
 }
 
 function renderGameHistory() {
@@ -803,7 +747,7 @@ function renderGameHistory() {
     const other = getGameOtherHandle(game);
     const item = document.createElement("div");
     item.className = "compact-item";
-    item.innerHTML = `<strong>${escapeHtml(getGameTitle(game.type))} vs ${escapeHtml(displayNameFor(other))}</strong><p>${escapeHtml(getGameOutcomeText(game))}</p>`;
+    item.innerHTML = `<strong>${escapeHtml(getGameTitle(game.type))} vs ${escapeHtml(other)}</strong><p>${escapeHtml(getGameOutcomeText(game))}</p>`;
     els.gameHistoryList.append(item);
   }
 }
@@ -813,10 +757,6 @@ function renderSettings() {
   els.keyboardSoundToggle.checked = settings.keyboardSounds;
   renderPhoneNotificationSetting();
   renderLockSetting();
-  const ownProfile = profileFor(identity.handle || "me");
-  if (document.activeElement !== els.profileNameInput) els.profileNameInput.value = ownProfile.displayName || "";
-  if (document.activeElement !== els.profileStatusInput) els.profileStatusInput.value = ownProfile.status || "";
-  els.profileColorInput.value = ownProfile.color && ownProfile.color.startsWith("#") ? ownProfile.color : "#20d6c7";
   els.themeSelect.value = settings.theme || "dark";
   applyTheme();
 }
@@ -893,7 +833,7 @@ function renderGameAttachment(thread) {
     </div>
     <div class="game-cardlet__players">
       <span>You are ${escapeHtml(myMark)}</span>
-      <span>Opponent: ${escapeHtml(displayNameFor(other))}</span>
+      <span>Opponent: ${escapeHtml(other)}</span>
       <span>${escapeHtml(getGameOutcomeText(game))}</span>
     </div>
     <details class="game-rules">
@@ -903,7 +843,7 @@ function renderGameAttachment(thread) {
     <div class="game-play-area"></div>
     <div class="game-cardlet__actions">
       <button type="button" data-game-action="rematch">Rematch</button>
-      <button type="button" data-game-action="message">Message ${escapeHtml(displayNameFor(other))}</button>
+      <button type="button" data-game-action="message">Message ${escapeHtml(other)}</button>
     </div>
   `;
 
@@ -1079,15 +1019,15 @@ function getGameBadgeText(game) {
 }
 
 function getGameOutcomeText(game) {
-  if (game.status === "active") return game.turn_handle === identity.handle ? "Your move" : `Waiting for ${displayNameFor(game.turn_handle)}`;
+  if (game.status === "active") return game.turn_handle === identity.handle ? "Your move" : `Waiting for ${game.turn_handle}`;
   if (game.status === "draw") return "Finished as a draw";
   const winner = game.status === "x_won" ? game.x_handle : game.o_handle;
-  return winner === identity.handle ? "You won" : `${displayNameFor(winner)} won`;
+  return winner === identity.handle ? "You won" : `${winner} won`;
 }
 
 function getWaitingHint(game) {
   if (game.status !== "active") return getGameOutcomeText(game);
-  return game.turn_handle === identity.handle ? "Your move." : `Waiting for ${displayNameFor(game.turn_handle)}.`;
+  return game.turn_handle === identity.handle ? "Your move." : `Waiting for ${game.turn_handle}.`;
 }
 
 function createGameHint(text) {
@@ -1955,16 +1895,6 @@ els.resetLockButton.addEventListener("click", () => {
   setLockedView(false);
   setStatus("App lock reset. Add a new code in Settings.", "success");
   renderSettings();
-});
-els.saveProfileButton.addEventListener("click", () => {
-  const handle = identity.handle || "me";
-  const profile = profileFor(handle);
-  profile.displayName = els.profileNameInput.value.trim().slice(0, 32);
-  profile.status = els.profileStatusInput.value.trim().slice(0, 80);
-  profile.color = els.profileColorInput.value || profile.color;
-  savePrefs();
-  setStatus("Profile saved on this device.", "success");
-  render();
 });
 els.themeSelect.addEventListener("change", () => {
   settings.theme = els.themeSelect.value;

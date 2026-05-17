@@ -15,10 +15,10 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="Threadmail">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <link rel="manifest" href="./threadmail.webmanifest?v=9">
+  <link rel="manifest" href="./threadmail.webmanifest?v=10">
   <link rel="apple-touch-icon" href="./threadmail-icon-192.png">
   <link rel="stylesheet" href="../style.css">
-  <link rel="stylesheet" href="./threadmail.css?v=9">
+  <link rel="stylesheet" href="./threadmail.css?v=10">
 </head>
 <body>
   <main class="shell threadmail-shell">
@@ -131,7 +131,6 @@
                 <span id="contactsCount">0 people</span>
               </div>
               <div class="compact-list" id="contactList"></div>
-              <article class="profile-card" id="contactProfile" hidden></article>
             </section>
 
             <section class="tool-panel history-panel" aria-label="Game history">
@@ -165,19 +164,6 @@
                   <option value="neon">Neon</option>
                 </select>
               </label>
-              <label class="setting-select">
-                <span>Display Name</span>
-                <input id="profileNameInput" type="text" maxlength="32" placeholder="Ari" data-touch-input>
-              </label>
-              <label class="setting-select">
-                <span>Status</span>
-                <input id="profileStatusInput" type="text" maxlength="80" placeholder="Available" data-touch-input>
-              </label>
-              <label class="setting-select">
-                <span>Profile Color</span>
-                <input id="profileColorInput" type="color" value="#20d6c7">
-              </label>
-              <button class="play-button play-button--ghost" type="button" id="saveProfileButton">Save Profile</button>
               <label class="setting-select">
                 <span>App Code</span>
                 <input id="lockCodeInput" type="password" inputmode="numeric" autocomplete="new-password" placeholder="Optional code" data-touch-input>
@@ -225,7 +211,6 @@
               </div>
               <button class="star-button" type="button" id="starButton" aria-label="Toggle starred">*</button>
             </div>
-            <article class="profile-card profile-card--detail" id="detailProfileCard"></article>
             <div class="tag-row" id="detailTags"></div>
             <div class="reaction-row" id="reactionRow" aria-label="Message reactions"></div>
             <div class="quick-replies" id="quickReplies" aria-label="Quick replies"></div>
@@ -358,6 +343,6 @@
       </nav>
     </section>
   </main>
-  <script src="../js/threadmail.js?v=9"></script>
+  <script src="../js/threadmail.js?v=10"></script>
 </body>
 </html>

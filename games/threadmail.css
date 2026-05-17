@@ -355,53 +355,6 @@ button.compact-item {
   background: rgba(125, 227, 255, 0.08);
 }
 
-.profile-card {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  gap: 10px;
-  align-items: center;
-  margin-top: 10px;
-  padding: 10px;
-  border: 1px solid rgba(125, 227, 255, 0.14);
-  border-radius: 14px;
-  background: rgba(2, 7, 12, 0.34);
-}
-
-.profile-card[hidden] {
-  display: none;
-}
-
-.profile-card h3,
-.profile-card p {
-  margin: 0;
-}
-
-.profile-card p {
-  color: var(--muted);
-  font-size: 0.84rem;
-  line-height: 1.35;
-}
-
-.profile-card__actions {
-  grid-column: 1 / -1;
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.profile-card__actions button {
-  border: 1px solid rgba(125, 227, 255, 0.16);
-  border-radius: 999px;
-  padding: 7px 10px;
-  color: var(--accent-soft);
-  background: rgba(125, 227, 255, 0.08);
-  font: inherit;
-}
-
-.profile-card--detail {
-  margin: 12px 0 0;
-}
-
 .setting-toggle {
   display: flex;
   align-items: center;
@@ -425,15 +378,6 @@ button.compact-item {
   color: var(--text);
   background: rgba(2, 7, 12, 0.82);
   font: inherit;
-}
-
-.setting-select input[type="color"] {
-  width: 100%;
-  min-height: 42px;
-  border: 1px solid rgba(125, 227, 255, 0.18);
-  border-radius: 10px;
-  padding: 4px;
-  background: rgba(2, 7, 12, 0.82);
 }
 
 .threadmail-layout {
