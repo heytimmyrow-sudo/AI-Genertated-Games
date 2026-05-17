@@ -2262,7 +2262,7 @@ els.inlineReplyBody.addEventListener("input", () => {
   els.inlineReplyBody.style.height = `${Math.min(130, els.inlineReplyBody.scrollHeight)}px`;
 });
 els.inlineReplyBody.addEventListener("keydown", (event) => {
-  if (event.key !== "Enter" || event.shiftKey || event.isComposing) return;
+  if (event.key !== "Enter" || !event.shiftKey || event.isComposing) return;
   event.preventDefault();
   if (!els.inlineReplySend.disabled) sendInlineReply();
 });
