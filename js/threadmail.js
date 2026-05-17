@@ -1,7 +1,6 @@
 const SUPABASE_URL = "https://jbljqusdpifdyewlenun.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_RYq_rDXqj_Ate8B66PcJEQ_a6yv1YUl";
 const SUPABASE_TABLE = "threadmail_messages";
-const HANDLES_TABLE = "threadmail_handles";
 const GAMES_TABLE = "threadmail_games";
 const IDENTITY_KEY = "codex-threadmail-identity-v1";
 const PREFS_KEY = "codex-threadmail-prefs-v1";
@@ -1401,43 +1400,6 @@ function isMissingColumnError(payload) {
   return payload?.code === "42703";
 }
 
-async function reserveHandle(handle) {
-  const existing = await fetch(`${SUPABASE_URL}/rest/v1/${HANDLES_TABLE}?handle=eq.${encodeURIComponent(handle)}&select=handle,owner_token&limit=1`, {
-    headers: getSupabaseHeaders()
-  });
-  const existingPayload = await existing.json().catch(() => ([]));
-  if (!existing.ok) {
-    handleSupabaseError(existingPayload, "Could not check whether that handle is available.");
-    return false;
-  }
-  const reserved = Array.isArray(existingPayload) ? existingPayload[0] : null;
-  if (reserved && reserved.owner_token !== identity.ownerToken) {
-    setStatus("Handle Taken", "error");
-    return false;
-  }
-  if (reserved && reserved.owner_token === identity.ownerToken) return true;
-
-  const response = await fetch(`${SUPABASE_URL}/rest/v1/${HANDLES_TABLE}`, {
-    method: "POST",
-    headers: getSupabaseHeaders({
-      "Content-Type": "application/json",
-      Prefer: "return=minimal"
-    }),
-    body: JSON.stringify([{
-      handle,
-      owner_token: identity.ownerToken,
-      updated_at: new Date().toISOString()
-    }])
-  });
-  const payload = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    if (payload?.code === "23505") setStatus("Handle Taken", "error");
-    else handleSupabaseError(payload, "Could not reserve that handle.");
-    return false;
-  }
-  return true;
-}
-
 document.querySelectorAll("[data-filter]").forEach((button) => {
   button.addEventListener("click", () => {
     activeFilter = button.dataset.filter;
@@ -1512,12 +1474,11 @@ els.saveIdentity.addEventListener("click", async () => {
     setStatus("Handle must be 3-24 letters, numbers, or underscores.", "error");
     return;
   }
-  setStatus("Checking handle...");
-  if (!(await reserveHandle(nextHandle))) return;
   identity.handle = nextHandle;
   els.identityHandle.value = nextHandle;
   activeId = null;
   saveIdentity();
+  setStatus(`Using shared handle ${nextHandle}. Messages to this handle go to everyone using it.`, "success");
   await fetchMessages();
 });
 
