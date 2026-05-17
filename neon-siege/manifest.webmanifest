@@ -1,0 +1,16 @@
+{
+  "name": "Neon Siege",
+  "short_name": "Neon Siege",
+  "description": "A fast top-down arena shooter with waves, upgrades, weapon drops, and boss rounds.",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#02070c",
+  "theme_color": "#06111a",
+  "icons": [
+    {
+      "src": "./neon-siege-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}

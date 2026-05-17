@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Neon Siege</title>
+  <meta name="description" content="Neon Siege is a fast top-down arena shooter with waves, weapon drops, bosses, upgrades, and daily runs.">
+  <meta name="theme-color" content="#06111a">
+  <meta property="og:title" content="Neon Siege">
+  <meta property="og:description" content="Clear waves, grab weapon drops, dodge hazards, pick upgrades, and survive boss rounds.">
+  <meta property="og:type" content="website">
+  <meta property="og:image" content="./neon-siege-icon.svg">
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="icon" href="./neon-siege-icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="./neon-siege.css">
+</head>
+<body>
+  <main class="game-shell">
+    <section class="game-frame" aria-label="Neon Siege">
+      <header class="game-header">
+        <div>
+          <p class="eyebrow">Arena Shooter</p>
+          <h1>Neon Siege</h1>
+          <p>Clear escalating waves, grab weapon drops, dodge hazards, choose upgrades, and break boss rounds.</p>
+        </div>
+        <div class="game-actions" aria-label="Game actions">
+          <a class="action-link" href="../index.html">Arcade</a>
+          <button class="action-link" type="button" id="fullscreenButton">Fullscreen</button>
+        </div>
+      </header>
+
+      <div class="game-stage">
+        <canvas id="gameCanvas" width="900" height="600" aria-label="Neon Siege game area"></canvas>
+      </div>
+
+      <div class="controls" aria-label="Controls">
+        <span>Move: WASD / Arrows</span>
+        <span>Aim: Mouse</span>
+        <span>Shoot: Click / Space</span>
+        <span>Dash: Q / E</span>
+        <span>Modes: 1-4</span>
+        <span>Start: Enter</span>
+        <span>Pause: P</span>
+        <span>Menu: Esc</span>
+      </div>
+
+      <section class="touch-controls" aria-label="Touch controls">
+        <div class="touch-pad" id="movePad">
+          <span>Move</span>
+        </div>
+        <div class="touch-buttons">
+          <button type="button" data-touch-key=" ">Fire</button>
+          <button type="button" data-touch-key="q">Dash</button>
+          <button type="button" data-touch-key="enter">Start</button>
+          <button type="button" data-touch-key="p">Pause</button>
+        </div>
+      </section>
+    </section>
+  </main>
+  <script src="./neon-siege.js?v=1"></script>
+</body>
+</html>
