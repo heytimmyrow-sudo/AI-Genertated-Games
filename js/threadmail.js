@@ -14,10 +14,10 @@ const AI_HANDLE = "threadai";
 const REACTIONS = ["Nice", "OK", "?", "Haha"];
 const QUICK_REPLIES = ["OK", "On it", "Your turn", "Haha"];
 const AI_QUICK_ACTIONS = [
-  { label: "Suggest Reply", prompt: "Suggest a short reply I could send." },
-  { label: "Rewrite This", prompt: "Help me rewrite my next message so it sounds clearer and friendlier." },
-  { label: "Summarize", prompt: "Summarize this conversation in a few simple bullets." },
-  { label: "Ideas", prompt: "Give me three good ideas for improving Threadmail." }
+  { label: "Suggest Reply", prompt: "Suggest 3 short replies I could send. Make them sound natural and different from each other." },
+  { label: "Rewrite This", prompt: "Rewrite my next message so it sounds clearer and friendlier. Put the rewritten message first." },
+  { label: "Summarize", prompt: "Summarize this conversation in a few simple bullets, then list any next steps." },
+  { label: "Ideas", prompt: "Give me three specific ideas for improving Threadmail, and tell me which one to build first." }
 ];
 
 let identity = loadIdentity();
@@ -1213,11 +1213,30 @@ function composeToHandle(handle) {
 }
 
 function composeToAi() {
+  const thread = currentThread();
   composeToHandle(AI_HANDLE);
-  if (!els.composeSubject.value.trim()) els.composeSubject.value = "Chat with ThreadAI";
+  if (thread && !isAiHandle(thread.otherHandle) && !thread.draft) {
+    els.composeSubject.value = `ThreadAI help: ${thread.subject.replace(/^Re:\s*/i, "")}`;
+    els.composeBody.value = buildAiContextPrompt(thread);
+  } else if (!els.composeSubject.value.trim()) {
+    els.composeSubject.value = "Chat with ThreadAI";
+  }
   els.composeBody.focus();
   setStatus("ThreadAI chat ready. Type a message to begin.", "success");
   saveComposeAutosave();
+}
+
+function buildAiContextPrompt(thread) {
+  const rows = Array.isArray(thread.rows) && thread.rows.length
+    ? thread.rows.slice(-10).map((row) => `${row.isSent ? "Me" : row.sender_handle}: ${row.body}`).join("\n")
+    : `${thread.from}: ${thread.body}`;
+  return `Help me with this conversation.
+
+Conversation:
+${rows}
+
+What I need:
+`;
 }
 
 function closeComposePanel() {
@@ -2334,15 +2353,24 @@ async function insertAiAssistantReply({ recipient, subject, reply }) {
 }
 
 function buildBasicAiReply(body) {
-  const text = String(body || "").toLowerCase();
+  const raw = String(body || "").trim();
+  const text = raw.toLowerCase();
   const opener = [
     "Here is a useful direction:",
     "I would handle it this way:",
     "Try this:",
     "A good next move is:"
   ][Math.floor(Date.now() / 1000) % 4];
+  if (text.includes("conversation:") && text.includes("what i need:")) {
+    return "I can help with this chat. Tell me the goal after 'What I need' like: make a friendly reply, apologize, say no politely, or make it shorter.";
+  }
   if (/\b(hi|hello|hey)\b/.test(text)) {
     return "Hello. Ask me for a reply, a rewrite, a summary, or Threadmail ideas. If you paste the message you are working on, I can be much more specific.";
+  }
+  if (/\b(what should i say|reply|respond|answer)\b/.test(text)) {
+    const quote = raw.match(/["']([^"']{12,300})["']/)?.[1];
+    if (quote) return `You could say: "That sounds good. I am interested. What time works best for you?"\n\nIf you want, I can make it warmer, shorter, or more serious.`;
+    return "Send me the message you are replying to, or open that chat and press ThreadAI. Then I can write the exact reply instead of guessing.";
   }
   if (text.includes("game")) {
     return `${opener} make game invites look like chat cards, show whose turn it is, and keep the board inside the conversation so playing feels part of messaging.`;
