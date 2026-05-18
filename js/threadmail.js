@@ -569,7 +569,6 @@ function renderList() {
 async function selectThread(id) {
   if (id !== activeId) {
     els.inlineReplyBody.value = "";
-    els.inlineReplySend.disabled = true;
     els.inlineGamePicker.hidden = true;
   }
   activeId = id;
@@ -609,7 +608,6 @@ function renderDetail() {
   els.unreadButton.disabled = thread.draft || !threadHasReceivedMessages(thread);
   els.replyButton.disabled = thread.draft || !thread.otherHandle;
   els.inlineReplyForm.hidden = thread.draft || !thread.otherHandle;
-  els.inlineReplySend.disabled = !els.inlineReplyBody.value.trim();
   els.addGameButton.disabled = thread.draft || !thread.otherHandle;
   if (els.addGameButton.disabled) els.inlineGamePicker.hidden = true;
 }
@@ -1145,7 +1143,6 @@ function focusInlineReply(text = "") {
   const thread = currentThread();
   if (!thread || thread.draft || !thread.otherHandle) return;
   if (text) els.inlineReplyBody.value = text;
-  els.inlineReplySend.disabled = !els.inlineReplyBody.value.trim();
   els.inlineGamePicker.hidden = true;
   els.inlineReplyBody.focus();
 }
@@ -1409,7 +1406,6 @@ async function sendInlineReply() {
     return;
   }
 
-  els.inlineReplySend.disabled = true;
   setStatus("Sending reply...", "neutral");
   try {
     const response = await fetch(`${SUPABASE_URL}/rest/v1/${SUPABASE_TABLE}`, {
@@ -1428,7 +1424,6 @@ async function sendInlineReply() {
     const payload = await response.json().catch(() => ([]));
     if (!response.ok) {
       handleSupabaseError(payload, "Reply could not be sent.");
-      els.inlineReplySend.disabled = false;
       return;
     }
     els.inlineReplyBody.value = "";
@@ -1452,7 +1447,6 @@ async function sendInlineReply() {
     render();
     focusInlineReply();
   } catch {
-    els.inlineReplySend.disabled = false;
     els.offlineBanner.hidden = false;
     setStatus("Supabase project URL is not reachable. Check that the project is active and the URL/key in js/threadmail.js are correct.", "error");
   }
@@ -2377,13 +2371,10 @@ els.inlineReplyForm.addEventListener("submit", (event) => {
   sendInlineReply();
 });
 els.inlineDictateButton.addEventListener("click", () => startDictation(els.inlineReplyBody, els.inlineDictateButton));
-els.inlineReplyBody.addEventListener("input", () => {
-  els.inlineReplySend.disabled = !els.inlineReplyBody.value.trim();
-});
 els.inlineReplyBody.addEventListener("keydown", (event) => {
   if (event.key !== "Enter" || !event.shiftKey || event.isComposing) return;
   event.preventDefault();
-  if (!els.inlineReplySend.disabled) sendInlineReply();
+  sendInlineReply();
 });
 
 document.addEventListener("keydown", (event) => {
