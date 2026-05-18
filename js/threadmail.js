@@ -322,6 +322,11 @@ function handlePrefs(handle) {
   return prefs.handles[handle];
 }
 
+function threadHasReceivedMessages(thread) {
+  const ids = thread?.messageIds || (thread?.id ? [thread.id] : []);
+  return messageRows.some((entry) => ids.includes(entry.id) && entry.recipient_handle === identity.handle);
+}
+
 function rebuildThreads() {
   const grouped = new Map();
   for (const row of messageRows) {
@@ -601,7 +606,7 @@ function renderDetail() {
   const handleState = handlePrefs(thread.otherHandle || "");
   els.muteButton.textContent = handleState.muted ? "Unmute" : "Mute";
   els.blockButton.textContent = handleState.blocked ? "Unblock" : "Block";
-  els.unreadButton.disabled = thread.sent || thread.draft;
+  els.unreadButton.disabled = thread.draft || !threadHasReceivedMessages(thread);
   els.replyButton.disabled = thread.draft || !thread.otherHandle;
   els.inlineReplyForm.hidden = thread.draft || !thread.otherHandle;
   els.inlineReplySend.disabled = !els.inlineReplyBody.value.trim();
@@ -2291,7 +2296,7 @@ els.archiveButton.addEventListener("click", () => {
 
 els.unreadButton.addEventListener("click", async () => {
   const thread = currentThread();
-  if (!thread || thread.sent || thread.draft) return;
+  if (!thread || thread.draft) return;
   const ids = thread.messageIds || [thread.id];
   const rows = messageRows.filter((entry) => ids.includes(entry.id) && entry.recipient_handle === identity.handle);
   if (!rows.length) return;
