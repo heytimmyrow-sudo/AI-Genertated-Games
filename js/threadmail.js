@@ -33,8 +33,6 @@ let activeQuery = "";
 let activeId = null;
 let replyToId = null;
 let tableReady = false;
-let activeTextField = null;
-let touchShift = false;
 let lastUnreadCount = 0;
 let notificationReady = false;
 let pendingGameType = "";
@@ -97,7 +95,6 @@ const els = {
   blockButton: document.getElementById("blockButton"),
   deleteButton: document.getElementById("deleteButton"),
   replyButton: document.getElementById("replyButton"),
-  keyboardButton: document.getElementById("keyboardButton"),
   sidebarToggle: document.getElementById("sidebarToggle"),
   sidebarScrim: document.getElementById("sidebarScrim"),
   composeButton: document.getElementById("composeButton"),
@@ -131,10 +128,6 @@ const els = {
   notificationStrip: document.getElementById("notificationStrip"),
   notificationCount: document.getElementById("notificationCount"),
   notificationText: document.getElementById("notificationText"),
-  touchKeyboard: document.getElementById("touchKeyboard"),
-  touchKeyboardTarget: document.getElementById("touchKeyboardTarget"),
-  hideTouchKeyboard: document.getElementById("hideTouchKeyboard"),
-  touchKeys: document.querySelectorAll("#touchKeyboard button"),
   appLock: document.getElementById("appLock"),
   unlockForm: document.getElementById("unlockForm"),
   unlockCode: document.getElementById("unlockCode"),
@@ -530,27 +523,6 @@ function playNotificationChime() {
     });
   } catch {
     // The title and in-app badge still handle the notification if audio is blocked.
-  }
-}
-
-function playKeyClick() {
-  if (!settings.keyboardSounds) return;
-  try {
-    const AudioContext = window.AudioContext || window.webkitAudioContext;
-    if (!AudioContext) return;
-    const audio = new AudioContext();
-    const osc = audio.createOscillator();
-    const gain = audio.createGain();
-    osc.type = "triangle";
-    osc.frequency.setValueAtTime(520, audio.currentTime);
-    gain.gain.setValueAtTime(0.025, audio.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.0001, audio.currentTime + 0.06);
-    osc.connect(gain);
-    gain.connect(audio.destination);
-    osc.start();
-    osc.stop(audio.currentTime + 0.06);
-  } catch {
-    // Keyboard input still works if audio is blocked.
   }
 }
 
@@ -987,7 +959,6 @@ function renderWordChain(game, container) {
       <button class="play-button play-button--ghost" type="button">Send Word</button>
     `;
     const input = entry.querySelector("input");
-    bindTouchInput(input);
     entry.querySelector("button").addEventListener("click", () => playWordChainMove(game, input.value));
     wrapper.append(entry);
   }
@@ -1278,59 +1249,6 @@ function renderHandleSuggestions() {
   }
 }
 
-function showTouchKeyboard(field) {
-  activeTextField = field;
-  els.touchKeyboard.hidden = false;
-  document.body.classList.add("keyboard-open");
-  els.touchKeyboardTarget.textContent = getFieldLabel(field);
-}
-
-function hideTouchKeyboard() {
-  els.touchKeyboard.hidden = true;
-  document.body.classList.remove("keyboard-open");
-  activeTextField = null;
-}
-
-function getFieldLabel(field) {
-  const label = field.closest("label")?.querySelector("span")?.textContent;
-  return label ? `Typing: ${label}` : "Typing";
-}
-
-function syncTouchKeyboardCase() {
-  els.touchKeys.forEach((button) => {
-    const key = button.dataset.key;
-    if (!key || key.length !== 1 || !/[a-z]/.test(key)) return;
-    button.textContent = touchShift ? key.toUpperCase() : key;
-    button.classList.toggle("is-active", touchShift);
-  });
-}
-
-function insertTouchText(text) {
-  if (!activeTextField) return;
-  playKeyClick();
-  const start = activeTextField.selectionStart ?? activeTextField.value.length;
-  const end = activeTextField.selectionEnd ?? activeTextField.value.length;
-  const nextValue = activeTextField.value.slice(0, start) + text + activeTextField.value.slice(end);
-  activeTextField.value = nextValue;
-  const nextCursor = start + text.length;
-  activeTextField.focus({ preventScroll: true });
-  activeTextField.setSelectionRange(nextCursor, nextCursor);
-  activeTextField.dispatchEvent(new Event("input", { bubbles: true }));
-}
-
-function backspaceTouchText() {
-  if (!activeTextField) return;
-  playKeyClick();
-  const start = activeTextField.selectionStart ?? activeTextField.value.length;
-  const end = activeTextField.selectionEnd ?? activeTextField.value.length;
-  if (start === 0 && end === 0) return;
-  const deleteFrom = start === end ? Math.max(0, start - 1) : start;
-  activeTextField.value = activeTextField.value.slice(0, deleteFrom) + activeTextField.value.slice(end);
-  activeTextField.focus({ preventScroll: true });
-  activeTextField.setSelectionRange(deleteFrom, deleteFrom);
-  activeTextField.dispatchEvent(new Event("input", { bubbles: true }));
-}
-
 function getSpeechRecognition() {
   return window.SpeechRecognition || window.webkitSpeechRecognition || null;
 }
@@ -1388,38 +1306,6 @@ function startDictation(field, button) {
   });
   speechRecognizer.addEventListener("end", clearDictationState);
   speechRecognizer.start();
-}
-
-function pressTouchKey(button) {
-  const action = button.dataset.action;
-  if (action === "shift") {
-    touchShift = !touchShift;
-    syncTouchKeyboardCase();
-    return;
-  }
-  if (action === "backspace") {
-    backspaceTouchText();
-    return;
-  }
-  if (action === "space") {
-    insertTouchText(" ");
-    return;
-  }
-  if (action === "enter") {
-    if (activeTextField?.tagName === "TEXTAREA") {
-      insertTouchText("\n");
-    } else {
-      activeTextField?.blur();
-    }
-    return;
-  }
-
-  const key = button.dataset.key || "";
-  insertTouchText(touchShift && /[a-z]/.test(key) ? key.toUpperCase() : key);
-  if (touchShift && /[a-z]/.test(key)) {
-    touchShift = false;
-    syncTouchKeyboardCase();
-  }
 }
 
 async function sendMessage() {
@@ -2387,31 +2273,6 @@ els.saveIdentity.addEventListener("click", async () => {
 });
 
 els.refreshButton.addEventListener("click", fetchMessages);
-els.keyboardButton.addEventListener("click", () => {
-  const field = activeTextField || els.identityHandle;
-  field.focus({ preventScroll: true });
-  showTouchKeyboard(field);
-});
-
-function bindTouchInput(field) {
-  field.addEventListener("focus", () => showTouchKeyboard(field));
-  field.addEventListener("pointerdown", () => showTouchKeyboard(field));
-}
-
-document.querySelectorAll("[data-touch-input]").forEach(bindTouchInput);
-
-els.touchKeyboard.addEventListener("pointerdown", (event) => {
-  if (event.target.closest("button")) return;
-  event.preventDefault();
-});
-
-els.touchKeys.forEach((button) => {
-  if (button === els.hideTouchKeyboard) return;
-  button.addEventListener("click", () => pressTouchKey(button));
-});
-
-els.hideTouchKeyboard.addEventListener("click", hideTouchKeyboard);
-
 els.starButton.addEventListener("click", () => {
   const thread = currentThread();
   if (!thread) return;

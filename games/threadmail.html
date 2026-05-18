@@ -15,10 +15,10 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="Threadmail">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <link rel="manifest" href="./threadmail.webmanifest?v=30">
+  <link rel="manifest" href="./threadmail.webmanifest?v=31">
   <link rel="apple-touch-icon" href="./threadmail-icon-192.png">
   <link rel="stylesheet" href="../style.css">
-  <link rel="stylesheet" href="./threadmail.css?v=30">
+  <link rel="stylesheet" href="./threadmail.css?v=31">
 </head>
 <body>
   <section class="greeting-splash" id="greetingSplash" aria-live="polite">
@@ -51,7 +51,6 @@
         <div class="threadmail-actions">
           <button class="play-button play-button--ghost thread-ai-button" type="button" id="threadAiButton">ThreadAI</button>
           <button class="play-button play-button--ghost sidebar-toggle" type="button" id="sidebarToggle" aria-expanded="false">Sidebar</button>
-          <button class="play-button play-button--ghost" type="button" id="keyboardButton">Keyboard</button>
           <button class="play-button play-button--ghost" type="button" id="refreshButton">Refresh</button>
           <button class="play-button" type="button" id="composeButton">Compose</button>
         </div>
@@ -293,69 +292,6 @@
         </form>
       </section>
 
-      <section class="touch-keyboard" id="touchKeyboard" aria-label="Touch keyboard" hidden>
-        <div class="touch-keyboard__bar">
-          <span id="touchKeyboardTarget">Typing</span>
-          <button type="button" class="touch-keyboard__hide" id="hideTouchKeyboard">Hide</button>
-        </div>
-        <div class="touch-keyboard__row">
-          <button type="button" data-key="1">1</button>
-          <button type="button" data-key="2">2</button>
-          <button type="button" data-key="3">3</button>
-          <button type="button" data-key="4">4</button>
-          <button type="button" data-key="5">5</button>
-          <button type="button" data-key="6">6</button>
-          <button type="button" data-key="7">7</button>
-          <button type="button" data-key="8">8</button>
-          <button type="button" data-key="9">9</button>
-          <button type="button" data-key="0">0</button>
-        </div>
-        <div class="touch-keyboard__row">
-          <button type="button" data-key="q">q</button>
-          <button type="button" data-key="w">w</button>
-          <button type="button" data-key="e">e</button>
-          <button type="button" data-key="r">r</button>
-          <button type="button" data-key="t">t</button>
-          <button type="button" data-key="y">y</button>
-          <button type="button" data-key="u">u</button>
-          <button type="button" data-key="i">i</button>
-          <button type="button" data-key="o">o</button>
-          <button type="button" data-key="p">p</button>
-        </div>
-        <div class="touch-keyboard__row touch-keyboard__row--offset">
-          <button type="button" data-key="a">a</button>
-          <button type="button" data-key="s">s</button>
-          <button type="button" data-key="d">d</button>
-          <button type="button" data-key="f">f</button>
-          <button type="button" data-key="g">g</button>
-          <button type="button" data-key="h">h</button>
-          <button type="button" data-key="j">j</button>
-          <button type="button" data-key="k">k</button>
-          <button type="button" data-key="l">l</button>
-        </div>
-        <div class="touch-keyboard__row">
-          <button type="button" data-action="shift">Shift</button>
-          <button type="button" data-key="z">z</button>
-          <button type="button" data-key="x">x</button>
-          <button type="button" data-key="c">c</button>
-          <button type="button" data-key="v">v</button>
-          <button type="button" data-key="b">b</button>
-          <button type="button" data-key="n">n</button>
-          <button type="button" data-key="m">m</button>
-          <button type="button" data-action="backspace">Back</button>
-        </div>
-        <div class="touch-keyboard__row">
-          <button type="button" data-key="_">_</button>
-          <button type="button" data-key="-">-</button>
-          <button type="button" data-key=".">.</button>
-          <button type="button" data-key=",">,</button>
-          <button type="button" data-key="?">?</button>
-          <button type="button" data-key="!">!</button>
-          <button type="button" data-action="space" class="touch-keyboard__space">Space</button>
-          <button type="button" data-action="enter">Enter</button>
-        </div>
-      </section>
-
       <nav class="mobile-tabbar" aria-label="Mobile navigation">
         <button type="button" data-mobile-tab="inbox">Inbox</button>
         <button type="button" data-mobile-tab="games">Games <span id="mobileGameBadge">0</span></button>
@@ -364,6 +300,6 @@
       </nav>
     </section>
   </main>
-  <script src="../js/threadmail.js?v=30"></script>
+  <script src="../js/threadmail.js?v=31"></script>
 </body>
 </html>
