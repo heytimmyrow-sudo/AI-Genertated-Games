@@ -1093,6 +1093,14 @@ button.compact-item:focus-visible {
   font-size: 0.74rem;
 }
 
+.chat-bubble time {
+  display: block;
+  margin-top: 6px;
+  color: rgba(223, 248, 255, 0.55);
+  font-size: 0.68rem;
+  line-height: 1.2;
+}
+
 .chat-bubble--me {
   justify-self: end;
   border-bottom-right-radius: 6px;
@@ -1108,6 +1116,10 @@ button.compact-item:focus-visible {
 
 .chat-bubble--me strong {
   color: rgba(6, 17, 26, 0.72);
+}
+
+.chat-bubble--me time {
+  color: rgba(6, 17, 26, 0.62);
 }
 
 .chat-bubble--typing {

@@ -2,6 +2,7 @@ const SUPABASE_URL = "https://jbljqusdpifdyewlenun.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_RYq_rDXqj_Ate8B66PcJEQ_a6yv1YUl";
 const SUPABASE_TABLE = "threadmail_messages";
 const GAMES_TABLE = "threadmail_games";
+const TYPING_TABLE = "threadmail_typing";
 const IDENTITY_KEY = "codex-threadmail-identity-v1";
 const PREFS_KEY = "codex-threadmail-prefs-v1";
 const DRAFTS_KEY = "codex-threadmail-drafts-v1";
@@ -22,6 +23,7 @@ const AI_QUICK_ACTIONS = [
 let identity = loadIdentity();
 let messageRows = [];
 let gameRows = [];
+let typingRows = [];
 let drafts = loadDrafts();
 let prefs = loadPrefs();
 let settings = loadSettings();
@@ -43,6 +45,8 @@ let speechRecognizer = null;
 let speechTarget = null;
 let speechButton = null;
 let aiTyping = false;
+let typingIdleTimer = null;
+let lastTypingSentAt = 0;
 
 const els = {
   greetingSplash: document.getElementById("greetingSplash"),
@@ -327,6 +331,27 @@ function threadHasReceivedMessages(thread) {
   return messageRows.some((entry) => ids.includes(entry.id) && entry.recipient_handle === identity.handle);
 }
 
+function getTypingSubjectKey(subject) {
+  return normalizeConversationSubject(subject).slice(0, 140);
+}
+
+function isTypingFresh(row) {
+  return Date.now() - new Date(row.updated_at).getTime() < 9000;
+}
+
+function activeTypingHandle(thread) {
+  if (!thread?.otherHandle || thread.draft) return "";
+  const subjectKey = getTypingSubjectKey(thread.subject);
+  const row = typingRows.find((entry) => (
+    entry.sender_handle === thread.otherHandle &&
+    entry.recipient_handle === identity.handle &&
+    entry.subject_key === subjectKey &&
+    entry.is_typing &&
+    isTypingFresh(entry)
+  ));
+  return row?.sender_handle || "";
+}
+
 function rebuildThreads() {
   const grouped = new Map();
   for (const row of messageRows) {
@@ -353,6 +378,7 @@ function rebuildThreads() {
       otherHandle: row.otherHandle,
       subject: row.subject,
       body: rows.map((entry) => `${entry.isSent ? "You" : entry.sender_handle}:\n${entry.body}`).reverse().join("\n\n---\n\n"),
+      rows: rows.map((entry) => ({ ...entry })).reverse(),
       time: formatTime(row.created_at),
       unread,
       starred: Boolean(pref.starred),
@@ -614,31 +640,55 @@ function renderDetail() {
 
 function renderMessageBody(thread) {
   els.detailBody.innerHTML = "";
-  const parts = String(thread.body || "").split("\n\n---\n\n");
-  for (const part of parts) {
-    const lines = part.split("\n");
-    const header = lines[0] || thread.from;
-    const text = lines.slice(1).join("\n").trim() || part;
-    const isMine = header.toLowerCase() === "you" || header.toLowerCase().startsWith("you:");
-    const bubble = document.createElement("div");
-    bubble.className = `chat-bubble ${isMine ? "chat-bubble--me" : "chat-bubble--them"}`;
-    const label = document.createElement("strong");
-    label.textContent = header.replace(/:$/, "");
-    const body = document.createElement("span");
-    body.textContent = text;
-    bubble.append(label, body);
-    els.detailBody.append(bubble);
+  if (Array.isArray(thread.rows) && thread.rows.length) {
+    for (const row of thread.rows) {
+      appendChatBubble({
+        label: row.isSent ? "You" : row.sender_handle,
+        text: row.body,
+        time: formatTime(row.created_at),
+        isMine: row.isSent
+      });
+    }
+  } else {
+    const parts = String(thread.body || "").split("\n\n---\n\n");
+    for (const part of parts) {
+      const lines = part.split("\n");
+      const header = lines[0] || thread.from;
+      const text = lines.slice(1).join("\n").trim() || part;
+      const isMine = header.toLowerCase() === "you" || header.toLowerCase().startsWith("you:");
+      appendChatBubble({ label: header.replace(/:$/, ""), text, time: thread.time, isMine });
+    }
   }
   if (isAiHandle(thread.otherHandle) && aiTyping) {
-    const bubble = document.createElement("div");
-    bubble.className = "chat-bubble chat-bubble--them chat-bubble--typing";
-    const label = document.createElement("strong");
-    label.textContent = "ThreadAI";
-    const body = document.createElement("span");
-    body.textContent = "is typing...";
-    bubble.append(label, body);
-    els.detailBody.append(bubble);
+    appendTypingBubble("ThreadAI");
+  } else {
+    const typingHandle = activeTypingHandle(thread);
+    if (typingHandle) appendTypingBubble(typingHandle);
   }
+}
+
+function appendChatBubble({ label, text, time, isMine }) {
+  const bubble = document.createElement("div");
+  bubble.className = `chat-bubble ${isMine ? "chat-bubble--me" : "chat-bubble--them"}`;
+  const name = document.createElement("strong");
+  name.textContent = label;
+  const body = document.createElement("span");
+  body.textContent = text;
+  const stamp = document.createElement("time");
+  stamp.textContent = time;
+  bubble.append(name, body, stamp);
+  els.detailBody.append(bubble);
+}
+
+function appendTypingBubble(handle) {
+  const bubble = document.createElement("div");
+  bubble.className = "chat-bubble chat-bubble--them chat-bubble--typing";
+  const label = document.createElement("strong");
+  label.textContent = handle;
+  const body = document.createElement("span");
+  body.textContent = "is typing...";
+  bubble.append(label, body);
+  els.detailBody.append(bubble);
 }
 
 function getHandleAvatar(handle) {
@@ -1361,6 +1411,7 @@ async function sendMessage() {
       handleSupabaseError(payload, "Message could not be sent.");
       return;
     }
+    sendTypingState({ recipient, subject, isTyping: false });
     els.offlineBanner.hidden = true;
     tableReady = true;
     clearComposeAutosave();
@@ -1426,6 +1477,7 @@ async function sendInlineReply() {
       handleSupabaseError(payload, "Reply could not be sent.");
       return;
     }
+    sendTypingState({ recipient, subject, isTyping: false });
     els.inlineReplyBody.value = "";
     els.offlineBanner.hidden = true;
     tableReady = true;
@@ -1594,6 +1646,7 @@ async function fetchMessages() {
     tableReady = true;
     messageRows = Array.isArray(payload) ? payload : [];
     await fetchGames(handle);
+    await fetchTypingIndicators(handle);
     setStatus(messageRows.length ? `Synced ${messageRows.length} message${messageRows.length === 1 ? "" : "s"} for ${handle}.` : `Inbox ready for ${handle}.`, "success");
     render();
     maybeNotifyUnreadChange();
@@ -1629,6 +1682,7 @@ async function fetchMessagesWithoutGames(handle) {
   tableReady = true;
   gameRows = [];
   messageRows = Array.isArray(payload) ? payload.map((row) => ({ ...row, game_id: null })) : [];
+  await fetchTypingIndicators(handle);
   setStatus("Messages loaded. Run supabase/threadmail-messages.sql once to turn game attachments back on.", "error");
   render();
   maybeNotifyUnreadChange();
@@ -1647,6 +1701,69 @@ async function fetchGames(handle) {
   }
   els.offlineBanner.hidden = true;
   gameRows = Array.isArray(payload) ? payload : [];
+}
+
+async function fetchTypingIndicators(handle = identity.handle) {
+  if (!isValidHandle(handle)) return;
+  const since = new Date(Date.now() - 9000).toISOString();
+  const query = `recipient_handle=eq.${encodeURIComponent(handle)}&is_typing=eq.true&updated_at=gt.${encodeURIComponent(since)}&select=sender_handle,recipient_handle,subject_key,is_typing,updated_at`;
+  try {
+    const response = await fetch(`${SUPABASE_URL}/rest/v1/${TYPING_TABLE}?${query}`, {
+      headers: getSupabaseHeaders()
+    });
+    const payload = await response.json().catch(() => ([]));
+    typingRows = response.ok && Array.isArray(payload) ? payload : [];
+  } catch {
+    typingRows = [];
+  }
+}
+
+async function sendTypingState({ recipient, subject, isTyping }) {
+  if (!isValidHandle(identity.handle) || !isValidHandle(recipient) || recipient === identity.handle) return;
+  const subjectKey = getTypingSubjectKey(subject || "Chat");
+  if (!subjectKey) return;
+  try {
+    await fetch(`${SUPABASE_URL}/rest/v1/${TYPING_TABLE}?on_conflict=sender_handle,recipient_handle,subject_key`, {
+      method: "POST",
+      headers: getSupabaseHeaders({
+        "Content-Type": "application/json",
+        Prefer: "resolution=merge-duplicates,return=minimal"
+      }),
+      body: JSON.stringify([{
+        sender_handle: identity.handle,
+        recipient_handle: recipient,
+        subject_key: subjectKey,
+        is_typing: Boolean(isTyping),
+        updated_at: new Date().toISOString()
+      }])
+    });
+  } catch {
+    // Typing indicators are optional; messaging should keep working without them.
+  }
+}
+
+function queueTypingSignal({ recipient, subject }) {
+  const now = Date.now();
+  if (now - lastTypingSentAt > 1800) {
+    lastTypingSentAt = now;
+    sendTypingState({ recipient, subject, isTyping: true });
+  }
+  window.clearTimeout(typingIdleTimer);
+  typingIdleTimer = window.setTimeout(() => {
+    sendTypingState({ recipient, subject, isTyping: false });
+  }, 3500);
+}
+
+function sendActiveTypingSignal() {
+  const thread = currentThread();
+  if (!thread || thread.draft || !thread.otherHandle) return;
+  queueTypingSignal({ recipient: thread.otherHandle, subject: thread.subject });
+}
+
+function sendComposeTypingSignal() {
+  const recipient = normalizeHandle(els.composeTo.value);
+  if (!recipient) return;
+  queueTypingSignal({ recipient, subject: els.composeSubject.value.trim() || "New Message" });
 }
 
 async function playTicTacToeMove(game, index) {
@@ -2003,7 +2120,10 @@ els.composeTo.addEventListener("input", () => {
   saveComposeAutosave();
 });
 els.composeSubject.addEventListener("input", saveComposeAutosave);
-els.composeBody.addEventListener("input", saveComposeAutosave);
+els.composeBody.addEventListener("input", () => {
+  saveComposeAutosave();
+  sendComposeTypingSignal();
+});
 els.composeDictateButton.addEventListener("click", () => startDictation(els.composeBody, els.composeDictateButton));
 els.soundToggle.addEventListener("change", () => {
   settings.notificationSounds = els.soundToggle.checked;
@@ -2215,22 +2335,34 @@ async function insertAiAssistantReply({ recipient, subject, reply }) {
 
 function buildBasicAiReply(body) {
   const text = String(body || "").toLowerCase();
+  const opener = [
+    "Here is a useful direction:",
+    "I would handle it this way:",
+    "Try this:",
+    "A good next move is:"
+  ][Math.floor(Date.now() / 1000) % 4];
   if (/\b(hi|hello|hey)\b/.test(text)) {
-    return "Hello. I am ThreadAI. I can help brainstorm messages, suggest Threadmail upgrades, explain features, or help you decide what to build next.";
+    return "Hello. Ask me for a reply, a rewrite, a summary, or Threadmail ideas. If you paste the message you are working on, I can be much more specific.";
   }
   if (text.includes("game")) {
-    return "For games, I would make invites look like chat cards, add a clear turn indicator, and keep the board inside the conversation so it feels like you are playing while messaging.";
+    return `${opener} make game invites look like chat cards, show whose turn it is, and keep the board inside the conversation so playing feels part of messaging.`;
   }
   if (text.includes("upgrade") || text.includes("add") || text.includes("feature")) {
-    return "A good next upgrade would be message search inside each conversation, cleaner game invite cards, or custom themes. My pick: game invite cards, because they would make Threadmail feel more polished fast.";
+    return `${opener} add cleaner game invite cards, message search inside a chat, or custom themes. My pick is game invite cards because they make the app feel polished quickly.`;
+  }
+  if (text.includes("rewrite")) {
+    return "Paste the message you want rewritten, and tell me the tone: nicer, shorter, more serious, or more excited.";
+  }
+  if (text.includes("summarize")) {
+    return "I can summarize a thread best when the real AI backend is connected. In basic mode, paste the key messages and I will help condense them.";
   }
   if (text.includes("help")) {
-    return "I can help with Threadmail ideas, wording a message, planning a feature, or figuring out what to improve next. Ask me something like: what should I add next?";
+    return "I can help with wording a message, planning a feature, improving a game, or deciding what to build next. Paste the message or describe the goal.";
   }
   if (text.includes("thank")) {
-    return "You are welcome. Threadmail is coming together nicely.";
+    return "You are welcome. Threadmail is getting sharper with each pass.";
   }
-  return "I am here. The full AI brain still needs its backend key, but I can answer in basic mode for now. Tell me what you want help with.";
+  return `${opener} give me the message or goal, and I will help shape it. For example: "make this sound nicer" or "what should I say to apologize?"`;
 }
 
 async function finishAiAssistantReply({ sender, subject, reply, statusMessage }) {
@@ -2371,6 +2503,7 @@ els.inlineReplyForm.addEventListener("submit", (event) => {
   sendInlineReply();
 });
 els.inlineDictateButton.addEventListener("click", () => startDictation(els.inlineReplyBody, els.inlineDictateButton));
+els.inlineReplyBody.addEventListener("input", sendActiveTypingSignal);
 els.inlineReplyBody.addEventListener("keydown", (event) => {
   if (event.key !== "Enter" || !event.shiftKey || event.isComposing) return;
   event.preventDefault();
@@ -2417,6 +2550,10 @@ if (appUnlocked) {
 }
 setInterval(updateTimeGreeting, 60000);
 setInterval(fetchMessages, 15000);
+setInterval(async () => {
+  await fetchTypingIndicators();
+  renderDetail();
+}, 4000);
 
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {

@@ -128,3 +128,39 @@ alter table public.threadmail_games
 alter table public.threadmail_games
   add constraint threadmail_games_type_check
   check (type in ('tic_tac_toe','connect_four','battleship','word_chain'));
+
+create table if not exists public.threadmail_typing (
+  sender_handle text not null check (sender_handle ~ '^[a-z0-9_]{3,24}$'),
+  recipient_handle text not null check (recipient_handle ~ '^[a-z0-9_]{3,24}$'),
+  subject_key text not null check (char_length(subject_key) between 1 and 140),
+  is_typing boolean not null default false,
+  updated_at timestamptz not null default timezone('utc', now()),
+  primary key (sender_handle, recipient_handle, subject_key)
+);
+
+alter table public.threadmail_typing enable row level security;
+
+drop policy if exists "threadmail typing public read" on public.threadmail_typing;
+create policy "threadmail typing public read"
+on public.threadmail_typing
+for select
+to anon
+using (true);
+
+drop policy if exists "threadmail typing public upsert" on public.threadmail_typing;
+create policy "threadmail typing public upsert"
+on public.threadmail_typing
+for insert
+to anon
+with check (true);
+
+drop policy if exists "threadmail typing public update" on public.threadmail_typing;
+create policy "threadmail typing public update"
+on public.threadmail_typing
+for update
+to anon
+using (true)
+with check (true);
+
+create index if not exists threadmail_typing_recipient_idx
+  on public.threadmail_typing (recipient_handle, updated_at desc);
