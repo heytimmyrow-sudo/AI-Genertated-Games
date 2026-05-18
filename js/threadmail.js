@@ -1928,6 +1928,25 @@ async function markRemoteRead(ids) {
   }
 }
 
+async function setThreadReadState(thread, read) {
+  const ids = thread.messageIds || [thread.id];
+  const rows = messageRows.filter((entry) => ids.includes(entry.id) && entry.recipient_handle === identity.handle);
+  if (!rows.length) return false;
+  const nextReadAt = read ? new Date().toISOString() : null;
+  rows.forEach((row) => { row.read_at = nextReadAt; });
+  const queryIds = rows.map((row) => encodeURIComponent(row.id)).join(",");
+  const response = await fetch(`${SUPABASE_URL}/rest/v1/${SUPABASE_TABLE}?id=in.(${queryIds})`, {
+    method: "PATCH",
+    headers: getSupabaseHeaders({
+      "Content-Type": "application/json",
+      Prefer: "return=minimal"
+    }),
+    body: JSON.stringify({ read_at: nextReadAt })
+  });
+  if (!response.ok) throw new Error("Read state sync failed.");
+  return true;
+}
+
 async function deleteThread() {
   const thread = currentThread();
   if (!thread) return;
@@ -2297,24 +2316,19 @@ els.archiveButton.addEventListener("click", () => {
 els.unreadButton.addEventListener("click", async () => {
   const thread = currentThread();
   if (!thread || thread.draft) return;
-  const ids = thread.messageIds || [thread.id];
-  const rows = messageRows.filter((entry) => ids.includes(entry.id) && entry.recipient_handle === identity.handle);
-  if (!rows.length) return;
-  const nextReadAt = thread.unread ? new Date().toISOString() : null;
-  rows.forEach((row) => { row.read_at = nextReadAt; });
+  const markRead = thread.unread;
   try {
-    await fetch(`${SUPABASE_URL}/rest/v1/${SUPABASE_TABLE}?id=in.(${rows.map((row) => encodeURIComponent(row.id)).join(",")})`, {
-      method: "PATCH",
-      headers: getSupabaseHeaders({
-        "Content-Type": "application/json",
-        Prefer: "return=minimal"
-      }),
-      body: JSON.stringify({ read_at: nextReadAt })
-    });
+    const changed = await setThreadReadState(thread, markRead);
+    if (!changed) return;
+    setStatus(markRead ? "Conversation marked read." : "Conversation marked unread.", "success");
+    render();
+    await fetchMessages();
+    activeId = thread.id;
+    render();
   } catch {
     setStatus("Could not update read status.", "error");
+    await fetchMessages();
   }
-  render();
 });
 
 els.muteButton.addEventListener("click", () => {
