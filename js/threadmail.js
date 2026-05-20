@@ -13,6 +13,7 @@ const BASE_TITLE = "Threadmail";
 const AI_HANDLE = "threadai";
 const REACTIONS = ["Nice", "OK", "?", "Haha"];
 const QUICK_REPLIES = ["OK", "On it", "Your turn", "Haha"];
+const CALL_INVITE_PREFIX = "THREADMAIL_CALL_INVITE::";
 const AI_QUICK_ACTIONS = [
   { label: "Suggest Reply", prompt: "Suggest 3 short replies I could send. Make them sound natural and different from each other." },
   { label: "Rewrite This", prompt: "Rewrite my next message so it sounds clearer and friendlier. Put the rewritten message first." },
@@ -90,7 +91,9 @@ const els = {
   inlineReplyBody: document.getElementById("inlineReplyBody"),
   inlineReplySend: document.getElementById("inlineReplySend"),
   inlineDictateButton: document.getElementById("inlineDictateButton"),
+  inlineCallPicker: document.getElementById("inlineCallPicker"),
   inlineGamePicker: document.getElementById("inlineGamePicker"),
+  addCallButton: document.getElementById("addCallButton"),
   addGameButton: document.getElementById("addGameButton"),
   starButton: document.getElementById("starButton"),
   archiveButton: document.getElementById("archiveButton"),
@@ -123,6 +126,7 @@ const els = {
   addChecklist: document.getElementById("addChecklist"),
   addChoice: document.getElementById("addChoice"),
   composeDictateButton: document.getElementById("composeDictateButton"),
+  composeSendButton: document.getElementById("composeSendButton"),
   closeCompose: document.getElementById("closeCompose"),
   saveDraft: document.getElementById("saveDraft"),
   mailSearch: document.getElementById("mailSearch"),
@@ -595,6 +599,7 @@ function renderList() {
 async function selectThread(id) {
   if (id !== activeId) {
     els.inlineReplyBody.value = "";
+    els.inlineCallPicker.hidden = true;
     els.inlineGamePicker.hidden = true;
   }
   activeId = id;
@@ -634,8 +639,10 @@ function renderDetail() {
   els.unreadButton.disabled = thread.draft || !threadHasReceivedMessages(thread);
   els.replyButton.disabled = thread.draft || !thread.otherHandle;
   els.inlineReplyForm.hidden = thread.draft || !thread.otherHandle;
+  els.addCallButton.disabled = thread.draft || !thread.otherHandle;
   els.addGameButton.disabled = thread.draft || !thread.otherHandle;
   if (els.addGameButton.disabled) els.inlineGamePicker.hidden = true;
+  if (els.addCallButton.disabled) els.inlineCallPicker.hidden = true;
 }
 
 function renderMessageBody(thread) {
@@ -668,6 +675,11 @@ function renderMessageBody(thread) {
 }
 
 function appendChatBubble({ label, text, time, isMine }) {
+  const callInvite = parseCallInvite(text);
+  if (callInvite) {
+    appendCallBubble({ label, invite: callInvite, time, isMine });
+    return;
+  }
   const bubble = document.createElement("div");
   bubble.className = `chat-bubble ${isMine ? "chat-bubble--me" : "chat-bubble--them"}`;
   const name = document.createElement("strong");
@@ -677,6 +689,31 @@ function appendChatBubble({ label, text, time, isMine }) {
   const stamp = document.createElement("time");
   stamp.textContent = time;
   bubble.append(name, body, stamp);
+  els.detailBody.append(bubble);
+}
+
+function appendCallBubble({ label, invite, time, isMine }) {
+  const bubble = document.createElement("div");
+  bubble.className = `chat-bubble call-bubble ${isMine ? "chat-bubble--me" : "chat-bubble--them"}`;
+  const name = document.createElement("strong");
+  name.textContent = label;
+  const title = document.createElement("span");
+  title.className = "call-bubble__title";
+  title.textContent = `${getCallTitle(invite.type)} invite`;
+  const detail = document.createElement("span");
+  detail.textContent = invite.note || `Ready for a ${getCallTitle(invite.type).toLowerCase()}?`;
+  bubble.append(name, title, detail);
+  if (invite.url) {
+    const link = document.createElement("a");
+    link.href = invite.url;
+    link.target = "_blank";
+    link.rel = "noopener";
+    link.textContent = "Join Call";
+    bubble.append(link);
+  }
+  const stamp = document.createElement("time");
+  stamp.textContent = time;
+  bubble.append(stamp);
   els.detailBody.append(bubble);
 }
 
@@ -1092,6 +1129,33 @@ function getGameRulesShort(type) {
   return "three in a row";
 }
 
+function getCallTitle(type) {
+  if (type === "voice") return "Voice Call";
+  if (type === "video") return "Video Call";
+  return "FaceTime/Meet";
+}
+
+function buildCallInviteBody(type, url = "") {
+  const note = url ? "Join when you are ready." : "Reply when you are ready and we can start.";
+  return `${CALL_INVITE_PREFIX}${JSON.stringify({ type, url, note })}\n${getCallTitle(type)} invite. ${note}`;
+}
+
+function parseCallInvite(value) {
+  const text = String(value || "");
+  if (!text.startsWith(CALL_INVITE_PREFIX)) return null;
+  const firstLine = text.split("\n")[0].slice(CALL_INVITE_PREFIX.length);
+  try {
+    const invite = JSON.parse(firstLine);
+    return {
+      type: ["voice", "video", "link"].includes(invite.type) ? invite.type : "video",
+      url: /^https?:\/\//i.test(invite.url || "") ? invite.url : "",
+      note: String(invite.note || "").slice(0, 160)
+    };
+  } catch {
+    return { type: "video", url: "", note: "Ready for a call?" };
+  }
+}
+
 function getGameRules(type) {
   if (type === "connect_four") return "Players take turns dropping discs into columns. First to connect four horizontally, vertically, or diagonally wins.";
   if (type === "battleship") return "Each player has a hidden fleet. Fire at enemy waters on your turn. Hits reveal ships, misses mark water. Sink every enemy ship to win.";
@@ -1193,13 +1257,22 @@ function focusInlineReply(text = "") {
   const thread = currentThread();
   if (!thread || thread.draft || !thread.otherHandle) return;
   if (text) els.inlineReplyBody.value = text;
+  els.inlineCallPicker.hidden = true;
   els.inlineGamePicker.hidden = true;
   els.inlineReplyBody.focus();
+}
+
+function toggleInlineCallPicker() {
+  const thread = currentThread();
+  if (!thread || thread.draft || !thread.otherHandle) return;
+  els.inlineGamePicker.hidden = true;
+  els.inlineCallPicker.hidden = !els.inlineCallPicker.hidden;
 }
 
 function toggleInlineGamePicker() {
   const thread = currentThread();
   if (!thread || thread.draft || !thread.otherHandle) return;
+  els.inlineCallPicker.hidden = true;
   els.inlineGamePicker.hidden = !els.inlineGamePicker.hidden;
 }
 
@@ -1399,7 +1472,16 @@ async function sendMessage() {
     setStatus("Unblock that handle before sending.", "error");
     return;
   }
-  if (!subject || !body) return;
+  if (!subject) {
+    setStatus("Add a subject before sending.", "error");
+    els.composeSubject.focus();
+    return;
+  }
+  if (!body) {
+    setStatus("Type a message before sending.", "error");
+    els.composeBody.focus();
+    return;
+  }
 
   setStatus("Sending message...", "neutral");
   try {
@@ -1569,6 +1651,71 @@ async function sendInlineGame(type) {
     els.offlineBanner.hidden = true;
     tableReady = true;
     setStatus(`${title} sent to ${recipient}.`, "success");
+    mergeReturnedMessages(payload);
+    rebuildThreads();
+    activeId = findConversationThreadId(recipient, subject) || (Array.isArray(payload) ? payload[0]?.id || activeId : activeId);
+    if (activeFilter === "unread") activeFilter = "inbox";
+    render();
+    await fetchMessages();
+    activeId = findConversationThreadId(recipient, subject) || activeId;
+    render();
+  } catch {
+    els.offlineBanner.hidden = false;
+    setStatus("Supabase project URL is not reachable. Check that the project is active and the URL/key in js/threadmail.js are correct.", "error");
+  }
+}
+
+async function sendInlineCall(type) {
+  const thread = currentThread();
+  const sender = identity.handle;
+  const recipient = normalizeHandle(thread?.otherHandle || "");
+  const subject = thread?.subject ? `Re: ${thread.subject.replace(/^Re:\s*/i, "")}` : "Call invite";
+  let url = "";
+
+  if (!thread || thread.draft || !recipient) return;
+  if (!isValidHandle(sender)) {
+    setStatus("Save your handle before sending a call invite.", "error");
+    els.identityHandle.focus();
+    return;
+  }
+  if (handlePrefs(recipient).blocked) {
+    setStatus("Unblock that handle before sending a call invite.", "error");
+    return;
+  }
+  if (type === "link") {
+    url = window.prompt("Paste your FaceTime, Google Meet, or Zoom link:");
+    if (url === null) return;
+    url = url.trim();
+    if (!/^https?:\/\//i.test(url)) {
+      setStatus("Paste a call link that starts with http or https.", "error");
+      return;
+    }
+  }
+
+  setStatus("Sending call invite...", "neutral");
+  try {
+    const response = await fetch(`${SUPABASE_URL}/rest/v1/${SUPABASE_TABLE}`, {
+      method: "POST",
+      headers: getSupabaseHeaders({
+        "Content-Type": "application/json",
+        Prefer: "return=representation"
+      }),
+      body: JSON.stringify([{
+        sender_handle: sender,
+        recipient_handle: recipient,
+        subject,
+        body: buildCallInviteBody(type, url)
+      }])
+    });
+    const payload = await response.json().catch(() => ([]));
+    if (!response.ok) {
+      handleSupabaseError(payload, "Call invite could not be sent.");
+      return;
+    }
+    els.inlineCallPicker.hidden = true;
+    els.offlineBanner.hidden = true;
+    tableReady = true;
+    setStatus(`${getCallTitle(type)} invite sent to ${recipient}.`, "success");
     mergeReturnedMessages(payload);
     rebuildThreads();
     activeId = findConversationThreadId(recipient, subject) || (Array.isArray(payload) ? payload[0]?.id || activeId : activeId);
@@ -2506,7 +2653,11 @@ els.blockButton.addEventListener("click", () => {
 
 els.deleteButton.addEventListener("click", deleteThread);
 els.replyButton.addEventListener("click", () => focusInlineReply());
+els.addCallButton.addEventListener("click", toggleInlineCallPicker);
 els.addGameButton.addEventListener("click", toggleInlineGamePicker);
+els.inlineCallPicker.querySelectorAll("[data-inline-call]").forEach((button) => {
+  button.addEventListener("click", () => sendInlineCall(button.dataset.inlineCall));
+});
 els.inlineGamePicker.querySelectorAll("[data-inline-game]").forEach((button) => {
   button.addEventListener("click", () => sendInlineGame(button.dataset.inlineGame));
 });
@@ -2526,10 +2677,12 @@ els.composeForm.addEventListener("submit", (event) => {
   event.preventDefault();
   sendMessage();
 });
+els.composeSendButton.addEventListener("click", sendMessage);
 els.inlineReplyForm.addEventListener("submit", (event) => {
   event.preventDefault();
   sendInlineReply();
 });
+els.inlineReplySend.addEventListener("click", sendInlineReply);
 els.inlineDictateButton.addEventListener("click", () => startDictation(els.inlineReplyBody, els.inlineDictateButton));
 els.inlineReplyBody.addEventListener("input", sendActiveTypingSignal);
 els.inlineReplyBody.addEventListener("keydown", (event) => {

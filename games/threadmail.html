@@ -15,10 +15,10 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="Threadmail">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <link rel="manifest" href="./threadmail.webmanifest?v=35">
+  <link rel="manifest" href="./threadmail.webmanifest?v=37">
   <link rel="apple-touch-icon" href="./threadmail-icon-192.png">
   <link rel="stylesheet" href="../style.css">
-  <link rel="stylesheet" href="./threadmail.css?v=35">
+  <link rel="stylesheet" href="./threadmail.css?v=37">
 </head>
 <body>
   <section class="greeting-splash" id="greetingSplash" aria-live="polite">
@@ -218,14 +218,20 @@
             <div class="reaction-row" id="reactionRow" aria-label="Message reactions"></div>
             <div class="quick-replies" id="quickReplies" aria-label="Quick replies"></div>
             <div class="message-body" id="detailBody"></div>
-            <form class="inline-reply" id="inlineReplyForm" hidden>
+            <form class="inline-reply" id="inlineReplyForm" hidden novalidate>
               <label>
                 <span>Reply</span>
                 <textarea id="inlineReplyBody" rows="1" placeholder="Message..." required data-touch-input></textarea>
               </label>
               <button class="play-button play-button--ghost" type="button" id="inlineDictateButton">Dictate</button>
-              <button class="play-button" type="submit" id="inlineReplySend">Send</button>
+              <button class="play-button" type="button" id="inlineReplySend">Send</button>
             </form>
+            <section class="inline-call-picker" id="inlineCallPicker" aria-label="Add call invite" hidden>
+              <span>Send a call</span>
+              <button class="play-button play-button--ghost" type="button" data-inline-call="voice">Voice Call</button>
+              <button class="play-button play-button--ghost" type="button" data-inline-call="video">Video Call</button>
+              <button class="play-button play-button--ghost" type="button" data-inline-call="link">FaceTime/Meet Link</button>
+            </section>
             <section class="inline-game-picker" id="inlineGamePicker" aria-label="Add game" hidden>
               <span>Send a game</span>
               <button class="play-button play-button--ghost" type="button" data-inline-game="tic_tac_toe">Tic-Tac-Toe</button>
@@ -235,6 +241,7 @@
             </section>
             <div class="message-tools">
               <button class="play-button play-button--ghost" type="button" id="replyButton">Reply</button>
+              <button class="play-button play-button--ghost" type="button" id="addCallButton">Call</button>
               <button class="play-button play-button--ghost" type="button" id="addGameButton">Add Game</button>
               <button class="play-button play-button--ghost" type="button" id="archiveButton">Archive</button>
               <button class="play-button play-button--ghost" type="button" id="unreadButton">Mark Unread</button>
@@ -247,7 +254,7 @@
       </section>
 
       <section class="compose-panel" id="composePanel" aria-label="Compose message" hidden>
-        <form id="composeForm">
+        <form id="composeForm" novalidate>
           <div class="compose-head">
             <h2 id="composeTitle">New Message</h2>
             <button class="star-button" type="button" id="closeCompose" aria-label="Close compose">x</button>
@@ -270,7 +277,7 @@
           <div class="compose-actions">
             <button class="play-button play-button--ghost" type="button" id="composeDictateButton">Dictate</button>
             <button class="play-button play-button--ghost" type="button" id="saveDraft">Save Draft</button>
-            <button class="play-button" type="submit">Send</button>
+            <button class="play-button" type="button" id="composeSendButton">Send</button>
           </div>
           <section class="game-attach-panel" aria-label="Attach game">
             <div>
@@ -300,6 +307,6 @@
       </nav>
     </section>
   </main>
-  <script src="../js/threadmail.js?v=35"></script>
+  <script src="../js/threadmail.js?v=37"></script>
 </body>
 </html>
