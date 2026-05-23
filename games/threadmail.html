@@ -15,10 +15,10 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="Threadmail">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <link rel="manifest" href="./threadmail.webmanifest?v=38">
+  <link rel="manifest" href="./threadmail.webmanifest?v=39">
   <link rel="apple-touch-icon" href="./threadmail-icon-192.png">
   <link rel="stylesheet" href="../style.css">
-  <link rel="stylesheet" href="./threadmail.css?v=38">
+  <link rel="stylesheet" href="./threadmail.css?v=39">
 </head>
 <body>
   <section class="greeting-splash" id="greetingSplash" aria-live="polite">
@@ -166,6 +166,18 @@
                   <option value="dark">Dark</option>
                   <option value="light">Light</option>
                   <option value="neon">Neon</option>
+                  <option value="classic">Classic Mail</option>
+                  <option value="midnight">Midnight</option>
+                  <option value="mint">Mint</option>
+                </select>
+              </label>
+              <label class="setting-select">
+                <span>ThreadAI Style</span>
+                <select id="aiStyleSelect">
+                  <option value="friendly">Friendly</option>
+                  <option value="short">Short</option>
+                  <option value="formal">Formal</option>
+                  <option value="fun">Fun</option>
                 </select>
               </label>
               <label class="setting-select">
@@ -217,6 +229,10 @@
             </div>
             <div class="tag-row" id="detailTags"></div>
             <div class="reaction-row" id="reactionRow" aria-label="Message reactions"></div>
+            <label class="chat-search" id="chatSearchWrap">
+              <span>Search Chat</span>
+              <input id="chatSearch" type="search" placeholder="Find in this chat..." data-touch-input>
+            </label>
             <div class="quick-replies" id="quickReplies" aria-label="Quick replies"></div>
             <div class="message-body" id="detailBody"></div>
             <form class="inline-reply" id="inlineReplyForm" hidden novalidate>
@@ -225,6 +241,7 @@
                 <textarea id="inlineReplyBody" rows="1" placeholder="Message..." required data-touch-input></textarea>
               </label>
               <button class="play-button play-button--ghost" type="button" id="inlineDictateButton">Dictate</button>
+              <button class="play-button play-button--ghost" type="button" id="voiceNoteButton">Voice Note</button>
               <button class="play-button" type="button" id="inlineReplySend">Send</button>
             </form>
             <section class="inline-call-picker" id="inlineCallPicker" aria-label="Add call invite" hidden>
@@ -244,6 +261,9 @@
               <button class="play-button play-button--ghost" type="button" id="replyButton">Reply</button>
               <button class="play-button play-button--ghost" type="button" id="addCallButton">Call</button>
               <button class="play-button play-button--ghost" type="button" id="addGameButton">Add Game</button>
+              <button class="play-button play-button--ghost" type="button" id="photoButton">Photo</button>
+              <button class="play-button play-button--ghost" type="button" id="editMessageButton">Edit Last</button>
+              <button class="play-button play-button--ghost" type="button" id="pinChatButton">Pin</button>
               <button class="play-button play-button--ghost" type="button" id="archiveButton">Archive</button>
               <button class="play-button play-button--ghost" type="button" id="unreadButton">Mark Unread</button>
               <button class="play-button play-button--ghost" type="button" id="muteButton">Mute</button>
@@ -299,6 +319,7 @@
           </section>
         </form>
       </section>
+      <input id="photoInput" type="file" accept="image/*" hidden>
 
       <nav class="mobile-tabbar" aria-label="Mobile navigation">
         <button type="button" data-mobile-tab="inbox">Inbox</button>
@@ -308,6 +329,6 @@
       </nav>
     </section>
   </main>
-  <script src="../js/threadmail.js?v=38"></script>
+  <script src="../js/threadmail.js?v=39"></script>
 </body>
 </html>

@@ -14,6 +14,8 @@ const AI_HANDLE = "threadai";
 const REACTIONS = ["Nice", "OK", "?", "Haha"];
 const QUICK_REPLIES = ["OK", "On it", "Your turn", "Haha"];
 const CALL_INVITE_PREFIX = "THREADMAIL_CALL_INVITE::";
+const VOICE_NOTE_PREFIX = "THREADMAIL_VOICE_NOTE::";
+const PHOTO_PREFIX = "THREADMAIL_PHOTO::";
 const AI_QUICK_ACTIONS = [
   { label: "Suggest Reply", prompt: "Suggest 3 short replies I could send. Make them sound natural and different from each other." },
   { label: "Rewrite This", prompt: "Rewrite my next message so it sounds clearer and friendlier. Put the rewritten message first." },
@@ -33,6 +35,7 @@ let appUnlocked = !lockSettings.enabled;
 let threads = [];
 let activeFilter = "inbox";
 let activeQuery = "";
+let activeChatQuery = "";
 let activeId = null;
 let replyToId = null;
 let tableReady = false;
@@ -48,6 +51,8 @@ let speechButton = null;
 let aiTyping = false;
 let typingIdleTimer = null;
 let lastTypingSentAt = 0;
+let voiceRecorder = null;
+let voiceChunks = [];
 
 const els = {
   greetingSplash: document.getElementById("greetingSplash"),
@@ -69,6 +74,7 @@ const els = {
   testNotificationButton: document.getElementById("testNotificationButton"),
   phoneNotificationStatus: document.getElementById("phoneNotificationStatus"),
   themeSelect: document.getElementById("themeSelect"),
+  aiStyleSelect: document.getElementById("aiStyleSelect"),
   lockCodeInput: document.getElementById("lockCodeInput"),
   lockEmailInput: document.getElementById("lockEmailInput"),
   saveLockButton: document.getElementById("saveLockButton"),
@@ -86,16 +92,22 @@ const els = {
   detailMeta: document.getElementById("detailMeta"),
   detailTags: document.getElementById("detailTags"),
   reactionRow: document.getElementById("reactionRow"),
+  chatSearch: document.getElementById("chatSearch"),
+  chatSearchWrap: document.getElementById("chatSearchWrap"),
   quickReplies: document.getElementById("quickReplies"),
   detailBody: document.getElementById("detailBody"),
   inlineReplyForm: document.getElementById("inlineReplyForm"),
   inlineReplyBody: document.getElementById("inlineReplyBody"),
   inlineReplySend: document.getElementById("inlineReplySend"),
   inlineDictateButton: document.getElementById("inlineDictateButton"),
+  voiceNoteButton: document.getElementById("voiceNoteButton"),
   inlineCallPicker: document.getElementById("inlineCallPicker"),
   inlineGamePicker: document.getElementById("inlineGamePicker"),
   addCallButton: document.getElementById("addCallButton"),
   addGameButton: document.getElementById("addGameButton"),
+  photoButton: document.getElementById("photoButton"),
+  editMessageButton: document.getElementById("editMessageButton"),
+  pinChatButton: document.getElementById("pinChatButton"),
   starButton: document.getElementById("starButton"),
   archiveButton: document.getElementById("archiveButton"),
   unreadButton: document.getElementById("unreadButton"),
@@ -126,6 +138,7 @@ const els = {
   addPoll: document.getElementById("addPoll"),
   addChecklist: document.getElementById("addChecklist"),
   addChoice: document.getElementById("addChoice"),
+  photoInput: document.getElementById("photoInput"),
   composeDictateButton: document.getElementById("composeDictateButton"),
   composeSendButton: document.getElementById("composeSendButton"),
   closeCompose: document.getElementById("closeCompose"),
@@ -213,14 +226,17 @@ function saveDrafts() {
 function loadSettings() {
   try {
     const saved = JSON.parse(localStorage.getItem(SETTINGS_KEY));
+    const themes = ["dark", "light", "neon", "classic", "midnight", "mint"];
+    const aiStyles = ["friendly", "short", "formal", "fun"];
     return {
       notificationSounds: saved?.notificationSounds !== false,
       keyboardSounds: Boolean(saved?.keyboardSounds),
       phoneNotifications: Boolean(saved?.phoneNotifications),
-      theme: ["dark", "light", "neon"].includes(saved?.theme) ? saved.theme : "dark"
+      theme: themes.includes(saved?.theme) ? saved.theme : "dark",
+      aiStyle: aiStyles.includes(saved?.aiStyle) ? saved.aiStyle : "friendly"
     };
   } catch {
-    return { notificationSounds: true, keyboardSounds: false, phoneNotifications: false, theme: "dark" };
+    return { notificationSounds: true, keyboardSounds: false, phoneNotifications: false, theme: "dark", aiStyle: "friendly" };
   }
 }
 
@@ -321,7 +337,7 @@ function applyTheme() {
 }
 
 function threadPrefs(id) {
-  prefs[id] ||= { starred: false, archived: false, reactions: [] };
+  prefs[id] ||= { starred: false, archived: false, pinned: false, reactions: [] };
   return prefs[id];
 }
 
@@ -388,6 +404,7 @@ function rebuildThreads() {
       unread,
       starred: Boolean(pref.starred),
       archived: Boolean(pref.archived),
+      pinned: Boolean(pref.pinned),
       reactions: Array.isArray(pref.reactions) ? pref.reactions : [],
       sent: row.isSent,
       received: rows.some((entry) => entry.isReceived),
@@ -402,13 +419,14 @@ function rebuildThreads() {
     unread: false,
     starred: Boolean(threadPrefs(draft.id).starred),
     archived: Boolean(threadPrefs(draft.id).archived),
+    pinned: Boolean(threadPrefs(draft.id).pinned),
     sent: false,
     received: false,
     draft: true,
     tags: ["draft"]
   }));
 
-  threads = [...remoteThreads, ...localDrafts].sort((a, b) => String(b.id).localeCompare(String(a.id)));
+  threads = [...remoteThreads, ...localDrafts].sort((a, b) => Number(b.pinned) - Number(a.pinned) || String(b.id).localeCompare(String(a.id)));
   if (!threads.some((thread) => thread.id === activeId)) {
     activeId = visibleThreads()[0]?.id || null;
   }
@@ -446,6 +464,11 @@ function matchesQuery(thread) {
   const game = gameForThread(thread);
   const haystack = [thread.from, thread.subject, thread.body, game ? getGameTitle(game.type) : "", ...thread.tags].join(" ").toLowerCase();
   return haystack.includes(activeQuery);
+}
+
+function matchesChatQuery(row) {
+  if (!activeChatQuery) return true;
+  return [row.sender_handle, row.body, row.subject].join(" ").toLowerCase().includes(activeChatQuery);
 }
 
 function visibleThreads() {
@@ -638,6 +661,7 @@ function renderList() {
         <span>${escapeHtml(thread.statusLabel || "")}</span>
         ${game ? `<span class="game-chip${yourMove ? " game-chip--move" : ""}">${escapeHtml(getGameTitle(game.type))} - ${escapeHtml(getGameBadgeText(game))}</span>` : ""}
         ${thread.starred ? "<span>Starred</span>" : ""}
+        ${thread.pinned ? "<span>Pinned</span>" : ""}
         ${thread.unread ? "<span>Unread</span>" : ""}
         ${thread.draft ? "<span>Draft</span>" : ""}
       </div>
@@ -652,6 +676,8 @@ function renderList() {
 async function selectThread(id) {
   if (id !== activeId) {
     els.inlineReplyBody.value = "";
+    activeChatQuery = "";
+    els.chatSearch.value = "";
     els.inlineCallPicker.hidden = true;
     els.inlineGamePicker.hidden = true;
   }
@@ -673,6 +699,7 @@ function renderDetail() {
   els.detailFrom.textContent = thread.from;
   els.detailSubject.textContent = thread.subject;
   els.detailMeta.textContent = `${thread.time} | ${thread.statusLabel || (thread.draft ? "Draft" : thread.archived ? "Archived" : thread.sent ? "Sent" : "Inbox")}`;
+  els.chatSearchWrap.hidden = thread.draft;
   renderMessageBody(thread);
   renderGameAttachment(thread);
   renderReactions(thread);
@@ -684,6 +711,7 @@ function renderDetail() {
     els.detailTags.append(item);
   }
   els.starButton.textContent = thread.starred ? "Starred" : "*";
+  els.pinChatButton.textContent = thread.pinned ? "Unpin" : "Pin";
   els.archiveButton.textContent = thread.archived ? "Move To Inbox" : "Archive";
   els.unreadButton.textContent = thread.unread ? "Mark Read" : "Mark Unread";
   const handleState = handlePrefs(thread.otherHandle || "");
@@ -694,6 +722,8 @@ function renderDetail() {
   els.inlineReplyForm.hidden = thread.draft || !thread.otherHandle;
   els.addCallButton.disabled = thread.draft || !thread.otherHandle;
   els.addGameButton.disabled = thread.draft || !thread.otherHandle;
+  els.photoButton.disabled = thread.draft || !thread.otherHandle;
+  els.editMessageButton.disabled = thread.draft || !getEditableSentRow(thread);
   if (els.addGameButton.disabled) els.inlineGamePicker.hidden = true;
   if (els.addCallButton.disabled) els.inlineCallPicker.hidden = true;
 }
@@ -701,7 +731,14 @@ function renderDetail() {
 function renderMessageBody(thread) {
   els.detailBody.innerHTML = "";
   if (Array.isArray(thread.rows) && thread.rows.length) {
-    for (const row of thread.rows) {
+    const rows = thread.rows.filter(matchesChatQuery);
+    if (!rows.length) {
+      const empty = document.createElement("p");
+      empty.className = "chat-search-empty";
+      empty.textContent = "No messages match that search.";
+      els.detailBody.append(empty);
+    }
+    for (const row of rows) {
       appendChatBubble({
         label: row.isSent ? "You" : row.sender_handle,
         text: row.body,
@@ -731,6 +768,16 @@ function appendChatBubble({ label, text, time, isMine }) {
   const callInvite = parseCallInvite(text);
   if (callInvite) {
     appendCallBubble({ label, invite: callInvite, time, isMine });
+    return;
+  }
+  const voiceNote = parseVoiceNote(text);
+  if (voiceNote) {
+    appendVoiceBubble({ label, note: voiceNote, time, isMine });
+    return;
+  }
+  const photo = parsePhoto(text);
+  if (photo) {
+    appendPhotoBubble({ label, photo, time, isMine });
     return;
   }
   const bubble = document.createElement("div");
@@ -763,10 +810,51 @@ function appendCallBubble({ label, invite, time, isMine }) {
     link.rel = "noopener";
     link.textContent = "Join Call";
     bubble.append(link);
+  } else if (!isMine) {
+    const actions = document.createElement("div");
+    actions.className = "call-bubble__actions";
+    for (const action of ["Accept", "Decline"]) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.textContent = action;
+      button.addEventListener("click", () => sendCallResponse(action.toLowerCase(), invite.type));
+      actions.append(button);
+    }
+    bubble.append(actions);
   }
   const stamp = document.createElement("time");
   stamp.textContent = time;
   bubble.append(stamp);
+  els.detailBody.append(bubble);
+}
+
+function appendVoiceBubble({ label, note, time, isMine }) {
+  const bubble = document.createElement("div");
+  bubble.className = `chat-bubble media-bubble ${isMine ? "chat-bubble--me" : "chat-bubble--them"}`;
+  const name = document.createElement("strong");
+  name.textContent = label;
+  const title = document.createElement("span");
+  title.textContent = "Voice note";
+  const audio = document.createElement("audio");
+  audio.controls = true;
+  audio.src = note.url;
+  const stamp = document.createElement("time");
+  stamp.textContent = time;
+  bubble.append(name, title, audio, stamp);
+  els.detailBody.append(bubble);
+}
+
+function appendPhotoBubble({ label, photo, time, isMine }) {
+  const bubble = document.createElement("div");
+  bubble.className = `chat-bubble media-bubble photo-bubble ${isMine ? "chat-bubble--me" : "chat-bubble--them"}`;
+  const name = document.createElement("strong");
+  name.textContent = label;
+  const img = document.createElement("img");
+  img.src = photo.url;
+  img.alt = photo.name || "Threadmail photo";
+  const stamp = document.createElement("time");
+  stamp.textContent = time;
+  bubble.append(name, img, stamp);
   els.detailBody.append(bubble);
 }
 
@@ -776,7 +864,9 @@ function appendTypingBubble(handle) {
   const label = document.createElement("strong");
   label.textContent = handle;
   const body = document.createElement("span");
-  body.textContent = "is typing...";
+  body.className = "typing-dots";
+  body.setAttribute("aria-label", "is typing");
+  body.innerHTML = "<i></i><i></i><i></i>";
   bubble.append(label, body);
   els.detailBody.append(bubble);
 }
@@ -944,6 +1034,7 @@ function renderSettings() {
   renderPhoneNotificationSetting();
   renderLockSetting();
   els.themeSelect.value = settings.theme || "dark";
+  els.aiStyleSelect.value = settings.aiStyle || "friendly";
   applyTheme();
 }
 
@@ -1211,6 +1302,40 @@ function parseCallInvite(value) {
   } catch {
     return { type: "video", url: "", note: "Ready for a call?" };
   }
+}
+
+function parsePrefixedJson(value, prefix) {
+  const text = String(value || "");
+  if (!text.startsWith(prefix)) return null;
+  const firstLine = text.split("\n")[0].slice(prefix.length);
+  try {
+    return JSON.parse(firstLine);
+  } catch {
+    return null;
+  }
+}
+
+function buildVoiceNoteBody(url) {
+  return `${VOICE_NOTE_PREFIX}${JSON.stringify({ url })}\nVoice note`;
+}
+
+function parseVoiceNote(value) {
+  const note = parsePrefixedJson(value, VOICE_NOTE_PREFIX);
+  return note?.url ? { url: String(note.url) } : null;
+}
+
+function buildPhotoBody(url, name) {
+  return `${PHOTO_PREFIX}${JSON.stringify({ url, name })}\nPhoto: ${name || "image"}`;
+}
+
+function parsePhoto(value) {
+  const photo = parsePrefixedJson(value, PHOTO_PREFIX);
+  return photo?.url ? { url: String(photo.url), name: String(photo.name || "Threadmail photo") } : null;
+}
+
+function getEditableSentRow(thread) {
+  if (!thread?.rows?.length) return null;
+  return [...thread.rows].reverse().find((row) => row.sender_handle === identity.handle && !row.game_id);
 }
 
 function getGameRules(type) {
@@ -1662,6 +1787,70 @@ async function sendInlineReply() {
   }
 }
 
+async function sendThreadUtilityMessage(body, statusLabel = "Message") {
+  const thread = currentThread();
+  const sender = identity.handle;
+  const recipient = normalizeHandle(thread?.otherHandle || "");
+  const subject = thread?.subject ? `Re: ${thread.subject.replace(/^Re:\s*/i, "")}` : statusLabel;
+
+  if (!thread || thread.draft || !recipient) return false;
+  if (!isValidHandle(sender)) {
+    setStatus("Save your handle before sending.", "error");
+    els.identityHandle.focus();
+    return false;
+  }
+  if (handlePrefs(recipient).blocked) {
+    setStatus("Unblock that handle before sending.", "error");
+    return false;
+  }
+
+  setStatus(`Sending ${statusLabel.toLowerCase()}...`, "neutral");
+  try {
+    const response = await fetch(`${SUPABASE_URL}/rest/v1/${SUPABASE_TABLE}`, {
+      method: "POST",
+      headers: getSupabaseHeaders({
+        "Content-Type": "application/json",
+        Prefer: "return=representation"
+      }),
+      body: JSON.stringify([{
+        sender_handle: sender,
+        recipient_handle: recipient,
+        subject,
+        body
+      }])
+    });
+    const payload = await response.json().catch(() => ([]));
+    if (!response.ok) {
+      handleSupabaseError(payload, `${statusLabel} could not be sent.`);
+      return false;
+    }
+    els.offlineBanner.hidden = true;
+    tableReady = true;
+    setStatus(`${statusLabel} sent to ${recipient}.`, "success");
+    mergeReturnedMessages(payload);
+    rebuildThreads();
+    activeId = findConversationThreadId(recipient, subject) || (Array.isArray(payload) ? payload[0]?.id || activeId : activeId);
+    if (activeFilter === "unread") activeFilter = "inbox";
+    render();
+    await fetchMessages();
+    activeId = findConversationThreadId(recipient, subject) || activeId;
+    render();
+    return true;
+  } catch {
+    els.offlineBanner.hidden = false;
+    setStatus("Supabase project URL is not reachable. Check that the project is active and the URL/key in js/threadmail.js are correct.", "error");
+    return false;
+  }
+}
+
+async function sendCallResponse(action, type) {
+  const title = getCallTitle(type).toLowerCase();
+  const body = action === "accept"
+    ? `I can join the ${title}.`
+    : `I cannot join the ${title} right now.`;
+  await sendThreadUtilityMessage(body, action === "accept" ? "Call accepted" : "Call declined");
+}
+
 async function sendInlineGame(type) {
   const thread = currentThread();
   const sender = identity.handle;
@@ -1784,6 +1973,107 @@ async function sendInlineCall(type) {
   } catch {
     els.offlineBanner.hidden = false;
     setStatus("Supabase project URL is not reachable. Check that the project is active and the URL/key in js/threadmail.js are correct.", "error");
+  }
+}
+
+async function toggleVoiceNote() {
+  if (voiceRecorder?.state === "recording") {
+    voiceRecorder.stop();
+    return;
+  }
+  if (!navigator.mediaDevices?.getUserMedia || !window.MediaRecorder) {
+    setStatus("Voice notes are not available in this browser.", "error");
+    return;
+  }
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    voiceChunks = [];
+    voiceRecorder = new MediaRecorder(stream);
+    voiceRecorder.addEventListener("dataavailable", (event) => {
+      if (event.data?.size) voiceChunks.push(event.data);
+    });
+    voiceRecorder.addEventListener("stop", async () => {
+      els.voiceNoteButton.textContent = "Voice Note";
+      els.voiceNoteButton.classList.remove("is-listening");
+      stream.getTracks().forEach((track) => track.stop());
+      const blob = new Blob(voiceChunks, { type: voiceRecorder.mimeType || "audio/webm" });
+      if (!blob.size) {
+        setStatus("No voice note was recorded.", "error");
+        return;
+      }
+      const reader = new FileReader();
+      reader.addEventListener("load", async () => {
+        await sendThreadUtilityMessage(buildVoiceNoteBody(String(reader.result)), "Voice note");
+      });
+      reader.readAsDataURL(blob);
+    });
+    voiceRecorder.start();
+    els.voiceNoteButton.textContent = "Stop";
+    els.voiceNoteButton.classList.add("is-listening");
+    setStatus("Recording voice note...", "neutral");
+  } catch {
+    setStatus("Microphone permission was not allowed.", "error");
+  }
+}
+
+function choosePhoto() {
+  const thread = currentThread();
+  if (!thread || thread.draft || !thread.otherHandle) return;
+  els.photoInput.value = "";
+  els.photoInput.click();
+}
+
+function sendSelectedPhoto() {
+  const file = els.photoInput.files?.[0];
+  if (!file) return;
+  if (!file.type.startsWith("image/")) {
+    setStatus("Choose an image file.", "error");
+    return;
+  }
+  if (file.size > 900000) {
+    setStatus("Choose a smaller photo for now.", "error");
+    return;
+  }
+  const reader = new FileReader();
+  reader.addEventListener("load", async () => {
+    await sendThreadUtilityMessage(buildPhotoBody(String(reader.result), file.name), "Photo");
+  });
+  reader.readAsDataURL(file);
+}
+
+async function editLastSentMessage() {
+  const thread = currentThread();
+  const row = getEditableSentRow(thread);
+  if (!row) {
+    setStatus("No sent message in this chat can be edited.", "error");
+    return;
+  }
+  const nextBody = window.prompt("Edit your last sent message:", row.body);
+  if (nextBody === null) return;
+  const body = nextBody.trim();
+  if (!body) {
+    setStatus("Edited message cannot be empty.", "error");
+    return;
+  }
+  try {
+    const response = await fetch(`${SUPABASE_URL}/rest/v1/${SUPABASE_TABLE}?id=eq.${encodeURIComponent(row.id)}`, {
+      method: "PATCH",
+      headers: getSupabaseHeaders({
+        "Content-Type": "application/json",
+        Prefer: "return=representation"
+      }),
+      body: JSON.stringify({ body: `${body}\n\n(edited)` })
+    });
+    const payload = await response.json().catch(() => ([]));
+    if (!response.ok) {
+      handleSupabaseError(payload, "Message could not be edited.");
+      return;
+    }
+    mergeReturnedMessages(payload);
+    setStatus("Message edited.", "success");
+    await fetchMessages();
+  } catch {
+    setStatus("Could not edit that message right now.", "error");
   }
 }
 
@@ -2288,13 +2578,15 @@ async function deleteThread() {
     drafts = drafts.filter((draft) => draft.id !== thread.id);
     saveDrafts();
   } else {
+    const ids = thread.messageIds || [thread.id];
+    const queryIds = ids.map((id) => encodeURIComponent(id)).join(",");
     try {
-      await fetch(`${SUPABASE_URL}/rest/v1/${SUPABASE_TABLE}?id=eq.${encodeURIComponent(thread.id)}`, {
+      await fetch(`${SUPABASE_URL}/rest/v1/${SUPABASE_TABLE}?id=in.(${queryIds})`, {
         method: "DELETE",
         headers: getSupabaseHeaders({ Prefer: "return=minimal" })
       });
-      messageRows = messageRows.filter((row) => row.id !== thread.id);
-      setStatus("Message deleted.", "success");
+      messageRows = messageRows.filter((row) => !ids.includes(row.id));
+      setStatus("Conversation deleted.", "success");
     } catch {
       setStatus("Could not delete that message from Supabase.", "error");
     }
@@ -2328,6 +2620,10 @@ document.querySelectorAll("[data-filter]").forEach((button) => {
 els.mailSearch.addEventListener("input", () => {
   activeQuery = els.mailSearch.value.trim().toLowerCase();
   render();
+});
+els.chatSearch.addEventListener("input", () => {
+  activeChatQuery = els.chatSearch.value.trim().toLowerCase();
+  renderDetail();
 });
 els.notificationStrip.addEventListener("click", showUnreadMessages);
 els.notificationStrip.addEventListener("keydown", (event) => {
@@ -2454,6 +2750,11 @@ els.themeSelect.addEventListener("change", () => {
   saveSettings();
   applyTheme();
 });
+els.aiStyleSelect.addEventListener("change", () => {
+  settings.aiStyle = els.aiStyleSelect.value;
+  saveSettings();
+  setStatus(`ThreadAI style set to ${settings.aiStyle}.`, "success");
+});
 els.clearLocalData.addEventListener("click", () => {
   localStorage.removeItem(PREFS_KEY);
   localStorage.removeItem(DRAFTS_KEY);
@@ -2512,13 +2813,14 @@ function updateGameAttachLabel() {
 }
 
 async function requestAiAssistantReply({ sender, subject, body }) {
+  const style = settings.aiStyle || "friendly";
   const response = await fetch(`${SUPABASE_URL}/functions/v1/threadmail-ai`, {
     method: "POST",
     headers: getSupabaseHeaders({ "Content-Type": "application/json" }),
     body: JSON.stringify({
       handle: sender,
       subject,
-      message: body,
+      message: `[Preferred style: ${style}]\n${body}`,
       recent: messageRows
         .filter((row) => (
           (row.sender_handle === sender && row.recipient_handle === AI_HANDLE) ||
@@ -2665,6 +2967,15 @@ els.starButton.addEventListener("click", () => {
   render();
 });
 
+els.pinChatButton.addEventListener("click", () => {
+  const thread = currentThread();
+  if (!thread) return;
+  threadPrefs(thread.id).pinned = !thread.pinned;
+  savePrefs();
+  setStatus(thread.pinned ? "Chat unpinned." : "Chat pinned.", "success");
+  render();
+});
+
 els.archiveButton.addEventListener("click", () => {
   const thread = currentThread();
   if (!thread) return;
@@ -2714,6 +3025,9 @@ els.deleteButton.addEventListener("click", deleteThread);
 els.replyButton.addEventListener("click", () => focusInlineReply());
 els.addCallButton.addEventListener("click", toggleInlineCallPicker);
 els.addGameButton.addEventListener("click", toggleInlineGamePicker);
+els.photoButton.addEventListener("click", choosePhoto);
+els.photoInput.addEventListener("change", sendSelectedPhoto);
+els.editMessageButton.addEventListener("click", editLastSentMessage);
 els.inlineCallPicker.querySelectorAll("[data-inline-call]").forEach((button) => {
   button.addEventListener("click", () => sendInlineCall(button.dataset.inlineCall));
 });
@@ -2743,6 +3057,7 @@ els.inlineReplyForm.addEventListener("submit", (event) => {
 });
 els.inlineReplySend.addEventListener("click", sendInlineReply);
 els.inlineDictateButton.addEventListener("click", () => startDictation(els.inlineReplyBody, els.inlineDictateButton));
+els.voiceNoteButton.addEventListener("click", toggleVoiceNote);
 els.inlineReplyBody.addEventListener("input", sendActiveTypingSignal);
 els.inlineReplyBody.addEventListener("keydown", (event) => {
   if (event.key !== "Enter" || !event.shiftKey || event.isComposing) return;

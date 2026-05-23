@@ -167,6 +167,35 @@ body[data-theme="neon"] {
   filter: saturate(1.18);
 }
 
+body[data-theme="classic"] {
+  --accent: #316f9f;
+  --accent-soft: #dbeafe;
+  --warm: #f3c96b;
+  background: #e8edf3;
+}
+
+body[data-theme="classic"] .hud-frame,
+body[data-theme="classic"] .threadmail-sidebar,
+body[data-theme="classic"] .threadmail-list,
+body[data-theme="classic"] .threadmail-detail,
+body[data-theme="classic"] .compose-panel {
+  background: linear-gradient(180deg, rgba(26, 54, 86, 0.9), rgba(18, 35, 56, 0.9));
+}
+
+body[data-theme="midnight"] {
+  --accent: #9ae6ff;
+  --accent-soft: #dff8ff;
+  --warm: #c8b6ff;
+  background: #020617;
+}
+
+body[data-theme="mint"] {
+  --accent: #0fbd8c;
+  --accent-soft: #eafff8;
+  --warm: #ffc857;
+  background: #09201b;
+}
+
 .threadmail-stats {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1076,6 +1105,34 @@ button.compact-item:focus-visible {
   -webkit-overflow-scrolling: touch;
 }
 
+.chat-search {
+  display: grid;
+  gap: 6px;
+  margin: 8px 0 10px;
+}
+
+.chat-search span {
+  color: var(--accent-soft);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+}
+
+.chat-search input {
+  width: 100%;
+  border: 1px solid rgba(125, 227, 255, 0.16);
+  border-radius: 12px;
+  padding: 10px 12px;
+  color: var(--text);
+  background: rgba(2, 7, 12, 0.48);
+  font: inherit;
+}
+
+.chat-search-empty {
+  margin: 0;
+  color: var(--muted);
+}
+
 .chat-bubble {
   width: fit-content;
   max-width: min(78%, 620px);
@@ -1126,17 +1183,40 @@ button.compact-item:focus-visible {
   color: var(--accent-soft);
   border: 1px solid rgba(125, 227, 255, 0.14);
   background: rgba(125, 227, 255, 0.08);
-  animation: typingPulse 1.15s ease-in-out infinite;
 }
 
-@keyframes typingPulse {
+.typing-dots {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.typing-dots i {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: currentColor;
+  animation: typingDot 1.05s ease-in-out infinite;
+}
+
+.typing-dots i:nth-child(2) {
+  animation-delay: 0.16s;
+}
+
+.typing-dots i:nth-child(3) {
+  animation-delay: 0.32s;
+}
+
+@keyframes typingDot {
   0%,
   100% {
-    opacity: 0.68;
+    opacity: 0.35;
+    transform: translateY(0);
   }
 
   50% {
     opacity: 1;
+    transform: translateY(-3px);
   }
 }
 
@@ -1276,6 +1356,36 @@ button.compact-item:focus-visible {
   background: linear-gradient(135deg, var(--accent), #86f7d6);
   font-weight: 800;
   text-decoration: none;
+}
+
+.call-bubble__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.call-bubble__actions button {
+  border: 1px solid rgba(125, 227, 255, 0.18);
+  border-radius: 999px;
+  padding: 7px 10px;
+  color: var(--accent-soft);
+  background: rgba(125, 227, 255, 0.08);
+  font: inherit;
+}
+
+.media-bubble {
+  gap: 8px;
+}
+
+.media-bubble audio {
+  width: min(260px, 70vw);
+}
+
+.photo-bubble img {
+  max-width: min(320px, 72vw);
+  max-height: 360px;
+  border-radius: 14px;
+  object-fit: cover;
 }
 
 .message-tools {
