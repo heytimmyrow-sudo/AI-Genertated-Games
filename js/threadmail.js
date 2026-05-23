@@ -53,6 +53,7 @@ let typingIdleTimer = null;
 let lastTypingSentAt = 0;
 let voiceRecorder = null;
 let voiceChunks = [];
+let voiceStopTimer = null;
 
 const els = {
   greetingSplash: document.getElementById("greetingSplash"),
@@ -341,6 +342,12 @@ function threadPrefs(id) {
   return prefs[id];
 }
 
+function getThreadPrefId(thread) {
+  if (!thread) return "";
+  if (thread.prefId) return thread.prefId;
+  return thread.id || "";
+}
+
 function handlePrefs(handle) {
   prefs.handles ||= {};
   prefs.handles[handle] ||= { muted: false, blocked: false };
@@ -387,12 +394,23 @@ function rebuildThreads() {
   const remoteThreads = [...grouped.values()].map((rows) => {
     rows.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
     const row = rows[0];
-    const pref = threadPrefs(row.id);
+    const prefId = `conversation:${row.otherHandle}|${normalizeConversationSubject(row.subject)}`;
+    const pref = threadPrefs(prefId);
+    const legacyPref = prefs[row.id];
+    if (legacyPref && !pref.migratedFromMessageId) {
+      pref.starred ||= Boolean(legacyPref.starred);
+      pref.archived ||= Boolean(legacyPref.archived);
+      pref.pinned ||= Boolean(legacyPref.pinned);
+      if (!pref.reactions?.length && Array.isArray(legacyPref.reactions)) pref.reactions = legacyPref.reactions.slice();
+      pref.migratedFromMessageId = row.id;
+      savePrefs();
+    }
     const game = row.game_id ? gameRows.find((entry) => entry.id === row.game_id) : null;
     const unread = rows.some((entry) => entry.isReceived && !entry.read_at);
     const readByAnyRecipient = rows.some((entry) => entry.sender_handle === identity.handle && entry.read_at);
     return {
       id: row.id,
+      prefId,
       messageIds: rows.map((entry) => entry.id),
       gameId: row.game_id || "",
       from: row.isSent ? `You to ${row.recipient_handle}` : row.sender_handle,
@@ -416,6 +434,7 @@ function rebuildThreads() {
 
   const localDrafts = drafts.map((draft) => ({
     ...draft,
+    prefId: draft.id,
     unread: false,
     starred: Boolean(threadPrefs(draft.id).starred),
     archived: Boolean(threadPrefs(draft.id).archived),
@@ -884,14 +903,14 @@ function getHandleAvatar(handle) {
 function renderReactions(thread) {
   els.reactionRow.innerHTML = "";
   if (thread.draft) return;
-  const pref = threadPrefs(thread.id);
+  const pref = threadPrefs(getThreadPrefId(thread));
   for (const reaction of REACTIONS) {
     const active = pref.reactions?.includes(reaction);
     const button = document.createElement("button");
     button.type = "button";
     button.className = active ? "is-active" : "";
     button.textContent = `${reaction}${active ? " 1" : ""}`;
-    button.addEventListener("click", () => toggleReaction(thread.id, reaction));
+    button.addEventListener("click", () => toggleReaction(getThreadPrefId(thread), reaction));
     els.reactionRow.append(button);
   }
 }
@@ -1978,6 +1997,7 @@ async function sendInlineCall(type) {
 
 async function toggleVoiceNote() {
   if (voiceRecorder?.state === "recording") {
+    window.clearTimeout(voiceStopTimer);
     voiceRecorder.stop();
     return;
   }
@@ -1993,6 +2013,7 @@ async function toggleVoiceNote() {
       if (event.data?.size) voiceChunks.push(event.data);
     });
     voiceRecorder.addEventListener("stop", async () => {
+      window.clearTimeout(voiceStopTimer);
       els.voiceNoteButton.textContent = "Voice Note";
       els.voiceNoteButton.classList.remove("is-listening");
       stream.getTracks().forEach((track) => track.stop());
@@ -2008,6 +2029,9 @@ async function toggleVoiceNote() {
       reader.readAsDataURL(blob);
     });
     voiceRecorder.start();
+    voiceStopTimer = window.setTimeout(() => {
+      if (voiceRecorder?.state === "recording") voiceRecorder.stop();
+    }, 45000);
     els.voiceNoteButton.textContent = "Stop";
     els.voiceNoteButton.classList.add("is-listening");
     setStatus("Recording voice note...", "neutral");
@@ -2962,7 +2986,7 @@ els.refreshButton.addEventListener("click", fetchMessages);
 els.starButton.addEventListener("click", () => {
   const thread = currentThread();
   if (!thread) return;
-  threadPrefs(thread.id).starred = !thread.starred;
+  threadPrefs(getThreadPrefId(thread)).starred = !thread.starred;
   savePrefs();
   render();
 });
@@ -2970,7 +2994,7 @@ els.starButton.addEventListener("click", () => {
 els.pinChatButton.addEventListener("click", () => {
   const thread = currentThread();
   if (!thread) return;
-  threadPrefs(thread.id).pinned = !thread.pinned;
+  threadPrefs(getThreadPrefId(thread)).pinned = !thread.pinned;
   savePrefs();
   setStatus(thread.pinned ? "Chat unpinned." : "Chat pinned.", "success");
   render();
@@ -2979,7 +3003,7 @@ els.pinChatButton.addEventListener("click", () => {
 els.archiveButton.addEventListener("click", () => {
   const thread = currentThread();
   if (!thread) return;
-  threadPrefs(thread.id).archived = !thread.archived;
+  threadPrefs(getThreadPrefId(thread)).archived = !thread.archived;
   savePrefs();
   render();
 });
