@@ -66,6 +66,7 @@ const els = {
   soundToggle: document.getElementById("soundToggle"),
   keyboardSoundToggle: document.getElementById("keyboardSoundToggle"),
   phoneNotificationButton: document.getElementById("phoneNotificationButton"),
+  testNotificationButton: document.getElementById("testNotificationButton"),
   phoneNotificationStatus: document.getElementById("phoneNotificationStatus"),
   themeSelect: document.getElementById("themeSelect"),
   lockCodeInput: document.getElementById("lockCodeInput"),
@@ -476,12 +477,25 @@ function getYourMoveCount() {
 
 function updateNotifications(unreadCount) {
   document.title = unreadCount > 0 ? `(${unreadCount}) ${BASE_TITLE}` : BASE_TITLE;
+  updateAppBadge(unreadCount);
   els.notificationStrip.hidden = unreadCount === 0;
   els.notificationStrip.setAttribute("aria-label", unreadCount ? "Show unread messages" : "No unread messages");
   els.notificationCount.textContent = String(unreadCount);
   els.notificationText.textContent = unreadCount === 1
     ? "You have 1 unread message."
     : `You have ${unreadCount} unread messages.`;
+}
+
+async function updateAppBadge(unreadCount) {
+  try {
+    if (unreadCount > 0 && "setAppBadge" in navigator) {
+      await navigator.setAppBadge(unreadCount);
+    } else if (unreadCount === 0 && "clearAppBadge" in navigator) {
+      await navigator.clearAppBadge();
+    }
+  } catch {
+    // Some mobile browsers expose app badges but only allow them when installed.
+  }
 }
 
 function showUnreadMessages() {
@@ -524,7 +538,7 @@ async function showPhoneNotification(unreadCount, newCount) {
   };
 
   try {
-    const registration = "serviceWorker" in navigator ? await navigator.serviceWorker.getRegistration("./") : null;
+    const registration = await getNotificationRegistration();
     if (registration?.showNotification) {
       await registration.showNotification(unreadCount === 1 ? "New Threadmail" : `${unreadCount} unread Threadmail messages`, options);
       return;
@@ -532,6 +546,45 @@ async function showPhoneNotification(unreadCount, newCount) {
     new Notification(unreadCount === 1 ? "New Threadmail" : `${unreadCount} unread Threadmail messages`, options);
   } catch {
     setStatus("Phone notification could not be shown, but the in-app badge still updated.", "error");
+  }
+}
+
+async function getNotificationRegistration() {
+  if (!("serviceWorker" in navigator)) return null;
+  try {
+    const ready = await navigator.serviceWorker.ready;
+    return ready || await navigator.serviceWorker.getRegistration("./");
+  } catch {
+    return navigator.serviceWorker.getRegistration("./").catch(() => null);
+  }
+}
+
+async function showTestNotification() {
+  if (!("Notification" in window)) {
+    setStatus("This browser does not support phone notifications.", "error");
+    return;
+  }
+  if (Notification.permission !== "granted") {
+    setStatus("Turn on phone notifications first.", "error");
+    return;
+  }
+  try {
+    const options = {
+      body: "Threadmail notifications are working on this device.",
+      tag: "threadmail-test",
+      icon: "./threadmail-icon-192.png",
+      badge: "./threadmail-icon-192.png",
+      data: { url: "./threadmail.html" }
+    };
+    const registration = await getNotificationRegistration();
+    if (registration?.showNotification) {
+      await registration.showNotification("Threadmail Test", options);
+    } else {
+      new Notification("Threadmail Test", options);
+    }
+    setStatus("Test notification sent.", "success");
+  } catch {
+    setStatus("The test notification could not be shown on this device.", "error");
   }
 }
 
@@ -897,6 +950,7 @@ function renderSettings() {
 function renderPhoneNotificationSetting() {
   if (!("Notification" in window)) {
     els.phoneNotificationButton.disabled = true;
+    els.testNotificationButton.disabled = true;
     els.phoneNotificationButton.textContent = "Notifications Unavailable";
     els.phoneNotificationStatus.textContent = "This browser does not support phone notifications for Threadmail.";
     return;
@@ -905,21 +959,24 @@ function renderPhoneNotificationSetting() {
   const permission = Notification.permission;
   if (permission === "granted" && settings.phoneNotifications) {
     els.phoneNotificationButton.disabled = false;
+    els.testNotificationButton.disabled = false;
     els.phoneNotificationButton.textContent = "Phone Notifications On";
-    els.phoneNotificationStatus.textContent = "Threadmail will pop up new-message notifications while it is running.";
+    els.phoneNotificationStatus.textContent = "Threadmail can pop up new-message notifications while it is installed or open.";
     return;
   }
 
   if (permission === "denied") {
     els.phoneNotificationButton.disabled = true;
+    els.testNotificationButton.disabled = true;
     els.phoneNotificationButton.textContent = "Notifications Blocked";
     els.phoneNotificationStatus.textContent = "Turn notifications back on in your browser or phone settings.";
     return;
   }
 
   els.phoneNotificationButton.disabled = false;
+  els.testNotificationButton.disabled = true;
   els.phoneNotificationButton.textContent = "Enable Phone Notifications";
-  els.phoneNotificationStatus.textContent = "Tap once to allow Threadmail pop-up notifications.";
+  els.phoneNotificationStatus.textContent = "Tap once to allow Threadmail pop-up notifications, then use Test Notification.";
 }
 
 function openGameThread(gameId) {
@@ -2312,14 +2369,16 @@ els.phoneNotificationButton.addEventListener("click", async () => {
 
   settings.phoneNotifications = permission === "granted";
   saveSettings();
+  if (settings.phoneNotifications) await getNotificationRegistration();
   renderSettings();
   setStatus(
     settings.phoneNotifications
-      ? "Phone notifications are on. Keep Threadmail installed or open to receive pop-ups."
+      ? "Phone notifications are on. Tap Test Notification to check this device."
       : "Phone notifications were not enabled.",
     settings.phoneNotifications ? "success" : "error"
   );
 });
+els.testNotificationButton.addEventListener("click", showTestNotification);
 els.saveLockButton.addEventListener("click", () => {
   const code = els.lockCodeInput.value.trim();
   const recoveryEmail = normalizeEmail(els.lockEmailInput.value);
