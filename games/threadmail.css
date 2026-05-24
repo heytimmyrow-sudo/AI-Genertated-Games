@@ -488,6 +488,34 @@ button.compact-item {
   display: none;
 }
 
+.call-close-button {
+  position: fixed;
+  top: max(14px, env(safe-area-inset-top));
+  right: max(14px, env(safe-area-inset-right));
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  aspect-ratio: 1;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 999px;
+  color: var(--text);
+  background: rgba(0, 0, 0, 0.5);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.35);
+  font-size: 1.1rem;
+  font-weight: 800;
+}
+
+.call-close-button[hidden] {
+  display: none;
+}
+
+.call-close-button:hover,
+.call-close-button:focus-visible {
+  border-color: rgba(27, 242, 206, 0.55);
+  color: var(--accent);
+}
+
 .voice-call-card {
   display: grid;
   justify-items: center;

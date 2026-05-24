@@ -166,6 +166,7 @@ const els = {
   acceptVoiceCallButton: document.getElementById("acceptVoiceCallButton"),
   muteVoiceCallButton: document.getElementById("muteVoiceCallButton"),
   endVoiceCallButton: document.getElementById("endVoiceCallButton"),
+  closeLostCallButton: document.getElementById("closeLostCallButton"),
   remoteVoiceAudio: document.getElementById("remoteVoiceAudio"),
   callVideoStage: document.getElementById("callVideoStage"),
   remoteCallVideo: document.getElementById("remoteCallVideo"),
@@ -2153,13 +2154,15 @@ async function editLastSentMessage() {
   }
 }
 
-function setVoiceCallPanel({ visible = true, label = "Threadmail Voice", status = "Ready", incoming = false, connected = false, video = false } = {}) {
+function setVoiceCallPanel({ visible = true, label = "Threadmail Voice", status = "Ready", incoming = false, connected = false, video = false, lost = false } = {}) {
   els.voiceCallPanel.hidden = !visible;
   document.body.classList.toggle("voice-call-active", visible);
   els.voiceCallPanel.classList.toggle("is-incoming", incoming);
   els.voiceCallPanel.classList.toggle("is-connected", connected);
   els.voiceCallPanel.classList.toggle("is-video", video);
+  els.voiceCallPanel.classList.toggle("is-lost", lost);
   els.callVideoStage.hidden = !video;
+  els.closeLostCallButton.hidden = !visible || !lost;
   els.voiceCallLabel.textContent = label;
   els.voiceCallStatus.textContent = status;
   els.voiceCallNote.textContent = incoming
@@ -2328,7 +2331,7 @@ async function createVoicePeer(role, call) {
     } else if (peer.connectionState === "disconnected") {
       setVoiceCallPanel({ label: `${mediaType === "video" ? "FaceTime" : "Voice"} with ${getCallPeer()}`, status: "Reconnecting...", connected: true, video: mediaType === "video" });
     } else if (["failed", "closed"].includes(peer.connectionState)) {
-      setVoiceCallPanel({ label: mediaType === "video" ? "Threadmail FaceTime" : "Threadmail Voice", status: "Connection lost", connected: true, video: mediaType === "video" });
+      setVoiceCallPanel({ label: mediaType === "video" ? "Threadmail FaceTime" : "Threadmail Voice", status: "Connection lost", connected: true, video: mediaType === "video", lost: true });
     }
   });
   peer.addEventListener("iceconnectionstatechange", () => {
@@ -2339,7 +2342,7 @@ async function createVoicePeer(role, call) {
     } else if (peer.iceConnectionState === "disconnected") {
       setVoiceCallPanel({ label: `${mediaType === "video" ? "FaceTime" : "Voice"} with ${getCallPeer()}`, status: "Reconnecting...", connected: true, video: mediaType === "video" });
     } else if (peer.iceConnectionState === "failed") {
-      setVoiceCallPanel({ label: mediaType === "video" ? "Threadmail FaceTime" : "Threadmail Voice", status: "Connection blocked by network", connected: true, video: mediaType === "video" });
+      setVoiceCallPanel({ label: mediaType === "video" ? "Threadmail FaceTime" : "Threadmail Voice", status: "Connection blocked by network", connected: true, video: mediaType === "video", lost: true });
     }
   });
   return { peer, stream };
@@ -3532,6 +3535,7 @@ els.voiceCallPanel.addEventListener("pointerdown", () => {
 });
 els.muteVoiceCallButton.addEventListener("click", toggleVoiceMute);
 els.endVoiceCallButton.addEventListener("click", () => endVoiceCall(callSession?.role === "callee" && !callSession.peer ? "declined" : "ended"));
+els.closeLostCallButton.addEventListener("click", () => endVoiceCall("ended"));
 els.inlineReplyBody.addEventListener("input", sendActiveTypingSignal);
 els.inlineReplyBody.addEventListener("keydown", (event) => {
   if (event.key !== "Enter" || !event.shiftKey || event.isComposing) return;
