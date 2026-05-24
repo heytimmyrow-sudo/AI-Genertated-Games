@@ -15,10 +15,10 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="Threadmail">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <link rel="manifest" href="./threadmail.webmanifest?v=45">
+  <link rel="manifest" href="./threadmail.webmanifest?v=46">
   <link rel="apple-touch-icon" href="./threadmail-icon-192.png">
   <link rel="stylesheet" href="../style.css">
-  <link rel="stylesheet" href="./threadmail.css?v=45">
+  <link rel="stylesheet" href="./threadmail.css?v=46">
 </head>
 <body>
   <section class="greeting-splash" id="greetingSplash" aria-live="polite">
@@ -327,8 +327,10 @@
           <div>
             <span id="voiceCallLabel">Threadmail Voice</span>
             <strong id="voiceCallStatus">Ready</strong>
+            <p class="voice-call-note" id="voiceCallNote">Keep Threadmail open to answer.</p>
           </div>
           <div class="voice-call-actions">
+            <button class="play-button play-button--ghost" type="button" id="ringtoneUnlockButton" hidden>Tap For Ring</button>
             <button class="play-button play-button--ghost" type="button" id="acceptVoiceCallButton" hidden>Accept</button>
             <button class="play-button play-button--ghost" type="button" id="muteVoiceCallButton" hidden>Mute</button>
             <button class="play-button danger-action" type="button" id="endVoiceCallButton">End</button>
@@ -345,6 +347,6 @@
       </nav>
     </section>
   </main>
-  <script src="../js/threadmail.js?v=45"></script>
+  <script src="../js/threadmail.js?v=46"></script>
 </body>
 </html>

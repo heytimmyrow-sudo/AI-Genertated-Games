@@ -513,6 +513,14 @@ button.compact-item {
   line-height: 1;
 }
 
+.voice-call-note {
+  margin: 10px auto 0;
+  max-width: 280px;
+  color: var(--muted);
+  font-size: 0.95rem;
+  line-height: 1.35;
+}
+
 .voice-call-logo {
   display: grid;
   place-items: center;

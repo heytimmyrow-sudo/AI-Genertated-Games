@@ -59,6 +59,7 @@ let callSession = null;
 let knownCallCandidateCounts = { caller: 0, callee: 0 };
 let ringtoneTimer = null;
 let ringtoneAudio = null;
+let ringtoneUnlocked = false;
 
 const els = {
   greetingSplash: document.getElementById("greetingSplash"),
@@ -148,6 +149,8 @@ const els = {
   voiceCallPanel: document.getElementById("voiceCallPanel"),
   voiceCallLabel: document.getElementById("voiceCallLabel"),
   voiceCallStatus: document.getElementById("voiceCallStatus"),
+  voiceCallNote: document.getElementById("voiceCallNote"),
+  ringtoneUnlockButton: document.getElementById("ringtoneUnlockButton"),
   acceptVoiceCallButton: document.getElementById("acceptVoiceCallButton"),
   muteVoiceCallButton: document.getElementById("muteVoiceCallButton"),
   endVoiceCallButton: document.getElementById("endVoiceCallButton"),
@@ -2141,34 +2144,50 @@ function setVoiceCallPanel({ visible = true, label = "Threadmail Voice", status 
   els.voiceCallPanel.classList.toggle("is-connected", connected);
   els.voiceCallLabel.textContent = label;
   els.voiceCallStatus.textContent = status;
+  els.voiceCallNote.textContent = incoming
+    ? (ringtoneUnlocked ? "Ringing..." : "Tap for ringtone sound if your phone is silent.")
+    : connected
+      ? "Voice call is active."
+      : "Keep Threadmail open for calls.";
+  els.ringtoneUnlockButton.hidden = !incoming || ringtoneUnlocked;
   els.acceptVoiceCallButton.hidden = !incoming;
   els.muteVoiceCallButton.hidden = !connected;
   if (incoming) startIncomingRingtone();
   else stopIncomingRingtone();
 }
 
-function playRingToneOnce() {
+async function ensureRingtoneAudio() {
+  const AudioContext = window.AudioContext || window.webkitAudioContext;
+  if (!AudioContext) return null;
+  ringtoneAudio ||= new AudioContext();
+  if (ringtoneAudio.state === "suspended") await ringtoneAudio.resume();
+  ringtoneUnlocked = ringtoneAudio.state === "running";
+  return ringtoneAudio;
+}
+
+async function playRingToneOnce() {
   try {
-    const AudioContext = window.AudioContext || window.webkitAudioContext;
-    if (!AudioContext) return;
-    ringtoneAudio ||= new AudioContext();
-    if (ringtoneAudio.state === "suspended") ringtoneAudio.resume();
-    const now = ringtoneAudio.currentTime;
-    const gain = ringtoneAudio.createGain();
+    const audio = await ensureRingtoneAudio();
+    if (!audio) return false;
+    const now = audio.currentTime;
+    const gain = audio.createGain();
     gain.gain.setValueAtTime(0.0001, now);
     gain.gain.exponentialRampToValueAtTime(0.1, now + 0.02);
     gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.42);
-    gain.connect(ringtoneAudio.destination);
+    gain.connect(audio.destination);
     [740, 920].forEach((frequency, index) => {
-      const osc = ringtoneAudio.createOscillator();
+      const osc = audio.createOscillator();
       osc.type = "sine";
       osc.frequency.setValueAtTime(frequency, now + index * 0.16);
       osc.connect(gain);
       osc.start(now + index * 0.16);
       osc.stop(now + 0.22 + index * 0.16);
     });
+    return true;
   } catch {
     // Browser may block ringtone audio until the next tap.
+    ringtoneUnlocked = false;
+    return false;
   }
 }
 
@@ -2180,6 +2199,13 @@ function startIncomingRingtone() {
     playRingToneOnce();
     if ("vibrate" in navigator) navigator.vibrate([220, 120, 220]);
   }, 1400);
+}
+
+async function unlockRingtone() {
+  const played = await playRingToneOnce();
+  ringtoneUnlocked = Boolean(played);
+  els.ringtoneUnlockButton.hidden = ringtoneUnlocked;
+  els.voiceCallNote.textContent = ringtoneUnlocked ? "Ringing..." : "Phone blocked ringtone sound. Vibration may still work.";
 }
 
 function stopIncomingRingtone() {
@@ -3450,6 +3476,10 @@ els.inlineReplySend.addEventListener("click", sendInlineReply);
 els.inlineDictateButton.addEventListener("click", () => startDictation(els.inlineReplyBody, els.inlineDictateButton));
 els.voiceNoteButton.addEventListener("click", toggleVoiceNote);
 els.acceptVoiceCallButton.addEventListener("click", acceptThreadmailVoiceCall);
+els.ringtoneUnlockButton.addEventListener("click", unlockRingtone);
+els.voiceCallPanel.addEventListener("pointerdown", () => {
+  if (callSession?.role === "callee" && !ringtoneUnlocked) unlockRingtone();
+});
 els.muteVoiceCallButton.addEventListener("click", toggleVoiceMute);
 els.endVoiceCallButton.addEventListener("click", () => endVoiceCall(callSession?.role === "callee" && !callSession.peer ? "declined" : "ended"));
 els.inlineReplyBody.addEventListener("input", sendActiveTypingSignal);
