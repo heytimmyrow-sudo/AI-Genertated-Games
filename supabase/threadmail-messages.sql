@@ -174,6 +174,7 @@ create index if not exists threadmail_typing_recipient_idx
 
 create table if not exists public.threadmail_calls (
   id uuid primary key default gen_random_uuid(),
+  call_type text not null default 'voice' check (call_type in ('voice','video')),
   caller_handle text not null check (caller_handle ~ '^[a-z0-9_]{3,24}$'),
   callee_handle text not null check (callee_handle ~ '^[a-z0-9_]{3,24}$'),
   status text not null default 'ringing' check (status in ('ringing','accepted','declined','ended')),
@@ -214,3 +215,13 @@ create index if not exists threadmail_calls_callee_idx
 
 create index if not exists threadmail_calls_caller_idx
   on public.threadmail_calls (caller_handle, updated_at desc);
+
+alter table public.threadmail_calls
+  add column if not exists call_type text not null default 'voice';
+
+alter table public.threadmail_calls
+  drop constraint if exists threadmail_calls_call_type_check;
+
+alter table public.threadmail_calls
+  add constraint threadmail_calls_call_type_check
+  check (call_type in ('voice','video'));

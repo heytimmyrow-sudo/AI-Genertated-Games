@@ -17,6 +17,9 @@ const QUICK_REPLIES = ["OK", "On it", "Your turn", "Haha"];
 const CALL_INVITE_PREFIX = "THREADMAIL_CALL_INVITE::";
 const VOICE_NOTE_PREFIX = "THREADMAIL_VOICE_NOTE::";
 const PHOTO_PREFIX = "THREADMAIL_PHOTO::";
+const ICE_SERVERS = [
+  { urls: ["stun:stun.l.google.com:19302", "stun:stun1.l.google.com:19302", "stun:stun2.l.google.com:19302", "stun:global.stun.twilio.com:3478"] }
+];
 const AI_QUICK_ACTIONS = [
   { label: "Suggest Reply", prompt: "Suggest 3 short replies I could send. Make them sound natural and different from each other." },
   { label: "Rewrite This", prompt: "Rewrite my next message so it sounds clearer and friendlier. Put the rewritten message first." },
@@ -155,6 +158,9 @@ const els = {
   muteVoiceCallButton: document.getElementById("muteVoiceCallButton"),
   endVoiceCallButton: document.getElementById("endVoiceCallButton"),
   remoteVoiceAudio: document.getElementById("remoteVoiceAudio"),
+  callVideoStage: document.getElementById("callVideoStage"),
+  remoteCallVideo: document.getElementById("remoteCallVideo"),
+  localCallVideo: document.getElementById("localCallVideo"),
   composeDictateButton: document.getElementById("composeDictateButton"),
   composeSendButton: document.getElementById("composeSendButton"),
   closeCompose: document.getElementById("closeCompose"),
@@ -1316,8 +1322,9 @@ function getGameRulesShort(type) {
 
 function getCallTitle(type) {
   if (type === "threadmail_voice") return "Threadmail Voice";
+  if (type === "threadmail_video") return "Threadmail FaceTime";
   if (type === "voice") return "Voice Call";
-  if (type === "video") return "Video Call";
+  if (type === "video") return "Video Invite";
   return "FaceTime/Meet";
 }
 
@@ -1333,7 +1340,7 @@ function parseCallInvite(value) {
   try {
     const invite = JSON.parse(firstLine);
     return {
-      type: ["threadmail_voice", "voice", "video", "link"].includes(invite.type) ? invite.type : "video",
+      type: ["threadmail_voice", "threadmail_video", "voice", "video", "link"].includes(invite.type) ? invite.type : "video",
       url: /^https?:\/\//i.test(invite.url || "") ? invite.url : "",
       note: String(invite.note || "").slice(0, 160)
     };
@@ -1890,8 +1897,8 @@ async function sendCallResponse(action, type) {
 }
 
 async function handleCallInviteAction(action, type, callerHandle) {
-  setStatus(action === "accept" ? "Joining Threadmail voice..." : "Declining call...", "neutral");
-  if (type !== "threadmail_voice") {
+  setStatus(action === "accept" ? "Joining Threadmail call..." : "Declining call...", "neutral");
+  if (type !== "threadmail_voice" && type !== "threadmail_video") {
     await sendCallResponse(action, type);
     return;
   }
@@ -1963,8 +1970,8 @@ async function sendInlineGame(type) {
 }
 
 async function sendInlineCall(type) {
-  if (type === "threadmail_voice") {
-    await startThreadmailVoiceCall();
+  if (type === "threadmail_voice" || type === "threadmail_video") {
+    await startThreadmailCall(type === "threadmail_video" ? "video" : "voice");
     return;
   }
   const thread = currentThread();
@@ -2137,11 +2144,13 @@ async function editLastSentMessage() {
   }
 }
 
-function setVoiceCallPanel({ visible = true, label = "Threadmail Voice", status = "Ready", incoming = false, connected = false } = {}) {
+function setVoiceCallPanel({ visible = true, label = "Threadmail Voice", status = "Ready", incoming = false, connected = false, video = false } = {}) {
   els.voiceCallPanel.hidden = !visible;
   document.body.classList.toggle("voice-call-active", visible);
   els.voiceCallPanel.classList.toggle("is-incoming", incoming);
   els.voiceCallPanel.classList.toggle("is-connected", connected);
+  els.voiceCallPanel.classList.toggle("is-video", video);
+  els.callVideoStage.hidden = !video;
   els.voiceCallLabel.textContent = label;
   els.voiceCallStatus.textContent = status;
   els.voiceCallNote.textContent = incoming
@@ -2221,6 +2230,10 @@ function getCallPeer() {
   return callSession.role === "caller" ? callSession.call.callee_handle : callSession.call.caller_handle;
 }
 
+function getCallMediaType(call = callSession?.call) {
+  return call?.call_type === "video" ? "video" : "voice";
+}
+
 function serializeSessionDescription(description) {
   return { type: description.type, sdp: description.sdp };
 }
@@ -2267,13 +2280,17 @@ async function findRingingCallFrom(callerHandle) {
 }
 
 async function createVoicePeer(role, call) {
-  const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-  const peer = new RTCPeerConnection({
-    iceServers: [{ urls: "stun:stun.l.google.com:19302" }]
+  const mediaType = getCallMediaType(call);
+  const stream = await navigator.mediaDevices.getUserMedia({
+    audio: true,
+    video: mediaType === "video" ? { facingMode: "user" } : false
   });
+  const peer = new RTCPeerConnection({ iceServers: ICE_SERVERS });
+  if (mediaType === "video") els.localCallVideo.srcObject = stream;
   stream.getTracks().forEach((track) => peer.addTrack(track, stream));
   peer.addEventListener("track", (event) => {
-    els.remoteVoiceAudio.srcObject = event.streams[0];
+    if (mediaType === "video") els.remoteCallVideo.srcObject = event.streams[0];
+    else els.remoteVoiceAudio.srcObject = event.streams[0];
   });
   peer.addEventListener("icecandidate", async (event) => {
     if (!event.candidate || !callSession?.call?.id) return;
@@ -2289,42 +2306,42 @@ async function createVoicePeer(role, call) {
   });
   peer.addEventListener("connectionstatechange", () => {
     if (["connected", "completed"].includes(peer.connectionState)) {
-      setVoiceCallPanel({ label: `Voice with ${getCallPeer()}`, status: "Connected", connected: true });
+      setVoiceCallPanel({ label: `${mediaType === "video" ? "FaceTime" : "Voice"} with ${getCallPeer()}`, status: "Connected", connected: true, video: mediaType === "video" });
     } else if (["failed", "disconnected"].includes(peer.connectionState)) {
-      setVoiceCallPanel({ label: "Threadmail Voice", status: "Connection lost", connected: true });
+      setVoiceCallPanel({ label: mediaType === "video" ? "Threadmail FaceTime" : "Threadmail Voice", status: "Connection lost", connected: true, video: mediaType === "video" });
     }
   });
   return { peer, stream };
 }
 
-async function startThreadmailVoiceCall() {
+async function startThreadmailCall(mediaType = "voice") {
   const thread = currentThread();
   const caller = identity.handle;
   const callee = normalizeHandle(thread?.otherHandle || "");
   if (!thread || thread.draft || !callee) return;
   if (!navigator.mediaDevices?.getUserMedia || !window.RTCPeerConnection) {
-    setStatus("This browser cannot make Threadmail voice calls.", "error");
+    setStatus(`This browser cannot make Threadmail ${mediaType === "video" ? "FaceTime" : "voice"} calls.`, "error");
     return;
   }
   if (!isValidHandle(caller)) {
-    setStatus("Save your handle before starting a voice call.", "error");
+    setStatus(`Save your handle before starting a ${mediaType === "video" ? "FaceTime" : "voice call"}.`, "error");
     els.identityHandle.focus();
     return;
   }
 
   try {
-    setVoiceCallPanel({ label: `Calling ${callee}`, status: "Starting microphone..." });
+    setVoiceCallPanel({ label: `Calling ${callee}`, status: mediaType === "video" ? "Starting camera..." : "Starting microphone...", video: mediaType === "video" });
     const response = await fetch(`${SUPABASE_URL}/rest/v1/${CALLS_TABLE}`, {
       method: "POST",
       headers: getSupabaseHeaders({
         "Content-Type": "application/json",
         Prefer: "return=representation"
       }),
-      body: JSON.stringify([{ caller_handle: caller, callee_handle: callee, status: "ringing" }])
+      body: JSON.stringify([{ call_type: mediaType, caller_handle: caller, callee_handle: callee, status: "ringing" }])
     });
     const payload = await response.json().catch(() => ([]));
     if (!response.ok) {
-      handleSupabaseError(payload, "Threadmail voice calls need the updated Supabase setup SQL.");
+      handleSupabaseError(payload, "Threadmail calls need the updated Supabase setup SQL.");
       setVoiceCallPanel({ visible: false });
       return;
     }
@@ -2335,11 +2352,11 @@ async function startThreadmailVoiceCall() {
     const offer = await peer.createOffer();
     await peer.setLocalDescription(offer);
     callSession.call = await patchCall(call.id, { offer: serializeSessionDescription(peer.localDescription), status: "ringing" });
-    setVoiceCallPanel({ label: `Calling ${callee}`, status: "Ringing..." });
-    await sendThreadUtilityMessage(buildCallInviteBody("threadmail_voice", ""), "Voice call");
+    setVoiceCallPanel({ label: `Calling ${callee}`, status: "Ringing...", video: mediaType === "video" });
+    await sendThreadUtilityMessage(buildCallInviteBody(mediaType === "video" ? "threadmail_video" : "threadmail_voice", ""), mediaType === "video" ? "FaceTime call" : "Voice call");
   } catch {
     endLocalVoiceCall(false);
-    setStatus("Could not start the Threadmail voice call.", "error");
+    setStatus(`Could not start the Threadmail ${mediaType === "video" ? "FaceTime" : "voice call"}.`, "error");
   }
 }
 
@@ -2347,11 +2364,11 @@ async function acceptThreadmailVoiceCall() {
   if (!callSession?.call || callSession.role !== "callee") return;
   stopIncomingRingtone();
   if (!navigator.mediaDevices?.getUserMedia || !window.RTCPeerConnection) {
-    setStatus("This browser cannot accept Threadmail voice calls.", "error");
+    setStatus(`This browser cannot accept Threadmail ${getCallMediaType() === "video" ? "FaceTime" : "voice"} calls.`, "error");
     return;
   }
   if (!callSession.call.offer) {
-    setStatus("The voice call is not ready yet. Try again in a second.", "error");
+    setStatus("The call is not ready yet. Try again in a second.", "error");
     return;
   }
   try {
@@ -2363,16 +2380,16 @@ async function acceptThreadmailVoiceCall() {
     await peer.setLocalDescription(answer);
     callSession.call = await patchCall(callSession.call.id, { answer: serializeSessionDescription(peer.localDescription), status: "accepted" });
     knownCallCandidateCounts = { caller: 0, callee: 0 };
-    setVoiceCallPanel({ label: `Voice with ${getCallPeer()}`, status: "Connecting...", connected: true });
+    setVoiceCallPanel({ label: `${getCallMediaType() === "video" ? "FaceTime" : "Voice"} with ${getCallPeer()}`, status: "Connecting...", connected: true, video: getCallMediaType() === "video" });
   } catch {
-    setStatus("Could not accept the voice call.", "error");
+    setStatus("Could not accept the call.", "error");
     await endVoiceCall();
   }
 }
 
 async function acceptThreadmailVoiceInvite(callerHandle) {
   if (!isValidHandle(identity.handle)) {
-    setStatus("Save your handle before accepting a voice call.", "error");
+    setStatus("Save your handle before accepting a call.", "error");
     els.identityHandle.focus();
     return;
   }
@@ -2381,15 +2398,15 @@ async function acceptThreadmailVoiceInvite(callerHandle) {
       ? callSession.call
       : await findRingingCallFrom(callerHandle);
     if (!call) {
-      setStatus("No active Threadmail voice call found. Ask them to call again.", "error");
+      setStatus("No active Threadmail call found. Ask them to call again.", "error");
       return;
     }
     callSession = { role: "callee", call, peer: null, stream: null, accepted: false, muted: false };
     knownCallCandidateCounts = { caller: 0, callee: 0 };
-    setVoiceCallPanel({ label: `Incoming voice from ${call.caller_handle}`, status: "Accepting..." });
+    setVoiceCallPanel({ label: `Incoming ${getCallMediaType(call) === "video" ? "FaceTime" : "voice"} from ${call.caller_handle}`, status: "Accepting...", video: getCallMediaType(call) === "video" });
     await acceptThreadmailVoiceCall();
   } catch {
-    setStatus("Threadmail voice calls need the updated Supabase setup SQL.", "error");
+    setStatus("Threadmail calls need the updated Supabase setup SQL.", "error");
   }
 }
 
@@ -2433,7 +2450,7 @@ async function pollVoiceCalls() {
       if (callSession.role === "caller" && call.answer && !callSession.accepted) {
         await callSession.peer.setRemoteDescription(call.answer);
         callSession.accepted = true;
-        setVoiceCallPanel({ label: `Voice with ${getCallPeer()}`, status: "Connecting...", connected: true });
+        setVoiceCallPanel({ label: `${getCallMediaType() === "video" ? "FaceTime" : "Voice"} with ${getCallPeer()}`, status: "Connecting...", connected: true, video: getCallMediaType() === "video" });
       }
       await addRemoteCandidates(call);
       return;
@@ -2447,7 +2464,7 @@ async function pollVoiceCalls() {
     const call = payload[0];
     callSession = { role: "callee", call, peer: null, stream: null, accepted: false, muted: false };
     knownCallCandidateCounts = { caller: 0, callee: 0 };
-    setVoiceCallPanel({ label: `Incoming voice from ${call.caller_handle}`, status: "Incoming call", incoming: true });
+    setVoiceCallPanel({ label: `Incoming ${getCallMediaType(call) === "video" ? "FaceTime" : "voice"} from ${call.caller_handle}`, status: "Incoming call", incoming: true, video: getCallMediaType(call) === "video" });
   } catch {
     // Calls need the optional threadmail_calls table. Fail quietly until the SQL is run.
   }
@@ -2469,6 +2486,8 @@ function endLocalVoiceCall(hide = true) {
   callSession = null;
   knownCallCandidateCounts = { caller: 0, callee: 0 };
   els.remoteVoiceAudio.srcObject = null;
+  els.remoteCallVideo.srcObject = null;
+  els.localCallVideo.srcObject = null;
   els.muteVoiceCallButton.textContent = "Mute";
   if (hide) setVoiceCallPanel({ visible: false });
 }

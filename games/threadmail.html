@@ -15,10 +15,10 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="Threadmail">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <link rel="manifest" href="./threadmail.webmanifest?v=46">
+  <link rel="manifest" href="./threadmail.webmanifest?v=47">
   <link rel="apple-touch-icon" href="./threadmail-icon-192.png">
   <link rel="stylesheet" href="../style.css">
-  <link rel="stylesheet" href="./threadmail.css?v=46">
+  <link rel="stylesheet" href="./threadmail.css?v=47">
 </head>
 <body>
   <section class="greeting-splash" id="greetingSplash" aria-live="polite">
@@ -247,8 +247,9 @@
             <section class="inline-call-picker" id="inlineCallPicker" aria-label="Add call invite" hidden>
               <span>Send a call</span>
               <button class="play-button play-button--ghost" type="button" data-inline-call="threadmail_voice">Threadmail Voice</button>
+              <button class="play-button play-button--ghost" type="button" data-inline-call="threadmail_video">Threadmail FaceTime</button>
               <button class="play-button play-button--ghost" type="button" data-inline-call="voice">Voice Invite</button>
-              <button class="play-button play-button--ghost" type="button" data-inline-call="video">Video Call</button>
+              <button class="play-button play-button--ghost" type="button" data-inline-call="video">Video Invite</button>
               <button class="play-button play-button--ghost" type="button" data-inline-call="link">FaceTime/Meet Link</button>
             </section>
             <section class="inline-game-picker" id="inlineGamePicker" aria-label="Add game" hidden>
@@ -324,6 +325,10 @@
       <section class="voice-call-panel" id="voiceCallPanel" hidden>
         <div class="voice-call-card">
           <div class="voice-call-logo" aria-hidden="true">TM</div>
+          <div class="call-video-stage" id="callVideoStage" hidden>
+            <video id="remoteCallVideo" autoplay playsinline></video>
+            <video id="localCallVideo" autoplay muted playsinline></video>
+          </div>
           <div>
             <span id="voiceCallLabel">Threadmail Voice</span>
             <strong id="voiceCallStatus">Ready</strong>
@@ -347,6 +352,6 @@
       </nav>
     </section>
   </main>
-  <script src="../js/threadmail.js?v=46"></script>
+  <script src="../js/threadmail.js?v=47"></script>
 </body>
 </html>
