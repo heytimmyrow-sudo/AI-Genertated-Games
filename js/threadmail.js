@@ -57,6 +57,8 @@ let voiceChunks = [];
 let voiceStopTimer = null;
 let callSession = null;
 let knownCallCandidateCounts = { caller: 0, callee: 0 };
+let ringtoneTimer = null;
+let ringtoneAudio = null;
 
 const els = {
   greetingSplash: document.getElementById("greetingSplash"),
@@ -2134,10 +2136,58 @@ async function editLastSentMessage() {
 
 function setVoiceCallPanel({ visible = true, label = "Threadmail Voice", status = "Ready", incoming = false, connected = false } = {}) {
   els.voiceCallPanel.hidden = !visible;
+  document.body.classList.toggle("voice-call-active", visible);
+  els.voiceCallPanel.classList.toggle("is-incoming", incoming);
+  els.voiceCallPanel.classList.toggle("is-connected", connected);
   els.voiceCallLabel.textContent = label;
   els.voiceCallStatus.textContent = status;
   els.acceptVoiceCallButton.hidden = !incoming;
   els.muteVoiceCallButton.hidden = !connected;
+  if (incoming) startIncomingRingtone();
+  else stopIncomingRingtone();
+}
+
+function playRingToneOnce() {
+  try {
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContext) return;
+    ringtoneAudio ||= new AudioContext();
+    if (ringtoneAudio.state === "suspended") ringtoneAudio.resume();
+    const now = ringtoneAudio.currentTime;
+    const gain = ringtoneAudio.createGain();
+    gain.gain.setValueAtTime(0.0001, now);
+    gain.gain.exponentialRampToValueAtTime(0.1, now + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.42);
+    gain.connect(ringtoneAudio.destination);
+    [740, 920].forEach((frequency, index) => {
+      const osc = ringtoneAudio.createOscillator();
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(frequency, now + index * 0.16);
+      osc.connect(gain);
+      osc.start(now + index * 0.16);
+      osc.stop(now + 0.22 + index * 0.16);
+    });
+  } catch {
+    // Browser may block ringtone audio until the next tap.
+  }
+}
+
+function startIncomingRingtone() {
+  if (ringtoneTimer) return;
+  playRingToneOnce();
+  if ("vibrate" in navigator) navigator.vibrate([220, 120, 220]);
+  ringtoneTimer = window.setInterval(() => {
+    playRingToneOnce();
+    if ("vibrate" in navigator) navigator.vibrate([220, 120, 220]);
+  }, 1400);
+}
+
+function stopIncomingRingtone() {
+  if (ringtoneTimer) {
+    window.clearInterval(ringtoneTimer);
+    ringtoneTimer = null;
+  }
+  if ("vibrate" in navigator) navigator.vibrate(0);
 }
 
 function getCallPeer() {
@@ -2269,6 +2319,7 @@ async function startThreadmailVoiceCall() {
 
 async function acceptThreadmailVoiceCall() {
   if (!callSession?.call || callSession.role !== "callee") return;
+  stopIncomingRingtone();
   if (!navigator.mediaDevices?.getUserMedia || !window.RTCPeerConnection) {
     setStatus("This browser cannot accept Threadmail voice calls.", "error");
     return;
@@ -2386,6 +2437,7 @@ function toggleVoiceMute() {
 }
 
 function endLocalVoiceCall(hide = true) {
+  stopIncomingRingtone();
   callSession?.stream?.getTracks().forEach((track) => track.stop());
   callSession?.peer?.close();
   callSession = null;
