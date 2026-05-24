@@ -18,7 +18,16 @@ const CALL_INVITE_PREFIX = "THREADMAIL_CALL_INVITE::";
 const VOICE_NOTE_PREFIX = "THREADMAIL_VOICE_NOTE::";
 const PHOTO_PREFIX = "THREADMAIL_PHOTO::";
 const ICE_SERVERS = [
-  { urls: ["stun:stun.l.google.com:19302", "stun:stun1.l.google.com:19302", "stun:stun2.l.google.com:19302", "stun:global.stun.twilio.com:3478"] }
+  { urls: ["stun:stun.l.google.com:19302", "stun:stun1.l.google.com:19302", "stun:stun2.l.google.com:19302", "stun:global.stun.twilio.com:3478"] },
+  {
+    urls: [
+      "turn:openrelay.metered.ca:80",
+      "turn:openrelay.metered.ca:443",
+      "turn:openrelay.metered.ca:443?transport=tcp"
+    ],
+    username: "openrelayproject",
+    credential: "openrelayproject"
+  }
 ];
 const AI_QUICK_ACTIONS = [
   { label: "Suggest Reply", prompt: "Suggest 3 short replies I could send. Make them sound natural and different from each other." },
@@ -2307,8 +2316,21 @@ async function createVoicePeer(role, call) {
   peer.addEventListener("connectionstatechange", () => {
     if (["connected", "completed"].includes(peer.connectionState)) {
       setVoiceCallPanel({ label: `${mediaType === "video" ? "FaceTime" : "Voice"} with ${getCallPeer()}`, status: "Connected", connected: true, video: mediaType === "video" });
-    } else if (["failed", "disconnected"].includes(peer.connectionState)) {
+    } else if (peer.connectionState === "disconnected") {
+      setVoiceCallPanel({ label: `${mediaType === "video" ? "FaceTime" : "Voice"} with ${getCallPeer()}`, status: "Reconnecting...", connected: true, video: mediaType === "video" });
+    } else if (["failed", "closed"].includes(peer.connectionState)) {
       setVoiceCallPanel({ label: mediaType === "video" ? "Threadmail FaceTime" : "Threadmail Voice", status: "Connection lost", connected: true, video: mediaType === "video" });
+    }
+  });
+  peer.addEventListener("iceconnectionstatechange", () => {
+    if (["checking", "new"].includes(peer.iceConnectionState)) {
+      setVoiceCallPanel({ label: `${mediaType === "video" ? "FaceTime" : "Voice"} with ${getCallPeer()}`, status: "Finding connection...", connected: true, video: mediaType === "video" });
+    } else if (peer.iceConnectionState === "connected" || peer.iceConnectionState === "completed") {
+      setVoiceCallPanel({ label: `${mediaType === "video" ? "FaceTime" : "Voice"} with ${getCallPeer()}`, status: "Connected", connected: true, video: mediaType === "video" });
+    } else if (peer.iceConnectionState === "disconnected") {
+      setVoiceCallPanel({ label: `${mediaType === "video" ? "FaceTime" : "Voice"} with ${getCallPeer()}`, status: "Reconnecting...", connected: true, video: mediaType === "video" });
+    } else if (peer.iceConnectionState === "failed") {
+      setVoiceCallPanel({ label: mediaType === "video" ? "Threadmail FaceTime" : "Threadmail Voice", status: "Connection blocked by network", connected: true, video: mediaType === "video" });
     }
   });
   return { peer, stream };
