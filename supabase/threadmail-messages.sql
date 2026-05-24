@@ -48,6 +48,13 @@ create index if not exists threadmail_sender_idx
 alter table public.threadmail_messages
   add column if not exists game_id uuid;
 
+alter table public.threadmail_messages
+  drop constraint if exists threadmail_messages_body_check;
+
+alter table public.threadmail_messages
+  add constraint threadmail_messages_body_check
+  check (char_length(body) between 1 and 1200000);
+
 create table if not exists public.threadmail_handles (
   handle text primary key check (handle ~ '^[a-z0-9_]{3,24}$'),
   owner_token text not null check (char_length(owner_token) between 24 and 80),
@@ -164,3 +171,46 @@ with check (true);
 
 create index if not exists threadmail_typing_recipient_idx
   on public.threadmail_typing (recipient_handle, updated_at desc);
+
+create table if not exists public.threadmail_calls (
+  id uuid primary key default gen_random_uuid(),
+  caller_handle text not null check (caller_handle ~ '^[a-z0-9_]{3,24}$'),
+  callee_handle text not null check (callee_handle ~ '^[a-z0-9_]{3,24}$'),
+  status text not null default 'ringing' check (status in ('ringing','accepted','declined','ended')),
+  offer jsonb,
+  answer jsonb,
+  caller_candidates jsonb not null default '[]'::jsonb,
+  callee_candidates jsonb not null default '[]'::jsonb,
+  created_at timestamptz not null default timezone('utc', now()),
+  updated_at timestamptz not null default timezone('utc', now())
+);
+
+alter table public.threadmail_calls enable row level security;
+
+drop policy if exists "threadmail calls public read" on public.threadmail_calls;
+create policy "threadmail calls public read"
+on public.threadmail_calls
+for select
+to anon
+using (true);
+
+drop policy if exists "threadmail calls public create" on public.threadmail_calls;
+create policy "threadmail calls public create"
+on public.threadmail_calls
+for insert
+to anon
+with check (true);
+
+drop policy if exists "threadmail calls public update" on public.threadmail_calls;
+create policy "threadmail calls public update"
+on public.threadmail_calls
+for update
+to anon
+using (true)
+with check (true);
+
+create index if not exists threadmail_calls_callee_idx
+  on public.threadmail_calls (callee_handle, updated_at desc);
+
+create index if not exists threadmail_calls_caller_idx
+  on public.threadmail_calls (caller_handle, updated_at desc);

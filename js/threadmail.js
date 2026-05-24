@@ -3,6 +3,7 @@ const SUPABASE_ANON_KEY = "sb_publishable_RYq_rDXqj_Ate8B66PcJEQ_a6yv1YUl";
 const SUPABASE_TABLE = "threadmail_messages";
 const GAMES_TABLE = "threadmail_games";
 const TYPING_TABLE = "threadmail_typing";
+const CALLS_TABLE = "threadmail_calls";
 const IDENTITY_KEY = "codex-threadmail-identity-v1";
 const PREFS_KEY = "codex-threadmail-prefs-v1";
 const DRAFTS_KEY = "codex-threadmail-drafts-v1";
@@ -54,6 +55,8 @@ let lastTypingSentAt = 0;
 let voiceRecorder = null;
 let voiceChunks = [];
 let voiceStopTimer = null;
+let callSession = null;
+let knownCallCandidateCounts = { caller: 0, callee: 0 };
 
 const els = {
   greetingSplash: document.getElementById("greetingSplash"),
@@ -140,6 +143,13 @@ const els = {
   addChecklist: document.getElementById("addChecklist"),
   addChoice: document.getElementById("addChoice"),
   photoInput: document.getElementById("photoInput"),
+  voiceCallPanel: document.getElementById("voiceCallPanel"),
+  voiceCallLabel: document.getElementById("voiceCallLabel"),
+  voiceCallStatus: document.getElementById("voiceCallStatus"),
+  acceptVoiceCallButton: document.getElementById("acceptVoiceCallButton"),
+  muteVoiceCallButton: document.getElementById("muteVoiceCallButton"),
+  endVoiceCallButton: document.getElementById("endVoiceCallButton"),
+  remoteVoiceAudio: document.getElementById("remoteVoiceAudio"),
   composeDictateButton: document.getElementById("composeDictateButton"),
   composeSendButton: document.getElementById("composeSendButton"),
   closeCompose: document.getElementById("closeCompose"),
@@ -1297,6 +1307,7 @@ function getGameRulesShort(type) {
 }
 
 function getCallTitle(type) {
+  if (type === "threadmail_voice") return "Threadmail Voice";
   if (type === "voice") return "Voice Call";
   if (type === "video") return "Video Call";
   return "FaceTime/Meet";
@@ -1314,7 +1325,7 @@ function parseCallInvite(value) {
   try {
     const invite = JSON.parse(firstLine);
     return {
-      type: ["voice", "video", "link"].includes(invite.type) ? invite.type : "video",
+      type: ["threadmail_voice", "voice", "video", "link"].includes(invite.type) ? invite.type : "video",
       url: /^https?:\/\//i.test(invite.url || "") ? invite.url : "",
       note: String(invite.note || "").slice(0, 160)
     };
@@ -1931,6 +1942,10 @@ async function sendInlineGame(type) {
 }
 
 async function sendInlineCall(type) {
+  if (type === "threadmail_voice") {
+    await startThreadmailVoiceCall();
+    return;
+  }
   const thread = currentThread();
   const sender = identity.handle;
   const recipient = normalizeHandle(thread?.otherHandle || "");
@@ -2099,6 +2114,220 @@ async function editLastSentMessage() {
   } catch {
     setStatus("Could not edit that message right now.", "error");
   }
+}
+
+function setVoiceCallPanel({ visible = true, label = "Threadmail Voice", status = "Ready", incoming = false, connected = false } = {}) {
+  els.voiceCallPanel.hidden = !visible;
+  els.voiceCallLabel.textContent = label;
+  els.voiceCallStatus.textContent = status;
+  els.acceptVoiceCallButton.hidden = !incoming;
+  els.muteVoiceCallButton.hidden = !connected;
+}
+
+function getCallPeer() {
+  if (!callSession?.call) return "";
+  return callSession.role === "caller" ? callSession.call.callee_handle : callSession.call.caller_handle;
+}
+
+function serializeSessionDescription(description) {
+  return { type: description.type, sdp: description.sdp };
+}
+
+async function patchCall(callId, data) {
+  const response = await fetch(`${SUPABASE_URL}/rest/v1/${CALLS_TABLE}?id=eq.${encodeURIComponent(callId)}`, {
+    method: "PATCH",
+    headers: getSupabaseHeaders({
+      "Content-Type": "application/json",
+      Prefer: "return=representation"
+    }),
+    body: JSON.stringify({ ...data, updated_at: new Date().toISOString() })
+  });
+  const payload = await response.json().catch(() => ([]));
+  if (!response.ok) throw new Error("Call update failed.");
+  return Array.isArray(payload) ? payload[0] : payload;
+}
+
+async function fetchCall(callId) {
+  const response = await fetch(`${SUPABASE_URL}/rest/v1/${CALLS_TABLE}?id=eq.${encodeURIComponent(callId)}&select=*`, {
+    headers: getSupabaseHeaders()
+  });
+  const payload = await response.json().catch(() => ([]));
+  if (!response.ok) throw new Error("Call fetch failed.");
+  return Array.isArray(payload) ? payload[0] : null;
+}
+
+async function createVoicePeer(role, call) {
+  const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  const peer = new RTCPeerConnection({
+    iceServers: [{ urls: "stun:stun.l.google.com:19302" }]
+  });
+  stream.getTracks().forEach((track) => peer.addTrack(track, stream));
+  peer.addEventListener("track", (event) => {
+    els.remoteVoiceAudio.srcObject = event.streams[0];
+  });
+  peer.addEventListener("icecandidate", async (event) => {
+    if (!event.candidate || !callSession?.call?.id) return;
+    try {
+      const fresh = await fetchCall(callSession.call.id);
+      const key = role === "caller" ? "caller_candidates" : "callee_candidates";
+      const next = Array.isArray(fresh?.[key]) ? fresh[key].slice() : [];
+      next.push(event.candidate.toJSON());
+      callSession.call = await patchCall(callSession.call.id, { [key]: next });
+    } catch {
+      setStatus("Voice call connection signal could not sync.", "error");
+    }
+  });
+  peer.addEventListener("connectionstatechange", () => {
+    if (["connected", "completed"].includes(peer.connectionState)) {
+      setVoiceCallPanel({ label: `Voice with ${getCallPeer()}`, status: "Connected", connected: true });
+    } else if (["failed", "disconnected"].includes(peer.connectionState)) {
+      setVoiceCallPanel({ label: "Threadmail Voice", status: "Connection lost", connected: true });
+    }
+  });
+  return { peer, stream };
+}
+
+async function startThreadmailVoiceCall() {
+  const thread = currentThread();
+  const caller = identity.handle;
+  const callee = normalizeHandle(thread?.otherHandle || "");
+  if (!thread || thread.draft || !callee) return;
+  if (!navigator.mediaDevices?.getUserMedia || !window.RTCPeerConnection) {
+    setStatus("This browser cannot make Threadmail voice calls.", "error");
+    return;
+  }
+  if (!isValidHandle(caller)) {
+    setStatus("Save your handle before starting a voice call.", "error");
+    els.identityHandle.focus();
+    return;
+  }
+
+  try {
+    setVoiceCallPanel({ label: `Calling ${callee}`, status: "Starting microphone..." });
+    const response = await fetch(`${SUPABASE_URL}/rest/v1/${CALLS_TABLE}`, {
+      method: "POST",
+      headers: getSupabaseHeaders({
+        "Content-Type": "application/json",
+        Prefer: "return=representation"
+      }),
+      body: JSON.stringify([{ caller_handle: caller, callee_handle: callee, status: "ringing" }])
+    });
+    const payload = await response.json().catch(() => ([]));
+    if (!response.ok) {
+      handleSupabaseError(payload, "Threadmail voice calls need the updated Supabase setup SQL.");
+      setVoiceCallPanel({ visible: false });
+      return;
+    }
+    const call = Array.isArray(payload) ? payload[0] : payload;
+    const { peer, stream } = await createVoicePeer("caller", call);
+    callSession = { role: "caller", call, peer, stream, accepted: false, muted: false };
+    knownCallCandidateCounts = { caller: 0, callee: 0 };
+    const offer = await peer.createOffer();
+    await peer.setLocalDescription(offer);
+    callSession.call = await patchCall(call.id, { offer: serializeSessionDescription(peer.localDescription), status: "ringing" });
+    setVoiceCallPanel({ label: `Calling ${callee}`, status: "Ringing..." });
+    await sendThreadUtilityMessage(buildCallInviteBody("threadmail_voice", ""), "Voice call");
+  } catch {
+    endLocalVoiceCall(false);
+    setStatus("Could not start the Threadmail voice call.", "error");
+  }
+}
+
+async function acceptThreadmailVoiceCall() {
+  if (!callSession?.call || callSession.role !== "callee") return;
+  try {
+    const { peer, stream } = await createVoicePeer("callee", callSession.call);
+    callSession.peer = peer;
+    callSession.stream = stream;
+    await peer.setRemoteDescription(callSession.call.offer);
+    const answer = await peer.createAnswer();
+    await peer.setLocalDescription(answer);
+    callSession.call = await patchCall(callSession.call.id, { answer: serializeSessionDescription(peer.localDescription), status: "accepted" });
+    knownCallCandidateCounts = { caller: 0, callee: 0 };
+    setVoiceCallPanel({ label: `Voice with ${getCallPeer()}`, status: "Connecting...", connected: true });
+  } catch {
+    setStatus("Could not accept the voice call.", "error");
+    await endVoiceCall();
+  }
+}
+
+async function addRemoteCandidates(call) {
+  if (!callSession?.peer) return;
+  const key = callSession.role === "caller" ? "callee_candidates" : "caller_candidates";
+  const seenKey = callSession.role === "caller" ? "callee" : "caller";
+  const candidates = Array.isArray(call[key]) ? call[key] : [];
+  for (const candidate of candidates.slice(knownCallCandidateCounts[seenKey])) {
+    try {
+      await callSession.peer.addIceCandidate(candidate);
+    } catch {
+      // The next polling pass may succeed once descriptions are ready.
+    }
+  }
+  knownCallCandidateCounts[seenKey] = candidates.length;
+}
+
+async function pollVoiceCalls() {
+  if (!identity.handle || !isValidHandle(identity.handle)) return;
+  try {
+    if (callSession?.call?.id) {
+      const call = await fetchCall(callSession.call.id);
+      if (!call) return;
+      callSession.call = call;
+      if (call.status === "declined" || call.status === "ended") {
+        endLocalVoiceCall(false);
+        setStatus(call.status === "declined" ? "Voice call declined." : "Voice call ended.", "neutral");
+        return;
+      }
+      if (callSession.role === "caller" && call.answer && !callSession.accepted) {
+        await callSession.peer.setRemoteDescription(call.answer);
+        callSession.accepted = true;
+        setVoiceCallPanel({ label: `Voice with ${getCallPeer()}`, status: "Connecting...", connected: true });
+      }
+      await addRemoteCandidates(call);
+      return;
+    }
+
+    const since = new Date(Date.now() - 45000).toISOString();
+    const query = `callee_handle=eq.${encodeURIComponent(identity.handle)}&status=eq.ringing&updated_at=gt.${encodeURIComponent(since)}&select=*&order=updated_at.desc&limit=1`;
+    const response = await fetch(`${SUPABASE_URL}/rest/v1/${CALLS_TABLE}?${query}`, { headers: getSupabaseHeaders() });
+    const payload = await response.json().catch(() => ([]));
+    if (!response.ok || !Array.isArray(payload) || !payload.length) return;
+    const call = payload[0];
+    callSession = { role: "callee", call, peer: null, stream: null, accepted: false, muted: false };
+    knownCallCandidateCounts = { caller: 0, callee: 0 };
+    setVoiceCallPanel({ label: `Incoming voice from ${call.caller_handle}`, status: "Incoming call", incoming: true });
+  } catch {
+    // Calls need the optional threadmail_calls table. Fail quietly until the SQL is run.
+  }
+}
+
+function toggleVoiceMute() {
+  if (!callSession?.stream) return;
+  callSession.muted = !callSession.muted;
+  callSession.stream.getAudioTracks().forEach((track) => {
+    track.enabled = !callSession.muted;
+  });
+  els.muteVoiceCallButton.textContent = callSession.muted ? "Unmute" : "Mute";
+}
+
+function endLocalVoiceCall(hide = true) {
+  callSession?.stream?.getTracks().forEach((track) => track.stop());
+  callSession?.peer?.close();
+  callSession = null;
+  knownCallCandidateCounts = { caller: 0, callee: 0 };
+  els.remoteVoiceAudio.srcObject = null;
+  els.muteVoiceCallButton.textContent = "Mute";
+  if (hide) setVoiceCallPanel({ visible: false });
+}
+
+async function endVoiceCall(status = "ended") {
+  const callId = callSession?.call?.id;
+  try {
+    if (callId) await patchCall(callId, { status });
+  } catch {
+    // Local cleanup still matters even if the network update fails.
+  }
+  endLocalVoiceCall();
 }
 
 async function createGame(sender, recipient, type) {
@@ -3082,6 +3311,9 @@ els.inlineReplyForm.addEventListener("submit", (event) => {
 els.inlineReplySend.addEventListener("click", sendInlineReply);
 els.inlineDictateButton.addEventListener("click", () => startDictation(els.inlineReplyBody, els.inlineDictateButton));
 els.voiceNoteButton.addEventListener("click", toggleVoiceNote);
+els.acceptVoiceCallButton.addEventListener("click", acceptThreadmailVoiceCall);
+els.muteVoiceCallButton.addEventListener("click", toggleVoiceMute);
+els.endVoiceCallButton.addEventListener("click", () => endVoiceCall(callSession?.role === "callee" && !callSession.peer ? "declined" : "ended"));
 els.inlineReplyBody.addEventListener("input", sendActiveTypingSignal);
 els.inlineReplyBody.addEventListener("keydown", (event) => {
   if (event.key !== "Enter" || !event.shiftKey || event.isComposing) return;
@@ -3129,6 +3361,7 @@ if (appUnlocked) {
 }
 setInterval(updateTimeGreeting, 60000);
 setInterval(fetchMessages, 15000);
+setInterval(pollVoiceCalls, 2500);
 setInterval(async () => {
   await fetchTypingIndicators();
   renderDetail();

@@ -15,10 +15,10 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="Threadmail">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <link rel="manifest" href="./threadmail.webmanifest?v=40">
+  <link rel="manifest" href="./threadmail.webmanifest?v=41">
   <link rel="apple-touch-icon" href="./threadmail-icon-192.png">
   <link rel="stylesheet" href="../style.css">
-  <link rel="stylesheet" href="./threadmail.css?v=40">
+  <link rel="stylesheet" href="./threadmail.css?v=41">
 </head>
 <body>
   <section class="greeting-splash" id="greetingSplash" aria-live="polite">
@@ -246,7 +246,8 @@
             </form>
             <section class="inline-call-picker" id="inlineCallPicker" aria-label="Add call invite" hidden>
               <span>Send a call</span>
-              <button class="play-button play-button--ghost" type="button" data-inline-call="voice">Voice Call</button>
+              <button class="play-button play-button--ghost" type="button" data-inline-call="threadmail_voice">Threadmail Voice</button>
+              <button class="play-button play-button--ghost" type="button" data-inline-call="voice">Voice Invite</button>
               <button class="play-button play-button--ghost" type="button" data-inline-call="video">Video Call</button>
               <button class="play-button play-button--ghost" type="button" data-inline-call="link">FaceTime/Meet Link</button>
             </section>
@@ -320,6 +321,18 @@
         </form>
       </section>
       <input id="photoInput" type="file" accept="image/*" hidden>
+      <section class="voice-call-panel" id="voiceCallPanel" hidden>
+        <div>
+          <span id="voiceCallLabel">Threadmail Voice</span>
+          <strong id="voiceCallStatus">Ready</strong>
+        </div>
+        <div class="voice-call-actions">
+          <button class="play-button play-button--ghost" type="button" id="acceptVoiceCallButton" hidden>Accept</button>
+          <button class="play-button play-button--ghost" type="button" id="muteVoiceCallButton" hidden>Mute</button>
+          <button class="play-button danger-action" type="button" id="endVoiceCallButton">End</button>
+        </div>
+        <audio id="remoteVoiceAudio" autoplay playsinline></audio>
+      </section>
 
       <nav class="mobile-tabbar" aria-label="Mobile navigation">
         <button type="button" data-mobile-tab="inbox">Inbox</button>
@@ -329,6 +342,6 @@
       </nav>
     </section>
   </main>
-  <script src="../js/threadmail.js?v=40"></script>
+  <script src="../js/threadmail.js?v=41"></script>
 </body>
 </html>
