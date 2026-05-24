@@ -4,6 +4,7 @@ const SUPABASE_TABLE = "threadmail_messages";
 const GAMES_TABLE = "threadmail_games";
 const TYPING_TABLE = "threadmail_typing";
 const CALLS_TABLE = "threadmail_calls";
+const HANDLES_RPC = "threadmail_claim_handle";
 const IDENTITY_KEY = "codex-threadmail-identity-v1";
 const PREFS_KEY = "codex-threadmail-prefs-v1";
 const DRAFTS_KEY = "codex-threadmail-drafts-v1";
@@ -14,6 +15,23 @@ const BASE_TITLE = "Threadmail";
 const AI_HANDLE = "threadai";
 const REACTIONS = ["Nice", "OK", "?", "Haha"];
 const QUICK_REPLIES = ["OK", "On it", "Your turn", "Haha"];
+const RESERVED_HANDLES = new Set([
+  "admin",
+  "administrator",
+  "ari",
+  "help",
+  "moderator",
+  "official",
+  "root",
+  "security",
+  "staff",
+  "support",
+  "system",
+  "thread_ai",
+  "threadai",
+  "threadmail",
+  "tm"
+]);
 const CALL_INVITE_PREFIX = "THREADMAIL_CALL_INVITE::";
 const VOICE_NOTE_PREFIX = "THREADMAIL_VOICE_NOTE::";
 const PHOTO_PREFIX = "THREADMAIL_PHOTO::";
@@ -309,6 +327,41 @@ function getSupabaseHeaders(extra = {}) {
     Authorization: "Bearer " + SUPABASE_ANON_KEY,
     ...extra
   };
+}
+
+function isReservedHandle(handle) {
+  return RESERVED_HANDLES.has(handle) || handle.startsWith("threadmail_") || handle.startsWith("support_");
+}
+
+function getHandleCodeHash() {
+  return lockSettings.enabled && lockSettings.codeHash ? lockSettings.codeHash : "";
+}
+
+async function claimHandle(handle) {
+  const response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/${HANDLES_RPC}`, {
+    method: "POST",
+    headers: getSupabaseHeaders({
+      "Content-Type": "application/json"
+    }),
+    body: JSON.stringify({
+      p_handle: handle,
+      p_owner_token: identity.ownerToken,
+      p_code_hash: getHandleCodeHash() || null
+    })
+  });
+  const payload = await response.json().catch(() => null);
+  if (!response.ok) {
+    handleSupabaseError(payload, "Could not protect that handle. Run the updated Supabase SQL first.");
+    return "";
+  }
+  return String(payload || "");
+}
+
+function getClaimStatusMessage(result, handle) {
+  if (result === "claimed" || result === "owned") return `Protected handle ${handle}.`;
+  if (result === "unlocked") return `Unlocked protected handle ${handle}.`;
+  if (result === "claimed_unprotected" || result === "owned_unprotected") return `Using ${handle}. Add an app code in Settings to protect it.`;
+  return "";
 }
 
 function setStatus(message, tone = "neutral") {
@@ -3420,11 +3473,36 @@ els.saveIdentity.addEventListener("click", async () => {
     setStatus("Handle must be 3-24 letters, numbers, or underscores.", "error");
     return;
   }
+  if (isReservedHandle(nextHandle)) {
+    setStatus("That handle is reserved by Threadmail.", "error");
+    els.identityHandle.focus();
+    return;
+  }
+  setStatus("Checking handle ownership...", "neutral");
+  const claimResult = await claimHandle(nextHandle);
+  if (!claimResult) return;
+  if (claimResult === "locked") {
+    setStatus("That handle is protected. Turn on the same app code in Settings first.", "error");
+    els.lockCodeInput.focus();
+    return;
+  }
+  if (claimResult === "reserved") {
+    setStatus("That handle is reserved by Threadmail.", "error");
+    return;
+  }
+  if (claimResult === "taken_unprotected") {
+    setStatus("That handle was already made before handle protection. Pick another handle or use the original device.", "error");
+    return;
+  }
+  if (claimResult.startsWith("invalid")) {
+    setStatus("That handle could not be protected. Try a different handle.", "error");
+    return;
+  }
   identity.handle = nextHandle;
   els.identityHandle.value = nextHandle;
   activeId = null;
   saveIdentity();
-  setStatus(`Using shared handle ${nextHandle}. Messages to this handle go to everyone using it.`, "success");
+  setStatus(getClaimStatusMessage(claimResult, nextHandle) || `Using ${nextHandle}.`, claimResult.includes("unprotected") ? "neutral" : "success");
   await fetchMessages();
 });
 

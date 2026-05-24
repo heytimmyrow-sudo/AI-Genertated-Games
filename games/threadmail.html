@@ -15,10 +15,10 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="Threadmail">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <link rel="manifest" href="./threadmail.webmanifest?v=51">
+  <link rel="manifest" href="./threadmail.webmanifest?v=52">
   <link rel="apple-touch-icon" href="./threadmail-icon-192.png">
   <link rel="stylesheet" href="../style.css">
-  <link rel="stylesheet" href="./threadmail.css?v=51">
+  <link rel="stylesheet" href="./threadmail.css?v=52">
 </head>
 <body>
   <section class="greeting-splash" id="greetingSplash" aria-live="polite">
@@ -62,7 +62,7 @@
           <input id="identityHandle" type="text" placeholder="example: ari" autocomplete="off" inputmode="text" data-touch-input>
         </label>
         <button class="play-button play-button--ghost" type="button" id="saveIdentity">Save Handle</button>
-        <p id="syncStatus">Choose a handle to send and receive messages.</p>
+        <p id="syncStatus">Choose a handle. Add an app code in Settings to protect it.</p>
       </section>
 
       <section class="notification-strip" id="notificationStrip" aria-live="polite" role="button" tabindex="0" hidden>
@@ -286,7 +286,7 @@
             <span>To Handle</span>
             <input id="composeTo" type="text" required autocomplete="off" inputmode="text" data-touch-input>
           </label>
-          <p class="shared-handle-warning" data-compose-field="new-only">Shared handle: anyone using this handle can read messages sent to it.</p>
+          <p class="shared-handle-warning" data-compose-field="new-only">Protected handles need the matching app code on new devices.</p>
           <p class="invite-link" id="inviteLink" data-compose-field="new-only">Invite link appears after you enter a handle.</p>
           <div class="handle-suggestions" id="handleSuggestions" data-compose-field="new-only" hidden></div>
           <label data-compose-field="subject">
@@ -353,6 +353,6 @@
       </nav>
     </section>
   </main>
-  <script src="../js/threadmail.js?v=51"></script>
+  <script src="../js/threadmail.js?v=52"></script>
 </body>
 </html>
