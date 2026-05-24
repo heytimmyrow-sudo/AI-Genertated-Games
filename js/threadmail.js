@@ -845,8 +845,11 @@ function appendCallBubble({ label, invite, time, isMine }) {
     for (const action of ["Accept", "Decline"]) {
       const button = document.createElement("button");
       button.type = "button";
+      button.className = "call-action-button";
+      button.dataset.callAction = action.toLowerCase();
+      button.dataset.callType = invite.type;
+      button.dataset.caller = label;
       button.textContent = action;
-      button.addEventListener("click", () => handleCallInviteAction(action.toLowerCase(), invite.type, label));
       actions.append(button);
     }
     bubble.append(actions);
@@ -1882,6 +1885,7 @@ async function sendCallResponse(action, type) {
 }
 
 async function handleCallInviteAction(action, type, callerHandle) {
+  setStatus(action === "accept" ? "Joining Threadmail voice..." : "Declining call...", "neutral");
   if (type !== "threadmail_voice") {
     await sendCallResponse(action, type);
     return;
@@ -2956,6 +2960,17 @@ els.notificationStrip.addEventListener("keydown", (event) => {
     showUnreadMessages();
   }
 });
+
+function handleDetailAction(event) {
+  const button = event.target.closest("[data-call-action]");
+  if (!button) return;
+  event.preventDefault();
+  event.stopPropagation();
+  handleCallInviteAction(button.dataset.callAction, button.dataset.callType, button.dataset.caller);
+}
+
+els.detailBody.addEventListener("click", handleDetailAction);
+els.detailBody.addEventListener("touchend", handleDetailAction);
 
 els.composeTo.addEventListener("input", () => {
   renderHandleSuggestions();
