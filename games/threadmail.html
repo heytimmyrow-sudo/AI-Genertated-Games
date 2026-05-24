@@ -15,10 +15,10 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="Threadmail">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <link rel="manifest" href="./threadmail.webmanifest?v=44">
+  <link rel="manifest" href="./threadmail.webmanifest?v=45">
   <link rel="apple-touch-icon" href="./threadmail-icon-192.png">
   <link rel="stylesheet" href="../style.css">
-  <link rel="stylesheet" href="./threadmail.css?v=44">
+  <link rel="stylesheet" href="./threadmail.css?v=45">
 </head>
 <body>
   <section class="greeting-splash" id="greetingSplash" aria-live="polite">
@@ -322,14 +322,17 @@
       </section>
       <input id="photoInput" type="file" accept="image/*" hidden>
       <section class="voice-call-panel" id="voiceCallPanel" hidden>
-        <div>
-          <span id="voiceCallLabel">Threadmail Voice</span>
-          <strong id="voiceCallStatus">Ready</strong>
-        </div>
-        <div class="voice-call-actions">
-          <button class="play-button play-button--ghost" type="button" id="acceptVoiceCallButton" hidden>Accept</button>
-          <button class="play-button play-button--ghost" type="button" id="muteVoiceCallButton" hidden>Mute</button>
-          <button class="play-button danger-action" type="button" id="endVoiceCallButton">End</button>
+        <div class="voice-call-card">
+          <div class="voice-call-logo" aria-hidden="true">TM</div>
+          <div>
+            <span id="voiceCallLabel">Threadmail Voice</span>
+            <strong id="voiceCallStatus">Ready</strong>
+          </div>
+          <div class="voice-call-actions">
+            <button class="play-button play-button--ghost" type="button" id="acceptVoiceCallButton" hidden>Accept</button>
+            <button class="play-button play-button--ghost" type="button" id="muteVoiceCallButton" hidden>Mute</button>
+            <button class="play-button danger-action" type="button" id="endVoiceCallButton">End</button>
+          </div>
         </div>
         <audio id="remoteVoiceAudio" autoplay playsinline></audio>
       </section>
@@ -342,6 +345,6 @@
       </nav>
     </section>
   </main>
-  <script src="../js/threadmail.js?v=44"></script>
+  <script src="../js/threadmail.js?v=45"></script>
 </body>
 </html>

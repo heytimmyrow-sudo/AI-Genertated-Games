@@ -470,7 +470,6 @@ button.compact-item {
   z-index: 80;
   display: grid;
   place-items: center;
-  gap: 18px;
   width: 100%;
   min-height: 100dvh;
   padding: max(24px, env(safe-area-inset-top)) 18px max(24px, env(safe-area-inset-bottom));
@@ -489,6 +488,15 @@ button.compact-item {
   display: none;
 }
 
+.voice-call-card {
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: clamp(16px, 4vh, 26px);
+  width: min(100%, 420px);
+  min-height: min(620px, calc(100dvh - 48px));
+}
+
 .voice-call-panel span {
   display: block;
   color: var(--accent-soft);
@@ -505,8 +513,7 @@ button.compact-item {
   line-height: 1;
 }
 
-.voice-call-panel::before {
-  content: "TM";
+.voice-call-logo {
   display: grid;
   place-items: center;
   width: clamp(92px, 28vw, 150px);
@@ -523,7 +530,7 @@ button.compact-item {
   font-weight: 900;
 }
 
-.voice-call-panel.is-incoming::before {
+.voice-call-panel.is-incoming .voice-call-logo {
   animation: ringPulse 1.35s ease-in-out infinite;
 }
 
@@ -545,6 +552,7 @@ button.compact-item {
   flex-wrap: wrap;
   justify-content: center;
   gap: 12px;
+  width: 100%;
 }
 
 .voice-call-actions .play-button {
