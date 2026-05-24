@@ -846,7 +846,7 @@ function appendCallBubble({ label, invite, time, isMine }) {
       const button = document.createElement("button");
       button.type = "button";
       button.textContent = action;
-      button.addEventListener("click", () => sendCallResponse(action.toLowerCase(), invite.type));
+      button.addEventListener("click", () => handleCallInviteAction(action.toLowerCase(), invite.type, label));
       actions.append(button);
     }
     bubble.append(actions);
@@ -1881,6 +1881,18 @@ async function sendCallResponse(action, type) {
   await sendThreadUtilityMessage(body, action === "accept" ? "Call accepted" : "Call declined");
 }
 
+async function handleCallInviteAction(action, type, callerHandle) {
+  if (type !== "threadmail_voice") {
+    await sendCallResponse(action, type);
+    return;
+  }
+  if (action === "decline") {
+    await declineThreadmailVoiceInvite(callerHandle);
+    return;
+  }
+  await acceptThreadmailVoiceInvite(callerHandle);
+}
+
 async function sendInlineGame(type) {
   const thread = currentThread();
   const sender = identity.handle;
@@ -2156,6 +2168,24 @@ async function fetchCall(callId) {
   return Array.isArray(payload) ? payload[0] : null;
 }
 
+async function findRingingCallFrom(callerHandle) {
+  const caller = normalizeHandle(callerHandle);
+  const since = new Date(Date.now() - 120000).toISOString();
+  const query = [
+    `callee_handle=eq.${encodeURIComponent(identity.handle)}`,
+    `caller_handle=eq.${encodeURIComponent(caller)}`,
+    "status=eq.ringing",
+    `updated_at=gt.${encodeURIComponent(since)}`,
+    "select=*",
+    "order=updated_at.desc",
+    "limit=1"
+  ].join("&");
+  const response = await fetch(`${SUPABASE_URL}/rest/v1/${CALLS_TABLE}?${query}`, { headers: getSupabaseHeaders() });
+  const payload = await response.json().catch(() => ([]));
+  if (!response.ok) throw new Error("Call lookup failed.");
+  return Array.isArray(payload) ? payload[0] || null : null;
+}
+
 async function createVoicePeer(role, call) {
   const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
   const peer = new RTCPeerConnection({
@@ -2235,6 +2265,14 @@ async function startThreadmailVoiceCall() {
 
 async function acceptThreadmailVoiceCall() {
   if (!callSession?.call || callSession.role !== "callee") return;
+  if (!navigator.mediaDevices?.getUserMedia || !window.RTCPeerConnection) {
+    setStatus("This browser cannot accept Threadmail voice calls.", "error");
+    return;
+  }
+  if (!callSession.call.offer) {
+    setStatus("The voice call is not ready yet. Try again in a second.", "error");
+    return;
+  }
   try {
     const { peer, stream } = await createVoicePeer("callee", callSession.call);
     callSession.peer = peer;
@@ -2249,6 +2287,39 @@ async function acceptThreadmailVoiceCall() {
     setStatus("Could not accept the voice call.", "error");
     await endVoiceCall();
   }
+}
+
+async function acceptThreadmailVoiceInvite(callerHandle) {
+  if (!isValidHandle(identity.handle)) {
+    setStatus("Save your handle before accepting a voice call.", "error");
+    els.identityHandle.focus();
+    return;
+  }
+  try {
+    const call = callSession?.call?.caller_handle === normalizeHandle(callerHandle)
+      ? callSession.call
+      : await findRingingCallFrom(callerHandle);
+    if (!call) {
+      setStatus("No active Threadmail voice call found. Ask them to call again.", "error");
+      return;
+    }
+    callSession = { role: "callee", call, peer: null, stream: null, accepted: false, muted: false };
+    knownCallCandidateCounts = { caller: 0, callee: 0 };
+    setVoiceCallPanel({ label: `Incoming voice from ${call.caller_handle}`, status: "Accepting..." });
+    await acceptThreadmailVoiceCall();
+  } catch {
+    setStatus("Threadmail voice calls need the updated Supabase setup SQL.", "error");
+  }
+}
+
+async function declineThreadmailVoiceInvite(callerHandle) {
+  try {
+    const call = await findRingingCallFrom(callerHandle);
+    if (call) await patchCall(call.id, { status: "declined" });
+  } catch {
+    // A normal reply still gives the caller feedback if signaling is unavailable.
+  }
+  await sendCallResponse("decline", "threadmail_voice");
 }
 
 async function addRemoteCandidates(call) {
