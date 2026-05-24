@@ -2247,6 +2247,18 @@ function serializeSessionDescription(description) {
   return { type: description.type, sdp: description.sdp };
 }
 
+async function getCallMediaStream(mediaType) {
+  if (mediaType !== "video") {
+    return navigator.mediaDevices.getUserMedia({ audio: true });
+  }
+  try {
+    return await navigator.mediaDevices.getUserMedia({ audio: true, video: { facingMode: "user" } });
+  } catch {
+    setStatus("Camera is not available on this computer. Joining with microphone only.", "neutral");
+    return navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+  }
+}
+
 async function patchCall(callId, data) {
   const response = await fetch(`${SUPABASE_URL}/rest/v1/${CALLS_TABLE}?id=eq.${encodeURIComponent(callId)}`, {
     method: "PATCH",
@@ -2290,10 +2302,7 @@ async function findRingingCallFrom(callerHandle) {
 
 async function createVoicePeer(role, call) {
   const mediaType = getCallMediaType(call);
-  const stream = await navigator.mediaDevices.getUserMedia({
-    audio: true,
-    video: mediaType === "video" ? { facingMode: "user" } : false
-  });
+  const stream = await getCallMediaStream(mediaType);
   const peer = new RTCPeerConnection({ iceServers: ICE_SERVERS });
   if (mediaType === "video") els.localCallVideo.srcObject = stream;
   stream.getTracks().forEach((track) => peer.addTrack(track, stream));
