@@ -7,13 +7,16 @@ const SHORT_WORKOUT_MESSAGE = "Workout too short to be recorded.";
 const levelNames = ["Rookie", "Pacer", "Strider", "Climber", "Contender", "Champion", "Legend"];
 const activityOptions = ["Volleyball", "Running", "Bike Riding", "Swimming", "Strength", "Other"];
 const cosmeticRules = [
-  { id: "rookie-pass", name: "Rookie Pass", unlockLevel: 1, cost: 0, accent: "PL", title: "Court Rookie", reward: "Starter profile badge" },
-  { id: "bronze-band", name: "Bronze Wristband", unlockLevel: 2, cost: 80, accent: "BR", title: "Warmup Winner", reward: "Bronze leaderboard frame" },
-  { id: "power-sweat", name: "Power Sweatband", unlockLevel: 3, cost: 140, accent: "PW", title: "Practice Streaker", reward: "Animated court stripe" },
-  { id: "captain-card", name: "Captain Card", unlockLevel: 4, cost: 220, accent: "CP", title: "Team Captain", reward: "Captain spotlight card" },
-  { id: "gold-token", name: "Gold Prize Token", unlockLevel: 5, cost: 340, accent: "GT", title: "League Finisher", reward: "Gold profile glow" },
-  { id: "neon-serve", name: "Neon Serve Trail", unlockLevel: 7, cost: 520, accent: "NS", title: "Challenge Crusher", reward: "Neon motion trail" },
-  { id: "trophy-room", name: "Trophy Room Key", unlockLevel: 10, cost: 900, accent: "99", title: "Prize Room Legend", reward: "Max-level trophy card" }
+  { id: "rookie-pass", type: "profile", name: "Rookie Pass", unlockLevel: 1, cost: 0, accent: "PL", title: "Court Rookie", reward: "Starter profile badge" },
+  { id: "bronze-band", type: "profile", name: "Bronze Wristband", unlockLevel: 2, cost: 80, accent: "BR", title: "Warmup Winner", reward: "Bronze leaderboard frame" },
+  { id: "sunset-court", type: "background", name: "Sunset Court", unlockLevel: 2, cost: 120, accent: "BG", title: "Golden Hour", reward: "Warm sunset app background" },
+  { id: "water-arena", type: "background", name: "Water Arena", unlockLevel: 3, cost: 160, accent: "BG", title: "Pool Lights", reward: "Blue aquatic app background" },
+  { id: "xp-hour", type: "booster", name: "1-Hour XP Booster", unlockLevel: 3, cost: 180, accent: "2X", title: "Boost Active", reward: "Double XP for one hour" },
+  { id: "power-sweat", type: "effect", name: "Power Sweatband", unlockLevel: 3, cost: 140, accent: "FX", title: "Practice Streaker", reward: "Animated court stripe effect" },
+  { id: "captain-title", type: "title", name: "Captain Title", unlockLevel: 4, cost: 210, accent: "CP", title: "Team Captain", reward: "Profile title upgrade" },
+  { id: "gold-token", type: "profile", name: "Gold Prize Token", unlockLevel: 5, cost: 340, accent: "GT", title: "League Finisher", reward: "Gold profile glow" },
+  { id: "neon-serve", type: "effect", name: "Neon Serve Trail", unlockLevel: 7, cost: 520, accent: "NS", title: "Challenge Crusher", reward: "Neon motion trail effect" },
+  { id: "trophy-room", type: "background", name: "Trophy Room Key", unlockLevel: 10, cost: 900, accent: "99", title: "Prize Room Legend", reward: "Max-level trophy room background" }
 ];
 const challengeRules = [
   { id: "daily-30", name: "Daily Spark", reward: 35, test: (stats) => stats.todayMinutes >= 30, detail: "Log 30 minutes today." },
@@ -65,6 +68,10 @@ function loadState() {
     coins: 0,
     claimedChallenges: [],
     ownedPrizes: ["rookie-pass"],
+    activeBoostUntil: "",
+    equippedBackground: "",
+    equippedEffect: "",
+    equippedTitle: "",
     friendRequests: [],
     notifications: [],
     group: { name: "Family League", inviteCode: makeSetupCode("family"), private: true },
@@ -146,6 +153,10 @@ function normalizeUsername(value) {
 
 function activeProfile() {
   return state.profiles.find((profile) => profile.id === state.activeProfileId) || state.profiles[0];
+}
+
+function activeBooster() {
+  return state.activeBoostUntil && new Date(state.activeBoostUntil).getTime() > Date.now();
 }
 
 function profileSessions(profileId = state.activeProfileId) {
@@ -297,13 +308,14 @@ async function logSession(activity, minutes, note = "") {
   }
 
   const flagged = suspiciousSession(minutes, note);
+  const multiplier = activeBooster() ? 2 : 1;
   const session = {
     id: crypto.randomUUID(),
     profileId: state.activeProfileId,
     activity: activity || "Other",
     minutes,
     note,
-    points: minutes * 10,
+    points: minutes * 10 * multiplier,
     proof: $("#proofNote")?.value.trim() || "",
     flagged,
     createdAt: new Date().toISOString()
@@ -312,6 +324,7 @@ async function logSession(activity, minutes, note = "") {
   state.sessions = state.sessions.slice(0, 240);
   if (!flagged) {
     state.coins += Math.max(1, Math.round(minutes / 5));
+    if (multiplier > 1) notify("1-hour XP booster doubled this workout.");
   } else {
     notify("A workout was flagged for review and did not earn coins.");
   }
@@ -444,7 +457,7 @@ function renderCosmetics() {
   const selected = profile.cosmetic || "rookie-pass";
   const cosmetic = cosmeticRules.find((entry) => entry.id === selected) || cosmeticRules[0];
   $("#cosmeticLevel").textContent = `Level ${stats.level}`;
-  $("#profileCard").className = `profile-card cosmetic-${cosmetic.id}`;
+  $("#profileCard").className = `profile-card cosmetic-${cosmetic.id} effect-${state.equippedEffect || "none"} background-${state.equippedBackground || "none"}`;
   $("#profileCard").innerHTML = `
     <div class="avatar-badge">${escapeHtml(cosmetic.accent)}</div>
     <div>
@@ -453,12 +466,17 @@ function renderCosmetics() {
     </div>
   `;
   $("#cosmeticGrid").innerHTML = cosmeticRules.filter((entry) => state.ownedPrizes.includes(entry.id)).map((entry) => {
-    const unlocked = stats.level >= entry.unlockLevel;
-    const active = selected === entry.id;
+    const active = (
+      (entry.type === "profile" && selected === entry.id) ||
+      (entry.type === "background" && state.equippedBackground === entry.id) ||
+      (entry.type === "effect" && state.equippedEffect === entry.id) ||
+      (entry.type === "title" && state.equippedTitle === entry.title)
+    );
+    const label = entry.type === "booster" ? (activeBooster() ? "2x XP is active" : "Consumable booster") : active ? `Equipped - ${entry.title}` : `${entry.type} - ${entry.reward}`;
     return `
-      <button class="cosmetic-card cosmetic-${entry.id} ${active ? "active" : ""}" type="button" data-cosmetic="${entry.id}" ${unlocked ? "" : "disabled"}>
+      <button class="cosmetic-card cosmetic-${entry.id} ${active ? "active" : ""}" type="button" data-cosmetic="${entry.id}" ${entry.type === "booster" ? "disabled" : ""}>
         <strong>${escapeHtml(entry.name)}</strong>
-        <span>${active ? `Equipped - ${entry.title}` : `Owned - ${entry.reward}`}</span>
+        <span>${escapeHtml(label)}</span>
       </button>
     `;
   }).join("") || `<div class="empty-state">Buy prizes in the shop, then equip them here.</div>`;
@@ -471,10 +489,11 @@ function renderPrizeShop() {
     const owned = state.ownedPrizes.includes(entry.id);
     const unlocked = stats.level >= entry.unlockLevel;
     const affordable = state.coins >= entry.cost;
+    const boosterRunning = entry.type === "booster" && activeBooster();
     return `
-      <button class="shop-card cosmetic-${entry.id}" type="button" data-buy-prize="${entry.id}" ${owned || !unlocked || !affordable ? "disabled" : ""}>
+      <button class="shop-card cosmetic-${entry.id}" type="button" data-buy-prize="${entry.id}" ${owned || boosterRunning || !unlocked || !affordable ? "disabled" : ""}>
         <strong>${escapeHtml(entry.name)}</strong>
-        <span>${owned ? "Owned" : !unlocked ? `Unlocks at Level ${entry.unlockLevel}` : `${entry.cost} coins - ${entry.reward}`}</span>
+        <span>${boosterRunning ? "Active now" : owned ? "Owned" : !unlocked ? `Unlocks at Level ${entry.unlockLevel}` : `${entry.type} - ${entry.cost} coins - ${entry.reward}`}</span>
       </button>
     `;
   }).join("");
@@ -1060,7 +1079,12 @@ $("#cosmeticGrid").addEventListener("click", (event) => {
   const button = event.target.closest("[data-cosmetic]");
   if (!button || button.disabled) return;
   const profile = activeProfile();
-  profile.cosmetic = button.dataset.cosmetic;
+  const prize = cosmeticRules.find((entry) => entry.id === button.dataset.cosmetic);
+  if (!prize) return;
+  if (prize.type === "profile") profile.cosmetic = prize.id;
+  if (prize.type === "background") state.equippedBackground = prize.id;
+  if (prize.type === "effect") state.equippedEffect = prize.id;
+  if (prize.type === "title") state.equippedTitle = prize.title;
   saveState();
   renderProfiles();
   renderCosmetics();
@@ -1080,8 +1104,13 @@ $("#prizeShopGrid").addEventListener("click", (event) => {
   const prize = cosmeticRules.find((entry) => entry.id === button.dataset.buyPrize);
   if (!prize || state.ownedPrizes.includes(prize.id) || state.coins < prize.cost) return;
   state.coins -= prize.cost;
-  state.ownedPrizes.push(prize.id);
-  notify(`${prize.name} unlocked in the prize shop.`);
+  if (prize.type === "booster") {
+    state.activeBoostUntil = new Date(Date.now() + 60 * 60 * 1000).toISOString();
+    notify(`${prize.name} activated for one hour.`);
+  } else {
+    state.ownedPrizes.push(prize.id);
+    notify(`${prize.name} unlocked in the prize shop.`);
+  }
   saveState();
   render();
 });

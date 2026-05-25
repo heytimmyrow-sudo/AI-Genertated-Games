@@ -762,6 +762,49 @@ body.timer-mode #durationField {
   box-shadow: 0 0 28px color-mix(in srgb, #f8d66d 22%, transparent);
 }
 
+.cosmetic-sunset-court,
+.cosmetic-card.cosmetic-sunset-court,
+.shop-card.cosmetic-sunset-court,
+.background-sunset-court {
+  border-color: color-mix(in srgb, #f07a35 75%, var(--line));
+  background:
+    linear-gradient(135deg, color-mix(in srgb, #f07a35 18%, transparent), color-mix(in srgb, #f8d66d 14%, transparent)),
+    var(--surface-strong);
+}
+
+.cosmetic-water-arena,
+.cosmetic-card.cosmetic-water-arena,
+.shop-card.cosmetic-water-arena,
+.background-water-arena {
+  border-color: color-mix(in srgb, #28a8df 75%, var(--line));
+  background:
+    linear-gradient(135deg, color-mix(in srgb, #28a8df 18%, transparent), color-mix(in srgb, #29e6d3 12%, transparent)),
+    var(--surface-strong);
+}
+
+.cosmetic-xp-hour,
+.cosmetic-card.cosmetic-xp-hour,
+.shop-card.cosmetic-xp-hour {
+  border-color: color-mix(in srgb, #7a5cff 75%, var(--line));
+  background:
+    repeating-linear-gradient(135deg, color-mix(in srgb, #7a5cff 11%, transparent) 0 10px, transparent 10px 20px),
+    var(--surface-strong);
+}
+
+.cosmetic-captain-title,
+.cosmetic-card.cosmetic-captain-title,
+.shop-card.cosmetic-captain-title {
+  border-color: color-mix(in srgb, var(--green) 70%, var(--line));
+}
+
+.effect-power-sweat {
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--water) 36%, transparent), var(--shadow);
+}
+
+.effect-neon-serve {
+  box-shadow: 0 0 28px color-mix(in srgb, #29e6d3 32%, transparent), var(--shadow);
+}
+
 .goal-list,
 .leaderboard,
 .history-list,
