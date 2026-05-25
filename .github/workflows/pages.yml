@@ -37,6 +37,7 @@ jobs:
           cp math-masters.html site/math-masters.html
           cp .nojekyll site/.nojekyll
           cp favicon.ico site/favicon.ico
+          cp -r exercise-arena site/exercise-arena
           cp -r games site/games
           cp -r js site/js
           cp -r vendor site/vendor
