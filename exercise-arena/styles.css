@@ -65,7 +65,7 @@ button {
   overflow: hidden;
   background:
     linear-gradient(90deg, rgba(7, 17, 12, 0.82), rgba(7, 17, 12, 0.48) 45%, rgba(7, 17, 12, 0.18)),
-    url("assets/fitness-hero.png") center / cover;
+    url("assets/volleyball-hero.png?v=volleyball") center / cover;
   color: #fff;
 }
 
