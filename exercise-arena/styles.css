@@ -216,7 +216,7 @@ button {
 
 .hero-stats {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 12px;
   max-width: 580px;
   margin-top: 30px;
@@ -258,7 +258,14 @@ button {
 .calendar-panel,
 .records-panel,
 .badges-panel,
-.settings-panel {
+.settings-panel,
+.profile-page-panel,
+.requests-panel,
+.league-panel,
+.shop-panel,
+.challenge-panel,
+.coach-panel,
+.safety-panel {
   border: 1px solid var(--line);
   border-radius: 8px;
   background: color-mix(in srgb, var(--surface) 94%, transparent);
@@ -492,7 +499,14 @@ body.timer-mode #durationField {
 .calendar-panel,
 .records-panel,
 .badges-panel,
-.settings-panel {
+.settings-panel,
+.profile-page-panel,
+.requests-panel,
+.league-panel,
+.shop-panel,
+.challenge-panel,
+.coach-panel,
+.safety-panel {
   padding: 22px;
 }
 
@@ -528,6 +542,10 @@ body.timer-mode #durationField {
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 10px;
   margin-top: 18px;
+}
+
+.metric-grid.compact {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .activity-stats,
@@ -652,6 +670,50 @@ body.timer-mode #durationField {
 .cosmetic-card:disabled {
   cursor: not-allowed;
   opacity: 0.56;
+}
+
+.shop-grid,
+.challenge-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.shop-card,
+.challenge-card {
+  min-height: 84px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-strong);
+  color: var(--ink);
+  text-align: left;
+}
+
+.shop-card strong,
+.shop-card span,
+.challenge-card strong,
+.challenge-card span {
+  display: block;
+}
+
+.shop-card span,
+.challenge-card span {
+  margin-top: 5px;
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.challenge-card.ready {
+  border-color: color-mix(in srgb, var(--green) 55%, var(--line));
+  background: color-mix(in srgb, var(--green) 9%, var(--surface-strong));
+}
+
+.shop-card:disabled,
+.challenge-card:disabled {
+  cursor: not-allowed;
+  opacity: 0.62;
 }
 
 .cosmetic-rookie-pass,
@@ -1050,7 +1112,10 @@ dialog::backdrop {
   .record-grid,
   .activity-stats,
   .badge-grid,
-  .cosmetic-grid {
+  .cosmetic-grid,
+  .shop-grid,
+  .challenge-grid,
+  .metric-grid.compact {
     grid-template-columns: 1fr;
   }
 

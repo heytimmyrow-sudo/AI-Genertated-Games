@@ -8,7 +8,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="assets/pulse-league-icon-192.png">
   <link rel="apple-touch-icon" href="assets/pulse-league-icon-192.png">
   <link rel="manifest" href="manifest.webmanifest">
-  <link rel="stylesheet" href="styles.css?v=online-mobile2">
+  <link rel="stylesheet" href="styles.css?v=mega-upgrades">
 </head>
 <body>
   <main class="app-shell">
@@ -45,6 +45,10 @@
             <div>
               <strong id="tournamentHero">0 pts</strong>
               <span>Weekly cup</span>
+            </div>
+            <div>
+              <strong id="coinHero">0 coins</strong>
+              <span>Prize coins</span>
             </div>
           </div>
         </div>
@@ -90,6 +94,10 @@
             <span>Workout notes</span>
             <input id="timerNote" type="text" maxlength="90" placeholder="Serving practice, scrimmage, easy ride">
           </label>
+          <label class="field">
+            <span>Proof note</span>
+            <input id="proofNote" type="text" maxlength="120" placeholder="Optional photo link, route, or coach initials">
+          </label>
 
           <div class="timer-actions">
             <button class="primary-button" id="startPauseButton" type="button">Start</button>
@@ -110,7 +118,12 @@
         <button type="button" class="active" data-section-target="progress">Progress</button>
         <button type="button" data-section-target="goals">Goals</button>
         <button type="button" data-section-target="profiles">Profiles</button>
+        <button type="button" data-section-target="profile-page">Profile Page</button>
+        <button type="button" data-section-target="requests">Requests</button>
+        <button type="button" data-section-target="league">Private League</button>
         <button type="button" data-section-target="locker">Locker</button>
+        <button type="button" data-section-target="shop">Prize Shop</button>
+        <button type="button" data-section-target="challenges">Challenges</button>
         <button type="button" data-section-target="activities">Activities</button>
         <button type="button" data-section-target="charts">Charts</button>
         <button type="button" data-section-target="calendar">Calendar</button>
@@ -119,6 +132,8 @@
         <button type="button" data-section-target="cups">Cups</button>
         <button type="button" data-section-target="history">History</button>
         <button type="button" data-section-target="custom">Custom</button>
+        <button type="button" data-section-target="coach">Coach</button>
+        <button type="button" data-section-target="safety">Safety</button>
         <button type="button" data-section-target="settings">Settings</button>
       </nav>
     </aside>
@@ -195,6 +210,52 @@
         <ol class="leaderboard" id="leaderboard"></ol>
       </section>
 
+      <section class="profile-page-panel dashboard-section" data-section="profile-page">
+        <div class="panel-heading">
+          <div>
+            <p class="eyebrow">Profile page</p>
+            <h2>Public card</h2>
+          </div>
+        </div>
+        <div id="profilePageCard"></div>
+        <p class="subtle">This is the card friends see when they look up your Pulse League username.</p>
+      </section>
+
+      <section class="requests-panel dashboard-section" data-section="requests">
+        <div class="panel-heading">
+          <div>
+            <p class="eyebrow">Friend requests</p>
+            <h2>Accept or decline</h2>
+          </div>
+        </div>
+        <form class="inline-form" id="requestForm">
+          <input id="requestUsername" type="text" maxlength="24" placeholder="Username to request">
+          <button class="primary-button" type="submit">Send Request</button>
+        </form>
+        <ul class="history-list" id="friendRequestList"></ul>
+      </section>
+
+      <section class="league-panel dashboard-section" data-section="league">
+        <div class="panel-heading">
+          <div>
+            <p class="eyebrow">Private family league</p>
+            <h2>Group and team</h2>
+          </div>
+        </div>
+        <form class="custom-form" id="leagueForm">
+          <label class="field">
+            <span>Group name</span>
+            <input id="groupName" type="text" maxlength="32" placeholder="Family League">
+          </label>
+          <label class="field">
+            <span>Team name</span>
+            <input id="teamName" type="text" maxlength="32" placeholder="Pulse Team">
+          </label>
+          <button class="primary-button" type="submit">Save League</button>
+        </form>
+        <div class="metric-grid compact" id="leagueSummary"></div>
+      </section>
+
       <section class="cosmetics-panel dashboard-section" data-section="locker">
         <div class="panel-heading">
           <div>
@@ -206,6 +267,27 @@
         <div class="profile-card" id="profileCard"></div>
         <p class="subtle">Level up to unlock profile prizes that make your leaderboard card look stronger.</p>
         <div class="cosmetic-grid" id="cosmeticGrid"></div>
+      </section>
+
+      <section class="shop-panel dashboard-section" data-section="shop">
+        <div class="panel-heading">
+          <div>
+            <p class="eyebrow">Prize shop</p>
+            <h2>Spend coins</h2>
+          </div>
+          <span class="score-chip" id="coinBalance">0 coins</span>
+        </div>
+        <div class="shop-grid" id="prizeShopGrid"></div>
+      </section>
+
+      <section class="challenge-panel dashboard-section" data-section="challenges">
+        <div class="panel-heading">
+          <div>
+            <p class="eyebrow">Challenge cards</p>
+            <h2>Earn coins</h2>
+          </div>
+        </div>
+        <div class="challenge-grid" id="challengeGrid"></div>
       </section>
 
       <section class="activity-panel dashboard-section" data-section="activities">
@@ -304,6 +386,43 @@
         </form>
       </section>
 
+      <section class="coach-panel dashboard-section" data-section="coach">
+        <div class="panel-heading">
+          <div>
+            <p class="eyebrow">Coach mode</p>
+            <h2>Group challenge</h2>
+          </div>
+        </div>
+        <form class="inline-form" id="coachForm">
+          <input id="coachChallenge" type="text" maxlength="80" placeholder="Coach challenge">
+          <button class="primary-button" type="submit">Set</button>
+        </form>
+        <p class="subtle" id="coachChallengeText">No coach challenge set.</p>
+      </section>
+
+      <section class="safety-panel dashboard-section" data-section="safety">
+        <div class="panel-heading">
+          <div>
+            <p class="eyebrow">Safety</p>
+            <h2>Privacy and checks</h2>
+          </div>
+        </div>
+        <div class="settings-grid">
+          <label class="check-row">
+            <input id="proofRequired" type="checkbox">
+            <span>Require proof notes</span>
+          </label>
+          <button class="ghost-button" id="useFreezeToken" type="button">Use Streak Freeze</button>
+        </div>
+        <form class="inline-form" id="blockForm">
+          <input id="blockedUsername" type="text" maxlength="24" placeholder="Block username">
+          <button class="ghost-button danger" type="submit">Block</button>
+        </form>
+        <div class="metric-grid compact" id="safetySummary"></div>
+        <p class="subtle">Recovery code: <strong id="recoveryCode"></strong></p>
+        <ul class="history-list" id="notificationList"></ul>
+      </section>
+
       <section class="settings-panel dashboard-section" data-section="settings">
         <div class="panel-heading">
           <div>
@@ -361,6 +480,6 @@
     <li class="empty-state">No sessions yet. Start a timer and finish it to build your league record.</li>
   </template>
 
-  <script src="app.js?v=online-mobile2"></script>
+  <script src="app.js?v=mega-upgrades"></script>
 </body>
 </html>

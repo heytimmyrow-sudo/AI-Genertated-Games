@@ -7,13 +7,19 @@ const SHORT_WORKOUT_MESSAGE = "Workout too short to be recorded.";
 const levelNames = ["Rookie", "Pacer", "Strider", "Climber", "Contender", "Champion", "Legend"];
 const activityOptions = ["Volleyball", "Running", "Bike Riding", "Swimming", "Strength", "Other"];
 const cosmeticRules = [
-  { id: "rookie-pass", name: "Rookie Pass", unlockLevel: 1, accent: "PL", title: "Court Rookie", reward: "Starter profile badge" },
-  { id: "bronze-band", name: "Bronze Wristband", unlockLevel: 2, accent: "BR", title: "Warmup Winner", reward: "Bronze leaderboard frame" },
-  { id: "power-sweat", name: "Power Sweatband", unlockLevel: 3, accent: "PW", title: "Practice Streaker", reward: "Animated court stripe" },
-  { id: "captain-card", name: "Captain Card", unlockLevel: 4, accent: "CP", title: "Team Captain", reward: "Captain spotlight card" },
-  { id: "gold-token", name: "Gold Prize Token", unlockLevel: 5, accent: "GT", title: "League Finisher", reward: "Gold profile glow" },
-  { id: "neon-serve", name: "Neon Serve Trail", unlockLevel: 7, accent: "NS", title: "Challenge Crusher", reward: "Neon motion trail" },
-  { id: "trophy-room", name: "Trophy Room Key", unlockLevel: 10, accent: "99", title: "Prize Room Legend", reward: "Max-level trophy card" }
+  { id: "rookie-pass", name: "Rookie Pass", unlockLevel: 1, cost: 0, accent: "PL", title: "Court Rookie", reward: "Starter profile badge" },
+  { id: "bronze-band", name: "Bronze Wristband", unlockLevel: 2, cost: 80, accent: "BR", title: "Warmup Winner", reward: "Bronze leaderboard frame" },
+  { id: "power-sweat", name: "Power Sweatband", unlockLevel: 3, cost: 140, accent: "PW", title: "Practice Streaker", reward: "Animated court stripe" },
+  { id: "captain-card", name: "Captain Card", unlockLevel: 4, cost: 220, accent: "CP", title: "Team Captain", reward: "Captain spotlight card" },
+  { id: "gold-token", name: "Gold Prize Token", unlockLevel: 5, cost: 340, accent: "GT", title: "League Finisher", reward: "Gold profile glow" },
+  { id: "neon-serve", name: "Neon Serve Trail", unlockLevel: 7, cost: 520, accent: "NS", title: "Challenge Crusher", reward: "Neon motion trail" },
+  { id: "trophy-room", name: "Trophy Room Key", unlockLevel: 10, cost: 900, accent: "99", title: "Prize Room Legend", reward: "Max-level trophy card" }
+];
+const challengeRules = [
+  { id: "daily-30", name: "Daily Spark", reward: 35, test: (stats) => stats.todayMinutes >= 30, detail: "Log 30 minutes today." },
+  { id: "weekly-150", name: "Weekly Heat", reward: 100, test: (stats) => stats.weeklyMinutes >= 150, detail: "Reach 150 minutes this week." },
+  { id: "try-three", name: "Triple Threat", reward: 75, test: (stats) => Object.values(stats.activityMinutes).filter(Boolean).length >= 3, detail: "Train in 3 activity types." },
+  { id: "team-push", name: "Team Push", reward: 60, test: (stats) => stats.sessions >= 3, detail: "Finish 3 sessions." }
 ];
 const badgeRules = [
   { id: "first", name: "First Workout", test: (stats) => stats.sessions >= 1 },
@@ -55,6 +61,18 @@ function loadState() {
     profiles: [{ id: "you", name: "You", username: "you", relation: "Self", setupCode: "PL-YOU", cosmetic: "rookie-pass", inLeague: true, owned: true }],
     activeProfileId: "you",
     ownerToken: makeOwnerToken(),
+    recoveryCode: makeSetupCode("recover"),
+    coins: 0,
+    claimedChallenges: [],
+    ownedPrizes: ["rookie-pass"],
+    friendRequests: [],
+    notifications: [],
+    group: { name: "Family League", inviteCode: makeSetupCode("family"), private: true },
+    teamName: "Pulse Team",
+    coachChallenge: "",
+    proofRequired: false,
+    blockedUsers: [],
+    freezeTokens: 1,
     goals: { daily: 30, weekly: 150 },
     theme: "court",
     dark: false,
@@ -66,6 +84,12 @@ function loadState() {
     const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
     const merged = { ...fallback, ...parsed };
     merged.goals = { ...fallback.goals, ...(parsed.goals || {}) };
+    merged.group = { ...fallback.group, ...(parsed.group || {}) };
+    merged.claimedChallenges = parsed.claimedChallenges || fallback.claimedChallenges;
+    merged.ownedPrizes = parsed.ownedPrizes || fallback.ownedPrizes;
+    merged.friendRequests = parsed.friendRequests || fallback.friendRequests;
+    merged.notifications = parsed.notifications || fallback.notifications;
+    merged.blockedUsers = parsed.blockedUsers || fallback.blockedUsers;
     merged.profiles = parsed.profiles?.length ? parsed.profiles.map((profile, index) => {
       const cosmeticMap = {
         classic: "rookie-pass",
@@ -253,12 +277,26 @@ function showOnlineMessage(message, isError = false) {
   el.classList.toggle("error", isError);
 }
 
+function notify(message) {
+  state.notifications.unshift({ id: crypto.randomUUID(), message, createdAt: new Date().toISOString(), read: false });
+  state.notifications = state.notifications.slice(0, 12);
+}
+
+function suspiciousSession(minutes, note = "") {
+  return minutes > 180 || /fake|cheat|not real/i.test(note);
+}
+
 async function logSession(activity, minutes, note = "") {
   if (minutes < MIN_WORKOUT_MINUTES) {
     showSessionMessage(SHORT_WORKOUT_MESSAGE);
     return false;
   }
+  if (state.proofRequired && !$("#proofNote")?.value.trim()) {
+    showSessionMessage("Proof note required for this league.");
+    return false;
+  }
 
+  const flagged = suspiciousSession(minutes, note);
   const session = {
     id: crypto.randomUUID(),
     profileId: state.activeProfileId,
@@ -266,10 +304,17 @@ async function logSession(activity, minutes, note = "") {
     minutes,
     note,
     points: minutes * 10,
+    proof: $("#proofNote")?.value.trim() || "",
+    flagged,
     createdAt: new Date().toISOString()
   };
   state.sessions.unshift(session);
   state.sessions = state.sessions.slice(0, 240);
+  if (!flagged) {
+    state.coins += Math.max(1, Math.round(minutes / 5));
+  } else {
+    notify("A workout was flagged for review and did not earn coins.");
+  }
   saveState();
   render();
   showSessionMessage("");
@@ -340,6 +385,7 @@ function renderProgress() {
   $("#tournamentHero").textContent = `${stats.weeklyPoints} pts`;
   $("#levelTitle").textContent = `Level ${stats.level} ${label}`;
   $("#pointsChip").textContent = `${stats.xp} XP`;
+  $("#coinHero").textContent = `${state.coins} coins`;
   $("#levelFill").style.width = `${Math.round(stats.progress * 100)}%`;
   $("#levelHint").textContent = `${Math.max(0, stats.level * 500 - stats.xp)} XP until Level ${stats.level + 1}. Every tracked minute is worth 10 XP.`;
   $("#sessionCount").textContent = stats.sessions;
@@ -413,6 +459,36 @@ function renderCosmetics() {
       <button class="cosmetic-card cosmetic-${entry.id} ${active ? "active" : ""}" type="button" data-cosmetic="${entry.id}" ${unlocked ? "" : "disabled"}>
         <strong>${escapeHtml(entry.name)}</strong>
         <span>${unlocked ? (active ? `Equipped · ${entry.title}` : `Unlocked · ${entry.reward}`) : `Unlocks at Level ${entry.unlockLevel}`}</span>
+      </button>
+    `;
+  }).join("");
+}
+
+function renderPrizeShop() {
+  const stats = statsFor();
+  $("#coinBalance").textContent = `${state.coins} coins`;
+  $("#prizeShopGrid").innerHTML = cosmeticRules.map((entry) => {
+    const owned = state.ownedPrizes.includes(entry.id);
+    const unlocked = stats.level >= entry.unlockLevel;
+    const affordable = state.coins >= entry.cost;
+    return `
+      <button class="shop-card cosmetic-${entry.id}" type="button" data-buy-prize="${entry.id}" ${owned || !unlocked || !affordable ? "disabled" : ""}>
+        <strong>${escapeHtml(entry.name)}</strong>
+        <span>${owned ? "Owned" : !unlocked ? `Unlocks at Level ${entry.unlockLevel}` : `${entry.cost} coins - ${entry.reward}`}</span>
+      </button>
+    `;
+  }).join("");
+}
+
+function renderChallenges() {
+  const stats = statsFor();
+  $("#challengeGrid").innerHTML = challengeRules.map((challenge) => {
+    const done = challenge.test(stats);
+    const claimed = state.claimedChallenges.includes(challenge.id);
+    return `
+      <button class="challenge-card ${done ? "ready" : ""}" type="button" data-claim-challenge="${challenge.id}" ${!done || claimed ? "disabled" : ""}>
+        <strong>${escapeHtml(challenge.name)}</strong>
+        <span>${claimed ? "Claimed" : done ? `Claim ${challenge.reward} coins` : challenge.detail}</span>
       </button>
     `;
   }).join("");
@@ -531,6 +607,51 @@ function renderHistory() {
   }
 }
 
+function renderUpgradePanels() {
+  const profile = activeProfile();
+  const stats = statsFor();
+  const pending = state.friendRequests.filter((request) => request.status === "pending");
+  const flagged = state.sessions.filter((session) => session.flagged);
+  const teamMembers = state.profiles.filter((entry) => entry.relation === "Self" || entry.inLeague);
+  const teamMinutes = teamMembers.reduce((sum, entry) => sum + statsFor(entry.id).weeklyMinutes, 0);
+  $("#profilePageCard").innerHTML = `
+    <div class="profile-card cosmetic-${escapeHtml(profile.cosmetic || "rookie-pass")}">
+      <div class="avatar-badge">${escapeHtml((profile.username || profile.name || "PL").slice(0, 2).toUpperCase())}</div>
+      <div>
+        <strong>${escapeHtml(profile.name)}</strong>
+        <span>@${escapeHtml(profile.username || normalizeUsername(profile.name))} - Level ${stats.level} - ${formatShortMinutes(stats.totalMinutes)}</span>
+      </div>
+    </div>
+  `;
+  $("#friendRequestList").innerHTML = pending.length ? pending.map((request) => `
+    <li class="history-row">
+      <div class="history-meta"><strong>@${escapeHtml(request.username)}</strong><span>${escapeHtml(request.relation)} request</span></div>
+      <div class="row-actions">
+        <button class="ghost-button mini" type="button" data-accept-request="${request.id}">Accept</button>
+        <button class="ghost-button mini danger" type="button" data-decline-request="${request.id}">Decline</button>
+      </div>
+    </li>
+  `).join("") : `<li class="empty-state">No friend requests yet.</li>`;
+  $("#leagueSummary").innerHTML = `
+    <div><span>Private group</span><strong>${escapeHtml(state.group.name)}</strong></div>
+    <div><span>Invite code</span><strong>${escapeHtml(state.group.inviteCode)}</strong></div>
+    <div><span>Team</span><strong>${escapeHtml(state.teamName)}</strong></div>
+    <div><span>Team week</span><strong>${formatShortMinutes(teamMinutes)}</strong></div>
+  `;
+  $("#notificationList").innerHTML = state.notifications.length ? state.notifications.map((note) => (
+    `<li class="history-row"><div class="history-meta"><strong>${escapeHtml(note.message)}</strong><span>${new Date(note.createdAt).toLocaleString()}</span></div></li>`
+  )).join("") : `<li class="empty-state">No alerts yet.</li>`;
+  $("#safetySummary").innerHTML = `
+    <div><span>Flagged sessions</span><strong>${flagged.length}</strong></div>
+    <div><span>Proof required</span><strong>${state.proofRequired ? "On" : "Off"}</strong></div>
+    <div><span>Blocked users</span><strong>${state.blockedUsers.length}</strong></div>
+    <div><span>Freeze tokens</span><strong>${state.freezeTokens}</strong></div>
+  `;
+  $("#coachChallengeText").textContent = state.coachChallenge || "No coach challenge set.";
+  $("#recoveryCode").textContent = state.recoveryCode;
+  $("#proofRequired").checked = state.proofRequired;
+}
+
 function renderSettings() {
   document.body.className = "";
   document.body.classList.toggle("timer-mode", timer.mode === "timer");
@@ -539,6 +660,9 @@ function renderSettings() {
   $("#themeSelect").value = state.theme;
   $("#soundToggle").checked = state.sound;
   $("#vibrationToggle").checked = state.vibration;
+  $("#groupName").value = state.group.name;
+  $("#teamName").value = state.teamName;
+  $("#coachChallenge").value = state.coachChallenge;
 }
 
 function render() {
@@ -547,6 +671,8 @@ function render() {
   $("#timerModeLabel").textContent = timer.mode === "timer" ? "Timer" : "Stopwatch";
   renderProfiles();
   renderCosmetics();
+  renderPrizeShop();
+  renderChallenges();
   renderProgress();
   renderGoals();
   renderActivityStats();
@@ -556,6 +682,7 @@ function render() {
   renderBadges();
   renderTournamentHistory();
   renderHistory();
+  renderUpgradePanels();
   tick();
 }
 
@@ -661,9 +788,11 @@ function upsertProfileFromOnline(remoteProfile, relation = "Friend", owned = fal
   };
   if (existing) {
     Object.assign(existing, next);
+    if (owned && Number.isFinite(remoteProfile.coins)) state.coins = remoteProfile.coins;
     return existing;
   }
   state.profiles.push(next);
+  if (owned && Number.isFinite(remoteProfile.coins)) state.coins = remoteProfile.coins;
   return next;
 }
 
@@ -689,6 +818,8 @@ function importLeagueData(payload) {
       minutes: session.minutes,
       note: session.note || "",
       points: session.points,
+      proof: session.proof || "",
+      flagged: Boolean(session.flagged),
       createdAt: session.created_at
     });
   }
@@ -943,6 +1074,64 @@ $("#cosmeticGrid").addEventListener("click", (event) => {
   }
 });
 
+$("#prizeShopGrid").addEventListener("click", (event) => {
+  const button = event.target.closest("[data-buy-prize]");
+  if (!button || button.disabled) return;
+  const prize = cosmeticRules.find((entry) => entry.id === button.dataset.buyPrize);
+  if (!prize || state.ownedPrizes.includes(prize.id) || state.coins < prize.cost) return;
+  state.coins -= prize.cost;
+  state.ownedPrizes.push(prize.id);
+  notify(`${prize.name} unlocked in the prize shop.`);
+  saveState();
+  render();
+});
+
+$("#challengeGrid").addEventListener("click", (event) => {
+  const button = event.target.closest("[data-claim-challenge]");
+  if (!button || button.disabled) return;
+  const challenge = challengeRules.find((entry) => entry.id === button.dataset.claimChallenge);
+  if (!challenge || state.claimedChallenges.includes(challenge.id) || !challenge.test(statsFor())) return;
+  state.claimedChallenges.push(challenge.id);
+  state.coins += challenge.reward;
+  notify(`${challenge.name} paid ${challenge.reward} coins.`);
+  saveState();
+  render();
+});
+
+$("#requestForm").addEventListener("submit", (event) => {
+  event.preventDefault();
+  const username = normalizeUsername($("#requestUsername").value);
+  if (!username || state.blockedUsers.includes(username)) return;
+  state.friendRequests.unshift({ id: crypto.randomUUID(), username, relation: "Friend", status: "pending", createdAt: new Date().toISOString() });
+  notify(`Friend request prepared for @${username}.`);
+  $("#requestUsername").value = "";
+  saveState();
+  render();
+});
+
+$("#friendRequestList").addEventListener("click", (event) => {
+  const acceptId = event.target.dataset.acceptRequest;
+  const declineId = event.target.dataset.declineRequest;
+  const request = state.friendRequests.find((entry) => entry.id === (acceptId || declineId));
+  if (!request) return;
+  request.status = acceptId ? "accepted" : "declined";
+  if (acceptId) {
+    state.profiles.push({
+      id: crypto.randomUUID(),
+      name: request.username,
+      username: request.username,
+      relation: request.relation,
+      setupCode: `@${request.username}`,
+      cosmetic: "rookie-pass",
+      inLeague: true,
+      owned: false
+    });
+  }
+  notify(`Request from @${request.username} ${request.status}.`);
+  saveState();
+  render();
+});
+
 $("#leaderboard").addEventListener("click", async (event) => {
   const button = event.target.closest("[data-remove-profile]");
   if (!button) return;
@@ -972,6 +1161,48 @@ $("#weeklyGoal").addEventListener("change", () => {
   state.goals.weekly = Math.max(5, Number($("#weeklyGoal").value) || 150);
   saveState();
   renderGoals();
+});
+
+$("#leagueForm").addEventListener("submit", (event) => {
+  event.preventDefault();
+  state.group.name = $("#groupName").value.trim() || "Family League";
+  state.teamName = $("#teamName").value.trim() || "Pulse Team";
+  notify(`${state.group.name} league saved.`);
+  saveState();
+  render();
+});
+
+$("#coachForm").addEventListener("submit", (event) => {
+  event.preventDefault();
+  state.coachChallenge = $("#coachChallenge").value.trim();
+  notify(state.coachChallenge ? "Coach challenge posted." : "Coach challenge cleared.");
+  saveState();
+  render();
+});
+
+$("#proofRequired").addEventListener("change", () => {
+  state.proofRequired = $("#proofRequired").checked;
+  saveState();
+  renderUpgradePanels();
+});
+
+$("#useFreezeToken").addEventListener("click", () => {
+  if (state.freezeTokens <= 0) return;
+  state.freezeTokens -= 1;
+  notify("Streak freeze used for today.");
+  saveState();
+  render();
+});
+
+$("#blockForm").addEventListener("submit", (event) => {
+  event.preventDefault();
+  const username = normalizeUsername($("#blockedUsername").value);
+  if (!username || state.blockedUsers.includes(username)) return;
+  state.blockedUsers.push(username);
+  $("#blockedUsername").value = "";
+  notify(`@${username} blocked.`);
+  saveState();
+  render();
 });
 
 $("#themeToggle").addEventListener("click", () => {
