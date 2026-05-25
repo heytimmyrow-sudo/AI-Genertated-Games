@@ -8,7 +8,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="assets/pulse-league-icon-192.png">
   <link rel="apple-touch-icon" href="assets/pulse-league-icon-192.png">
   <link rel="manifest" href="manifest.webmanifest">
-  <link rel="stylesheet" href="styles.css?v=click-fix">
+  <link rel="stylesheet" href="styles.css?v=real-users">
 </head>
 <body>
   <main class="app-shell">
@@ -155,12 +155,17 @@
         </form>
         <form class="inline-form" id="profileForm">
           <input id="profileName" type="text" maxlength="24" placeholder="Set up profile name">
+          <button class="primary-button" type="submit">Create Profile</button>
+        </form>
+        <form class="inline-form" id="addExistingForm">
+          <input id="existingProfileName" type="text" maxlength="32" placeholder="Existing username or code">
           <select id="profileRelation" class="select-control" aria-label="Profile relation">
             <option value="Friend">Friend</option>
             <option value="Family">Family</option>
           </select>
-          <button class="primary-button" type="submit">Set Up</button>
+          <button class="primary-button" type="submit">Add Existing</button>
         </form>
+        <p class="session-message" id="profileMessage" aria-live="polite"></p>
         <p class="subtle">Family and friends only appear after their own Pulse League profile is set up on this device.</p>
         <ol class="leaderboard" id="leaderboard"></ol>
       </section>
@@ -331,6 +336,6 @@
     <li class="empty-state">No sessions yet. Start a timer and finish it to build your league record.</li>
   </template>
 
-  <script src="app.js?v=click-fix"></script>
+  <script src="app.js?v=real-users"></script>
 </body>
 </html>

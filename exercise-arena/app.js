@@ -44,7 +44,7 @@ saveState();
 function loadState() {
   const fallback = {
     sessions: [],
-    profiles: [{ id: "you", name: "You", relation: "Self", setupCode: "PL-YOU", cosmetic: "rookie-pass" }],
+    profiles: [{ id: "you", name: "You", relation: "Self", setupCode: "PL-YOU", cosmetic: "rookie-pass", inLeague: true }],
     activeProfileId: "you",
     goals: { daily: 30, weekly: 150 },
     theme: "court",
@@ -70,6 +70,7 @@ function loadState() {
         relation: index === 0 ? "Self" : "Friend",
         setupCode: makeSetupCode(profile.name || `Player ${index + 1}`),
         cosmetic: "rookie-pass",
+        inLeague: index === 0 || profile.relation === "Friend" || profile.relation === "Family",
         ...profile,
         cosmetic: cosmeticMap[profile.cosmetic] || profile.cosmetic || "rookie-pass"
       };
@@ -220,6 +221,10 @@ function showSessionMessage(message) {
   $("#sessionMessage").textContent = message;
 }
 
+function showProfileMessage(message) {
+  $("#profileMessage").textContent = message;
+}
+
 function logSession(activity, minutes, note = "") {
   if (minutes < MIN_WORKOUT_MINUTES) {
     showSessionMessage(SHORT_WORKOUT_MESSAGE);
@@ -338,7 +343,9 @@ function renderProfiles() {
     `<option value="${profile.id}" ${profile.id === state.activeProfileId ? "selected" : ""}>${escapeHtml(profile.name)}</option>`
   )).join("");
 
-  const leaders = state.profiles.map((profile) => ({ ...profile, stats: statsFor(profile.id) }))
+  const leaders = state.profiles
+    .filter((profile) => profile.relation === "Self" || profile.inLeague)
+    .map((profile) => ({ ...profile, stats: statsFor(profile.id) }))
     .sort((a, b) => b.stats.weeklyPoints - a.stats.weeklyPoints);
   $("#leaderboard").innerHTML = leaders.map((profile, index) => `
     <li class="leader-row cosmetic-${escapeHtml(profile.cosmetic || "rookie-pass")}">
@@ -586,18 +593,48 @@ $("#profileForm").addEventListener("submit", (event) => {
   event.preventDefault();
   const name = $("#profileName").value.trim();
   if (!name) return;
+  const exists = state.profiles.some((profile) => profile.name.toLowerCase() === name.toLowerCase());
+  if (exists) {
+    showProfileMessage("That Pulse League username already exists.");
+    return;
+  }
   const profile = {
     id: crypto.randomUUID(),
     name,
-    relation: $("#profileRelation").value,
+    relation: "Unlisted",
     setupCode: makeSetupCode(name),
-    cosmetic: "rookie-pass"
+    cosmetic: "rookie-pass",
+    inLeague: false
   };
   state.profiles.push(profile);
   state.activeProfileId = profile.id;
   $("#profileName").value = "";
+  showProfileMessage(`${name} profile created. Use ${profile.setupCode} to add them as family or friend.`);
   saveState();
   render();
+});
+
+$("#addExistingForm").addEventListener("submit", (event) => {
+  event.preventDefault();
+  const query = $("#existingProfileName").value.trim().toLowerCase();
+  if (!query) return;
+  const profile = state.profiles.find((entry) => (
+    entry.name.toLowerCase() === query || (entry.setupCode || "").toLowerCase() === query
+  ));
+  if (!profile) {
+    showProfileMessage("No Pulse League profile found for that username.");
+    return;
+  }
+  if (profile.relation === "Self") {
+    showProfileMessage("Your profile is already on the leaderboard.");
+    return;
+  }
+  profile.relation = $("#profileRelation").value;
+  profile.inLeague = true;
+  $("#existingProfileName").value = "";
+  showProfileMessage(`${profile.name} added as ${profile.relation}.`);
+  saveState();
+  renderProfiles();
 });
 
 $("#renameForm").addEventListener("submit", (event) => {
