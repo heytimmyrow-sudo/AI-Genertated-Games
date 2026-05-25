@@ -13,6 +13,7 @@ const cosmeticRules = [
   { id: "water-arena", type: "background", rarity: "rare", featured: false, name: "Water Arena", unlockLevel: 3, cost: 160, accent: "BG", title: "Pool Lights", reward: "Blue aquatic app background" },
   { id: "xp-hour", type: "booster", rarity: "epic", featured: true, name: "1-Hour XP Booster", unlockLevel: 3, cost: 180, accent: "2X", title: "Boost Active", reward: "Double XP for one hour" },
   { id: "power-sweat", type: "effect", rarity: "rare", featured: false, name: "Power Sweatband", unlockLevel: 3, cost: 140, accent: "FX", title: "Practice Streaker", reward: "Animated court stripe effect" },
+  { id: "captain-card", type: "profile", rarity: "rare", featured: false, name: "Captain Card", unlockLevel: 4, cost: 220, accent: "CP", title: "Team Captain", reward: "Captain spotlight card" },
   { id: "captain-title", type: "title", rarity: "epic", featured: false, name: "Captain Title", unlockLevel: 4, cost: 210, accent: "CP", title: "Team Captain", reward: "Profile title upgrade" },
   { id: "gold-token", type: "profile", rarity: "epic", featured: true, name: "Gold Prize Token", unlockLevel: 5, cost: 340, accent: "GT", title: "League Finisher", reward: "Gold profile glow" },
   { id: "neon-serve", type: "effect", rarity: "legendary", featured: false, name: "Neon Serve Trail", unlockLevel: 7, cost: 520, accent: "NS", title: "Challenge Crusher", reward: "Neon motion trail effect" },
@@ -29,6 +30,13 @@ const rarityNames = {
   rare: "Rare",
   epic: "Epic",
   legendary: "Legendary"
+};
+const legacyPrizeMap = {
+  neon: "neon-serve",
+  wave: "power-sweat",
+  bronze: "bronze-band",
+  gold: "gold-token",
+  classic: "rookie-pass"
 };
 const badgeRules = [
   { id: "first", name: "First Workout", test: (stats) => stats.sessions >= 1 },
@@ -101,7 +109,9 @@ function loadState() {
     merged.goals = { ...fallback.goals, ...(parsed.goals || {}) };
     merged.group = { ...fallback.group, ...(parsed.group || {}) };
     merged.claimedChallenges = parsed.claimedChallenges || fallback.claimedChallenges;
-    merged.ownedPrizes = parsed.ownedPrizes || fallback.ownedPrizes;
+    merged.ownedPrizes = [...new Set((parsed.ownedPrizes || fallback.ownedPrizes)
+      .map((id) => legacyPrizeMap[id] || id)
+      .filter((id) => cosmeticRules.some((entry) => entry.id === id)))];
     merged.friendRequests = parsed.friendRequests || fallback.friendRequests;
     merged.notifications = parsed.notifications || fallback.notifications;
     merged.blockedUsers = parsed.blockedUsers || fallback.blockedUsers;
@@ -123,7 +133,7 @@ function loadState() {
         inLeague: index === 0 || profile.relation === "Friend" || profile.relation === "Family",
         owned: index === 0 || profile.relation === "Self",
         ...profile,
-        cosmetic: cosmeticMap[profile.cosmetic] || profile.cosmetic || "rookie-pass"
+        cosmetic: legacyPrizeMap[cosmeticMap[profile.cosmetic] || profile.cosmetic] || cosmeticMap[profile.cosmetic] || profile.cosmetic || "rookie-pass"
       };
     }) : fallback.profiles;
     merged.sessions = (parsed.sessions || []).map((session) => ({
@@ -799,9 +809,7 @@ function openMobileSidebar() {
   $("#mobileMenuButton")?.setAttribute("aria-expanded", "true");
 }
 
-function showDashboardSection(sectionName) {
-  state.lastSection = sectionName;
-  saveState();
+function activateDashboardSection(sectionName, shouldScroll = true) {
   $$(".dashboard-section").forEach((section) => {
     section.classList.toggle("active", section.dataset.section === sectionName);
   });
@@ -809,7 +817,13 @@ function showDashboardSection(sectionName) {
     button.classList.toggle("active", button.dataset.sectionTarget === sectionName);
   });
   closeMobileSidebar();
-  document.querySelector(`[data-section="${sectionName}"]`)?.scrollIntoView({ behavior: "smooth", block: "start" });
+  if (shouldScroll) document.querySelector(`[data-section="${sectionName}"]`)?.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function showDashboardSection(sectionName) {
+  state.lastSection = sectionName;
+  saveState();
+  activateDashboardSection(sectionName);
 }
 
 function supabaseHeaders(extra = {}) {
@@ -1418,4 +1432,5 @@ if ("serviceWorker" in navigator) {
 }
 
 render();
+activateDashboardSection(state.lastSection || "progress", false);
 initOnline();
