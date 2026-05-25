@@ -334,7 +334,10 @@ function renderProfiles() {
         <strong>${escapeHtml(profile.name)}</strong>
         <span>${escapeHtml(profile.relation || "Friend")} profile · ${escapeHtml(profile.setupCode || "Set up")}${profile.id === state.activeProfileId ? " · Active" : ""}</span>
       </div>
-      <span class="leader-score">${profile.stats.weeklyPoints} pts</span>
+      <div class="leader-actions">
+        <span class="leader-score">${profile.stats.weeklyPoints} pts</span>
+        ${profile.relation === "Self" ? "" : `<button class="ghost-button mini danger" type="button" data-remove-profile="${profile.id}">Remove</button>`}
+      </div>
     </li>
   `).join("");
 }
@@ -592,6 +595,22 @@ $("#cosmeticGrid").addEventListener("click", (event) => {
   saveState();
   renderProfiles();
   renderCosmetics();
+});
+
+$("#leaderboard").addEventListener("click", (event) => {
+  const button = event.target.closest("[data-remove-profile]");
+  if (!button) return;
+  const profileId = button.dataset.removeProfile;
+  const profile = state.profiles.find((entry) => entry.id === profileId);
+  if (!profile || profile.relation === "Self") return;
+  if (!confirm(`Remove ${profile.name}'s Pulse League profile and workouts?`)) return;
+  state.profiles = state.profiles.filter((entry) => entry.id !== profileId);
+  state.sessions = state.sessions.filter((session) => session.profileId !== profileId);
+  if (state.activeProfileId === profileId) {
+    state.activeProfileId = state.profiles[0]?.id || "you";
+  }
+  saveState();
+  render();
 });
 
 $("#dailyGoal").addEventListener("change", () => {

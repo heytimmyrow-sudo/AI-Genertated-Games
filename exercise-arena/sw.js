@@ -1,9 +1,9 @@
-const CACHE_NAME = "pulse-league-v3";
+const CACHE_NAME = "pulse-league-v4";
 const ASSETS = [
   "./",
   "./index.html",
-  "./styles.css?v=friends-cosmetics",
-  "./app.js?v=friends-cosmetics",
+  "./styles.css?v=remove-profiles",
+  "./app.js?v=remove-profiles",
   "./manifest.webmanifest",
   "./assets/pulse-league-icon-192.png",
   "./assets/pulse-league-icon-512.png",

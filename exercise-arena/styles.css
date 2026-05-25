@@ -753,6 +753,14 @@ body.timer-mode #durationField {
   flex-wrap: wrap;
 }
 
+.leader-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
 .empty-state {
   grid-template-columns: 1fr;
   color: var(--muted);
@@ -948,7 +956,8 @@ dialog::backdrop {
     grid-template-columns: 1fr;
   }
 
-  .row-actions {
+  .row-actions,
+  .leader-actions {
     justify-content: flex-start;
   }
 
