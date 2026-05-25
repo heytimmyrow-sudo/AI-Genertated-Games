@@ -260,6 +260,14 @@ button {
   box-shadow: var(--shadow);
 }
 
+.cosmetics-panel {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--surface) 94%, transparent);
+  color: var(--ink);
+  box-shadow: var(--shadow);
+}
+
 .timer-panel {
   padding: 22px;
   background: rgba(255, 253, 247, 0.92);
@@ -470,6 +478,10 @@ body.timer-mode #durationField {
   padding: 22px;
 }
 
+.cosmetics-panel {
+  padding: 22px;
+}
+
 .level-track {
   height: 14px;
   overflow: hidden;
@@ -549,6 +561,106 @@ body.timer-mode #durationField {
 .badge.unlocked {
   border-color: color-mix(in srgb, var(--sun) 55%, var(--line));
   background: color-mix(in srgb, var(--sun) 12%, var(--surface-strong));
+}
+
+.profile-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-strong);
+}
+
+.profile-card strong,
+.profile-card span {
+  display: block;
+}
+
+.profile-card span {
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 0.86rem;
+  font-weight: 800;
+}
+
+.avatar-badge {
+  display: grid;
+  width: 48px;
+  height: 48px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 8px;
+  background: linear-gradient(135deg, var(--green), var(--water));
+  color: #fff;
+  font-weight: 950;
+}
+
+.cosmetic-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.cosmetic-card {
+  min-height: 74px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-strong);
+  color: var(--ink);
+  text-align: left;
+}
+
+.cosmetic-card strong,
+.cosmetic-card span {
+  display: block;
+}
+
+.cosmetic-card span {
+  margin-top: 5px;
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.cosmetic-card.active {
+  border-color: var(--green);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--green) 18%, transparent);
+}
+
+.cosmetic-card:disabled {
+  cursor: not-allowed;
+  opacity: 0.56;
+}
+
+.cosmetic-bronze,
+.cosmetic-card.cosmetic-bronze {
+  border-color: color-mix(in srgb, #b87333 55%, var(--line));
+}
+
+.cosmetic-wave,
+.cosmetic-card.cosmetic-wave {
+  border-color: color-mix(in srgb, var(--water) 65%, var(--line));
+}
+
+.cosmetic-captain,
+.cosmetic-card.cosmetic-captain {
+  border-color: color-mix(in srgb, var(--track) 65%, var(--line));
+}
+
+.cosmetic-gold,
+.cosmetic-card.cosmetic-gold {
+  border-color: color-mix(in srgb, var(--sun) 75%, var(--line));
+  background: color-mix(in srgb, var(--sun) 10%, var(--surface-strong));
+}
+
+.cosmetic-neon,
+.cosmetic-card.cosmetic-neon {
+  border-color: color-mix(in srgb, #29e6d3 80%, var(--line));
+  box-shadow: 0 0 22px color-mix(in srgb, #29e6d3 18%, transparent);
 }
 
 .goal-list,
@@ -721,6 +833,11 @@ body.timer-mode #durationField {
   flex: 1;
 }
 
+.inline-form select {
+  width: min(150px, 30%);
+  flex: 0 0 auto;
+}
+
 .check-row {
   display: flex;
   align-items: center;
@@ -805,7 +922,8 @@ dialog::backdrop {
   .metric-grid,
   .record-grid,
   .activity-stats,
-  .badge-grid {
+  .badge-grid,
+  .cosmetic-grid {
     grid-template-columns: 1fr;
   }
 

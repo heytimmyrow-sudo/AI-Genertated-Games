@@ -8,7 +8,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="assets/pulse-league-icon-192.png">
   <link rel="apple-touch-icon" href="assets/pulse-league-icon-192.png">
   <link rel="manifest" href="manifest.webmanifest">
-  <link rel="stylesheet" href="styles.css?v=all-upgrades">
+  <link rel="stylesheet" href="styles.css?v=friends-cosmetics">
 </head>
 <body>
   <main class="app-shell">
@@ -146,14 +146,31 @@
         <div class="panel-heading">
           <div>
             <p class="eyebrow">Profiles</p>
-            <h2>Local leaderboard</h2>
+            <h2>Family and friends</h2>
           </div>
         </div>
         <form class="inline-form" id="profileForm">
-          <input id="profileName" type="text" maxlength="24" placeholder="Add family member">
-          <button class="primary-button" type="submit">Add</button>
+          <input id="profileName" type="text" maxlength="24" placeholder="Set up profile name">
+          <select id="profileRelation" class="select-control" aria-label="Profile relation">
+            <option value="Friend">Friend</option>
+            <option value="Family">Family</option>
+          </select>
+          <button class="primary-button" type="submit">Set Up</button>
         </form>
+        <p class="subtle">Family and friends only appear after their own Pulse League profile is set up on this device.</p>
         <ol class="leaderboard" id="leaderboard"></ol>
+      </section>
+
+      <section class="cosmetics-panel">
+        <div class="panel-heading">
+          <div>
+            <p class="eyebrow">Locker</p>
+            <h2>Level cosmetics</h2>
+          </div>
+          <span class="mode-pill" id="cosmeticLevel">Level 1</span>
+        </div>
+        <div class="profile-card" id="profileCard"></div>
+        <div class="cosmetic-grid" id="cosmeticGrid"></div>
       </section>
 
       <section class="activity-panel">
@@ -309,6 +326,6 @@
     <li class="empty-state">No sessions yet. Start a timer and finish it to build your league record.</li>
   </template>
 
-  <script src="app.js?v=all-upgrades"></script>
+  <script src="app.js?v=friends-cosmetics"></script>
 </body>
 </html>

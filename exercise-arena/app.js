@@ -4,6 +4,14 @@ const MIN_WORKOUT_MINUTES = 5;
 const SHORT_WORKOUT_MESSAGE = "Workout too short to be recorded.";
 const levelNames = ["Rookie", "Pacer", "Strider", "Climber", "Contender", "Champion", "Legend"];
 const activityOptions = ["Volleyball", "Running", "Bike Riding", "Swimming", "Strength", "Other"];
+const cosmeticRules = [
+  { id: "classic", name: "Classic Court", unlockLevel: 1, accent: "PL" },
+  { id: "bronze", name: "Bronze Frame", unlockLevel: 2, accent: "BR" },
+  { id: "wave", name: "Wave Glow", unlockLevel: 3, accent: "WG" },
+  { id: "captain", name: "Captain Band", unlockLevel: 4, accent: "CP" },
+  { id: "gold", name: "Gold League", unlockLevel: 5, accent: "GL" },
+  { id: "neon", name: "Neon Serve", unlockLevel: 7, accent: "NS" }
+];
 const badgeRules = [
   { id: "first", name: "First Workout", test: (stats) => stats.sessions >= 1 },
   { id: "five", name: "5 Sessions", test: (stats) => stats.sessions >= 5 },
@@ -30,11 +38,12 @@ const timer = {
   ticker: null,
   presetLabel: ""
 };
+saveState();
 
 function loadState() {
   const fallback = {
     sessions: [],
-    profiles: [{ id: "you", name: "You" }],
+    profiles: [{ id: "you", name: "You", relation: "Self", setupCode: "PL-YOU", cosmetic: "classic" }],
     activeProfileId: "you",
     goals: { daily: 30, weekly: 150 },
     theme: "court",
@@ -47,7 +56,12 @@ function loadState() {
     const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
     const merged = { ...fallback, ...parsed };
     merged.goals = { ...fallback.goals, ...(parsed.goals || {}) };
-    merged.profiles = parsed.profiles?.length ? parsed.profiles : fallback.profiles;
+    merged.profiles = parsed.profiles?.length ? parsed.profiles.map((profile, index) => ({
+      relation: index === 0 ? "Self" : "Friend",
+      setupCode: makeSetupCode(profile.name || `Player ${index + 1}`),
+      cosmetic: "classic",
+      ...profile
+    })) : fallback.profiles;
     merged.sessions = (parsed.sessions || []).map((session) => ({
       profileId: "you",
       note: "",
@@ -65,6 +79,11 @@ function loadState() {
 
 function saveState() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+}
+
+function makeSetupCode(name) {
+  const seed = String(name || "Player").replace(/[^a-z0-9]/gi, "").slice(0, 4).toUpperCase() || "PL";
+  return `PL-${seed}-${Math.floor(100 + Math.random() * 900)}`;
 }
 
 function activeProfile() {
@@ -309,15 +328,41 @@ function renderProfiles() {
   const leaders = state.profiles.map((profile) => ({ ...profile, stats: statsFor(profile.id) }))
     .sort((a, b) => b.stats.weeklyPoints - a.stats.weeklyPoints);
   $("#leaderboard").innerHTML = leaders.map((profile, index) => `
-    <li class="leader-row">
+    <li class="leader-row cosmetic-${escapeHtml(profile.cosmetic || "classic")}">
       <span class="rank">${index + 1}</span>
       <div class="leader-meta">
         <strong>${escapeHtml(profile.name)}</strong>
-        <span>${profile.id === state.activeProfileId ? "Active profile" : "Local profile"}</span>
+        <span>${escapeHtml(profile.relation || "Friend")} profile · ${escapeHtml(profile.setupCode || "Set up")}${profile.id === state.activeProfileId ? " · Active" : ""}</span>
       </div>
       <span class="leader-score">${profile.stats.weeklyPoints} pts</span>
     </li>
   `).join("");
+}
+
+function renderCosmetics() {
+  const profile = activeProfile();
+  const stats = statsFor();
+  const selected = profile.cosmetic || "classic";
+  const cosmetic = cosmeticRules.find((entry) => entry.id === selected) || cosmeticRules[0];
+  $("#cosmeticLevel").textContent = `Level ${stats.level}`;
+  $("#profileCard").className = `profile-card cosmetic-${cosmetic.id}`;
+  $("#profileCard").innerHTML = `
+    <div class="avatar-badge">${escapeHtml(cosmetic.accent)}</div>
+    <div>
+      <strong>${escapeHtml(profile.name)}</strong>
+      <span>${escapeHtml(profile.relation || "Friend")} · ${escapeHtml(cosmetic.name)}</span>
+    </div>
+  `;
+  $("#cosmeticGrid").innerHTML = cosmeticRules.map((entry) => {
+    const unlocked = stats.level >= entry.unlockLevel;
+    const active = selected === entry.id;
+    return `
+      <button class="cosmetic-card cosmetic-${entry.id} ${active ? "active" : ""}" type="button" data-cosmetic="${entry.id}" ${unlocked ? "" : "disabled"}>
+        <strong>${escapeHtml(entry.name)}</strong>
+        <span>${unlocked ? (active ? "Equipped" : "Unlocked") : `Unlocks at Level ${entry.unlockLevel}`}</span>
+      </button>
+    `;
+  }).join("");
 }
 
 function renderActivityStats() {
@@ -447,6 +492,7 @@ function render() {
   renderSettings();
   $("#timerModeLabel").textContent = timer.mode === "timer" ? "Timer" : "Stopwatch";
   renderProfiles();
+  renderCosmetics();
   renderProgress();
   renderGoals();
   renderActivityStats();
@@ -524,12 +570,28 @@ $("#profileForm").addEventListener("submit", (event) => {
   event.preventDefault();
   const name = $("#profileName").value.trim();
   if (!name) return;
-  const profile = { id: crypto.randomUUID(), name };
+  const profile = {
+    id: crypto.randomUUID(),
+    name,
+    relation: $("#profileRelation").value,
+    setupCode: makeSetupCode(name),
+    cosmetic: "classic"
+  };
   state.profiles.push(profile);
   state.activeProfileId = profile.id;
   $("#profileName").value = "";
   saveState();
   render();
+});
+
+$("#cosmeticGrid").addEventListener("click", (event) => {
+  const button = event.target.closest("[data-cosmetic]");
+  if (!button || button.disabled) return;
+  const profile = activeProfile();
+  profile.cosmetic = button.dataset.cosmetic;
+  saveState();
+  renderProfiles();
+  renderCosmetics();
 });
 
 $("#dailyGoal").addEventListener("change", () => {
