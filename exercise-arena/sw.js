@@ -5,6 +5,8 @@ const ASSETS = [
   "./styles.css?v=all-upgrades",
   "./app.js?v=all-upgrades",
   "./manifest.webmanifest",
+  "./assets/pulse-league-icon-192.png",
+  "./assets/pulse-league-icon-512.png",
   "./assets/volleyball-court-hero.png"
 ];
 
