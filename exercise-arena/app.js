@@ -1,4 +1,6 @@
 const STORAGE_KEY = "pulseLeagueState";
+const SUPABASE_URL = "https://jbljqusdpifdyewlenun.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_RYq_rDXqj_Ate8B66PcJEQ_a6yv1YUl";
 const SECOND = 1000;
 const MIN_WORKOUT_MINUTES = 5;
 const SHORT_WORKOUT_MESSAGE = "Workout too short to be recorded.";
@@ -29,6 +31,12 @@ const $$ = (selector) => [...document.querySelectorAll(selector)];
 const todayKey = () => new Date().toISOString().slice(0, 10);
 
 const state = loadState();
+const online = {
+  enabled: Boolean(SUPABASE_URL && SUPABASE_ANON_KEY),
+  ready: false,
+  busy: false,
+  message: "Online sync starting."
+};
 const timer = {
   mode: "stopwatch",
   activity: "Volleyball",
@@ -44,8 +52,9 @@ saveState();
 function loadState() {
   const fallback = {
     sessions: [],
-    profiles: [{ id: "you", name: "You", relation: "Self", setupCode: "PL-YOU", cosmetic: "rookie-pass", inLeague: true }],
+    profiles: [{ id: "you", name: "You", username: "you", relation: "Self", setupCode: "PL-YOU", cosmetic: "rookie-pass", inLeague: true, owned: true }],
     activeProfileId: "you",
+    ownerToken: makeOwnerToken(),
     goals: { daily: 30, weekly: 150 },
     theme: "court",
     dark: false,
@@ -68,9 +77,11 @@ function loadState() {
       };
       return {
         relation: index === 0 ? "Self" : "Friend",
+        username: normalizeUsername(profile.username || profile.name || `player_${index + 1}`),
         setupCode: makeSetupCode(profile.name || `Player ${index + 1}`),
         cosmetic: "rookie-pass",
         inLeague: index === 0 || profile.relation === "Friend" || profile.relation === "Family",
+        owned: index === 0 || profile.relation === "Self",
         ...profile,
         cosmetic: cosmeticMap[profile.cosmetic] || profile.cosmetic || "rookie-pass"
       };
@@ -94,9 +105,19 @@ function saveState() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
 }
 
+function makeOwnerToken() {
+  const bytes = new Uint8Array(24);
+  crypto.getRandomValues(bytes);
+  return [...bytes].map((byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
 function makeSetupCode(name) {
   const seed = String(name || "Player").replace(/[^a-z0-9]/gi, "").slice(0, 4).toUpperCase() || "PL";
   return `PL-${seed}-${Math.floor(100 + Math.random() * 900)}`;
+}
+
+function normalizeUsername(value) {
+  return String(value || "").trim().toLowerCase().replace(/[^a-z0-9_]/g, "_").replace(/_+/g, "_").slice(0, 24);
 }
 
 function activeProfile() {
@@ -201,7 +222,7 @@ function resetTimer() {
   tick();
 }
 
-function finishSession() {
+async function finishSession() {
   const elapsed = timer.mode === "timer" ? Math.min(getElapsed(), timer.duration) : getElapsed();
   if (elapsed < MIN_WORKOUT_MINUTES * 60 * SECOND) {
     showSessionMessage(SHORT_WORKOUT_MESSAGE);
@@ -211,7 +232,7 @@ function finishSession() {
 
   const minutes = Math.max(MIN_WORKOUT_MINUTES, Math.round(elapsed / 60000));
   const note = $("#timerNote").value.trim();
-  if (logSession(timer.activity, minutes, note)) {
+  if (await logSession(timer.activity, minutes, note)) {
     $("#timerNote").value = "";
   }
   resetTimer();
@@ -225,13 +246,20 @@ function showProfileMessage(message) {
   $("#profileMessage").textContent = message;
 }
 
-function logSession(activity, minutes, note = "") {
+function showOnlineMessage(message, isError = false) {
+  const el = $("#onlineStatus");
+  if (!el) return;
+  el.textContent = message;
+  el.classList.toggle("error", isError);
+}
+
+async function logSession(activity, minutes, note = "") {
   if (minutes < MIN_WORKOUT_MINUTES) {
     showSessionMessage(SHORT_WORKOUT_MESSAGE);
     return false;
   }
 
-  state.sessions.unshift({
+  const session = {
     id: crypto.randomUUID(),
     profileId: state.activeProfileId,
     activity: activity || "Other",
@@ -239,11 +267,13 @@ function logSession(activity, minutes, note = "") {
     note,
     points: minutes * 10,
     createdAt: new Date().toISOString()
-  });
+  };
+  state.sessions.unshift(session);
   state.sessions = state.sessions.slice(0, 240);
   saveState();
   render();
   showSessionMessage("");
+  syncSessionOnline(session);
   return true;
 }
 
@@ -339,7 +369,7 @@ function renderGoals() {
 
 function renderProfiles() {
   $("#displayName").value = activeProfile().name;
-  $("#profileSelect").innerHTML = state.profiles.map((profile) => (
+  $("#profileSelect").innerHTML = state.profiles.filter((profile) => profile.owned || profile.relation === "Self").map((profile) => (
     `<option value="${profile.id}" ${profile.id === state.activeProfileId ? "selected" : ""}>${escapeHtml(profile.name)}</option>`
   )).join("");
 
@@ -352,7 +382,7 @@ function renderProfiles() {
       <span class="rank">${index + 1}</span>
       <div class="leader-meta">
         <strong>${escapeHtml(profile.name)}</strong>
-        <span>${escapeHtml(profile.relation || "Friend")} profile · ${escapeHtml(profile.setupCode || "Set up")}${profile.id === state.activeProfileId ? " · Active" : ""}</span>
+        <span>${escapeHtml(profile.relation || "Friend")} profile · @${escapeHtml(profile.username || normalizeUsername(profile.name))}${profile.id === state.activeProfileId ? " · Active" : ""}</span>
       </div>
       <div class="leader-actions">
         <span class="leader-score">${profile.stats.weeklyPoints} pts</span>
@@ -513,6 +543,7 @@ function renderSettings() {
 
 function render() {
   renderSettings();
+  showOnlineMessage(online.message, !online.ready && !online.busy);
   $("#timerModeLabel").textContent = timer.mode === "timer" ? "Timer" : "Stopwatch";
   renderProfiles();
   renderCosmetics();
@@ -542,12 +573,271 @@ function setActiveButton(buttons, activeButton) {
   buttons.forEach((button) => button.classList.toggle("active", button === activeButton));
 }
 
+function closeMobileSidebar() {
+  const sidebar = $("#mobileSidebar");
+  const scrim = $("#mobileSidebarScrim");
+  document.body.classList.remove("sidebar-open");
+  sidebar?.setAttribute("aria-hidden", "true");
+  if (sidebar) sidebar.style.transform = "";
+  if (scrim) {
+    scrim.style.opacity = "";
+    scrim.style.pointerEvents = "";
+  }
+  $("#mobileMenuButton")?.setAttribute("aria-expanded", "false");
+}
+
+function openMobileSidebar() {
+  const sidebar = $("#mobileSidebar");
+  const scrim = $("#mobileSidebarScrim");
+  document.body.classList.add("sidebar-open");
+  sidebar?.setAttribute("aria-hidden", "false");
+  if (sidebar) sidebar.style.transform = "translateX(0)";
+  if (scrim) {
+    scrim.style.opacity = "1";
+    scrim.style.pointerEvents = "auto";
+  }
+  $("#mobileMenuButton")?.setAttribute("aria-expanded", "true");
+}
+
+function showDashboardSection(sectionName) {
+  $$(".dashboard-section").forEach((section) => {
+    section.classList.toggle("active", section.dataset.section === sectionName);
+  });
+  $$("[data-section-target]").forEach((button) => {
+    button.classList.toggle("active", button.dataset.sectionTarget === sectionName);
+  });
+  closeMobileSidebar();
+  document.querySelector(`[data-section="${sectionName}"]`)?.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function supabaseHeaders(extra = {}) {
+  return {
+    apikey: SUPABASE_ANON_KEY,
+    Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+    "Content-Type": "application/json",
+    ...extra
+  };
+}
+
+async function supabaseRpc(name, payload) {
+  const response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/${name}`, {
+    method: "POST",
+    headers: supabaseHeaders(),
+    body: JSON.stringify(payload)
+  });
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(text || `Pulse League online request failed (${response.status}).`);
+  }
+  return response.json();
+}
+
+function setOnlineState(message, ready = online.ready, busy = false) {
+  online.message = message;
+  online.ready = ready;
+  online.busy = busy;
+  showOnlineMessage(message, !ready && !busy);
+}
+
+function upsertProfileFromOnline(remoteProfile, relation = "Friend", owned = false) {
+  const username = remoteProfile.username || normalizeUsername(remoteProfile.display_name);
+  const existing = state.profiles.find((profile) => profile.remoteId === remoteProfile.id || profile.username === username);
+  if (owned) {
+    state.profiles.forEach((profile) => {
+      profile.owned = false;
+      if (profile.relation === "Self") profile.relation = "Unlisted";
+    });
+  }
+  const next = {
+    id: existing?.id || remoteProfile.id,
+    remoteId: remoteProfile.id,
+    username,
+    name: remoteProfile.display_name || username,
+    relation: owned ? "Self" : relation,
+    setupCode: `@${username}`,
+    cosmetic: remoteProfile.cosmetic || "rookie-pass",
+    inLeague: true,
+    owned
+  };
+  if (existing) {
+    Object.assign(existing, next);
+    return existing;
+  }
+  state.profiles.push(next);
+  return next;
+}
+
+function importLeagueData(payload) {
+  const active = activeProfile();
+  const profiles = payload?.profiles || [];
+  const sessions = payload?.sessions || [];
+  const localIdsByRemote = new Map();
+  profiles.forEach((profile) => {
+    const relation = profile.id === active.remoteId ? "Self" : (profile.relation || "Friend");
+    const local = upsertProfileFromOnline(profile, relation, profile.id === active.remoteId);
+    localIdsByRemote.set(profile.id, local.id);
+  });
+  state.sessions = state.sessions.filter((session) => !session.remoteId);
+  for (const session of sessions) {
+    const localProfileId = localIdsByRemote.get(session.profile_id);
+    if (!localProfileId) continue;
+    state.sessions.push({
+      id: session.id,
+      remoteId: session.id,
+      profileId: localProfileId,
+      activity: session.activity,
+      minutes: session.minutes,
+      note: session.note || "",
+      points: session.points,
+      createdAt: session.created_at
+    });
+  }
+  state.sessions.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  saveState();
+}
+
+async function claimOnlineProfile(name) {
+  const username = normalizeUsername(name);
+  if (!/^[a-z0-9_]{3,24}$/.test(username)) {
+    showProfileMessage("Use 3-24 letters, numbers, or underscores for an online username.");
+    return null;
+  }
+  setOnlineState("Saving online profile...", false, true);
+  const previousProfileId = activeProfile().id;
+  const result = await supabaseRpc("pulse_league_claim_profile", {
+    p_username: username,
+    p_display_name: name.trim(),
+    p_owner_token: state.ownerToken
+  });
+  if (!["claimed", "owned"].includes(result.status)) {
+    showProfileMessage(result.status === "taken" ? "That Pulse League username is already taken." : "That username cannot be used.");
+    setOnlineState("Online profile not saved.", false, false);
+    return null;
+  }
+  const profile = upsertProfileFromOnline(result.profile, "Self", true);
+  state.sessions.forEach((session) => {
+    if (session.profileId === previousProfileId && !session.remoteId) session.profileId = profile.id;
+  });
+  state.activeProfileId = profile.id;
+  saveState();
+  setOnlineState(`Online as @${profile.username}.`, true, false);
+  showProfileMessage(`Your online Pulse League name is @${profile.username}.`);
+  await syncLeagueOnline();
+  render();
+  return profile;
+}
+
+async function addFriendOnline(query, relation) {
+  const active = activeProfile();
+  if (!active.remoteId) {
+    showProfileMessage("Create your online username first.");
+    return;
+  }
+  setOnlineState("Finding online profile...", online.ready, true);
+  const result = await supabaseRpc("pulse_league_add_connection", {
+    p_owner_profile_id: active.remoteId,
+    p_owner_token: state.ownerToken,
+    p_target_username: normalizeUsername(query),
+    p_relation: relation
+  });
+  if (result.status !== "added") {
+    showProfileMessage(result.status === "missing" ? "No Pulse League profile found for that username." : "Could not add that profile.");
+    setOnlineState(`Online as @${active.username}.`, true, false);
+    return;
+  }
+  upsertProfileFromOnline(result.profile, relation, false);
+  saveState();
+  showProfileMessage(`${result.profile.display_name} added as ${relation}.`);
+  setOnlineState(`Online as @${active.username}.`, true, false);
+  await syncLeagueOnline();
+  render();
+}
+
+async function syncLeagueOnline() {
+  const active = activeProfile();
+  if (!online.enabled || !active.remoteId) return;
+  try {
+    setOnlineState("Syncing league...", online.ready, true);
+    const data = await supabaseRpc("pulse_league_get_league", { p_profile_id: active.remoteId });
+    importLeagueData(data);
+    setOnlineState(`Online as @${active.username}.`, true, false);
+    render();
+  } catch (error) {
+    setOnlineState("Online setup needed. Run supabase/pulse-league-online.sql.", false, false);
+  }
+}
+
+async function syncSessionOnline(session) {
+  const profile = activeProfile();
+  if (!online.enabled || !profile.remoteId || session.remoteId) return;
+  try {
+    const result = await supabaseRpc("pulse_league_log_session", {
+      p_profile_id: profile.remoteId,
+      p_owner_token: state.ownerToken,
+      p_activity: session.activity,
+      p_minutes: session.minutes,
+      p_note: session.note || ""
+    });
+    session.remoteId = result.session?.id;
+    saveState();
+    await syncLeagueOnline();
+  } catch {
+    showSessionMessage("Saved on this device. Online sync will retry after setup.");
+  }
+}
+
+async function removeConnectionOnline(profile) {
+  const active = activeProfile();
+  if (!profile.remoteId || !active.remoteId) return;
+  await supabaseRpc("pulse_league_remove_connection", {
+    p_owner_profile_id: active.remoteId,
+    p_owner_token: state.ownerToken,
+    p_target_profile_id: profile.remoteId
+  });
+}
+
+async function deleteSessionOnline(session) {
+  if (!session.remoteId) return;
+  await supabaseRpc("pulse_league_delete_session", {
+    p_session_id: session.remoteId,
+    p_owner_token: state.ownerToken
+  });
+}
+
+async function updateSessionOnline(session) {
+  if (!session.remoteId) return;
+  await supabaseRpc("pulse_league_update_session", {
+    p_session_id: session.remoteId,
+    p_owner_token: state.ownerToken,
+    p_activity: session.activity,
+    p_minutes: session.minutes,
+    p_note: session.note || ""
+  });
+}
+
+async function initOnline() {
+  if (!online.enabled) return;
+  const self = state.profiles.find((profile) => profile.relation === "Self") || state.profiles[0];
+  if (self?.remoteId) {
+    await syncLeagueOnline();
+  } else {
+    setOnlineState("Create your online username to sync with friends.", false, false);
+  }
+}
+
 $$(".activity").forEach((button) => {
   button.addEventListener("click", () => {
     timer.activity = button.dataset.activity;
     setActiveButton($$(".activity"), button);
     if (!timer.running) $("#timer-title").textContent = "Ready";
   });
+});
+
+$("#mobileMenuButton")?.addEventListener("click", openMobileSidebar);
+$("#closeMobileMenu")?.addEventListener("click", closeMobileSidebar);
+$("#mobileSidebarScrim")?.addEventListener("click", closeMobileSidebar);
+$$("[data-section-target]").forEach((button) => {
+  button.addEventListener("click", () => showDashboardSection(button.dataset.sectionTarget));
 });
 
 $$(".mode-choice").forEach((button) => {
@@ -589,7 +879,7 @@ $("#profileSelect").addEventListener("change", () => {
   render();
 });
 
-$("#profileForm").addEventListener("submit", (event) => {
+$("#profileForm").addEventListener("submit", async (event) => {
   event.preventDefault();
   const name = $("#profileName").value.trim();
   if (!name) return;
@@ -598,53 +888,41 @@ $("#profileForm").addEventListener("submit", (event) => {
     showProfileMessage("That Pulse League username already exists.");
     return;
   }
-  const profile = {
-    id: crypto.randomUUID(),
-    name,
-    relation: "Unlisted",
-    setupCode: makeSetupCode(name),
-    cosmetic: "rookie-pass",
-    inLeague: false
-  };
-  state.profiles.push(profile);
-  state.activeProfileId = profile.id;
-  $("#profileName").value = "";
-  showProfileMessage(`${name} profile created. Use ${profile.setupCode} to add them as family or friend.`);
-  saveState();
-  render();
+  try {
+    const profile = await claimOnlineProfile(name);
+    if (profile) $("#profileName").value = "";
+  } catch {
+    showProfileMessage("Online profiles are not set up yet. Run the Pulse League Supabase setup first.");
+    setOnlineState("Online setup needed. Run supabase/pulse-league-online.sql.", false, false);
+  }
 });
 
-$("#addExistingForm").addEventListener("submit", (event) => {
+$("#addExistingForm").addEventListener("submit", async (event) => {
   event.preventDefault();
-  const query = $("#existingProfileName").value.trim().toLowerCase();
+  const query = $("#existingProfileName").value.trim();
   if (!query) return;
-  const profile = state.profiles.find((entry) => (
-    entry.name.toLowerCase() === query || (entry.setupCode || "").toLowerCase() === query
-  ));
-  if (!profile) {
+  try {
+    await addFriendOnline(query, $("#profileRelation").value);
+    $("#existingProfileName").value = "";
+  } catch {
     showProfileMessage("No Pulse League profile found for that username.");
-    return;
+    setOnlineState("Online lookup unavailable.", false, false);
   }
-  if (profile.relation === "Self") {
-    showProfileMessage("Your profile is already on the leaderboard.");
-    return;
-  }
-  profile.relation = $("#profileRelation").value;
-  profile.inLeague = true;
-  $("#existingProfileName").value = "";
-  showProfileMessage(`${profile.name} added as ${profile.relation}.`);
-  saveState();
-  renderProfiles();
 });
 
-$("#renameForm").addEventListener("submit", (event) => {
+$("#renameForm").addEventListener("submit", async (event) => {
   event.preventDefault();
   const name = $("#displayName").value.trim();
   if (!name) return;
-  activeProfile().name = name;
-  saveState();
-  renderProfiles();
-  renderCosmetics();
+  try {
+    await claimOnlineProfile(name);
+  } catch {
+    activeProfile().name = name;
+    saveState();
+    renderProfiles();
+    renderCosmetics();
+    showProfileMessage("Renamed on this device. Online setup is not ready yet.");
+  }
 });
 
 $("#cosmeticGrid").addEventListener("click", (event) => {
@@ -655,15 +933,26 @@ $("#cosmeticGrid").addEventListener("click", (event) => {
   saveState();
   renderProfiles();
   renderCosmetics();
+  if (profile.remoteId) {
+    supabaseRpc("pulse_league_update_profile", {
+      p_profile_id: profile.remoteId,
+      p_owner_token: state.ownerToken,
+      p_display_name: profile.name,
+      p_cosmetic: profile.cosmetic
+    }).catch(() => {});
+  }
 });
 
-$("#leaderboard").addEventListener("click", (event) => {
+$("#leaderboard").addEventListener("click", async (event) => {
   const button = event.target.closest("[data-remove-profile]");
   if (!button) return;
   const profileId = button.dataset.removeProfile;
   const profile = state.profiles.find((entry) => entry.id === profileId);
   if (!profile || profile.relation === "Self") return;
-  if (!confirm(`Remove ${profile.name}'s Pulse League profile and workouts?`)) return;
+  if (!confirm(`Remove ${profile.name} from your Pulse League board?`)) return;
+  try {
+    await removeConnectionOnline(profile);
+  } catch {}
   state.profiles = state.profiles.filter((entry) => entry.id !== profileId);
   state.sessions = state.sessions.filter((session) => session.profileId !== profileId);
   if (state.activeProfileId === profileId) {
@@ -714,22 +1003,26 @@ $("#clearHistory").addEventListener("click", () => {
   render();
 });
 
-$("#customForm").addEventListener("submit", (event) => {
+$("#customForm").addEventListener("submit", async (event) => {
   event.preventDefault();
   const activity = $("#customActivity").value.trim() || "Other";
   const minutes = Math.max(1, Math.round(Number($("#manualMinutes").value) || 1));
   const note = $("#manualNote").value.trim();
-  if (logSession(activity, minutes, note)) {
+  if (await logSession(activity, minutes, note)) {
     $("#customActivity").value = "";
     $("#manualNote").value = "";
   }
 });
 
-$("#historyList").addEventListener("click", (event) => {
+$("#historyList").addEventListener("click", async (event) => {
   const editId = event.target.dataset.edit;
   const deleteId = event.target.dataset.delete;
   if (editId) openEdit(editId);
   if (deleteId && confirm("Delete this workout?")) {
+    const session = state.sessions.find((entry) => entry.id === deleteId);
+    try {
+      if (session) await deleteSessionOnline(session);
+    } catch {}
     state.sessions = state.sessions.filter((session) => session.id !== deleteId);
     saveState();
     render();
@@ -747,7 +1040,7 @@ function openEdit(id) {
 }
 
 $("#cancelEdit").addEventListener("click", () => $("#editDialog").close());
-$("#editForm").addEventListener("submit", (event) => {
+$("#editForm").addEventListener("submit", async (event) => {
   event.preventDefault();
   const session = state.sessions.find((entry) => entry.id === $("#editId").value);
   if (!session) return;
@@ -756,6 +1049,9 @@ $("#editForm").addEventListener("submit", (event) => {
   session.minutes = minutes;
   session.points = minutes * 10;
   session.note = $("#editNote").value.trim();
+  try {
+    await updateSessionOnline(session);
+  } catch {}
   saveState();
   $("#editDialog").close();
   render();
@@ -779,3 +1075,4 @@ if ("serviceWorker" in navigator) {
 }
 
 render();
+initOnline();

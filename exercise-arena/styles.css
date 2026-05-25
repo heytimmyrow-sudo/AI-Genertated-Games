@@ -156,6 +156,12 @@ button {
   justify-content: flex-end;
 }
 
+.mobile-menu-button,
+.mobile-sidebar,
+.mobile-sidebar-scrim {
+  display: none;
+}
+
 .panel-heading {
   justify-content: space-between;
   margin-bottom: 18px;
@@ -451,6 +457,18 @@ body.timer-mode #durationField {
   color: var(--track);
   font-weight: 800;
   line-height: 1.35;
+}
+
+.online-status {
+  min-height: 24px;
+  margin: 8px 0 12px;
+  color: var(--green);
+  font-weight: 900;
+  line-height: 1.35;
+}
+
+.online-status.error {
+  color: var(--track);
 }
 
 .dashboard {
@@ -929,6 +947,10 @@ dialog::backdrop {
 }
 
 @media (max-width: 650px) {
+  body.sidebar-open {
+    overflow: hidden;
+  }
+
   .topbar {
     align-items: flex-start;
     flex-direction: column;
@@ -937,7 +959,85 @@ dialog::backdrop {
   .topbar-actions {
     width: 100%;
     display: grid;
-    grid-template-columns: 1fr 42px 1fr 1fr;
+    grid-template-columns: 42px minmax(0, 1fr) 42px minmax(72px, 1fr) minmax(92px, 1fr);
+  }
+
+  .mobile-menu-button {
+    display: inline-grid;
+  }
+
+  .mobile-sidebar {
+    position: fixed;
+    z-index: 20;
+    top: 0;
+    left: 0;
+    display: grid;
+    width: min(82vw, 320px);
+    height: 100dvh;
+    grid-template-rows: auto minmax(0, 1fr);
+    padding: 18px;
+    border-right: 1px solid var(--line);
+    background: var(--surface);
+    box-shadow: var(--shadow);
+    transform: translateX(-105%);
+    transition: transform 180ms ease;
+  }
+
+  body.sidebar-open .mobile-sidebar {
+    transform: translateX(0);
+  }
+
+  .mobile-sidebar-scrim {
+    position: fixed;
+    z-index: 19;
+    inset: 0;
+    display: block;
+    background: rgba(0, 0, 0, 0.42);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 180ms ease;
+  }
+
+  body.sidebar-open .mobile-sidebar-scrim {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .mobile-sidebar-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 14px;
+  }
+
+  .mobile-sidebar-header strong {
+    font-size: 1.05rem;
+  }
+
+  .mobile-section-nav {
+    display: grid;
+    align-content: start;
+    gap: 8px;
+    overflow-y: auto;
+    padding-bottom: 22px;
+  }
+
+  .mobile-section-nav button {
+    min-height: 44px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--surface-strong);
+    color: var(--ink);
+    font-weight: 900;
+    text-align: left;
+    padding: 0 12px;
+  }
+
+  .mobile-section-nav button.active {
+    border-color: transparent;
+    background: var(--green);
+    color: #fff;
   }
 
   .hero-stats,
@@ -958,6 +1058,18 @@ dialog::backdrop {
   .topbar,
   .hero-grid {
     width: min(100% - 22px, 1180px);
+  }
+
+  .dashboard {
+    display: block;
+  }
+
+  .dashboard-section {
+    display: none;
+  }
+
+  .dashboard-section.active {
+    display: block;
   }
 
   .panel-heading {

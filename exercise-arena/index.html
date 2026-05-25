@@ -8,7 +8,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="assets/pulse-league-icon-192.png">
   <link rel="apple-touch-icon" href="assets/pulse-league-icon-192.png">
   <link rel="manifest" href="manifest.webmanifest">
-  <link rel="stylesheet" href="styles.css?v=real-users">
+  <link rel="stylesheet" href="styles.css?v=online-mobile2">
 </head>
 <body>
   <main class="app-shell">
@@ -20,6 +20,7 @@
           <span>Pulse League</span>
         </a>
         <div class="topbar-actions">
+          <button class="icon-button mobile-menu-button" id="mobileMenuButton" type="button" aria-label="Open sections" aria-expanded="false">☰</button>
           <select id="profileSelect" class="select-control" aria-label="Active profile"></select>
           <button class="icon-button" id="themeToggle" type="button" aria-label="Toggle color mode" title="Toggle color mode">◐</button>
           <button class="ghost-button" id="exportButton" type="button">Export</button>
@@ -29,9 +30,9 @@
 
       <div class="hero-grid">
         <div class="hero-copy">
-          <p class="eyebrow">Standalone fitness tracker</p>
+          <p class="eyebrow">Online fitness league</p>
           <h1 id="page-title">Train, level up, and Keep going.</h1>
-          <p class="hero-text">Track volleyball, running, bike riding, swimming, strength work, and anything else. Goals, badges, streaks, records, and weekly cups all stay on this device.</p>
+          <p class="hero-text">Track volleyball, running, bike riding, swimming, strength work, and anything else. Goals, badges, streaks, records, and weekly cups sync with real Pulse League friends.</p>
           <div class="hero-stats" aria-label="Fitness summary">
             <div>
               <strong id="totalTimeHero">0m</strong>
@@ -100,8 +101,31 @@
       </div>
     </section>
 
+    <aside class="mobile-sidebar" id="mobileSidebar" aria-label="Pulse League sections" aria-hidden="true">
+      <div class="mobile-sidebar-header">
+        <strong>Pulse League</strong>
+        <button class="icon-button" id="closeMobileMenu" type="button" aria-label="Close sections">×</button>
+      </div>
+      <nav class="mobile-section-nav">
+        <button type="button" class="active" data-section-target="progress">Progress</button>
+        <button type="button" data-section-target="goals">Goals</button>
+        <button type="button" data-section-target="profiles">Profiles</button>
+        <button type="button" data-section-target="locker">Locker</button>
+        <button type="button" data-section-target="activities">Activities</button>
+        <button type="button" data-section-target="charts">Charts</button>
+        <button type="button" data-section-target="calendar">Calendar</button>
+        <button type="button" data-section-target="records">Records</button>
+        <button type="button" data-section-target="badges">Badges</button>
+        <button type="button" data-section-target="cups">Cups</button>
+        <button type="button" data-section-target="history">History</button>
+        <button type="button" data-section-target="custom">Custom</button>
+        <button type="button" data-section-target="settings">Settings</button>
+      </nav>
+    </aside>
+    <div class="mobile-sidebar-scrim" id="mobileSidebarScrim"></div>
+
     <section class="dashboard" aria-label="Training dashboard">
-      <section class="progress-panel">
+      <section class="progress-panel dashboard-section active" data-section="progress">
         <div class="panel-heading">
           <div>
             <p class="eyebrow">Progress</p>
@@ -122,7 +146,7 @@
         </div>
       </section>
 
-      <section class="goals-panel">
+      <section class="goals-panel dashboard-section" data-section="goals">
         <div class="panel-heading">
           <div>
             <p class="eyebrow">Goals</p>
@@ -142,7 +166,7 @@
         <div class="goal-list" id="goalList"></div>
       </section>
 
-      <section class="profiles-panel">
+      <section class="profiles-panel dashboard-section" data-section="profiles">
         <div class="panel-heading">
           <div>
             <p class="eyebrow">Profiles</p>
@@ -166,11 +190,12 @@
           <button class="primary-button" type="submit">Add Existing</button>
         </form>
         <p class="session-message" id="profileMessage" aria-live="polite"></p>
-        <p class="subtle">Family and friends only appear after their own Pulse League profile is set up on this device.</p>
+        <p class="online-status" id="onlineStatus" aria-live="polite">Create your online username to sync with friends.</p>
+        <p class="subtle">Family and friends only appear after their own Pulse League username exists online.</p>
         <ol class="leaderboard" id="leaderboard"></ol>
       </section>
 
-      <section class="cosmetics-panel">
+      <section class="cosmetics-panel dashboard-section" data-section="locker">
         <div class="panel-heading">
           <div>
             <p class="eyebrow">Locker</p>
@@ -183,7 +208,7 @@
         <div class="cosmetic-grid" id="cosmeticGrid"></div>
       </section>
 
-      <section class="activity-panel">
+      <section class="activity-panel dashboard-section" data-section="activities">
         <div class="panel-heading">
           <div>
             <p class="eyebrow">Activities</p>
@@ -193,7 +218,7 @@
         <div class="activity-stats" id="activityStats"></div>
       </section>
 
-      <section class="chart-panel">
+      <section class="chart-panel dashboard-section" data-section="charts">
         <div class="panel-heading">
           <div>
             <p class="eyebrow">Charts</p>
@@ -203,7 +228,7 @@
         <div class="bar-chart" id="weeklyChart" aria-label="Weekly minutes chart"></div>
       </section>
 
-      <section class="calendar-panel">
+      <section class="calendar-panel dashboard-section" data-section="calendar">
         <div class="panel-heading">
           <div>
             <p class="eyebrow">Calendar</p>
@@ -213,7 +238,7 @@
         <div class="calendar-grid" id="calendarGrid" aria-label="Workout calendar"></div>
       </section>
 
-      <section class="records-panel">
+      <section class="records-panel dashboard-section" data-section="records">
         <div class="panel-heading">
           <div>
             <p class="eyebrow">Records</p>
@@ -223,7 +248,7 @@
         <div class="record-grid" id="recordGrid"></div>
       </section>
 
-      <section class="badges-panel">
+      <section class="badges-panel dashboard-section" data-section="badges">
         <div class="panel-heading">
           <div>
             <p class="eyebrow">Badges</p>
@@ -233,7 +258,7 @@
         <div class="badge-grid" id="badgeGrid"></div>
       </section>
 
-      <section class="tournament-panel">
+      <section class="tournament-panel dashboard-section" data-section="cups">
         <div class="panel-heading">
           <div>
             <p class="eyebrow">Tournament weeks</p>
@@ -244,7 +269,7 @@
         <ul class="history-list" id="tournamentHistory"></ul>
       </section>
 
-      <section class="history-panel">
+      <section class="history-panel dashboard-section" data-section="history">
         <div class="panel-heading">
           <div>
             <p class="eyebrow">Activity log</p>
@@ -255,7 +280,7 @@
         <ul class="history-list" id="historyList"></ul>
       </section>
 
-      <section class="custom-panel">
+      <section class="custom-panel dashboard-section" data-section="custom">
         <div class="panel-heading">
           <div>
             <p class="eyebrow">Custom activity</p>
@@ -279,7 +304,7 @@
         </form>
       </section>
 
-      <section class="settings-panel">
+      <section class="settings-panel dashboard-section" data-section="settings">
         <div class="panel-heading">
           <div>
             <p class="eyebrow">Options</p>
@@ -336,6 +361,6 @@
     <li class="empty-state">No sessions yet. Start a timer and finish it to build your league record.</li>
   </template>
 
-  <script src="app.js?v=real-users"></script>
+  <script src="app.js?v=online-mobile2"></script>
 </body>
 </html>
