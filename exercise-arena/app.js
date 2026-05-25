@@ -2,31 +2,62 @@ const STORAGE_KEY = "pulseLeagueState";
 const SECOND = 1000;
 const MIN_WORKOUT_MINUTES = 5;
 const SHORT_WORKOUT_MESSAGE = "Workout too short to be recorded.";
-
 const levelNames = ["Rookie", "Pacer", "Strider", "Climber", "Contender", "Champion", "Legend"];
+const activityOptions = ["Volleyball", "Running", "Bike Riding", "Swimming", "Strength", "Other"];
+const badgeRules = [
+  { id: "first", name: "First Workout", test: (stats) => stats.sessions >= 1 },
+  { id: "five", name: "5 Sessions", test: (stats) => stats.sessions >= 5 },
+  { id: "streak", name: "5-Day Streak", test: (stats) => stats.streak >= 5 },
+  { id: "hour", name: "Hour Session", test: (stats) => stats.longest >= 60 },
+  { id: "volleyball", name: "Volleyball Practice", test: (stats) => (stats.activityMinutes.Volleyball || 0) >= 5 },
+  { id: "week150", name: "150-Minute Week", test: (stats) => stats.weeklyMinutes >= 150 },
+  { id: "level5", name: "Level 5", test: (stats) => stats.level >= 5 },
+  { id: "balanced", name: "Cross Trainer", test: (stats) => Object.values(stats.activityMinutes).filter(Boolean).length >= 3 }
+];
+
+const $ = (selector) => document.querySelector(selector);
+const $$ = (selector) => [...document.querySelectorAll(selector)];
+const todayKey = () => new Date().toISOString().slice(0, 10);
 
 const state = loadState();
 const timer = {
   mode: "stopwatch",
-  activity: "Running",
+  activity: "Volleyball",
   running: false,
   startedAt: 0,
   elapsedBeforeStart: 0,
   duration: 20 * 60 * SECOND,
-  ticker: null
+  ticker: null,
+  presetLabel: ""
 };
-
-const $ = (selector) => document.querySelector(selector);
-const $$ = (selector) => [...document.querySelectorAll(selector)];
 
 function loadState() {
   const fallback = {
     sessions: [],
-    dark: false
+    profiles: [{ id: "you", name: "You" }],
+    activeProfileId: "you",
+    goals: { daily: 30, weekly: 150 },
+    theme: "court",
+    dark: false,
+    sound: true,
+    vibration: false
   };
 
   try {
-    return { ...fallback, ...JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}") };
+    const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
+    const merged = { ...fallback, ...parsed };
+    merged.goals = { ...fallback.goals, ...(parsed.goals || {}) };
+    merged.profiles = parsed.profiles?.length ? parsed.profiles : fallback.profiles;
+    merged.sessions = (parsed.sessions || []).map((session) => ({
+      profileId: "you",
+      note: "",
+      ...session
+    }));
+    if (!merged.profiles.some((profile) => profile.id === merged.activeProfileId)) {
+      merged.activeProfileId = merged.profiles[0].id;
+    }
+    if (merged.dark && !parsed.theme) merged.theme = "dark";
+    return merged;
   } catch {
     return fallback;
   }
@@ -34,6 +65,27 @@ function loadState() {
 
 function saveState() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+}
+
+function activeProfile() {
+  return state.profiles.find((profile) => profile.id === state.activeProfileId) || state.profiles[0];
+}
+
+function profileSessions(profileId = state.activeProfileId) {
+  return state.sessions.filter((session) => session.profileId === profileId);
+}
+
+function weekStart(date = new Date()) {
+  const copy = new Date(date);
+  const day = copy.getDay();
+  const diff = day === 0 ? -6 : 1 - day;
+  copy.setHours(0, 0, 0, 0);
+  copy.setDate(copy.getDate() + diff);
+  return copy;
+}
+
+function sameDay(a, b) {
+  return new Date(a).toISOString().slice(0, 10) === new Date(b).toISOString().slice(0, 10);
 }
 
 function formatClock(ms) {
@@ -45,32 +97,46 @@ function formatClock(ms) {
 }
 
 function formatShortMinutes(minutes) {
-  if (minutes < 60) {
-    return `${minutes}m`;
-  }
+  if (minutes < 60) return `${minutes}m`;
   const h = Math.floor(minutes / 60);
   const m = minutes % 60;
   return `${h}h ${m.toString().padStart(2, "0")}m`;
 }
 
 function getElapsed() {
-  if (!timer.running) {
-    return timer.elapsedBeforeStart;
-  }
+  if (!timer.running) return timer.elapsedBeforeStart;
   return timer.elapsedBeforeStart + Date.now() - timer.startedAt;
 }
 
 function getDisplayTime() {
-  if (timer.mode === "timer") {
-    return Math.max(0, timer.duration - getElapsed());
-  }
-  return getElapsed();
+  return timer.mode === "timer" ? Math.max(0, timer.duration - getElapsed()) : getElapsed();
 }
 
 function tick() {
   $("#clockDisplay").textContent = formatClock(getDisplayTime());
   if (timer.mode === "timer" && timer.running && getElapsed() >= timer.duration) {
     finishSession();
+    fireAlert();
+  }
+}
+
+function fireAlert() {
+  if (state.vibration && navigator.vibrate) navigator.vibrate([160, 80, 160]);
+  if (!state.sound) return;
+  try {
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    const ctx = new AudioContext();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.frequency.value = 740;
+    gain.gain.setValueAtTime(0.08, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start();
+    osc.stop(ctx.currentTime + 0.32);
+  } catch {
+    showSessionMessage("Timer finished.");
   }
 }
 
@@ -85,11 +151,12 @@ function startTimer() {
     return;
   }
 
+  showSessionMessage("");
   timer.running = true;
   timer.startedAt = Date.now();
   timer.ticker = setInterval(tick, 250);
   $("#startPauseButton").textContent = "Pause";
-  $("#timer-title").textContent = timer.activity;
+  $("#timer-title").textContent = timer.presetLabel || timer.activity;
   tick();
 }
 
@@ -110,8 +177,11 @@ function finishSession() {
     return;
   }
 
-  const minutes = Math.max(1, Math.round(elapsed / 60000));
-  logSession(timer.activity, minutes);
+  const minutes = Math.max(MIN_WORKOUT_MINUTES, Math.round(elapsed / 60000));
+  const note = $("#timerNote").value.trim();
+  if (logSession(timer.activity, minutes, note)) {
+    $("#timerNote").value = "";
+  }
   resetTimer();
 }
 
@@ -119,7 +189,7 @@ function showSessionMessage(message) {
   $("#sessionMessage").textContent = message;
 }
 
-function logSession(activity, minutes) {
+function logSession(activity, minutes, note = "") {
   if (minutes < MIN_WORKOUT_MINUTES) {
     showSessionMessage(SHORT_WORKOUT_MESSAGE);
     return false;
@@ -127,146 +197,270 @@ function logSession(activity, minutes) {
 
   state.sessions.unshift({
     id: crypto.randomUUID(),
-    activity,
+    profileId: state.activeProfileId,
+    activity: activity || "Other",
     minutes,
+    note,
     points: minutes * 10,
     createdAt: new Date().toISOString()
   });
-  state.sessions = state.sessions.slice(0, 60);
+  state.sessions = state.sessions.slice(0, 240);
   saveState();
   render();
   showSessionMessage("");
   return true;
 }
 
-function getTotalMinutes() {
-  return state.sessions.reduce((sum, session) => sum + session.minutes, 0);
-}
+function statsFor(profileId = state.activeProfileId) {
+  const sessions = profileSessions(profileId);
+  const now = Date.now();
+  const weekAgo = now - 7 * 24 * 60 * 60 * SECOND;
+  const currentWeek = weekStart();
+  const activityMinutes = {};
+  let totalMinutes = 0;
+  let weeklyMinutes = 0;
+  let weeklyPoints = 0;
+  let todayMinutes = 0;
+  let longest = 0;
 
-function getTotalPoints() {
-  return state.sessions.reduce((sum, session) => sum + session.points, 0);
-}
+  for (const session of sessions) {
+    totalMinutes += session.minutes;
+    longest = Math.max(longest, session.minutes);
+    activityMinutes[session.activity] = (activityMinutes[session.activity] || 0) + session.minutes;
+    const time = new Date(session.createdAt).getTime();
+    if (time >= weekAgo) weeklyPoints += session.points;
+    if (new Date(session.createdAt) >= currentWeek) weeklyMinutes += session.minutes;
+    if (sameDay(session.createdAt, new Date())) todayMinutes += session.minutes;
+  }
 
-function getLevelInfo() {
-  const xp = getTotalPoints();
+  const xp = sessions.reduce((sum, session) => sum + session.points, 0);
   const level = Math.floor(xp / 500) + 1;
   const progress = (xp % 500) / 500;
+  const favorite = Object.entries(activityMinutes).sort((a, b) => b[1] - a[1])[0]?.[0] || "None";
+
   return {
+    sessions: sessions.length,
+    sessionList: sessions,
+    totalMinutes,
+    weeklyMinutes,
+    weeklyPoints,
+    todayMinutes,
+    longest,
     xp,
     level,
-    label: levelNames[Math.min(level - 1, levelNames.length - 1)],
-    next: level * 500,
-    progress
+    progress,
+    favorite,
+    activityMinutes,
+    streak: getStreakDays(sessions)
   };
 }
 
-function getStreakDays() {
-  const days = new Set(state.sessions.map((session) => session.createdAt.slice(0, 10)));
+function getStreakDays(sessions) {
+  const days = new Set(sessions.map((session) => session.createdAt.slice(0, 10)));
   let streak = 0;
   const cursor = new Date();
-
   while (days.has(cursor.toISOString().slice(0, 10))) {
     streak += 1;
     cursor.setDate(cursor.getDate() - 1);
   }
-
   return streak;
 }
 
-function getFavoriteActivity() {
-  const totals = state.sessions.reduce((map, session) => {
-    map[session.activity] = (map[session.activity] || 0) + session.minutes;
-    return map;
-  }, {});
-  const winner = Object.entries(totals).sort((a, b) => b[1] - a[1])[0];
-  return winner ? winner[0] : "None";
-}
-
-function getWeeklyPoints() {
-  const now = Date.now();
-  const weekAgo = now - 7 * 24 * 60 * 60 * SECOND;
-  return state.sessions
-    .filter((session) => new Date(session.createdAt).getTime() >= weekAgo)
-    .reduce((sum, session) => sum + session.points, 0);
-}
-
 function renderProgress() {
-  const totalMinutes = getTotalMinutes();
-  const level = getLevelInfo();
-  const longest = state.sessions.reduce((max, session) => Math.max(max, session.minutes), 0);
-  const weeklyPoints = getWeeklyPoints();
+  const stats = statsFor();
+  const label = levelNames[Math.min(stats.level - 1, levelNames.length - 1)];
+  $("#totalTimeHero").textContent = formatShortMinutes(stats.totalMinutes);
+  $("#levelHero").textContent = `Level ${stats.level}`;
+  $("#tournamentHero").textContent = `${stats.weeklyPoints} pts`;
+  $("#levelTitle").textContent = `Level ${stats.level} ${label}`;
+  $("#pointsChip").textContent = `${stats.xp} XP`;
+  $("#levelFill").style.width = `${Math.round(stats.progress * 100)}%`;
+  $("#levelHint").textContent = `${Math.max(0, stats.level * 500 - stats.xp)} XP until Level ${stats.level + 1}. Every tracked minute is worth 10 XP.`;
+  $("#sessionCount").textContent = stats.sessions;
+  $("#longestSession").textContent = formatShortMinutes(stats.longest);
+  $("#streakDays").textContent = `${stats.streak} days`;
+  $("#favoriteActivity").textContent = stats.favorite;
+}
 
-  $("#totalTimeHero").textContent = formatShortMinutes(totalMinutes);
-  $("#levelHero").textContent = `Level ${level.level}`;
-  $("#tournamentHero").textContent = `${weeklyPoints} pts`;
-  $("#levelTitle").textContent = `Level ${level.level} ${level.label}`;
-  $("#pointsChip").textContent = `${level.xp} XP`;
-  $("#levelFill").style.width = `${Math.round(level.progress * 100)}%`;
-  $("#levelHint").textContent = `${Math.max(0, level.next - level.xp)} XP until Level ${level.level + 1}. Every tracked minute is worth 10 XP.`;
-  $("#sessionCount").textContent = state.sessions.length;
-  $("#longestSession").textContent = formatShortMinutes(longest);
-  $("#streakDays").textContent = `${getStreakDays()} days`;
-  $("#favoriteActivity").textContent = getFavoriteActivity();
+function renderGoals() {
+  $("#dailyGoal").value = state.goals.daily;
+  $("#weeklyGoal").value = state.goals.weekly;
+  const stats = statsFor();
+  const goals = [
+    { label: "Today", done: stats.todayMinutes, target: state.goals.daily },
+    { label: "This week", done: stats.weeklyMinutes, target: state.goals.weekly }
+  ];
+  $("#goalList").innerHTML = goals.map((goal) => {
+    const pct = goal.target ? Math.min(100, Math.round((goal.done / goal.target) * 100)) : 0;
+    return `
+      <div class="goal-item">
+        <div><strong>${goal.label}</strong><span>${formatShortMinutes(goal.done)} / ${formatShortMinutes(goal.target)}</span></div>
+        <div class="level-track"><div class="level-fill" style="width:${pct}%"></div></div>
+      </div>
+    `;
+  }).join("");
+}
+
+function renderProfiles() {
+  $("#profileSelect").innerHTML = state.profiles.map((profile) => (
+    `<option value="${profile.id}" ${profile.id === state.activeProfileId ? "selected" : ""}>${escapeHtml(profile.name)}</option>`
+  )).join("");
+
+  const leaders = state.profiles.map((profile) => ({ ...profile, stats: statsFor(profile.id) }))
+    .sort((a, b) => b.stats.weeklyPoints - a.stats.weeklyPoints);
+  $("#leaderboard").innerHTML = leaders.map((profile, index) => `
+    <li class="leader-row">
+      <span class="rank">${index + 1}</span>
+      <div class="leader-meta">
+        <strong>${escapeHtml(profile.name)}</strong>
+        <span>${profile.id === state.activeProfileId ? "Active profile" : "Local profile"}</span>
+      </div>
+      <span class="leader-score">${profile.stats.weeklyPoints} pts</span>
+    </li>
+  `).join("");
+}
+
+function renderActivityStats() {
+  const stats = statsFor();
+  const all = [...new Set([...activityOptions, ...Object.keys(stats.activityMinutes)])];
+  $("#activityStats").innerHTML = all.map((activity) => {
+    const mins = stats.activityMinutes[activity] || 0;
+    return `<div class="activity-stat"><strong>${escapeHtml(activity)}</strong><span>${formatShortMinutes(mins)}</span></div>`;
+  }).join("");
+}
+
+function renderChart() {
+  const sessions = profileSessions();
+  const days = [];
+  const now = new Date();
+  for (let i = 6; i >= 0; i--) {
+    const day = new Date(now);
+    day.setDate(now.getDate() - i);
+    const key = day.toISOString().slice(0, 10);
+    const minutes = sessions.filter((session) => session.createdAt.slice(0, 10) === key)
+      .reduce((sum, session) => sum + session.minutes, 0);
+    days.push({ label: day.toLocaleDateString(undefined, { weekday: "short" }), minutes });
+  }
+  const max = Math.max(30, ...days.map((day) => day.minutes));
+  $("#weeklyChart").innerHTML = days.map((day) => `
+    <div class="bar-column">
+      <div class="bar-fill" style="height:${Math.max(6, Math.round((day.minutes / max) * 100))}%"></div>
+      <strong>${day.minutes}</strong>
+      <span>${day.label}</span>
+    </div>
+  `).join("");
+}
+
+function renderCalendar() {
+  const now = new Date();
+  $("#calendarTitle").textContent = now.toLocaleDateString(undefined, { month: "long", year: "numeric" });
+  const first = new Date(now.getFullYear(), now.getMonth(), 1);
+  const last = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+  const activeDays = new Set(profileSessions().map((session) => session.createdAt.slice(0, 10)));
+  const cells = [];
+  for (let i = 0; i < first.getDay(); i++) cells.push(`<span class="calendar-day muted"></span>`);
+  for (let day = 1; day <= last.getDate(); day++) {
+    const date = new Date(now.getFullYear(), now.getMonth(), day).toISOString().slice(0, 10);
+    cells.push(`<span class="calendar-day ${activeDays.has(date) ? "active" : ""}">${day}</span>`);
+  }
+  $("#calendarGrid").innerHTML = ["S", "M", "T", "W", "T", "F", "S"].map((d) => `<strong>${d}</strong>`).join("") + cells.join("");
+}
+
+function renderRecords() {
+  const stats = statsFor();
+  const dayTotals = {};
+  const weekTotals = {};
+  for (const session of stats.sessionList) {
+    const day = session.createdAt.slice(0, 10);
+    const week = weekStart(new Date(session.createdAt)).toISOString().slice(0, 10);
+    dayTotals[day] = (dayTotals[day] || 0) + session.minutes;
+    weekTotals[week] = (weekTotals[week] || 0) + session.minutes;
+  }
+  const records = [
+    ["Longest workout", formatShortMinutes(stats.longest)],
+    ["Best day", formatShortMinutes(Math.max(0, ...Object.values(dayTotals)))],
+    ["Best week", formatShortMinutes(Math.max(0, ...Object.values(weekTotals)))],
+    ["Highest streak", `${stats.streak} days`]
+  ];
+  $("#recordGrid").innerHTML = records.map(([label, value]) => `<div><span>${label}</span><strong>${value}</strong></div>`).join("");
+}
+
+function renderBadges() {
+  const stats = statsFor();
+  $("#badgeGrid").innerHTML = badgeRules.map((badge) => {
+    const unlocked = badge.test(stats);
+    return `<div class="badge ${unlocked ? "unlocked" : ""}"><strong>${escapeHtml(badge.name)}</strong><span>${unlocked ? "Unlocked" : "Locked"}</span></div>`;
+  }).join("");
+}
+
+function renderTournamentHistory() {
+  const sessions = profileSessions();
+  const weeks = {};
+  for (const session of sessions) {
+    const key = weekStart(new Date(session.createdAt)).toISOString().slice(0, 10);
+    weeks[key] = (weeks[key] || 0) + session.points;
+  }
+  const rows = Object.entries(weeks).sort((a, b) => b[0].localeCompare(a[0])).slice(0, 6);
+  $("#tournamentHistory").innerHTML = rows.length ? rows.map(([week, points]) => `
+    <li class="history-row"><div class="history-meta"><strong>Week of ${week}</strong><span>Weekly cup</span></div><span class="history-time">${points} pts</span></li>
+  `).join("") : `<li class="empty-state">No weekly cups yet.</li>`;
 }
 
 function renderHistory() {
   const list = $("#historyList");
+  const sessions = profileSessions();
   list.innerHTML = "";
-
-  if (!state.sessions.length) {
+  if (!sessions.length) {
     list.append($("#historyEmptyTemplate").content.cloneNode(true));
     return;
   }
-
-  state.sessions.slice(0, 8).forEach((session) => {
+  for (const session of sessions.slice(0, 12)) {
     const item = document.createElement("li");
     item.className = "history-row";
     const date = new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }).format(new Date(session.createdAt));
     item.innerHTML = `
       <div class="history-meta">
         <strong>${escapeHtml(session.activity)}</strong>
-        <span>${date} · ${session.points} XP</span>
+        <span>${date} · ${session.points} XP${session.note ? ` · ${escapeHtml(session.note)}` : ""}</span>
       </div>
-      <span class="history-time">${formatShortMinutes(session.minutes)}</span>
+      <div class="row-actions">
+        <span class="history-time">${formatShortMinutes(session.minutes)}</span>
+        <button class="ghost-button mini" type="button" data-edit="${session.id}">Edit</button>
+        <button class="ghost-button mini danger" type="button" data-delete="${session.id}">Delete</button>
+      </div>
     `;
     list.append(item);
-  });
+  }
 }
 
-function renderLeaderboard() {
-  const list = $("#leaderboard");
-  const entries = [
-    { name: "You", relation: "Public profile", points: getWeeklyPoints() }
-  ];
-
-  list.innerHTML = "";
-  entries.forEach((entry, index) => {
-    const item = document.createElement("li");
-    item.className = "leader-row";
-    item.innerHTML = `
-      <span class="rank">${index + 1}</span>
-      <div class="leader-meta">
-        <strong>${escapeHtml(entry.name)}</strong>
-        <span>${entry.relation} · Your weekly score</span>
-      </div>
-      <span class="leader-score">${entry.points} pts</span>
-    `;
-    list.append(item);
-  });
+function renderSettings() {
+  document.body.className = "";
+  document.body.classList.toggle("timer-mode", timer.mode === "timer");
+  document.body.classList.add(`theme-${state.theme}`);
+  if (state.theme === "dark") document.body.classList.add("dark");
+  $("#themeSelect").value = state.theme;
+  $("#soundToggle").checked = state.sound;
+  $("#vibrationToggle").checked = state.vibration;
 }
 
 function render() {
-  document.body.classList.toggle("dark", state.dark);
-  document.body.classList.toggle("timer-mode", timer.mode === "timer");
+  renderSettings();
   $("#timerModeLabel").textContent = timer.mode === "timer" ? "Timer" : "Stopwatch";
+  renderProfiles();
   renderProgress();
+  renderGoals();
+  renderActivityStats();
+  renderChart();
+  renderCalendar();
+  renderRecords();
+  renderBadges();
+  renderTournamentHistory();
   renderHistory();
-  renderLeaderboard();
   tick();
 }
 
 function escapeHtml(value) {
-  return value.replace(/[&<>"']/g, (char) => ({
+  return String(value).replace(/[&<>"']/g, (char) => ({
     "&": "&amp;",
     "<": "&lt;",
     ">": "&gt;",
@@ -283,9 +477,7 @@ $$(".activity").forEach((button) => {
   button.addEventListener("click", () => {
     timer.activity = button.dataset.activity;
     setActiveButton($$(".activity"), button);
-    if (!timer.running) {
-      $("#timer-title").textContent = "Ready";
-    }
+    if (!timer.running) $("#timer-title").textContent = "Ready";
   });
 });
 
@@ -299,11 +491,22 @@ $$(".mode-choice").forEach((button) => {
   });
 });
 
+$$(".preset-button").forEach((button) => {
+  button.addEventListener("click", () => {
+    timer.mode = "timer";
+    timer.duration = Number(button.dataset.preset) * 60 * SECOND;
+    timer.presetLabel = button.dataset.label || button.textContent;
+    $("#durationInput").value = button.dataset.preset;
+    setActiveButton($$(".mode-choice"), $$(".mode-choice").find((entry) => entry.dataset.mode === "timer"));
+    resetTimer();
+    render();
+  });
+});
+
 $("#durationInput").addEventListener("input", () => {
   timer.duration = Math.max(1, Number($("#durationInput").value) || 20) * 60 * SECOND;
-  if (!timer.running) {
-    tick();
-  }
+  timer.presetLabel = "";
+  if (!timer.running) tick();
 });
 
 $("#startPauseButton").addEventListener("click", startTimer);
@@ -311,17 +514,61 @@ $("#finishButton").addEventListener("click", finishSession);
 $("#resetButton").addEventListener("click", resetTimer);
 $("#newSessionTop").addEventListener("click", () => document.querySelector(".timer-panel").scrollIntoView({ behavior: "smooth", block: "center" }));
 
-$("#themeToggle").addEventListener("click", () => {
-  state.dark = !state.dark;
+$("#profileSelect").addEventListener("change", () => {
+  state.activeProfileId = $("#profileSelect").value;
   saveState();
   render();
 });
 
+$("#profileForm").addEventListener("submit", (event) => {
+  event.preventDefault();
+  const name = $("#profileName").value.trim();
+  if (!name) return;
+  const profile = { id: crypto.randomUUID(), name };
+  state.profiles.push(profile);
+  state.activeProfileId = profile.id;
+  $("#profileName").value = "";
+  saveState();
+  render();
+});
+
+$("#dailyGoal").addEventListener("change", () => {
+  state.goals.daily = Math.max(5, Number($("#dailyGoal").value) || 30);
+  saveState();
+  renderGoals();
+});
+
+$("#weeklyGoal").addEventListener("change", () => {
+  state.goals.weekly = Math.max(5, Number($("#weeklyGoal").value) || 150);
+  saveState();
+  renderGoals();
+});
+
+$("#themeToggle").addEventListener("click", () => {
+  state.theme = state.theme === "dark" ? "court" : "dark";
+  saveState();
+  render();
+});
+
+$("#themeSelect").addEventListener("change", () => {
+  state.theme = $("#themeSelect").value;
+  saveState();
+  render();
+});
+
+$("#soundToggle").addEventListener("change", () => {
+  state.sound = $("#soundToggle").checked;
+  saveState();
+});
+
+$("#vibrationToggle").addEventListener("change", () => {
+  state.vibration = $("#vibrationToggle").checked;
+  saveState();
+});
+
 $("#clearHistory").addEventListener("click", () => {
-  if (!state.sessions.length || !confirm("Clear all local workout history?")) {
-    return;
-  }
-  state.sessions = [];
+  if (!profileSessions().length || !confirm("Clear this profile's workout history?")) return;
+  state.sessions = state.sessions.filter((session) => session.profileId !== state.activeProfileId);
   saveState();
   render();
 });
@@ -330,13 +577,51 @@ $("#customForm").addEventListener("submit", (event) => {
   event.preventDefault();
   const activity = $("#customActivity").value.trim() || "Other";
   const minutes = Math.max(1, Math.round(Number($("#manualMinutes").value) || 1));
-  if (logSession(activity, minutes)) {
+  const note = $("#manualNote").value.trim();
+  if (logSession(activity, minutes, note)) {
     $("#customActivity").value = "";
+    $("#manualNote").value = "";
   }
 });
 
+$("#historyList").addEventListener("click", (event) => {
+  const editId = event.target.dataset.edit;
+  const deleteId = event.target.dataset.delete;
+  if (editId) openEdit(editId);
+  if (deleteId && confirm("Delete this workout?")) {
+    state.sessions = state.sessions.filter((session) => session.id !== deleteId);
+    saveState();
+    render();
+  }
+});
+
+function openEdit(id) {
+  const session = state.sessions.find((entry) => entry.id === id);
+  if (!session) return;
+  $("#editId").value = session.id;
+  $("#editActivity").value = session.activity;
+  $("#editMinutes").value = session.minutes;
+  $("#editNote").value = session.note || "";
+  $("#editDialog").showModal();
+}
+
+$("#cancelEdit").addEventListener("click", () => $("#editDialog").close());
+$("#editForm").addEventListener("submit", (event) => {
+  event.preventDefault();
+  const session = state.sessions.find((entry) => entry.id === $("#editId").value);
+  if (!session) return;
+  const minutes = Math.max(MIN_WORKOUT_MINUTES, Math.round(Number($("#editMinutes").value) || MIN_WORKOUT_MINUTES));
+  session.activity = $("#editActivity").value.trim() || "Other";
+  session.minutes = minutes;
+  session.points = minutes * 10;
+  session.note = $("#editNote").value.trim();
+  saveState();
+  $("#editDialog").close();
+  render();
+});
+
 $("#exportButton").addEventListener("click", async () => {
-  const payload = JSON.stringify({ exportedAt: new Date().toISOString(), sessions: state.sessions }, null, 2);
+  const payload = JSON.stringify({ exportedAt: new Date().toISOString(), state }, null, 2);
   try {
     await navigator.clipboard.writeText(payload);
     $("#exportButton").textContent = "Copied";
@@ -347,5 +632,9 @@ $("#exportButton").addEventListener("click", async () => {
     $("#exportButton").textContent = "Export";
   }, 1200);
 });
+
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("sw.js").catch(() => {});
+}
 
 render();

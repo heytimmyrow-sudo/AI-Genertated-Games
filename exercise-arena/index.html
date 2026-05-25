@@ -3,8 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#177a52">
   <title>Pulse League</title>
-  <link rel="stylesheet" href="styles.css?v=volleyball-court">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="stylesheet" href="styles.css?v=all-upgrades">
 </head>
 <body>
   <main class="app-shell">
@@ -16,6 +18,7 @@
           <span>Pulse League</span>
         </a>
         <div class="topbar-actions">
+          <select id="profileSelect" class="select-control" aria-label="Active profile"></select>
           <button class="icon-button" id="themeToggle" type="button" aria-label="Toggle color mode" title="Toggle color mode">◐</button>
           <button class="ghost-button" id="exportButton" type="button">Export</button>
           <button class="primary-button" id="newSessionTop" type="button">New Session</button>
@@ -26,10 +29,10 @@
         <div class="hero-copy">
           <p class="eyebrow">Standalone fitness tracker</p>
           <h1 id="page-title">Train, level up, and Keep going.</h1>
-          <p class="hero-text">Start a stopwatch or countdown for runs, bike rides, swimming, strength work, and anything else. Every minute feeds levels, streaks, and tournament scores.</p>
+          <p class="hero-text">Track volleyball, running, bike riding, swimming, strength work, and anything else. Goals, badges, streaks, records, and weekly cups all stay on this device.</p>
           <div class="hero-stats" aria-label="Fitness summary">
             <div>
-              <strong id="totalTimeHero">0h 00m</strong>
+              <strong id="totalTimeHero">0m</strong>
               <span>Total time</span>
             </div>
             <div>
@@ -53,7 +56,8 @@
           </div>
 
           <div class="activity-grid" role="group" aria-label="Choose activity">
-            <button class="activity active" type="button" data-activity="Running">Run</button>
+            <button class="activity active" type="button" data-activity="Volleyball">Volleyball</button>
+            <button class="activity" type="button" data-activity="Running">Run</button>
             <button class="activity" type="button" data-activity="Bike Riding">Bike</button>
             <button class="activity" type="button" data-activity="Swimming">Swim</button>
             <button class="activity" type="button" data-activity="Strength">Strength</button>
@@ -65,12 +69,24 @@
             <button class="mode-choice" type="button" data-mode="timer">Timer</button>
           </div>
 
+          <div class="preset-grid" aria-label="Timer presets">
+            <button class="preset-button" type="button" data-preset="5">Warmup 5</button>
+            <button class="preset-button" type="button" data-preset="20">Workout 20</button>
+            <button class="preset-button" type="button" data-preset="5" data-label="Cooldown">Cooldown 5</button>
+            <button class="preset-button" type="button" data-preset="30">Practice 30</button>
+          </div>
+
           <label class="field" id="durationField">
             <span>Countdown minutes</span>
             <input id="durationInput" type="number" min="1" max="300" step="1" value="20">
           </label>
 
           <div class="clock" id="clockDisplay" aria-live="polite">00:00:00</div>
+
+          <label class="field">
+            <span>Workout notes</span>
+            <input id="timerNote" type="text" maxlength="90" placeholder="Serving practice, scrimmage, easy ride">
+          </label>
 
           <div class="timer-actions">
             <button class="primary-button" id="startPauseButton" type="button">Start</button>
@@ -97,34 +113,106 @@
         <p class="subtle" id="levelHint">Log your first workout to start climbing.</p>
 
         <div class="metric-grid">
+          <div><span>Sessions</span><strong id="sessionCount">0</strong></div>
+          <div><span>Longest</span><strong id="longestSession">0m</strong></div>
+          <div><span>Streak</span><strong id="streakDays">0 days</strong></div>
+          <div><span>Favorite</span><strong id="favoriteActivity">None</strong></div>
+        </div>
+      </section>
+
+      <section class="goals-panel">
+        <div class="panel-heading">
           <div>
-            <span>Sessions</span>
-            <strong id="sessionCount">0</strong>
-          </div>
-          <div>
-            <span>Longest</span>
-            <strong id="longestSession">0m</strong>
-          </div>
-          <div>
-            <span>Streak</span>
-            <strong id="streakDays">0 days</strong>
-          </div>
-          <div>
-            <span>Favorite</span>
-            <strong id="favoriteActivity">None</strong>
+            <p class="eyebrow">Goals</p>
+            <h2>Daily and weekly</h2>
           </div>
         </div>
+        <div class="goal-fields">
+          <label class="field">
+            <span>Daily minutes</span>
+            <input id="dailyGoal" type="number" min="5" max="600" step="5">
+          </label>
+          <label class="field">
+            <span>Weekly minutes</span>
+            <input id="weeklyGoal" type="number" min="5" max="3000" step="5">
+          </label>
+        </div>
+        <div class="goal-list" id="goalList"></div>
+      </section>
+
+      <section class="profiles-panel">
+        <div class="panel-heading">
+          <div>
+            <p class="eyebrow">Profiles</p>
+            <h2>Local leaderboard</h2>
+          </div>
+        </div>
+        <form class="inline-form" id="profileForm">
+          <input id="profileName" type="text" maxlength="24" placeholder="Add family member">
+          <button class="primary-button" type="submit">Add</button>
+        </form>
+        <ol class="leaderboard" id="leaderboard"></ol>
+      </section>
+
+      <section class="activity-panel">
+        <div class="panel-heading">
+          <div>
+            <p class="eyebrow">Activities</p>
+            <h2>Activity stats</h2>
+          </div>
+        </div>
+        <div class="activity-stats" id="activityStats"></div>
+      </section>
+
+      <section class="chart-panel">
+        <div class="panel-heading">
+          <div>
+            <p class="eyebrow">Charts</p>
+            <h2>Last 7 days</h2>
+          </div>
+        </div>
+        <div class="bar-chart" id="weeklyChart" aria-label="Weekly minutes chart"></div>
+      </section>
+
+      <section class="calendar-panel">
+        <div class="panel-heading">
+          <div>
+            <p class="eyebrow">Calendar</p>
+            <h2 id="calendarTitle">This month</h2>
+          </div>
+        </div>
+        <div class="calendar-grid" id="calendarGrid" aria-label="Workout calendar"></div>
+      </section>
+
+      <section class="records-panel">
+        <div class="panel-heading">
+          <div>
+            <p class="eyebrow">Records</p>
+            <h2>Personal bests</h2>
+          </div>
+        </div>
+        <div class="record-grid" id="recordGrid"></div>
+      </section>
+
+      <section class="badges-panel">
+        <div class="panel-heading">
+          <div>
+            <p class="eyebrow">Badges</p>
+            <h2>Unlocked</h2>
+          </div>
+        </div>
+        <div class="badge-grid" id="badgeGrid"></div>
       </section>
 
       <section class="tournament-panel">
         <div class="panel-heading">
           <div>
-            <p class="eyebrow">Public tournament</p>
-            <h2>Weekly leaderboard</h2>
+            <p class="eyebrow">Tournament weeks</p>
+            <h2>Weekly cup history</h2>
           </div>
-          <span class="mode-pill">Public</span>
+          <span class="mode-pill">Monday reset</span>
         </div>
-        <ol class="leaderboard" id="leaderboard"></ol>
+        <ul class="history-list" id="tournamentHistory"></ul>
       </section>
 
       <section class="history-panel">
@@ -154,16 +242,71 @@
             <span>Minutes already done</span>
             <input id="manualMinutes" type="number" min="1" max="600" step="1" value="15">
           </label>
+          <label class="field">
+            <span>Notes</span>
+            <input id="manualNote" type="text" maxlength="90" placeholder="How did it go?">
+          </label>
           <button class="primary-button" type="submit">Log Manual Session</button>
         </form>
       </section>
+
+      <section class="settings-panel">
+        <div class="panel-heading">
+          <div>
+            <p class="eyebrow">Options</p>
+            <h2>Theme and alerts</h2>
+          </div>
+        </div>
+        <div class="settings-grid">
+          <label class="field">
+            <span>Theme</span>
+            <select id="themeSelect" class="select-control">
+              <option value="court">Court</option>
+              <option value="dark">Dark</option>
+              <option value="school">School colors</option>
+              <option value="beach">Beach volleyball</option>
+            </select>
+          </label>
+          <label class="check-row">
+            <input id="soundToggle" type="checkbox">
+            <span>Sound alert</span>
+          </label>
+          <label class="check-row">
+            <input id="vibrationToggle" type="checkbox">
+            <span>Vibration alert</span>
+          </label>
+        </div>
+      </section>
     </section>
   </main>
+
+  <dialog id="editDialog">
+    <form method="dialog" class="edit-form" id="editForm">
+      <h2>Edit session</h2>
+      <input id="editId" type="hidden">
+      <label class="field">
+        <span>Activity</span>
+        <input id="editActivity" type="text" maxlength="24">
+      </label>
+      <label class="field">
+        <span>Minutes</span>
+        <input id="editMinutes" type="number" min="5" max="600">
+      </label>
+      <label class="field">
+        <span>Notes</span>
+        <input id="editNote" type="text" maxlength="90">
+      </label>
+      <div class="dialog-actions">
+        <button class="ghost-button" value="cancel" type="button" id="cancelEdit">Cancel</button>
+        <button class="primary-button" value="default" type="submit">Save</button>
+      </div>
+    </form>
+  </dialog>
 
   <template id="historyEmptyTemplate">
     <li class="empty-state">No sessions yet. Start a timer and finish it to build your league record.</li>
   </template>
 
-  <script src="app.js?v=22b2d44"></script>
+  <script src="app.js?v=all-upgrades"></script>
 </body>
 </html>

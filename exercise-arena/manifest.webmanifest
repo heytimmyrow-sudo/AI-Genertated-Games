@@ -1,0 +1,17 @@
+{
+  "name": "Pulse League",
+  "short_name": "Pulse League",
+  "description": "A standalone exercise timer, level, goals, and local leaderboard app.",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#f6f3ed",
+  "theme_color": "#177a52",
+  "icons": [
+    {
+      "src": "assets/volleyball-court-hero.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}
