@@ -452,16 +452,16 @@ function renderCosmetics() {
       <span>${escapeHtml(cosmetic.title)} · ${escapeHtml(cosmetic.reward)}</span>
     </div>
   `;
-  $("#cosmeticGrid").innerHTML = cosmeticRules.map((entry) => {
+  $("#cosmeticGrid").innerHTML = cosmeticRules.filter((entry) => state.ownedPrizes.includes(entry.id)).map((entry) => {
     const unlocked = stats.level >= entry.unlockLevel;
     const active = selected === entry.id;
     return `
       <button class="cosmetic-card cosmetic-${entry.id} ${active ? "active" : ""}" type="button" data-cosmetic="${entry.id}" ${unlocked ? "" : "disabled"}>
         <strong>${escapeHtml(entry.name)}</strong>
-        <span>${unlocked ? (active ? `Equipped · ${entry.title}` : `Unlocked · ${entry.reward}`) : `Unlocks at Level ${entry.unlockLevel}`}</span>
+        <span>${active ? `Equipped - ${entry.title}` : `Owned - ${entry.reward}`}</span>
       </button>
     `;
-  }).join("");
+  }).join("") || `<div class="empty-state">Buy prizes in the shop, then equip them here.</div>`;
 }
 
 function renderPrizeShop() {
