@@ -1,5 +1,7 @@
 const STORAGE_KEY = "pulseLeagueState";
 const SECOND = 1000;
+const MIN_WORKOUT_MINUTES = 5;
+const SHORT_WORKOUT_MESSAGE = "Workout too short to be recorded.";
 
 const levelNames = ["Rookie", "Pacer", "Strider", "Climber", "Contender", "Champion", "Legend"];
 
@@ -102,12 +104,27 @@ function resetTimer() {
 
 function finishSession() {
   const elapsed = timer.mode === "timer" ? Math.min(getElapsed(), timer.duration) : getElapsed();
+  if (elapsed < MIN_WORKOUT_MINUTES * 60 * SECOND) {
+    showSessionMessage(SHORT_WORKOUT_MESSAGE);
+    resetTimer();
+    return;
+  }
+
   const minutes = Math.max(1, Math.round(elapsed / 60000));
   logSession(timer.activity, minutes);
   resetTimer();
 }
 
+function showSessionMessage(message) {
+  $("#sessionMessage").textContent = message;
+}
+
 function logSession(activity, minutes) {
+  if (minutes < MIN_WORKOUT_MINUTES) {
+    showSessionMessage(SHORT_WORKOUT_MESSAGE);
+    return false;
+  }
+
   state.sessions.unshift({
     id: crypto.randomUUID(),
     activity,
@@ -118,6 +135,8 @@ function logSession(activity, minutes) {
   state.sessions = state.sessions.slice(0, 60);
   saveState();
   render();
+  showSessionMessage("");
+  return true;
 }
 
 function getTotalMinutes() {
@@ -311,8 +330,9 @@ $("#customForm").addEventListener("submit", (event) => {
   event.preventDefault();
   const activity = $("#customActivity").value.trim() || "Other";
   const minutes = Math.max(1, Math.round(Number($("#manualMinutes").value) || 1));
-  logSession(activity, minutes);
-  $("#customActivity").value = "";
+  if (logSession(activity, minutes)) {
+    $("#customActivity").value = "";
+  }
 });
 
 $("#exportButton").addEventListener("click", async () => {
