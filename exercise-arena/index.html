@@ -8,7 +8,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="assets/pulse-league-icon-192.png">
   <link rel="apple-touch-icon" href="assets/pulse-league-icon-192.png">
   <link rel="manifest" href="manifest.webmanifest">
-  <link rel="stylesheet" href="styles.css?v=reward-types">
+  <link rel="stylesheet" href="styles.css?v=game-polish">
 </head>
 <body>
   <main class="app-shell">
@@ -134,6 +134,7 @@
         <button type="button" data-section-target="custom">Custom</button>
         <button type="button" data-section-target="coach">Coach</button>
         <button type="button" data-section-target="safety">Safety</button>
+        <button type="button" data-section-target="recovery">Recovery</button>
         <button type="button" data-section-target="settings">Settings</button>
       </nav>
     </aside>
@@ -232,6 +233,7 @@
           <input id="requestUsername" type="text" maxlength="24" placeholder="Username to request">
           <button class="primary-button" type="submit">Send Request</button>
         </form>
+        <div class="metric-grid compact" id="requestStats"></div>
         <ul class="history-list" id="friendRequestList"></ul>
       </section>
 
@@ -277,6 +279,7 @@
           </div>
           <span class="score-chip" id="coinBalance">0 coins</span>
         </div>
+        <div class="featured-prize-grid" id="featuredPrizeGrid"></div>
         <div class="shop-grid" id="prizeShopGrid"></div>
       </section>
 
@@ -344,10 +347,20 @@
         <div class="panel-heading">
           <div>
             <p class="eyebrow">Tournament weeks</p>
-            <h2>Weekly cup history</h2>
+            <h2>Weekly cup</h2>
           </div>
-          <span class="mode-pill">Monday reset</span>
+          <span class="mode-pill">Resets in <span id="cupCountdown">0d 0h</span></span>
         </div>
+        <div class="cup-hero">
+          <div>
+            <span>Current leader</span>
+            <strong id="cupLeader">No leader yet</strong>
+          </div>
+        </div>
+        <div class="cup-medals" id="cupMedals"></div>
+        <h3 class="section-subhead">Standings</h3>
+        <ul class="history-list" id="cupStandings"></ul>
+        <h3 class="section-subhead">Winner history</h3>
         <ul class="history-list" id="tournamentHistory"></ul>
       </section>
 
@@ -423,6 +436,29 @@
         <ul class="history-list" id="notificationList"></ul>
       </section>
 
+      <section class="recovery-panel dashboard-section" data-section="recovery">
+        <div class="panel-heading">
+          <div>
+            <p class="eyebrow">Account recovery</p>
+            <h2>Move devices</h2>
+          </div>
+          <button class="ghost-button" id="copyRecovery" type="button">Copy Code</button>
+        </div>
+        <p class="subtle">Use this code to prove the account is yours when setting up a new browser.</p>
+        <div class="profile-card">
+          <div class="avatar-badge">KEY</div>
+          <div>
+            <strong id="recoveryCodeLarge">Recovery code</strong>
+            <span id="recoveryCodeMirror"></span>
+          </div>
+        </div>
+        <form class="inline-form" id="recoveryForm">
+          <input id="recoveryInput" type="text" maxlength="32" placeholder="Enter recovery code">
+          <button class="primary-button" type="submit">Verify</button>
+        </form>
+        <ul class="history-list" id="recoveryBackupList"></ul>
+      </section>
+
       <section class="settings-panel dashboard-section" data-section="settings">
         <div class="panel-heading">
           <div>
@@ -480,6 +516,6 @@
     <li class="empty-state">No sessions yet. Start a timer and finish it to build your league record.</li>
   </template>
 
-  <script src="app.js?v=reward-types"></script>
+  <script src="app.js?v=game-polish"></script>
 </body>
 </html>

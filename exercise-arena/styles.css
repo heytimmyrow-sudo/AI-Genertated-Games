@@ -273,6 +273,14 @@ button {
   box-shadow: var(--shadow);
 }
 
+.recovery-panel {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--surface) 94%, transparent);
+  color: var(--ink);
+  box-shadow: var(--shadow);
+}
+
 .cosmetics-panel {
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -510,6 +518,10 @@ body.timer-mode #durationField {
   padding: 22px;
 }
 
+.recovery-panel {
+  padding: 22px;
+}
+
 .cosmetics-panel {
   padding: 22px;
 }
@@ -677,6 +689,76 @@ body.timer-mode #durationField {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
+}
+
+.featured-prize-grid,
+.cup-medals {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.featured-prize,
+.cup-medal,
+.cup-hero {
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-strong);
+}
+
+.featured-prize strong,
+.featured-prize span,
+.cup-medal strong,
+.cup-medal span,
+.cup-hero strong,
+.cup-hero span {
+  display: block;
+}
+
+.featured-prize span,
+.cup-medal span,
+.cup-hero span {
+  margin-top: 5px;
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.cup-hero {
+  margin-bottom: 12px;
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--sun) 18%, transparent), color-mix(in srgb, var(--green) 10%, transparent)),
+    var(--surface-strong);
+}
+
+.cup-hero strong {
+  margin-top: 4px;
+  font-size: 1.25rem;
+}
+
+.section-subhead {
+  margin: 16px 0 10px;
+  font-size: 0.95rem;
+}
+
+.rarity-common {
+  border-color: color-mix(in srgb, var(--green) 35%, var(--line));
+}
+
+.rarity-rare {
+  border-color: color-mix(in srgb, var(--water) 60%, var(--line));
+}
+
+.rarity-epic {
+  border-color: color-mix(in srgb, #7a5cff 70%, var(--line));
+}
+
+.rarity-legendary {
+  border-color: color-mix(in srgb, var(--sun) 85%, var(--line));
+  box-shadow: 0 0 22px color-mix(in srgb, var(--sun) 18%, transparent);
 }
 
 .shop-card,
@@ -1188,6 +1270,14 @@ dialog::backdrop {
   .timer-actions {
     display: grid;
     grid-template-columns: 1fr 1fr 42px;
+    position: sticky;
+    z-index: 8;
+    bottom: 8px;
+    padding: 8px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: color-mix(in srgb, var(--surface) 92%, transparent);
+    backdrop-filter: blur(12px);
   }
 
   .history-row,
@@ -1202,5 +1292,10 @@ dialog::backdrop {
 
   .bar-chart {
     gap: 6px;
+  }
+
+  .featured-prize-grid,
+  .cup-medals {
+    grid-template-columns: 1fr;
   }
 }

@@ -7,16 +7,16 @@ const SHORT_WORKOUT_MESSAGE = "Workout too short to be recorded.";
 const levelNames = ["Rookie", "Pacer", "Strider", "Climber", "Contender", "Champion", "Legend"];
 const activityOptions = ["Volleyball", "Running", "Bike Riding", "Swimming", "Strength", "Other"];
 const cosmeticRules = [
-  { id: "rookie-pass", type: "profile", name: "Rookie Pass", unlockLevel: 1, cost: 0, accent: "PL", title: "Court Rookie", reward: "Starter profile badge" },
-  { id: "bronze-band", type: "profile", name: "Bronze Wristband", unlockLevel: 2, cost: 80, accent: "BR", title: "Warmup Winner", reward: "Bronze leaderboard frame" },
-  { id: "sunset-court", type: "background", name: "Sunset Court", unlockLevel: 2, cost: 120, accent: "BG", title: "Golden Hour", reward: "Warm sunset app background" },
-  { id: "water-arena", type: "background", name: "Water Arena", unlockLevel: 3, cost: 160, accent: "BG", title: "Pool Lights", reward: "Blue aquatic app background" },
-  { id: "xp-hour", type: "booster", name: "1-Hour XP Booster", unlockLevel: 3, cost: 180, accent: "2X", title: "Boost Active", reward: "Double XP for one hour" },
-  { id: "power-sweat", type: "effect", name: "Power Sweatband", unlockLevel: 3, cost: 140, accent: "FX", title: "Practice Streaker", reward: "Animated court stripe effect" },
-  { id: "captain-title", type: "title", name: "Captain Title", unlockLevel: 4, cost: 210, accent: "CP", title: "Team Captain", reward: "Profile title upgrade" },
-  { id: "gold-token", type: "profile", name: "Gold Prize Token", unlockLevel: 5, cost: 340, accent: "GT", title: "League Finisher", reward: "Gold profile glow" },
-  { id: "neon-serve", type: "effect", name: "Neon Serve Trail", unlockLevel: 7, cost: 520, accent: "NS", title: "Challenge Crusher", reward: "Neon motion trail effect" },
-  { id: "trophy-room", type: "background", name: "Trophy Room Key", unlockLevel: 10, cost: 900, accent: "99", title: "Prize Room Legend", reward: "Max-level trophy room background" }
+  { id: "rookie-pass", type: "profile", rarity: "common", featured: false, name: "Rookie Pass", unlockLevel: 1, cost: 0, accent: "PL", title: "Court Rookie", reward: "Starter profile badge" },
+  { id: "bronze-band", type: "profile", rarity: "common", featured: false, name: "Bronze Wristband", unlockLevel: 2, cost: 80, accent: "BR", title: "Warmup Winner", reward: "Bronze leaderboard frame" },
+  { id: "sunset-court", type: "background", rarity: "rare", featured: true, name: "Sunset Court", unlockLevel: 2, cost: 120, accent: "BG", title: "Golden Hour", reward: "Warm sunset app background" },
+  { id: "water-arena", type: "background", rarity: "rare", featured: false, name: "Water Arena", unlockLevel: 3, cost: 160, accent: "BG", title: "Pool Lights", reward: "Blue aquatic app background" },
+  { id: "xp-hour", type: "booster", rarity: "epic", featured: true, name: "1-Hour XP Booster", unlockLevel: 3, cost: 180, accent: "2X", title: "Boost Active", reward: "Double XP for one hour" },
+  { id: "power-sweat", type: "effect", rarity: "rare", featured: false, name: "Power Sweatband", unlockLevel: 3, cost: 140, accent: "FX", title: "Practice Streaker", reward: "Animated court stripe effect" },
+  { id: "captain-title", type: "title", rarity: "epic", featured: false, name: "Captain Title", unlockLevel: 4, cost: 210, accent: "CP", title: "Team Captain", reward: "Profile title upgrade" },
+  { id: "gold-token", type: "profile", rarity: "epic", featured: true, name: "Gold Prize Token", unlockLevel: 5, cost: 340, accent: "GT", title: "League Finisher", reward: "Gold profile glow" },
+  { id: "neon-serve", type: "effect", rarity: "legendary", featured: false, name: "Neon Serve Trail", unlockLevel: 7, cost: 520, accent: "NS", title: "Challenge Crusher", reward: "Neon motion trail effect" },
+  { id: "trophy-room", type: "background", rarity: "legendary", featured: true, name: "Trophy Room Key", unlockLevel: 10, cost: 900, accent: "99", title: "Prize Room Legend", reward: "Max-level trophy room background" }
 ];
 const challengeRules = [
   { id: "daily-30", name: "Daily Spark", reward: 35, test: (stats) => stats.todayMinutes >= 30, detail: "Log 30 minutes today." },
@@ -24,6 +24,12 @@ const challengeRules = [
   { id: "try-three", name: "Triple Threat", reward: 75, test: (stats) => Object.values(stats.activityMinutes).filter(Boolean).length >= 3, detail: "Train in 3 activity types." },
   { id: "team-push", name: "Team Push", reward: 60, test: (stats) => stats.sessions >= 3, detail: "Finish 3 sessions." }
 ];
+const rarityNames = {
+  common: "Common",
+  rare: "Rare",
+  epic: "Epic",
+  legendary: "Legendary"
+};
 const badgeRules = [
   { id: "first", name: "First Workout", test: (stats) => stats.sessions >= 1 },
   { id: "five", name: "5 Sessions", test: (stats) => stats.sessions >= 5 },
@@ -65,6 +71,7 @@ function loadState() {
     activeProfileId: "you",
     ownerToken: makeOwnerToken(),
     recoveryCode: makeSetupCode("recover"),
+    recoveryBackups: [],
     coins: 0,
     claimedChallenges: [],
     ownedPrizes: ["rookie-pass"],
@@ -80,6 +87,7 @@ function loadState() {
     proofRequired: false,
     blockedUsers: [],
     freezeTokens: 1,
+    lastSection: "progress",
     goals: { daily: 30, weekly: 150 },
     theme: "court",
     dark: false,
@@ -97,6 +105,7 @@ function loadState() {
     merged.friendRequests = parsed.friendRequests || fallback.friendRequests;
     merged.notifications = parsed.notifications || fallback.notifications;
     merged.blockedUsers = parsed.blockedUsers || fallback.blockedUsers;
+    merged.recoveryBackups = parsed.recoveryBackups || fallback.recoveryBackups;
     merged.profiles = parsed.profiles?.length ? parsed.profiles.map((profile, index) => {
       const cosmeticMap = {
         classic: "rookie-pass",
@@ -174,6 +183,15 @@ function weekStart(date = new Date()) {
 
 function sameDay(a, b) {
   return new Date(a).toISOString().slice(0, 10) === new Date(b).toISOString().slice(0, 10);
+}
+
+function timeUntilNextWeek() {
+  const next = weekStart();
+  next.setDate(next.getDate() + 7);
+  const diff = Math.max(0, next.getTime() - Date.now());
+  const days = Math.floor(diff / (24 * 60 * 60 * SECOND));
+  const hours = Math.floor((diff % (24 * 60 * 60 * SECOND)) / (60 * 60 * SECOND));
+  return `${days}d ${hours}h`;
 }
 
 function formatClock(ms) {
@@ -485,15 +503,21 @@ function renderCosmetics() {
 function renderPrizeShop() {
   const stats = statsFor();
   $("#coinBalance").textContent = `${state.coins} coins`;
+  $("#featuredPrizeGrid").innerHTML = cosmeticRules.filter((entry) => entry.featured).map((entry) => `
+    <div class="featured-prize cosmetic-${entry.id}">
+      <strong>${escapeHtml(entry.name)}</strong>
+      <span>${escapeHtml(rarityNames[entry.rarity])} ${escapeHtml(entry.type)} - ${entry.cost} coins</span>
+    </div>
+  `).join("");
   $("#prizeShopGrid").innerHTML = cosmeticRules.map((entry) => {
     const owned = state.ownedPrizes.includes(entry.id);
     const unlocked = stats.level >= entry.unlockLevel;
     const affordable = state.coins >= entry.cost;
     const boosterRunning = entry.type === "booster" && activeBooster();
     return `
-      <button class="shop-card cosmetic-${entry.id}" type="button" data-buy-prize="${entry.id}" ${owned || boosterRunning || !unlocked || !affordable ? "disabled" : ""}>
+      <button class="shop-card rarity-${entry.rarity} cosmetic-${entry.id}" type="button" data-buy-prize="${entry.id}" ${owned || boosterRunning || !unlocked || !affordable ? "disabled" : ""}>
         <strong>${escapeHtml(entry.name)}</strong>
-        <span>${boosterRunning ? "Active now" : owned ? "Owned" : !unlocked ? `Unlocks at Level ${entry.unlockLevel}` : `${entry.type} - ${entry.cost} coins - ${entry.reward}`}</span>
+        <span>${escapeHtml(rarityNames[entry.rarity])} ${entry.type} - ${boosterRunning ? "Active now" : owned ? "Owned" : !unlocked ? `Unlocks at Level ${entry.unlockLevel}` : `${entry.cost} coins - ${entry.reward}`}</span>
       </button>
     `;
   }).join("");
@@ -587,6 +611,25 @@ function renderBadges() {
 }
 
 function renderTournamentHistory() {
+  const leaders = state.profiles
+    .filter((profile) => profile.relation === "Self" || profile.inLeague)
+    .map((profile) => ({ ...profile, stats: statsFor(profile.id) }))
+    .sort((a, b) => b.stats.weeklyPoints - a.stats.weeklyPoints);
+  const current = leaders[0];
+  $("#cupCountdown").textContent = timeUntilNextWeek();
+  $("#cupLeader").textContent = current ? `${current.name} - ${current.stats.weeklyPoints} pts` : "No leader yet";
+  $("#cupMedals").innerHTML = leaders.slice(0, 3).map((profile, index) => `
+    <div class="cup-medal">
+      <strong>${["Gold", "Silver", "Bronze"][index]}</strong>
+      <span>${escapeHtml(profile.name)} - ${profile.stats.weeklyPoints} pts</span>
+    </div>
+  `).join("") || `<div class="empty-state">Log a workout to start the cup.</div>`;
+  $("#cupStandings").innerHTML = leaders.map((profile, index) => `
+    <li class="history-row">
+      <div class="history-meta"><strong>#${index + 1} ${escapeHtml(profile.name)}</strong><span>${profile.stats.weeklyMinutes} minutes this week</span></div>
+      <span class="history-time">${profile.stats.weeklyPoints} pts</span>
+    </li>
+  `).join("") || `<li class="empty-state">No standings yet.</li>`;
   const sessions = profileSessions();
   const weeks = {};
   for (const session of sessions) {
@@ -642,12 +685,19 @@ function renderUpgradePanels() {
       </div>
     </div>
   `;
-  $("#friendRequestList").innerHTML = pending.length ? pending.map((request) => `
+  const accepted = state.friendRequests.filter((request) => request.status === "accepted").length;
+  const declined = state.friendRequests.filter((request) => request.status === "declined").length;
+  $("#requestStats").innerHTML = `
+    <div><span>Pending</span><strong>${pending.length}</strong></div>
+    <div><span>Accepted</span><strong>${accepted}</strong></div>
+    <div><span>Declined</span><strong>${declined}</strong></div>
+    <div><span>Online</span><strong>${online.ready ? "Ready" : "Local"}</strong></div>
+  `;
+  $("#friendRequestList").innerHTML = state.friendRequests.length ? state.friendRequests.map((request) => `
     <li class="history-row">
-      <div class="history-meta"><strong>@${escapeHtml(request.username)}</strong><span>${escapeHtml(request.relation)} request</span></div>
+      <div class="history-meta"><strong>@${escapeHtml(request.username)}</strong><span>${escapeHtml(request.relation)} request - ${escapeHtml(request.status)}</span></div>
       <div class="row-actions">
-        <button class="ghost-button mini" type="button" data-accept-request="${request.id}">Accept</button>
-        <button class="ghost-button mini danger" type="button" data-decline-request="${request.id}">Decline</button>
+        ${request.status === "pending" ? `<button class="ghost-button mini" type="button" data-accept-request="${request.id}">Accept</button><button class="ghost-button mini danger" type="button" data-decline-request="${request.id}">Decline</button>` : ""}
       </div>
     </li>
   `).join("") : `<li class="empty-state">No friend requests yet.</li>`;
@@ -668,6 +718,10 @@ function renderUpgradePanels() {
   `;
   $("#coachChallengeText").textContent = state.coachChallenge || "No coach challenge set.";
   $("#recoveryCode").textContent = state.recoveryCode;
+  $("#recoveryCodeMirror").textContent = state.recoveryCode;
+  $("#recoveryBackupList").innerHTML = state.recoveryBackups.length ? state.recoveryBackups.map((backup) => (
+    `<li class="history-row"><div class="history-meta"><strong>${escapeHtml(backup.label)}</strong><span>${new Date(backup.createdAt).toLocaleString()}</span></div></li>`
+  )).join("") : `<li class="empty-state">No recovery backups yet.</li>`;
   $("#proofRequired").checked = state.proofRequired;
 }
 
@@ -746,6 +800,8 @@ function openMobileSidebar() {
 }
 
 function showDashboardSection(sectionName) {
+  state.lastSection = sectionName;
+  saveState();
   $$(".dashboard-section").forEach((section) => {
     section.classList.toggle("active", section.dataset.section === sectionName);
   });
@@ -1157,6 +1213,33 @@ $("#friendRequestList").addEventListener("click", (event) => {
     });
   }
   notify(`Request from @${request.username} ${request.status}.`);
+  saveState();
+  render();
+});
+
+$("#copyRecovery").addEventListener("click", async () => {
+  const payload = JSON.stringify({ recoveryCode: state.recoveryCode, ownerToken: state.ownerToken, exportedAt: new Date().toISOString() }, null, 2);
+  try {
+    await navigator.clipboard.writeText(payload);
+    notify("Recovery code copied.");
+  } catch {
+    notify("Recovery code ready to copy manually.");
+  }
+  render();
+});
+
+$("#recoveryForm").addEventListener("submit", (event) => {
+  event.preventDefault();
+  const code = $("#recoveryInput").value.trim();
+  if (!code) return;
+  if (code !== state.recoveryCode) {
+    notify("Recovery code did not match this profile.");
+    render();
+    return;
+  }
+  state.recoveryBackups.unshift({ id: crypto.randomUUID(), label: "Recovery verified", createdAt: new Date().toISOString() });
+  $("#recoveryInput").value = "";
+  notify("Recovery code verified.");
   saveState();
   render();
 });
