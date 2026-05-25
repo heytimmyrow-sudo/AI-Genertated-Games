@@ -8,7 +8,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="assets/pulse-league-icon-192.png">
   <link rel="apple-touch-icon" href="assets/pulse-league-icon-192.png">
   <link rel="manifest" href="manifest.webmanifest">
-  <link rel="stylesheet" href="styles.css?v=remove-profiles">
+  <link rel="stylesheet" href="styles.css?v=prize-locker">
 </head>
 <body>
   <main class="app-shell">
@@ -149,6 +149,10 @@
             <h2>Family and friends</h2>
           </div>
         </div>
+        <form class="inline-form" id="renameForm">
+          <input id="displayName" type="text" maxlength="24" placeholder="Your display name">
+          <button class="ghost-button" type="submit">Rename Me</button>
+        </form>
         <form class="inline-form" id="profileForm">
           <input id="profileName" type="text" maxlength="24" placeholder="Set up profile name">
           <select id="profileRelation" class="select-control" aria-label="Profile relation">
@@ -165,11 +169,12 @@
         <div class="panel-heading">
           <div>
             <p class="eyebrow">Locker</p>
-            <h2>Level cosmetics</h2>
+            <h2>Prize locker</h2>
           </div>
           <span class="mode-pill" id="cosmeticLevel">Level 1</span>
         </div>
         <div class="profile-card" id="profileCard"></div>
+        <p class="subtle">Level up to unlock profile prizes that make your leaderboard card look stronger.</p>
         <div class="cosmetic-grid" id="cosmeticGrid"></div>
       </section>
 
@@ -326,6 +331,6 @@
     <li class="empty-state">No sessions yet. Start a timer and finish it to build your league record.</li>
   </template>
 
-  <script src="app.js?v=remove-profiles"></script>
+  <script src="app.js?v=prize-locker"></script>
 </body>
 </html>

@@ -5,12 +5,13 @@ const SHORT_WORKOUT_MESSAGE = "Workout too short to be recorded.";
 const levelNames = ["Rookie", "Pacer", "Strider", "Climber", "Contender", "Champion", "Legend"];
 const activityOptions = ["Volleyball", "Running", "Bike Riding", "Swimming", "Strength", "Other"];
 const cosmeticRules = [
-  { id: "classic", name: "Classic Court", unlockLevel: 1, accent: "PL" },
-  { id: "bronze", name: "Bronze Frame", unlockLevel: 2, accent: "BR" },
-  { id: "wave", name: "Wave Glow", unlockLevel: 3, accent: "WG" },
-  { id: "captain", name: "Captain Band", unlockLevel: 4, accent: "CP" },
-  { id: "gold", name: "Gold League", unlockLevel: 5, accent: "GL" },
-  { id: "neon", name: "Neon Serve", unlockLevel: 7, accent: "NS" }
+  { id: "rookie-pass", name: "Rookie Pass", unlockLevel: 1, accent: "PL", title: "Court Rookie", reward: "Starter profile badge" },
+  { id: "bronze-band", name: "Bronze Wristband", unlockLevel: 2, accent: "BR", title: "Warmup Winner", reward: "Bronze leaderboard frame" },
+  { id: "power-sweat", name: "Power Sweatband", unlockLevel: 3, accent: "PW", title: "Practice Streaker", reward: "Animated court stripe" },
+  { id: "captain-card", name: "Captain Card", unlockLevel: 4, accent: "CP", title: "Team Captain", reward: "Captain spotlight card" },
+  { id: "gold-token", name: "Gold Prize Token", unlockLevel: 5, accent: "GT", title: "League Finisher", reward: "Gold profile glow" },
+  { id: "neon-serve", name: "Neon Serve Trail", unlockLevel: 7, accent: "NS", title: "Challenge Crusher", reward: "Neon motion trail" },
+  { id: "trophy-room", name: "Trophy Room Key", unlockLevel: 10, accent: "99", title: "Prize Room Legend", reward: "Max-level trophy card" }
 ];
 const badgeRules = [
   { id: "first", name: "First Workout", test: (stats) => stats.sessions >= 1 },
@@ -43,7 +44,7 @@ saveState();
 function loadState() {
   const fallback = {
     sessions: [],
-    profiles: [{ id: "you", name: "You", relation: "Self", setupCode: "PL-YOU", cosmetic: "classic" }],
+    profiles: [{ id: "you", name: "You", relation: "Self", setupCode: "PL-YOU", cosmetic: "rookie-pass" }],
     activeProfileId: "you",
     goals: { daily: 30, weekly: 150 },
     theme: "court",
@@ -56,12 +57,23 @@ function loadState() {
     const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
     const merged = { ...fallback, ...parsed };
     merged.goals = { ...fallback.goals, ...(parsed.goals || {}) };
-    merged.profiles = parsed.profiles?.length ? parsed.profiles.map((profile, index) => ({
-      relation: index === 0 ? "Self" : "Friend",
-      setupCode: makeSetupCode(profile.name || `Player ${index + 1}`),
-      cosmetic: "classic",
-      ...profile
-    })) : fallback.profiles;
+    merged.profiles = parsed.profiles?.length ? parsed.profiles.map((profile, index) => {
+      const cosmeticMap = {
+        classic: "rookie-pass",
+        bronze: "bronze-band",
+        wave: "power-sweat",
+        captain: "captain-card",
+        gold: "gold-token",
+        neon: "neon-serve"
+      };
+      return {
+        relation: index === 0 ? "Self" : "Friend",
+        setupCode: makeSetupCode(profile.name || `Player ${index + 1}`),
+        cosmetic: "rookie-pass",
+        ...profile,
+        cosmetic: cosmeticMap[profile.cosmetic] || profile.cosmetic || "rookie-pass"
+      };
+    }) : fallback.profiles;
     merged.sessions = (parsed.sessions || []).map((session) => ({
       profileId: "you",
       note: "",
@@ -321,6 +333,7 @@ function renderGoals() {
 }
 
 function renderProfiles() {
+  $("#displayName").value = activeProfile().name;
   $("#profileSelect").innerHTML = state.profiles.map((profile) => (
     `<option value="${profile.id}" ${profile.id === state.activeProfileId ? "selected" : ""}>${escapeHtml(profile.name)}</option>`
   )).join("");
@@ -328,7 +341,7 @@ function renderProfiles() {
   const leaders = state.profiles.map((profile) => ({ ...profile, stats: statsFor(profile.id) }))
     .sort((a, b) => b.stats.weeklyPoints - a.stats.weeklyPoints);
   $("#leaderboard").innerHTML = leaders.map((profile, index) => `
-    <li class="leader-row cosmetic-${escapeHtml(profile.cosmetic || "classic")}">
+    <li class="leader-row cosmetic-${escapeHtml(profile.cosmetic || "rookie-pass")}">
       <span class="rank">${index + 1}</span>
       <div class="leader-meta">
         <strong>${escapeHtml(profile.name)}</strong>
@@ -345,7 +358,7 @@ function renderProfiles() {
 function renderCosmetics() {
   const profile = activeProfile();
   const stats = statsFor();
-  const selected = profile.cosmetic || "classic";
+  const selected = profile.cosmetic || "rookie-pass";
   const cosmetic = cosmeticRules.find((entry) => entry.id === selected) || cosmeticRules[0];
   $("#cosmeticLevel").textContent = `Level ${stats.level}`;
   $("#profileCard").className = `profile-card cosmetic-${cosmetic.id}`;
@@ -353,7 +366,7 @@ function renderCosmetics() {
     <div class="avatar-badge">${escapeHtml(cosmetic.accent)}</div>
     <div>
       <strong>${escapeHtml(profile.name)}</strong>
-      <span>${escapeHtml(profile.relation || "Friend")} · ${escapeHtml(cosmetic.name)}</span>
+      <span>${escapeHtml(cosmetic.title)} · ${escapeHtml(cosmetic.reward)}</span>
     </div>
   `;
   $("#cosmeticGrid").innerHTML = cosmeticRules.map((entry) => {
@@ -362,7 +375,7 @@ function renderCosmetics() {
     return `
       <button class="cosmetic-card cosmetic-${entry.id} ${active ? "active" : ""}" type="button" data-cosmetic="${entry.id}" ${unlocked ? "" : "disabled"}>
         <strong>${escapeHtml(entry.name)}</strong>
-        <span>${unlocked ? (active ? "Equipped" : "Unlocked") : `Unlocks at Level ${entry.unlockLevel}`}</span>
+        <span>${unlocked ? (active ? `Equipped · ${entry.title}` : `Unlocked · ${entry.reward}`) : `Unlocks at Level ${entry.unlockLevel}`}</span>
       </button>
     `;
   }).join("");
@@ -578,13 +591,23 @@ $("#profileForm").addEventListener("submit", (event) => {
     name,
     relation: $("#profileRelation").value,
     setupCode: makeSetupCode(name),
-    cosmetic: "classic"
+    cosmetic: "rookie-pass"
   };
   state.profiles.push(profile);
   state.activeProfileId = profile.id;
   $("#profileName").value = "";
   saveState();
   render();
+});
+
+$("#renameForm").addEventListener("submit", (event) => {
+  event.preventDefault();
+  const name = $("#displayName").value.trim();
+  if (!name) return;
+  activeProfile().name = name;
+  saveState();
+  renderProfiles();
+  renderCosmetics();
 });
 
 $("#cosmeticGrid").addEventListener("click", (event) => {

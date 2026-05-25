@@ -636,31 +636,50 @@ body.timer-mode #durationField {
   opacity: 0.56;
 }
 
-.cosmetic-bronze,
-.cosmetic-card.cosmetic-bronze {
+.cosmetic-rookie-pass,
+.cosmetic-card.cosmetic-rookie-pass {
+  border-color: color-mix(in srgb, var(--green) 45%, var(--line));
+}
+
+.cosmetic-bronze-band,
+.cosmetic-card.cosmetic-bronze-band {
   border-color: color-mix(in srgb, #b87333 55%, var(--line));
 }
 
-.cosmetic-wave,
-.cosmetic-card.cosmetic-wave {
+.cosmetic-power-sweat,
+.cosmetic-card.cosmetic-power-sweat {
   border-color: color-mix(in srgb, var(--water) 65%, var(--line));
+  background:
+    linear-gradient(110deg, transparent 0 45%, color-mix(in srgb, var(--water) 12%, transparent) 45% 55%, transparent 55%),
+    var(--surface-strong);
 }
 
-.cosmetic-captain,
-.cosmetic-card.cosmetic-captain {
+.cosmetic-captain-card,
+.cosmetic-card.cosmetic-captain-card {
   border-color: color-mix(in srgb, var(--track) 65%, var(--line));
 }
 
-.cosmetic-gold,
-.cosmetic-card.cosmetic-gold {
+.cosmetic-gold-token,
+.cosmetic-card.cosmetic-gold-token {
   border-color: color-mix(in srgb, var(--sun) 75%, var(--line));
   background: color-mix(in srgb, var(--sun) 10%, var(--surface-strong));
 }
 
 .cosmetic-neon,
-.cosmetic-card.cosmetic-neon {
+.cosmetic-card.cosmetic-neon,
+.cosmetic-neon-serve,
+.cosmetic-card.cosmetic-neon-serve {
   border-color: color-mix(in srgb, #29e6d3 80%, var(--line));
   box-shadow: 0 0 22px color-mix(in srgb, #29e6d3 18%, transparent);
+}
+
+.cosmetic-trophy-room,
+.cosmetic-card.cosmetic-trophy-room {
+  border-color: color-mix(in srgb, #f8d66d 80%, var(--line));
+  background:
+    radial-gradient(circle at top right, color-mix(in srgb, #f8d66d 18%, transparent), transparent 42%),
+    var(--surface-strong);
+  box-shadow: 0 0 28px color-mix(in srgb, #f8d66d 22%, transparent);
 }
 
 .goal-list,
