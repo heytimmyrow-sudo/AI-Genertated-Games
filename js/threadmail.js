@@ -11,6 +11,7 @@ const DRAFTS_KEY = "codex-threadmail-drafts-v1";
 const AUTOSAVE_KEY = "codex-threadmail-autosave-v1";
 const SETTINGS_KEY = "codex-threadmail-settings-v1";
 const LOCK_KEY = "codex-threadmail-lock-v1";
+const DEVICE_KEY = "codex-threadmail-device-v1";
 const BASE_TITLE = "Threadmail";
 const AI_HANDLE = "threadai";
 const REACTIONS = ["Nice", "OK", "?", "Haha"];
@@ -67,6 +68,7 @@ let threads = [];
 let activeFilter = "inbox";
 let activeQuery = "";
 let activeChatQuery = "";
+let activeSearchKind = "all";
 let activeId = null;
 let replyToId = null;
 let tableReady = false;
@@ -90,6 +92,8 @@ let knownCallCandidateCounts = { caller: 0, callee: 0 };
 let ringtoneTimer = null;
 let ringtoneAudio = null;
 let ringtoneUnlocked = false;
+let lastCallIssue = "";
+let deviceId = loadDeviceId();
 
 const els = {
   greetingSplash: document.getElementById("greetingSplash"),
@@ -107,9 +111,12 @@ const els = {
   gameHistoryList: document.getElementById("gameHistoryList"),
   soundToggle: document.getElementById("soundToggle"),
   keyboardSoundToggle: document.getElementById("keyboardSoundToggle"),
+  privacyModeToggle: document.getElementById("privacyModeToggle"),
   phoneNotificationButton: document.getElementById("phoneNotificationButton"),
   testNotificationButton: document.getElementById("testNotificationButton"),
   phoneNotificationStatus: document.getElementById("phoneNotificationStatus"),
+  deviceList: document.getElementById("deviceList"),
+  callDiagnosticStatus: document.getElementById("callDiagnosticStatus"),
   themeSelect: document.getElementById("themeSelect"),
   aiStyleSelect: document.getElementById("aiStyleSelect"),
   lockCodeInput: document.getElementById("lockCodeInput"),
@@ -127,6 +134,7 @@ const els = {
   detailFrom: document.getElementById("detailFrom"),
   detailSubject: document.getElementById("detailSubject"),
   detailMeta: document.getElementById("detailMeta"),
+  detailPresence: document.getElementById("detailPresence"),
   detailTags: document.getElementById("detailTags"),
   reactionRow: document.getElementById("reactionRow"),
   chatSearch: document.getElementById("chatSearch"),
@@ -247,6 +255,14 @@ function createOwnerToken() {
   return "owner-" + Date.now() + "-" + Math.random().toString(16).slice(2);
 }
 
+function loadDeviceId() {
+  const saved = localStorage.getItem(DEVICE_KEY);
+  if (saved) return saved;
+  const next = `device-${createOwnerToken().slice(0, 18)}`;
+  localStorage.setItem(DEVICE_KEY, next);
+  return next;
+}
+
 function loadPrefs() {
   try {
     const saved = JSON.parse(localStorage.getItem(PREFS_KEY));
@@ -282,16 +298,34 @@ function loadSettings() {
       notificationSounds: saved?.notificationSounds !== false,
       keyboardSounds: Boolean(saved?.keyboardSounds),
       phoneNotifications: Boolean(saved?.phoneNotifications),
+      privacyMode: Boolean(saved?.privacyMode),
       theme: themes.includes(saved?.theme) ? saved.theme : "dark",
       aiStyle: aiStyles.includes(saved?.aiStyle) ? saved.aiStyle : "friendly"
     };
   } catch {
-    return { notificationSounds: true, keyboardSounds: false, phoneNotifications: false, theme: "dark", aiStyle: "friendly" };
+    return { notificationSounds: true, keyboardSounds: false, phoneNotifications: false, privacyMode: false, theme: "dark", aiStyle: "friendly" };
   }
 }
 
 function saveSettings() {
   localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+}
+
+function updateDevicePanel() {
+  if (!els.deviceList) return;
+  const handle = identity.handle || "no handle yet";
+  const protectedText = lockSettings.enabled ? "protected with app code" : "not protected";
+  els.deviceList.textContent = `${handle} on this device (${deviceId.slice(-8)}). Handle is ${protectedText}.`;
+}
+
+function updateCallDiagnosticPanel() {
+  if (!els.callDiagnosticStatus) return;
+  els.callDiagnosticStatus.textContent = lastCallIssue || "No call problems detected.";
+}
+
+function setCallIssue(message) {
+  lastCallIssue = message;
+  updateCallDiagnosticPanel();
 }
 
 function loadLockSettings() {
@@ -419,6 +453,7 @@ function renderLockSetting() {
 
 function applyTheme() {
   document.body.dataset.theme = settings.theme || "dark";
+  document.body.classList.toggle("privacy-previews", Boolean(settings.privacyMode));
 }
 
 function threadPrefs(id) {
@@ -462,6 +497,15 @@ function activeTypingHandle(thread) {
     isTypingFresh(entry)
   ));
   return row?.sender_handle || "";
+}
+
+function getPresenceText(thread) {
+  if (!thread?.otherHandle || thread.draft) return "";
+  const typing = activeTypingHandle(thread);
+  if (typing) return `${typing} is typing...`;
+  const latestFromThem = [...(thread.rows || [])].reverse().find((row) => row.sender_handle === thread.otherHandle);
+  if (latestFromThem?.created_at) return `Last active ${formatDate(latestFromThem.created_at)}`;
+  return "No recent activity yet.";
 }
 
 function rebuildThreads() {
@@ -565,8 +609,16 @@ function matchesFilter(thread) {
 function matchesQuery(thread) {
   if (!activeQuery) return true;
   const game = gameForThread(thread);
-  const haystack = [thread.from, thread.subject, thread.body, game ? getGameTitle(game.type) : "", ...thread.tags].join(" ").toLowerCase();
-  return haystack.includes(activeQuery);
+  const haystack = activeSearchKind === "people"
+    ? [thread.from, thread.otherHandle]
+    : activeSearchKind === "games"
+      ? [game ? getGameTitle(game.type) : "", game ? getGameBadgeText(game) : "", thread.subject]
+      : activeSearchKind === "media"
+        ? [thread.body.includes(VOICE_NOTE_PREFIX) ? "voice note audio" : "", thread.body.includes(PHOTO_PREFIX) ? "photo image media" : "", thread.subject]
+        : activeSearchKind === "date"
+          ? [thread.time, ...((thread.rows || []).map((row) => formatDate(row.created_at)))]
+          : [thread.from, thread.subject, thread.body, game ? getGameTitle(game.type) : "", ...thread.tags];
+  return haystack.join(" ").toLowerCase().includes(activeQuery);
 }
 
 function matchesChatQuery(row) {
@@ -769,7 +821,7 @@ function renderList() {
         ${thread.draft ? "<span>Draft</span>" : ""}
       </div>
       <h3>${escapeHtml(thread.subject)}</h3>
-      <p>${escapeHtml(thread.from)} - ${escapeHtml(thread.body.slice(0, 92))}${thread.body.length > 92 ? "..." : ""}</p>
+      <p>${settings.privacyMode ? "Message preview hidden" : `${escapeHtml(thread.from)} - ${escapeHtml(thread.body.slice(0, 92))}${thread.body.length > 92 ? "..." : ""}`}</p>
     `;
     button.addEventListener("click", () => selectThread(thread.id));
     els.threadList.append(button);
@@ -802,6 +854,8 @@ function renderDetail() {
   els.detailFrom.textContent = thread.from;
   els.detailSubject.textContent = thread.subject;
   els.detailMeta.textContent = `${thread.time} | ${thread.statusLabel || (thread.draft ? "Draft" : thread.archived ? "Archived" : thread.sent ? "Sent" : "Inbox")}`;
+  els.detailPresence.textContent = getPresenceText(thread);
+  els.detailPresence.hidden = !els.detailPresence.textContent;
   els.chatSearchWrap.hidden = thread.draft;
   renderMessageBody(thread);
   renderGameAttachment(thread);
@@ -1137,11 +1191,14 @@ function renderGameHistory() {
 function renderSettings() {
   els.soundToggle.checked = settings.notificationSounds;
   els.keyboardSoundToggle.checked = settings.keyboardSounds;
+  els.privacyModeToggle.checked = Boolean(settings.privacyMode);
   renderPhoneNotificationSetting();
   renderLockSetting();
   els.themeSelect.value = settings.theme || "dark";
   els.aiStyleSelect.value = settings.aiStyle || "friendly";
   applyTheme();
+  updateDevicePanel();
+  updateCallDiagnosticPanel();
 }
 
 function renderPhoneNotificationSetting() {
@@ -2310,6 +2367,7 @@ async function getCallMediaStream(mediaType) {
   try {
     return await navigator.mediaDevices.getUserMedia({ audio: true, video: { facingMode: "user" } });
   } catch {
+    setCallIssue("Camera failed or permission was blocked. Threadmail tried microphone-only fallback.");
     setStatus("Camera is not available on this computer. Joining with microphone only.", "neutral");
     return navigator.mediaDevices.getUserMedia({ audio: true, video: false });
   }
@@ -2384,6 +2442,7 @@ async function createVoicePeer(role, call) {
     } else if (peer.connectionState === "disconnected") {
       setVoiceCallPanel({ label: `${mediaType === "video" ? "FaceTime" : "Voice"} with ${getCallPeer()}`, status: "Reconnecting...", connected: true, video: mediaType === "video" });
     } else if (["failed", "closed"].includes(peer.connectionState)) {
+      setCallIssue("WebRTC connection was lost. Check camera/mic permissions, VPNs, school Wi-Fi, or cellular restrictions.");
       setVoiceCallPanel({ label: mediaType === "video" ? "Threadmail FaceTime" : "Threadmail Voice", status: "Connection lost", connected: true, video: mediaType === "video", lost: true });
     }
   });
@@ -2395,6 +2454,7 @@ async function createVoicePeer(role, call) {
     } else if (peer.iceConnectionState === "disconnected") {
       setVoiceCallPanel({ label: `${mediaType === "video" ? "FaceTime" : "Voice"} with ${getCallPeer()}`, status: "Reconnecting...", connected: true, video: mediaType === "video" });
     } else if (peer.iceConnectionState === "failed") {
+      setCallIssue("Network blocked the call path. Try another Wi-Fi/cellular network or use a stronger TURN relay.");
       setVoiceCallPanel({ label: mediaType === "video" ? "Threadmail FaceTime" : "Threadmail Voice", status: "Connection blocked by network", connected: true, video: mediaType === "video", lost: true });
     }
   });
@@ -3129,6 +3189,16 @@ document.querySelectorAll("[data-filter]").forEach((button) => {
   });
 });
 
+document.querySelectorAll("[data-search-kind]").forEach((button) => {
+  button.addEventListener("click", () => {
+    activeSearchKind = button.dataset.searchKind || "all";
+    document.querySelectorAll("[data-search-kind]").forEach((item) => {
+      item.classList.toggle("is-active", item.dataset.searchKind === activeSearchKind);
+    });
+    render();
+  });
+});
+
 els.mailSearch.addEventListener("input", () => {
   activeQuery = els.mailSearch.value.trim().toLowerCase();
   render();
@@ -3174,6 +3244,12 @@ els.soundToggle.addEventListener("change", () => {
 els.keyboardSoundToggle.addEventListener("change", () => {
   settings.keyboardSounds = els.keyboardSoundToggle.checked;
   saveSettings();
+});
+els.privacyModeToggle.addEventListener("change", () => {
+  settings.privacyMode = els.privacyModeToggle.checked;
+  saveSettings();
+  renderSettings();
+  renderList();
 });
 els.phoneNotificationButton.addEventListener("click", async () => {
   if (!("Notification" in window)) {
@@ -3502,6 +3578,7 @@ els.saveIdentity.addEventListener("click", async () => {
   els.identityHandle.value = nextHandle;
   activeId = null;
   saveIdentity();
+  updateDevicePanel();
   setStatus(getClaimStatusMessage(claimResult, nextHandle) || `Using ${nextHandle}.`, claimResult.includes("unprotected") ? "neutral" : "success");
   await fetchMessages();
 });

@@ -15,10 +15,10 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="Threadmail">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <link rel="manifest" href="./threadmail.webmanifest?v=52">
+  <link rel="manifest" href="./threadmail.webmanifest?v=53">
   <link rel="apple-touch-icon" href="./threadmail-icon-192.png">
   <link rel="stylesheet" href="../style.css">
-  <link rel="stylesheet" href="./threadmail.css?v=52">
+  <link rel="stylesheet" href="./threadmail.css?v=53">
 </head>
 <body>
   <section class="greeting-splash" id="greetingSplash" aria-live="polite">
@@ -110,6 +110,13 @@
             <button class="mail-filter" type="button" data-filter="archived">Archived</button>
             <button class="mail-filter" type="button" data-filter="sent">Sent</button>
           </div>
+          <div class="search-scope" aria-label="Search filters">
+            <button class="scope-filter is-active" type="button" data-search-kind="all">All</button>
+            <button class="scope-filter" type="button" data-search-kind="people">People</button>
+            <button class="scope-filter" type="button" data-search-kind="games">Games</button>
+            <button class="scope-filter" type="button" data-search-kind="media">Media</button>
+            <button class="scope-filter" type="button" data-search-kind="date">Date</button>
+          </div>
           <div class="threadmail-tip">
             <strong>Shortcuts</strong>
             <span>N compose</span>
@@ -157,6 +164,10 @@
                 <input type="checkbox" id="keyboardSoundToggle">
                 <span>Keyboard sounds</span>
               </label>
+              <label class="setting-toggle">
+                <input type="checkbox" id="privacyModeToggle">
+                <span>Privacy previews</span>
+              </label>
               <button class="play-button play-button--ghost" type="button" id="phoneNotificationButton">Enable Phone Notifications</button>
               <button class="play-button play-button--ghost" type="button" id="testNotificationButton">Test Notification</button>
               <p class="install-help" id="phoneNotificationStatus">Notifications are off.</p>
@@ -188,9 +199,17 @@
                 <span>Recovery Email</span>
                 <input id="lockEmailInput" type="email" autocomplete="email" placeholder="you@gmail.com" data-touch-input>
               </label>
-              <button class="play-button play-button--ghost" type="button" id="saveLockButton">Save App Lock</button>
+              <button class="play-button play-button--ghost" type="button" id="saveLockButton">Save / Change Code</button>
               <button class="play-button play-button--ghost" type="button" id="disableLockButton">Disable App Lock</button>
               <p class="install-help" id="lockSettingStatus">App lock is off.</p>
+              <div class="settings-info-card">
+                <strong>This Device</strong>
+                <p id="deviceList">No device details yet.</p>
+              </div>
+              <div class="settings-info-card">
+                <strong>Call Troubleshooter</strong>
+                <p id="callDiagnosticStatus">No call problems detected.</p>
+              </div>
               <button class="play-button play-button--ghost" type="button" id="clearLocalData">Clear Local Data</button>
             </section>
 
@@ -224,6 +243,7 @@
                 <p class="message-detail__from" id="detailFrom"></p>
                 <h2 id="detailSubject"></h2>
                 <p class="message-detail__meta" id="detailMeta"></p>
+                <p class="message-detail__presence" id="detailPresence"></p>
               </div>
               <button class="star-button" type="button" id="starButton" aria-label="Toggle starred">*</button>
             </div>
@@ -353,6 +373,6 @@
       </nav>
     </section>
   </main>
-  <script src="../js/threadmail.js?v=52"></script>
+  <script src="../js/threadmail.js?v=53"></script>
 </body>
 </html>
