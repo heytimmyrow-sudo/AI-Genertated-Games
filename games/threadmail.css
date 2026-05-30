@@ -35,6 +35,13 @@
   align-items: flex-start;
 }
 
+.threadmail-version {
+  display: inline-block;
+  margin-top: 4px;
+  color: var(--accent-soft);
+  font-size: 0.72rem;
+}
+
 .threadmail-actions {
   gap: 10px;
   flex-wrap: wrap;

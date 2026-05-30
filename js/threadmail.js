@@ -3779,9 +3779,12 @@ setInterval(async () => {
 }, 4000);
 
 if ("serviceWorker" in navigator) {
-  window.addEventListener("load", () => {
-    navigator.serviceWorker.register("./threadmail-sw.js").catch(() => {
+  window.addEventListener("load", async () => {
+    try {
+      const registration = await navigator.serviceWorker.register("./threadmail-sw.js", { updateViaCache: "none" });
+      await registration.update();
+    } catch {
       setStatus("Install mode is unavailable in this browser right now.", "error");
-    });
+    }
   });
 }
