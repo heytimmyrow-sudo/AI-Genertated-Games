@@ -364,6 +364,25 @@ function getSupabaseHeaders(extra = {}) {
   };
 }
 
+async function fetchWithRetry(url, options) {
+  try {
+    return await fetch(url, options);
+  } catch {
+    await new Promise((resolve) => window.setTimeout(resolve, 700));
+    return fetch(url, options);
+  }
+}
+
+function setSupabaseConnectionError() {
+  els.offlineBanner.hidden = false;
+  setStatus(
+    navigator.onLine === false
+      ? "This device is offline. Reconnect to the internet, then press Refresh."
+      : "Could not reach Supabase right now. Press Refresh to try again.",
+    "error"
+  );
+}
+
 function isReservedHandle(handle) {
   return RESERVED_HANDLES.has(handle) || handle.startsWith("threadmail_") || handle.startsWith("support_");
 }
@@ -373,7 +392,7 @@ function getHandleCodeHash() {
 }
 
 async function claimHandle(handle) {
-  const response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/${HANDLES_RPC}`, {
+  const response = await fetchWithRetry(`${SUPABASE_URL}/rest/v1/rpc/${HANDLES_RPC}`, {
     method: "POST",
     headers: getSupabaseHeaders({
       "Content-Type": "application/json"
@@ -1867,7 +1886,7 @@ async function sendMessage() {
     };
     if (gameId) message.game_id = gameId;
 
-    const response = await fetch(`${SUPABASE_URL}/rest/v1/${SUPABASE_TABLE}`, {
+    const response = await fetchWithRetry(`${SUPABASE_URL}/rest/v1/${SUPABASE_TABLE}`, {
       method: "POST",
       headers: getSupabaseHeaders({
         "Content-Type": "application/json",
@@ -1899,8 +1918,7 @@ async function sendMessage() {
     activeFilter = "sent";
     render();
   } catch {
-    els.offlineBanner.hidden = false;
-    setStatus("Supabase project URL is not reachable. Check that the project is active and the URL/key in js/threadmail.js are correct.", "error");
+    setSupabaseConnectionError();
   }
 }
 
@@ -1928,7 +1946,7 @@ async function sendInlineReply() {
 
   setStatus("Sending reply...", "neutral");
   try {
-    const response = await fetch(`${SUPABASE_URL}/rest/v1/${SUPABASE_TABLE}`, {
+    const response = await fetchWithRetry(`${SUPABASE_URL}/rest/v1/${SUPABASE_TABLE}`, {
       method: "POST",
       headers: getSupabaseHeaders({
         "Content-Type": "application/json",
@@ -1968,8 +1986,7 @@ async function sendInlineReply() {
     render();
     focusInlineReply();
   } catch {
-    els.offlineBanner.hidden = false;
-    setStatus("Supabase project URL is not reachable. Check that the project is active and the URL/key in js/threadmail.js are correct.", "error");
+    setSupabaseConnectionError();
   }
 }
 
@@ -1992,7 +2009,7 @@ async function sendThreadUtilityMessage(body, statusLabel = "Message") {
 
   setStatus(`Sending ${statusLabel.toLowerCase()}...`, "neutral");
   try {
-    const response = await fetch(`${SUPABASE_URL}/rest/v1/${SUPABASE_TABLE}`, {
+    const response = await fetchWithRetry(`${SUPABASE_URL}/rest/v1/${SUPABASE_TABLE}`, {
       method: "POST",
       headers: getSupabaseHeaders({
         "Content-Type": "application/json",
@@ -2023,8 +2040,7 @@ async function sendThreadUtilityMessage(body, statusLabel = "Message") {
     render();
     return true;
   } catch {
-    els.offlineBanner.hidden = false;
-    setStatus("Supabase project URL is not reachable. Check that the project is active and the URL/key in js/threadmail.js are correct.", "error");
+    setSupabaseConnectionError();
     return false;
   }
 }
@@ -2073,7 +2089,7 @@ async function sendInlineGame(type) {
     const gameId = await createGame(sender, recipient, type);
     if (!gameId) return;
 
-    const response = await fetch(`${SUPABASE_URL}/rest/v1/${SUPABASE_TABLE}`, {
+    const response = await fetchWithRetry(`${SUPABASE_URL}/rest/v1/${SUPABASE_TABLE}`, {
       method: "POST",
       headers: getSupabaseHeaders({
         "Content-Type": "application/json",
@@ -2105,8 +2121,7 @@ async function sendInlineGame(type) {
     activeId = findConversationThreadId(recipient, subject) || activeId;
     render();
   } catch {
-    els.offlineBanner.hidden = false;
-    setStatus("Supabase project URL is not reachable. Check that the project is active and the URL/key in js/threadmail.js are correct.", "error");
+    setSupabaseConnectionError();
   }
 }
 
@@ -2143,7 +2158,7 @@ async function sendInlineCall(type) {
 
   setStatus("Sending call invite...", "neutral");
   try {
-    const response = await fetch(`${SUPABASE_URL}/rest/v1/${SUPABASE_TABLE}`, {
+    const response = await fetchWithRetry(`${SUPABASE_URL}/rest/v1/${SUPABASE_TABLE}`, {
       method: "POST",
       headers: getSupabaseHeaders({
         "Content-Type": "application/json",
@@ -2174,8 +2189,7 @@ async function sendInlineCall(type) {
     activeId = findConversationThreadId(recipient, subject) || activeId;
     render();
   } catch {
-    els.offlineBanner.hidden = false;
-    setStatus("Supabase project URL is not reachable. Check that the project is active and the URL/key in js/threadmail.js are correct.", "error");
+    setSupabaseConnectionError();
   }
 }
 
@@ -2737,7 +2751,7 @@ async function fetchMessages() {
   setStatus(`Checking messages for ${handle}...`);
   try {
     const query = buildMessagesQuery(handle, true);
-    const response = await fetch(`${SUPABASE_URL}/rest/v1/${SUPABASE_TABLE}?${query}`, {
+    const response = await fetchWithRetry(`${SUPABASE_URL}/rest/v1/${SUPABASE_TABLE}?${query}`, {
       headers: getSupabaseHeaders()
     });
     const payload = await response.json().catch(() => ([]));
@@ -2757,8 +2771,7 @@ async function fetchMessages() {
     render();
     maybeNotifyUnreadChange();
   } catch {
-    els.offlineBanner.hidden = false;
-    setStatus("Supabase project URL is not reachable. Check that the project is active and the URL/key in js/threadmail.js are correct.", "error");
+    setSupabaseConnectionError();
   }
 }
 
@@ -2776,7 +2789,7 @@ function mergeReturnedMessages(payload) {
 
 async function fetchMessagesWithoutGames(handle) {
   const query = buildMessagesQuery(handle, false);
-  const response = await fetch(`${SUPABASE_URL}/rest/v1/${SUPABASE_TABLE}?${query}`, {
+  const response = await fetchWithRetry(`${SUPABASE_URL}/rest/v1/${SUPABASE_TABLE}?${query}`, {
     headers: getSupabaseHeaders()
   });
   const payload = await response.json().catch(() => ([]));
@@ -2796,7 +2809,7 @@ async function fetchMessagesWithoutGames(handle) {
 
 async function fetchGames(handle) {
   const query = `or=(x_handle.eq.${encodeURIComponent(handle)},o_handle.eq.${encodeURIComponent(handle)})&select=id,type,x_handle,o_handle,board,turn_handle,status,last_message_id,created_at,updated_at&order=updated_at.desc&limit=100`;
-  const response = await fetch(`${SUPABASE_URL}/rest/v1/${GAMES_TABLE}?${query}`, {
+  const response = await fetchWithRetry(`${SUPABASE_URL}/rest/v1/${GAMES_TABLE}?${query}`, {
     headers: getSupabaseHeaders()
   });
   const payload = await response.json().catch(() => ([]));
