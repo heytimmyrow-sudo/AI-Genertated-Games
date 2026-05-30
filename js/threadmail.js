@@ -69,6 +69,7 @@ let activeFilter = "inbox";
 let activeQuery = "";
 let activeChatQuery = "";
 let activeSearchKind = "all";
+let expandedConversationIds = new Set();
 let activeId = null;
 let replyToId = null;
 let tableReady = false;
@@ -895,7 +896,13 @@ function renderMessageBody(thread) {
       empty.textContent = "No messages match that search.";
       els.detailBody.append(empty);
     }
-    for (const row of rows) {
+    const collapseRows = !activeChatQuery && rows.length > 4;
+    const expanded = expandedConversationIds.has(getThreadPrefId(thread));
+    const visibleRows = collapseRows && !expanded ? rows.slice(0, 4) : rows;
+    if (collapseRows) {
+      appendConversationToggle(thread, rows.length - 4, expanded);
+    }
+    for (const row of visibleRows) {
       appendChatBubble({
         label: row.isSent ? "You" : row.sender_handle,
         text: row.body,
@@ -919,6 +926,20 @@ function renderMessageBody(thread) {
     const typingHandle = activeTypingHandle(thread);
     if (typingHandle) appendTypingBubble(typingHandle);
   }
+}
+
+function appendConversationToggle(thread, hiddenCount, expanded) {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "conversation-toggle";
+  button.textContent = expanded ? "Hide older messages" : `Show ${hiddenCount} older message${hiddenCount === 1 ? "" : "s"}`;
+  button.addEventListener("click", () => {
+    const id = getThreadPrefId(thread);
+    if (expandedConversationIds.has(id)) expandedConversationIds.delete(id);
+    else expandedConversationIds.add(id);
+    renderMessageBody(thread);
+  });
+  els.detailBody.append(button);
 }
 
 function appendChatBubble({ label, text, time, isMine }) {

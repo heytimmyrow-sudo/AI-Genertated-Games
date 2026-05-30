@@ -1387,6 +1387,26 @@ button.compact-item:focus-visible {
   color: var(--muted);
 }
 
+.conversation-toggle {
+  justify-self: center;
+  min-height: 36px;
+  border: 1px solid rgba(125, 227, 255, 0.18);
+  border-radius: 999px;
+  padding: 7px 14px;
+  color: var(--accent-soft);
+  background: rgba(125, 227, 255, 0.07);
+  font: inherit;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.conversation-toggle:hover,
+.conversation-toggle:focus-visible {
+  border-color: rgba(255, 214, 107, 0.54);
+  color: var(--warm);
+  background: rgba(255, 214, 107, 0.08);
+}
+
 .chat-bubble {
   width: fit-content;
   max-width: min(78%, 620px);
