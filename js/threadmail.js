@@ -1623,6 +1623,10 @@ function formatTime(value) {
   return date.toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
 }
 
+function formatDate(value) {
+  return formatTime(value);
+}
+
 function openCompose(mode = "new") {
   const thread = currentThread();
   const saved = mode === "new" ? loadComposeAutosave() : null;
