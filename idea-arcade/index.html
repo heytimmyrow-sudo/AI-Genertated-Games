@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
+  <title>Idea Arcade</title>
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+  <main class="app">
+    <aside class="library" aria-label="Game library">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true"></span>
+        <div>
+          <p>Standalone Prototype Hub</p>
+          <h1>Idea Arcade</h1>
+        </div>
+      </div>
+
+      <div class="library-actions">
+        <button type="button" id="restartGame">Restart</button>
+        <button type="button" id="pauseGame">Pause</button>
+        <button type="button" id="fullscreenGame">Fullscreen</button>
+        <button type="button" id="settingsToggle">Settings</button>
+      </div>
+
+      <section class="progress-panel" aria-label="Arcade progress">
+        <div>
+          <span>Arcade Tokens</span>
+          <strong id="tokenCount">0</strong>
+        </div>
+        <div>
+          <span>Achievements</span>
+          <strong id="achievementCount">0/0</strong>
+        </div>
+      </section>
+
+      <nav class="game-list" id="gameList" aria-label="Select a game"></nav>
+
+      <section class="achievements" aria-label="Recent achievements">
+        <h2>Achievements</h2>
+        <div id="achievementList"></div>
+      </section>
+    </aside>
+
+    <section class="stage">
+      <header class="stage-header">
+        <div>
+          <p id="gameKicker">Prototype 01</p>
+          <h2 id="gameTitle">Night Shift Necromancer</h2>
+        </div>
+        <div class="stats" aria-label="Game stats">
+          <span id="scoreStat">Score 0</span>
+          <span id="timeStat">Time 0:00</span>
+          <span id="statusStat">Ready</span>
+        </div>
+      </header>
+
+      <div class="playfield-wrap">
+        <div class="canvas-shell">
+          <canvas id="gameCanvas" width="960" height="600" aria-label="Selected game canvas"></canvas>
+          <section class="overlay is-open" id="gameOverlay" aria-live="polite">
+            <div class="overlay-card">
+              <p id="overlayKicker">Prototype 01</p>
+              <h3 id="overlayTitle">Night Shift Necromancer</h3>
+              <p id="overlayBody">Sort spirits into the matching ritual desk before the queue overwhelms you.</p>
+              <div class="overlay-stats" id="overlayStats"></div>
+              <div class="overlay-actions">
+                <button type="button" id="overlayPrimary">Start</button>
+                <button type="button" id="overlaySecondary">Next Game</button>
+              </div>
+            </div>
+          </section>
+        </div>
+        <div class="touch-pad" aria-label="Touch controls">
+          <button type="button" data-touch="ArrowUp">Up</button>
+          <button type="button" data-touch="ArrowLeft">Left</button>
+          <button type="button" data-touch=" ">Action</button>
+          <button type="button" data-touch="ArrowRight">Right</button>
+          <button type="button" data-touch="ArrowDown">Down</button>
+        </div>
+      </div>
+
+      <footer class="brief">
+        <div>
+          <strong>Goal</strong>
+          <p id="gameGoal">Sort spirits into the matching ritual desk before the queue overwhelms you.</p>
+        </div>
+        <div>
+          <strong>Controls</strong>
+          <p id="gameControls">Arrow keys move. Space acts. Number keys are used by some games.</p>
+        </div>
+      </footer>
+    </section>
+
+    <aside class="settings-panel" id="settingsPanel" aria-label="Game settings">
+      <header>
+        <h2>Settings</h2>
+        <button type="button" id="closeSettings">Close</button>
+      </header>
+      <label>
+        <span>Difficulty</span>
+        <select id="difficultySelect">
+          <option value="casual">Casual</option>
+          <option value="standard" selected>Standard</option>
+          <option value="hard">Hard</option>
+        </select>
+      </label>
+      <label class="check-row">
+        <input type="checkbox" id="soundToggle" checked>
+        <span>Sound effects</span>
+      </label>
+      <label class="check-row">
+        <input type="checkbox" id="musicToggle" checked>
+        <span>Ambient loops</span>
+      </label>
+      <label class="check-row">
+        <input type="checkbox" id="reducedMotionToggle">
+        <span>Reduced motion</span>
+      </label>
+      <label class="check-row">
+        <input type="checkbox" id="highContrastToggle">
+        <span>High contrast</span>
+      </label>
+      <label class="check-row">
+        <input type="checkbox" id="largeTextToggle">
+        <span>Larger text</span>
+      </label>
+      <div class="bind-grid" aria-label="Keyboard bindings">
+        <button type="button" data-bind="up">Up: <span id="bind-up">W</span></button>
+        <button type="button" data-bind="left">Left: <span id="bind-left">A</span></button>
+        <button type="button" data-bind="down">Down: <span id="bind-down">S</span></button>
+        <button type="button" data-bind="right">Right: <span id="bind-right">D</span></button>
+        <button type="button" data-bind="action">Action: <span id="bind-action">Space</span></button>
+      </div>
+      <p id="settingsHint">Click a binding, then press a key.</p>
+    </aside>
+  </main>
+
+  <script src="./game.js"></script>
+</body>
+</html>

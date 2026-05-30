@@ -39,6 +39,7 @@ jobs:
           cp favicon.ico site/favicon.ico
           cp -r exercise-arena site/exercise-arena
           cp -r games site/games
+          cp -r idea-arcade site/idea-arcade
           cp -r js site/js
           cp -r vendor site/vendor
           cp -r workshop site/workshop
