@@ -1,9 +1,9 @@
-const CACHE_NAME = "pulse-league-v16";
+const CACHE_NAME = "pulse-league-v17";
 const ASSETS = [
   "./",
   "./index.html",
-  "./styles.css?v=notifications-v2",
-  "./app.js?v=notifications-v2",
+  "./styles.css?v=phone-reminders-v1",
+  "./app.js?v=phone-reminders-v1",
   "./manifest.webmanifest",
   "./assets/pulse-league-icon-192.png",
   "./assets/pulse-league-icon-512.png",
@@ -33,5 +33,18 @@ self.addEventListener("fetch", (event) => {
         return response;
       })
       .catch(() => caches.match(event.request))
+  );
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  event.waitUntil(
+    clients.matchAll({ type: "window", includeUncontrolled: true }).then((clientList) => {
+      for (const client of clientList) {
+        if ("focus" in client) return client.focus();
+      }
+      if (clients.openWindow) return clients.openWindow("./");
+      return undefined;
+    })
   );
 });

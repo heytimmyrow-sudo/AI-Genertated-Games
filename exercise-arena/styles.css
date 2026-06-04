@@ -413,6 +413,31 @@ body.dark .timer-panel {
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--green) 20%, transparent);
 }
 
+.reminder-card {
+  margin-top: 10px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-strong);
+}
+
+.compact-heading {
+  margin-bottom: 12px;
+}
+
+.compact-heading h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.reminder-card .settings-grid {
+  margin-bottom: 8px;
+}
+
+.reminder-card .ghost-button {
+  min-height: 42px;
+}
+
 #durationField {
   display: none;
   margin-bottom: 12px;

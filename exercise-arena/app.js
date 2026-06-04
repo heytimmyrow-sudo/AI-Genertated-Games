@@ -39,7 +39,17 @@ const notificationTypes = {
   challenge: "Challenges",
   safety: "Safety",
   recovery: "Recovery",
+  reminder: "Reminders",
   system: "System"
+};
+const phoneReminderMessages = [
+  { id: "basement-scroll", text: "Still scrolling? Scroll on down to the basement!" },
+  { id: "treadmill-scroll", text: "lets see if you can make the treadmill scroll as fast as your phone!" }
+];
+const phoneReminderIntervals = [3, 5, 8, 12, 24];
+const quietHours = {
+  startMinutes: 20 * 60 + 30,
+  endMinutes: 8 * 60 + 30
 };
 const legacyPrizeMap = {
   neon: "neon-serve",
@@ -80,6 +90,7 @@ const timer = {
   ticker: null,
   presetLabel: ""
 };
+let phoneReminderTimer = null;
 saveState();
 
 function loadState() {
@@ -100,6 +111,13 @@ function loadState() {
     friendRequests: [],
     notifications: [],
     notificationFilter: "all",
+    phoneReminders: {
+      enabled: false,
+      messageId: "basement-scroll",
+      intervalHours: 3,
+      nextAt: "",
+      lastSentAt: ""
+    },
     group: { name: "Family League", inviteCode: makeSetupCode("family"), private: true },
     teamName: "Pulse Team",
     coachChallenge: "",
@@ -125,6 +143,13 @@ function loadState() {
       .filter((id) => cosmeticRules.some((entry) => entry.id === id)))];
     merged.friendRequests = parsed.friendRequests || fallback.friendRequests;
     merged.notificationFilter = parsed.notificationFilter || fallback.notificationFilter;
+    merged.phoneReminders = { ...fallback.phoneReminders, ...(parsed.phoneReminders || {}) };
+    if (!phoneReminderMessages.some((entry) => entry.id === merged.phoneReminders.messageId)) {
+      merged.phoneReminders.messageId = fallback.phoneReminders.messageId;
+    }
+    if (!phoneReminderIntervals.includes(Number(merged.phoneReminders.intervalHours))) {
+      merged.phoneReminders.intervalHours = fallback.phoneReminders.intervalHours;
+    }
     merged.notifications = (parsed.notifications || fallback.notifications).map((note) => ({
       id: note.id || crypto.randomUUID(),
       type: note.type || "system",
@@ -349,6 +374,109 @@ function notify(message, type = "system", title = "Pulse League") {
 
 function notificationTypeLabel(type) {
   return notificationTypes[type] || notificationTypes.system;
+}
+
+function activePhoneReminderMessage() {
+  return phoneReminderMessages.find((entry) => entry.id === state.phoneReminders.messageId) || phoneReminderMessages[0];
+}
+
+function minutesIntoDay(date) {
+  return date.getHours() * 60 + date.getMinutes();
+}
+
+function isQuietTime(date = new Date()) {
+  const minutes = minutesIntoDay(date);
+  return minutes >= quietHours.startMinutes || minutes < quietHours.endMinutes;
+}
+
+function nextQuietEnd(date = new Date()) {
+  const next = new Date(date);
+  next.setSeconds(0, 0);
+  if (minutesIntoDay(date) >= quietHours.startMinutes) {
+    next.setDate(next.getDate() + 1);
+  }
+  next.setHours(8, 30, 0, 0);
+  return next;
+}
+
+function nextAllowedReminderTime(date = new Date()) {
+  return isQuietTime(date) ? nextQuietEnd(date) : date;
+}
+
+function getNotificationPermission() {
+  if (!("Notification" in window)) return "unavailable";
+  return Notification.permission;
+}
+
+function setNextPhoneReminder(from = new Date()) {
+  const intervalMs = Number(state.phoneReminders.intervalHours || 3) * 60 * 60 * SECOND;
+  const next = nextAllowedReminderTime(new Date(from.getTime() + intervalMs));
+  state.phoneReminders.nextAt = next.toISOString();
+}
+
+async function showPhoneReminderPopup(message) {
+  notify(message, "reminder", "Phone reminder");
+  if (!("Notification" in window) || Notification.permission !== "granted") return false;
+  try {
+    const registration = await navigator.serviceWorker?.ready;
+    if (registration?.showNotification) {
+      await registration.showNotification("Pulse League", {
+        body: message,
+        icon: "assets/pulse-league-icon-192.png",
+        badge: "assets/pulse-league-icon-192.png",
+        tag: "pulse-league-phone-reminder",
+        renotify: true
+      });
+      return true;
+    }
+  } catch {}
+  try {
+    new Notification("Pulse League", {
+      body: message,
+      icon: "assets/pulse-league-icon-192.png",
+      tag: "pulse-league-phone-reminder"
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function runPhoneReminderScheduler() {
+  clearTimeout(phoneReminderTimer);
+  if (!state.phoneReminders.enabled) {
+    renderPhoneReminderSettings();
+    return;
+  }
+  const now = new Date();
+  if (!state.phoneReminders.nextAt) {
+    setNextPhoneReminder(now);
+    saveState();
+  }
+  let nextAt = new Date(state.phoneReminders.nextAt);
+  if (Number.isNaN(nextAt.getTime())) {
+    setNextPhoneReminder(now);
+    nextAt = new Date(state.phoneReminders.nextAt);
+    saveState();
+  }
+  if (isQuietTime(now) && nextAt <= now) {
+    state.phoneReminders.nextAt = nextQuietEnd(now).toISOString();
+    saveState();
+    nextAt = new Date(state.phoneReminders.nextAt);
+  }
+  if (nextAt <= now && !isQuietTime(now)) {
+    const message = activePhoneReminderMessage().text;
+    state.phoneReminders.lastSentAt = now.toISOString();
+    setNextPhoneReminder(now);
+    saveState();
+    await showPhoneReminderPopup(message);
+    saveState();
+    render();
+    nextAt = new Date(state.phoneReminders.nextAt);
+  }
+  const delay = Math.max(1000, Math.min(nextAt.getTime() - Date.now(), 60 * 60 * SECOND));
+  phoneReminderTimer = setTimeout(runPhoneReminderScheduler, delay);
+  renderPhoneReminderSettings();
 }
 
 function suspiciousSession(minutes, note = "") {
@@ -796,6 +924,24 @@ function renderNotifications() {
   }).join("") : `<li class="empty-state">No notifications in this filter.</li>`;
 }
 
+function renderPhoneReminderSettings() {
+  $("#phoneReminderMessage").innerHTML = phoneReminderMessages.map((entry) => (
+    `<option value="${entry.id}" ${entry.id === state.phoneReminders.messageId ? "selected" : ""}>${escapeHtml(entry.text)}</option>`
+  )).join("");
+  $("#phoneReminderToggle").checked = state.phoneReminders.enabled;
+  $("#phoneReminderMessage").value = state.phoneReminders.messageId;
+  $("#phoneReminderInterval").value = String(state.phoneReminders.intervalHours || 3);
+  const permission = getNotificationPermission();
+  const nextAt = state.phoneReminders.nextAt ? new Date(state.phoneReminders.nextAt) : null;
+  const nextLabel = state.phoneReminders.enabled && nextAt && !Number.isNaN(nextAt.getTime())
+    ? `Next popup: ${nextAt.toLocaleString()}`
+    : "No phone reminders scheduled.";
+  $("#phoneReminderStatus").textContent = state.phoneReminders.enabled ? (permission === "granted" ? "On" : "Needs allow") : "Off";
+  $("#phoneReminderNext").textContent = `${nextLabel} Quiet hours: 8:30 PM-8:30 AM.`;
+  $("#phoneReminderPermission").textContent = permission === "granted" ? "Phone Popups Allowed" : "Allow Phone Popups";
+  $("#phoneReminderPermission").disabled = permission === "granted" || permission === "unavailable";
+}
+
 function renderSettings() {
   document.body.className = "";
   document.body.classList.toggle("timer-mode", timer.mode === "timer");
@@ -807,6 +953,7 @@ function renderSettings() {
   $("#groupName").value = state.group.name;
   $("#teamName").value = state.teamName;
   $("#coachChallenge").value = state.coachChallenge;
+  renderPhoneReminderSettings();
 }
 
 function render() {
@@ -1460,6 +1607,56 @@ $("#vibrationToggle").addEventListener("change", () => {
   saveState();
 });
 
+$("#phoneReminderToggle").addEventListener("change", () => {
+  state.phoneReminders.enabled = $("#phoneReminderToggle").checked;
+  if (state.phoneReminders.enabled) {
+    setNextPhoneReminder(new Date());
+  } else {
+    state.phoneReminders.nextAt = "";
+    clearTimeout(phoneReminderTimer);
+  }
+  saveState();
+  renderPhoneReminderSettings();
+  runPhoneReminderScheduler();
+});
+
+$("#phoneReminderMessage").addEventListener("change", () => {
+  state.phoneReminders.messageId = $("#phoneReminderMessage").value;
+  if (state.phoneReminders.enabled) setNextPhoneReminder(new Date());
+  saveState();
+  renderPhoneReminderSettings();
+  runPhoneReminderScheduler();
+});
+
+$("#phoneReminderInterval").addEventListener("change", () => {
+  const interval = Number($("#phoneReminderInterval").value);
+  state.phoneReminders.intervalHours = phoneReminderIntervals.includes(interval) ? interval : 3;
+  if (state.phoneReminders.enabled) setNextPhoneReminder(new Date());
+  saveState();
+  renderPhoneReminderSettings();
+  runPhoneReminderScheduler();
+});
+
+$("#phoneReminderPermission").addEventListener("click", async () => {
+  if (!("Notification" in window)) {
+    notify("Phone popups are not available in this browser.", "reminder", "Phone reminder");
+    saveState();
+    render();
+    return;
+  }
+  const permission = await Notification.requestPermission();
+  if (permission === "granted") {
+    state.phoneReminders.enabled = true;
+    setNextPhoneReminder(new Date());
+    notify("Phone popups are allowed.", "reminder", "Phone reminder");
+  } else {
+    notify("Phone popups were not allowed.", "reminder", "Phone reminder");
+  }
+  saveState();
+  render();
+  runPhoneReminderScheduler();
+});
+
 $("#clearHistory").addEventListener("click", () => {
   if (!profileSessions().length || !confirm("Clear this profile's workout history?")) return;
   state.sessions = state.sessions.filter((session) => session.profileId !== state.activeProfileId);
@@ -1534,6 +1731,10 @@ $("#exportButton").addEventListener("click", async () => {
   }, 1200);
 });
 
+document.addEventListener("visibilitychange", () => {
+  if (!document.hidden) runPhoneReminderScheduler();
+});
+
 if ("serviceWorker" in navigator) {
   navigator.serviceWorker.register("sw.js").catch(() => {});
 }
@@ -1541,3 +1742,4 @@ if ("serviceWorker" in navigator) {
 render();
 activateDashboardSection(state.lastSection || "progress", false);
 initOnline();
+runPhoneReminderScheduler();

@@ -8,7 +8,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="assets/pulse-league-icon-192.png">
   <link rel="apple-touch-icon" href="assets/pulse-league-icon-192.png">
   <link rel="manifest" href="manifest.webmanifest">
-  <link rel="stylesheet" href="styles.css?v=notifications-v2">
+  <link rel="stylesheet" href="styles.css?v=phone-reminders-v1">
 </head>
 <body>
   <main class="app-shell">
@@ -502,6 +502,37 @@
             <span>Vibration alert</span>
           </label>
         </div>
+        <div class="reminder-card">
+          <div class="panel-heading compact-heading">
+            <div>
+              <p class="eyebrow">Phone popups</p>
+              <h3>Preset reminders</h3>
+            </div>
+            <span class="mode-pill" id="phoneReminderStatus">Off</span>
+          </div>
+          <div class="settings-grid">
+            <label class="check-row">
+              <input id="phoneReminderToggle" type="checkbox">
+              <span>Workout reminder</span>
+            </label>
+            <label class="field">
+              <span>Message</span>
+              <select id="phoneReminderMessage" class="select-control"></select>
+            </label>
+            <label class="field">
+              <span>Repeat</span>
+              <select id="phoneReminderInterval" class="select-control">
+                <option value="3">Every 3 hours</option>
+                <option value="5">Every 5 hours</option>
+                <option value="8">Every 8 hours</option>
+                <option value="12">Every 12 hours</option>
+                <option value="24">Every 24 hours</option>
+              </select>
+            </label>
+            <button class="ghost-button" id="phoneReminderPermission" type="button">Allow Phone Popups</button>
+          </div>
+          <p class="subtle" id="phoneReminderNext">No phone reminders scheduled.</p>
+        </div>
       </section>
     </section>
   </main>
@@ -533,6 +564,6 @@
     <li class="empty-state">No sessions yet. Start a timer and finish it to build your league record.</li>
   </template>
 
-  <script src="app.js?v=notifications-v2"></script>
+  <script src="app.js?v=phone-reminders-v1"></script>
 </body>
 </html>
