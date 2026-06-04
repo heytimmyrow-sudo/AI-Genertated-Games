@@ -31,6 +31,16 @@ const rarityNames = {
   epic: "Epic",
   legendary: "Legendary"
 };
+const notificationTypes = {
+  all: "All",
+  workout: "Workouts",
+  shop: "Shop",
+  request: "Requests",
+  challenge: "Challenges",
+  safety: "Safety",
+  recovery: "Recovery",
+  system: "System"
+};
 const legacyPrizeMap = {
   neon: "neon-serve",
   wave: "power-sweat",
@@ -89,6 +99,7 @@ function loadState() {
     equippedTitle: "",
     friendRequests: [],
     notifications: [],
+    notificationFilter: "all",
     group: { name: "Family League", inviteCode: makeSetupCode("family"), private: true },
     teamName: "Pulse Team",
     coachChallenge: "",
@@ -113,7 +124,15 @@ function loadState() {
       .map((id) => legacyPrizeMap[id] || id)
       .filter((id) => cosmeticRules.some((entry) => entry.id === id)))];
     merged.friendRequests = parsed.friendRequests || fallback.friendRequests;
-    merged.notifications = parsed.notifications || fallback.notifications;
+    merged.notificationFilter = parsed.notificationFilter || fallback.notificationFilter;
+    merged.notifications = (parsed.notifications || fallback.notifications).map((note) => ({
+      id: note.id || crypto.randomUUID(),
+      type: note.type || "system",
+      title: note.title || "Pulse League",
+      message: note.message || "",
+      createdAt: note.createdAt || new Date().toISOString(),
+      read: Boolean(note.read)
+    }));
     merged.blockedUsers = parsed.blockedUsers || fallback.blockedUsers;
     merged.recoveryBackups = parsed.recoveryBackups || fallback.recoveryBackups;
     merged.profiles = parsed.profiles?.length ? parsed.profiles.map((profile, index) => {
@@ -316,9 +335,20 @@ function showOnlineMessage(message, isError = false) {
   el.classList.toggle("error", isError);
 }
 
-function notify(message) {
-  state.notifications.unshift({ id: crypto.randomUUID(), message, createdAt: new Date().toISOString(), read: false });
-  state.notifications = state.notifications.slice(0, 12);
+function notify(message, type = "system", title = "Pulse League") {
+  state.notifications.unshift({
+    id: crypto.randomUUID(),
+    type,
+    title,
+    message,
+    createdAt: new Date().toISOString(),
+    read: false
+  });
+  state.notifications = state.notifications.slice(0, 30);
+}
+
+function notificationTypeLabel(type) {
+  return notificationTypes[type] || notificationTypes.system;
 }
 
 function suspiciousSession(minutes, note = "") {
@@ -352,9 +382,10 @@ async function logSession(activity, minutes, note = "") {
   state.sessions = state.sessions.slice(0, 240);
   if (!flagged) {
     state.coins += Math.max(1, Math.round(minutes / 5));
-    if (multiplier > 1) notify("1-hour XP booster doubled this workout.");
+    notify(`${formatShortMinutes(minutes)} ${activity || "Other"} logged.`, "workout", "Workout recorded");
+    if (multiplier > 1) notify("1-hour XP booster doubled this workout.", "shop", "Booster");
   } else {
-    notify("A workout was flagged for review and did not earn coins.");
+    notify("A workout was flagged for review and did not earn coins.", "safety", "Safety check");
   }
   saveState();
   render();
@@ -717,9 +748,6 @@ function renderUpgradePanels() {
     <div><span>Team</span><strong>${escapeHtml(state.teamName)}</strong></div>
     <div><span>Team week</span><strong>${formatShortMinutes(teamMinutes)}</strong></div>
   `;
-  $("#notificationList").innerHTML = state.notifications.length ? state.notifications.map((note) => (
-    `<li class="history-row"><div class="history-meta"><strong>${escapeHtml(note.message)}</strong><span>${new Date(note.createdAt).toLocaleString()}</span></div></li>`
-  )).join("") : `<li class="empty-state">No alerts yet.</li>`;
   $("#safetySummary").innerHTML = `
     <div><span>Flagged sessions</span><strong>${flagged.length}</strong></div>
     <div><span>Proof required</span><strong>${state.proofRequired ? "On" : "Off"}</strong></div>
@@ -733,6 +761,39 @@ function renderUpgradePanels() {
     `<li class="history-row"><div class="history-meta"><strong>${escapeHtml(backup.label)}</strong><span>${new Date(backup.createdAt).toLocaleString()}</span></div></li>`
   )).join("") : `<li class="empty-state">No recovery backups yet.</li>`;
   $("#proofRequired").checked = state.proofRequired;
+}
+
+function renderNotifications() {
+  const unread = state.notifications.filter((note) => !note.read).length;
+  const filter = notificationTypes[state.notificationFilter] ? state.notificationFilter : "all";
+  const visible = filter === "all"
+    ? state.notifications
+    : state.notifications.filter((note) => (note.type || "system") === filter);
+  $("#notificationBadge").textContent = `${unread} unread`;
+  $("#topNotificationCount").textContent = unread;
+  $("#topNotificationButton").classList.toggle("has-alerts", unread > 0);
+  $("#markNotificationsRead").disabled = unread === 0;
+  $("#clearNotifications").disabled = state.notifications.length === 0;
+  $("#notificationFilters").innerHTML = Object.entries(notificationTypes).map(([type, label]) => {
+    const count = type === "all"
+      ? state.notifications.length
+      : state.notifications.filter((note) => (note.type || "system") === type).length;
+    return `<button class="filter-chip ${filter === type ? "active" : ""}" type="button" data-notification-filter="${type}">${label} <span>${count}</span></button>`;
+  }).join("");
+  $("#notificationList").innerHTML = visible.length ? visible.map((note) => {
+    const createdAt = new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }).format(new Date(note.createdAt));
+    return `
+      <li class="history-row notification-row ${note.read ? "" : "unread"}">
+        <div class="history-meta">
+          <strong>${escapeHtml(note.title || "Pulse League")}</strong>
+          <span><b>${escapeHtml(notificationTypeLabel(note.type))}</b> - ${createdAt} - ${escapeHtml(note.message)}</span>
+        </div>
+        <div class="row-actions">
+          ${note.read ? `<span class="read-state">Read</span>` : `<button class="ghost-button mini" type="button" data-read-notification="${note.id}">Read</button>`}
+        </div>
+      </li>
+    `;
+  }).join("") : `<li class="empty-state">No notifications in this filter.</li>`;
 }
 
 function renderSettings() {
@@ -766,6 +827,7 @@ function render() {
   renderTournamentHistory();
   renderHistory();
   renderUpgradePanels();
+  renderNotifications();
   tick();
 }
 
@@ -817,7 +879,18 @@ function activateDashboardSection(sectionName, shouldScroll = true) {
     button.classList.toggle("active", button.dataset.sectionTarget === sectionName);
   });
   closeMobileSidebar();
-  if (shouldScroll) document.querySelector(`[data-section="${sectionName}"]`)?.scrollIntoView({ behavior: "smooth", block: "start" });
+  if (shouldScroll) {
+    const target = document.querySelector(`[data-section="${sectionName}"]`);
+    if (!target) return;
+    const jumpToSection = () => window.scrollTo({
+      top: target.getBoundingClientRect().top + window.scrollY - 10,
+      behavior: "smooth"
+    });
+    jumpToSection();
+    if (window.matchMedia("(max-width: 980px)").matches) {
+      setTimeout(jumpToSection, 220);
+    }
+  }
 }
 
 function showDashboardSection(sectionName) {
@@ -1059,6 +1132,40 @@ $("#mobileSidebarScrim")?.addEventListener("click", closeMobileSidebar);
 $$("[data-section-target]").forEach((button) => {
   button.addEventListener("click", () => showDashboardSection(button.dataset.sectionTarget));
 });
+$("#topNotificationButton").addEventListener("click", () => showDashboardSection("notifications"));
+
+$("#notificationFilters").addEventListener("click", (event) => {
+  const button = event.target.closest("[data-notification-filter]");
+  if (!button) return;
+  state.notificationFilter = button.dataset.notificationFilter;
+  saveState();
+  renderNotifications();
+});
+
+$("#notificationList").addEventListener("click", (event) => {
+  const button = event.target.closest("[data-read-notification]");
+  if (!button) return;
+  const note = state.notifications.find((entry) => entry.id === button.dataset.readNotification);
+  if (!note) return;
+  note.read = true;
+  saveState();
+  renderNotifications();
+});
+
+$("#markNotificationsRead").addEventListener("click", () => {
+  state.notifications.forEach((note) => {
+    note.read = true;
+  });
+  saveState();
+  renderNotifications();
+});
+
+$("#clearNotifications").addEventListener("click", () => {
+  if (!state.notifications.length) return;
+  state.notifications = [];
+  saveState();
+  renderNotifications();
+});
 
 $$(".mode-choice").forEach((button) => {
   button.addEventListener("click", () => {
@@ -1176,10 +1283,10 @@ $("#prizeShopGrid").addEventListener("click", (event) => {
   state.coins -= prize.cost;
   if (prize.type === "booster") {
     state.activeBoostUntil = new Date(Date.now() + 60 * 60 * 1000).toISOString();
-    notify(`${prize.name} activated for one hour.`);
+    notify(`${prize.name} activated for one hour.`, "shop", "Booster activated");
   } else {
     state.ownedPrizes.push(prize.id);
-    notify(`${prize.name} unlocked in the prize shop.`);
+    notify(`${prize.name} unlocked in the prize shop.`, "shop", "Prize unlocked");
   }
   saveState();
   render();
@@ -1192,7 +1299,7 @@ $("#challengeGrid").addEventListener("click", (event) => {
   if (!challenge || state.claimedChallenges.includes(challenge.id) || !challenge.test(statsFor())) return;
   state.claimedChallenges.push(challenge.id);
   state.coins += challenge.reward;
-  notify(`${challenge.name} paid ${challenge.reward} coins.`);
+  notify(`${challenge.name} paid ${challenge.reward} coins.`, "challenge", "Challenge claimed");
   saveState();
   render();
 });
@@ -1202,7 +1309,7 @@ $("#requestForm").addEventListener("submit", (event) => {
   const username = normalizeUsername($("#requestUsername").value);
   if (!username || state.blockedUsers.includes(username)) return;
   state.friendRequests.unshift({ id: crypto.randomUUID(), username, relation: "Friend", status: "pending", createdAt: new Date().toISOString() });
-  notify(`Friend request prepared for @${username}.`);
+  notify(`Friend request prepared for @${username}.`, "request", "Friend request");
   $("#requestUsername").value = "";
   saveState();
   render();
@@ -1226,7 +1333,7 @@ $("#friendRequestList").addEventListener("click", (event) => {
       owned: false
     });
   }
-  notify(`Request from @${request.username} ${request.status}.`);
+  notify(`Request from @${request.username} ${request.status}.`, "request", "Request updated");
   saveState();
   render();
 });
@@ -1235,9 +1342,9 @@ $("#copyRecovery").addEventListener("click", async () => {
   const payload = JSON.stringify({ recoveryCode: state.recoveryCode, ownerToken: state.ownerToken, exportedAt: new Date().toISOString() }, null, 2);
   try {
     await navigator.clipboard.writeText(payload);
-    notify("Recovery code copied.");
+    notify("Recovery code copied.", "recovery", "Recovery");
   } catch {
-    notify("Recovery code ready to copy manually.");
+    notify("Recovery code ready to copy manually.", "recovery", "Recovery");
   }
   render();
 });
@@ -1247,13 +1354,13 @@ $("#recoveryForm").addEventListener("submit", (event) => {
   const code = $("#recoveryInput").value.trim();
   if (!code) return;
   if (code !== state.recoveryCode) {
-    notify("Recovery code did not match this profile.");
+    notify("Recovery code did not match this profile.", "recovery", "Recovery failed");
     render();
     return;
   }
   state.recoveryBackups.unshift({ id: crypto.randomUUID(), label: "Recovery verified", createdAt: new Date().toISOString() });
   $("#recoveryInput").value = "";
-  notify("Recovery code verified.");
+  notify("Recovery code verified.", "recovery", "Recovery verified");
   saveState();
   render();
 });
@@ -1293,7 +1400,7 @@ $("#leagueForm").addEventListener("submit", (event) => {
   event.preventDefault();
   state.group.name = $("#groupName").value.trim() || "Family League";
   state.teamName = $("#teamName").value.trim() || "Pulse Team";
-  notify(`${state.group.name} league saved.`);
+  notify(`${state.group.name} league saved.`, "system", "League saved");
   saveState();
   render();
 });
@@ -1301,7 +1408,7 @@ $("#leagueForm").addEventListener("submit", (event) => {
 $("#coachForm").addEventListener("submit", (event) => {
   event.preventDefault();
   state.coachChallenge = $("#coachChallenge").value.trim();
-  notify(state.coachChallenge ? "Coach challenge posted." : "Coach challenge cleared.");
+  notify(state.coachChallenge ? "Coach challenge posted." : "Coach challenge cleared.", "challenge", "Coach mode");
   saveState();
   render();
 });
@@ -1315,7 +1422,7 @@ $("#proofRequired").addEventListener("change", () => {
 $("#useFreezeToken").addEventListener("click", () => {
   if (state.freezeTokens <= 0) return;
   state.freezeTokens -= 1;
-  notify("Streak freeze used for today.");
+  notify("Streak freeze used for today.", "safety", "Streak freeze");
   saveState();
   render();
 });
@@ -1326,7 +1433,7 @@ $("#blockForm").addEventListener("submit", (event) => {
   if (!username || state.blockedUsers.includes(username)) return;
   state.blockedUsers.push(username);
   $("#blockedUsername").value = "";
-  notify(`@${username} blocked.`);
+  notify(`@${username} blocked.`, "safety", "User blocked");
   saveState();
   render();
 });

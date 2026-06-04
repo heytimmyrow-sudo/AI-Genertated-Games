@@ -8,7 +8,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="assets/pulse-league-icon-192.png">
   <link rel="apple-touch-icon" href="assets/pulse-league-icon-192.png">
   <link rel="manifest" href="manifest.webmanifest">
-  <link rel="stylesheet" href="styles.css?v=bug-pass">
+  <link rel="stylesheet" href="styles.css?v=notifications-v2">
 </head>
 <body>
   <main class="app-shell">
@@ -22,6 +22,7 @@
         <div class="topbar-actions">
           <button class="icon-button mobile-menu-button" id="mobileMenuButton" type="button" aria-label="Open sections" aria-expanded="false">☰</button>
           <select id="profileSelect" class="select-control" aria-label="Active profile"></select>
+          <button class="ghost-button alert-button" id="topNotificationButton" type="button">Alerts <span id="topNotificationCount">0</span></button>
           <button class="icon-button" id="themeToggle" type="button" aria-label="Toggle color mode" title="Toggle color mode">◐</button>
           <button class="ghost-button" id="exportButton" type="button">Export</button>
           <button class="primary-button" id="newSessionTop" type="button">New Session</button>
@@ -120,6 +121,7 @@
         <button type="button" data-section-target="profiles">Profiles</button>
         <button type="button" data-section-target="profile-page">Profile Page</button>
         <button type="button" data-section-target="requests">Requests</button>
+        <button type="button" data-section-target="notifications">Notifications</button>
         <button type="button" data-section-target="league">Private League</button>
         <button type="button" data-section-target="locker">Locker</button>
         <button type="button" data-section-target="shop">Prize Shop</button>
@@ -235,6 +237,22 @@
         </form>
         <div class="metric-grid compact" id="requestStats"></div>
         <ul class="history-list" id="friendRequestList"></ul>
+      </section>
+
+      <section class="notifications-panel dashboard-section" data-section="notifications">
+        <div class="panel-heading">
+          <div>
+            <p class="eyebrow">Notifications</p>
+            <h2>Inbox</h2>
+          </div>
+          <span class="score-chip" id="notificationBadge">0 unread</span>
+        </div>
+        <div class="notification-actions">
+          <button class="ghost-button mini" id="markNotificationsRead" type="button">Mark all read</button>
+          <button class="ghost-button mini danger" id="clearNotifications" type="button">Clear</button>
+        </div>
+        <div class="notification-filters" id="notificationFilters" aria-label="Notification filters"></div>
+        <ul class="history-list notification-list" id="notificationList"></ul>
       </section>
 
       <section class="league-panel dashboard-section" data-section="league">
@@ -433,7 +451,6 @@
         </form>
         <div class="metric-grid compact" id="safetySummary"></div>
         <p class="subtle">Recovery code: <strong id="recoveryCode"></strong></p>
-        <ul class="history-list" id="notificationList"></ul>
       </section>
 
       <section class="recovery-panel dashboard-section" data-section="recovery">
@@ -516,6 +533,6 @@
     <li class="empty-state">No sessions yet. Start a timer and finish it to build your league record.</li>
   </template>
 
-  <script src="app.js?v=bug-pass"></script>
+  <script src="app.js?v=notifications-v2"></script>
 </body>
 </html>
