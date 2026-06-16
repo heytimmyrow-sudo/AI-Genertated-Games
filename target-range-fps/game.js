@@ -198,6 +198,7 @@
   const groundY = 2.1;
   const sniperTower = {
     center: new THREE.Vector3(0, 13.2, 35),
+    eyeHeight: 2.2,
     halfSize: 4.6,
     botMinX: -52,
     botMaxX: 52,
@@ -1514,9 +1515,13 @@
     camera.rotation.y = player.yaw;
     camera.rotation.x = player.pitch;
     camera.position.copy(player.position);
+    if (state.mode === "sniper") {
+      camera.position.y += sniperTower.eyeHeight;
+    }
     if (state.recoilTimer > 0) {
       camera.rotation.x -= state.recoilTimer * (state.scoped ? 0.008 : 0.018);
     }
+    document.body.dataset.fpsCameraY = camera.position.y.toFixed(2);
     gun.position.z = state.recoilTimer > 0 ? state.recoilTimer * (state.scoped ? 0.035 : 0.08) : 0;
     gun.position.x = state.scoped ? -0.08 : 0;
     gun.position.y = state.scoped ? 0.04 : 0;
