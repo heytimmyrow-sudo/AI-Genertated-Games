@@ -544,13 +544,13 @@
     const group = new THREE.Group();
     const shaft = new THREE.Mesh(new THREE.CylinderGeometry(3.2, 4.2, 13.2, 10), towerMaterial);
     const deck = new THREE.Mesh(new THREE.BoxGeometry(11, 0.65, 11), towerMaterial.clone());
-    const railNorth = new THREE.Mesh(new THREE.BoxGeometry(11.6, 1.2, 0.32), railMaterial.clone());
+    const railNorth = new THREE.Mesh(new THREE.BoxGeometry(3.2, 0.35, 0.22), railMaterial.clone());
     const railSouth = new THREE.Mesh(new THREE.BoxGeometry(11.6, 1.2, 0.32), railMaterial.clone());
     const railWest = new THREE.Mesh(new THREE.BoxGeometry(0.32, 1.2, 11.6), railMaterial.clone());
     const railEast = new THREE.Mesh(new THREE.BoxGeometry(0.32, 1.2, 11.6), railMaterial.clone());
     shaft.position.set(sniperTower.center.x, 6.6, sniperTower.center.z);
     deck.position.copy(sniperTower.center).setY(sniperTower.center.y - 0.42);
-    railNorth.position.set(sniperTower.center.x, sniperTower.center.y + 0.45, sniperTower.center.z - 5.6);
+    railNorth.position.set(sniperTower.center.x, sniperTower.center.y - 0.85, sniperTower.center.z - 5.6);
     railSouth.position.set(sniperTower.center.x, sniperTower.center.y + 0.45, sniperTower.center.z + 5.6);
     railWest.position.set(sniperTower.center.x - 5.6, sniperTower.center.y + 0.45, sniperTower.center.z);
     railEast.position.set(sniperTower.center.x + 5.6, sniperTower.center.y + 0.45, sniperTower.center.z);
@@ -1475,6 +1475,10 @@
 
   function equipWeapon(index) {
     if (index < 0 || index >= weapons.length) return;
+    if (state.mode === "sniper" && index !== 3) {
+      addFeed("Sniper Tower uses Rail only");
+      index = 3;
+    }
     state.weaponIndex = index;
     state.reloadUntil = 0;
     const weapon = weapons[state.weaponIndex];
@@ -2170,6 +2174,7 @@
 
   function shoot() {
     if (!state.running) return;
+    if (state.mode === "sniper" && state.weaponIndex !== 3) equipWeapon(3);
     const weapon = weapons[state.weaponIndex];
     const now = performance.now();
     if (now < state.nextFireAt) return;
@@ -2428,6 +2433,10 @@
     keys.add(event.code);
     if (/^Digit[0-9]$/.test(event.code)) {
       event.preventDefault();
+      if (state.mode === "sniper") {
+        equipWeapon(3);
+        return;
+      }
       equipWeapon(event.code === "Digit0" ? 9 : Number(event.code.slice(5)) - 1);
       return;
     }
