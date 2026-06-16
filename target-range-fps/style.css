@@ -555,12 +555,18 @@ h2 {
   justify-items: center;
 }
 
-.scope-button {
+.scope-button,
+.jump-button {
   min-width: 82px;
   min-height: 42px;
   background: var(--cyan);
   color: #061018;
   box-shadow: 0 12px 30px rgba(67, 213, 255, 0.24);
+}
+
+.jump-button {
+  background: var(--mint);
+  box-shadow: 0 12px 30px rgba(79, 240, 177, 0.24);
 }
 
 @media (hover: none), (pointer: coarse) {

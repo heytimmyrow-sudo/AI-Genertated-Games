@@ -40,6 +40,7 @@
   const menuButton = document.getElementById("menuButton");
   const resetButton = document.getElementById("resetButton");
   const touchFire = document.getElementById("touchFire");
+  const touchJump = document.getElementById("touchJump");
   const touchScope = document.getElementById("touchScope");
   const gameShell = document.querySelector(".game-shell");
 
@@ -55,6 +56,8 @@
     pitch: 0,
     velocity: new THREE.Vector3(),
     position: new THREE.Vector3(0, 2.1, 22),
+    verticalVelocity: 0,
+    grounded: true,
     maxHealth: 100,
     health: 100
   };
@@ -177,6 +180,23 @@
     normal: { playerDamage: 1, botDamage: 1, fireRate: 1 },
     hard: { playerDamage: 1.25, botDamage: 1.15, fireRate: 0.74 }
   };
+  const groundY = 2.1;
+  const jumpVelocity = 8.8;
+  const gravity = 25;
+  const arenaBounds = {
+    playerMinX: -56,
+    playerMaxX: 56,
+    playerMinZ: -50,
+    playerMaxZ: 42,
+    botMinX: -56,
+    botMaxX: 56,
+    botMinZ: -48,
+    botMaxZ: 38,
+    mapMinX: -62,
+    mapMaxX: 62,
+    mapMinZ: -56,
+    mapMaxZ: 46
+  };
   const net = {
     peer: null,
     id: "",
@@ -205,10 +225,10 @@
   const floorTexture = makeGridTexture();
   floorTexture.wrapS = THREE.RepeatWrapping;
   floorTexture.wrapT = THREE.RepeatWrapping;
-  floorTexture.repeat.set(16, 16);
+  floorTexture.repeat.set(22, 20);
 
   const floor = new THREE.Mesh(
-    new THREE.PlaneGeometry(96, 96),
+    new THREE.PlaneGeometry(128, 116),
     new THREE.MeshStandardMaterial({ color: 0x15202b, roughness: 0.82, metalness: 0.08, map: floorTexture })
   );
   floor.rotation.x = -Math.PI / 2;
@@ -216,16 +236,18 @@
   scene.add(floor);
 
   const wallMaterial = new THREE.MeshStandardMaterial({ color: 0x18293a, roughness: 0.7, metalness: 0.12 });
-  addWall(0, 4, -38, 84, 8, 2);
-  addWall(-42, 4, 0, 2, 8, 76);
-  addWall(42, 4, 0, 2, 8, 76);
+  addWall(0, 4, -56, 124, 8, 2);
+  addWall(0, 4, 46, 124, 8, 2);
+  addWall(-62, 4, -5, 2, 8, 104);
+  addWall(62, 4, -5, 2, 8, 104);
 
-  for (let index = 0; index < 18; index += 1) {
+  for (let index = 0; index < 26; index += 1) {
     const pillar = new THREE.Mesh(
       new THREE.BoxGeometry(1.2, 5 + Math.random() * 4, 1.2),
       new THREE.MeshStandardMaterial({ color: index % 3 === 0 ? 0x27455c : 0x203342, roughness: 0.62 })
     );
-    pillar.position.set(-34 + index * 4, pillar.geometry.parameters.height / 2, -31 - Math.sin(index) * 2);
+    const row = index < 13 ? -43 : 34;
+    pillar.position.set(-50 + (index % 13) * 8.4, pillar.geometry.parameters.height / 2, row + Math.sin(index) * 2.5);
     pillar.castShadow = true;
     pillar.receiveShadow = true;
     scene.add(pillar);
@@ -434,14 +456,23 @@
   function createCoverObjects() {
     const coverMaterial = new THREE.MeshStandardMaterial({ color: 0x25384b, roughness: 0.76, metalness: 0.18 });
     const placements = [
-      [-22, -12, 6, 2.5, 2.2],
-      [-8, -18, 7, 2.2, 2],
-      [12, -16, 5, 2.8, 2.3],
-      [25, -7, 4, 2.2, 6],
-      [-26, 6, 4, 2.5, 5],
-      [4, 7, 7, 2.4, 2],
-      [22, 11, 5, 2.2, 3],
-      [-5, -4, 3, 1.7, 6]
+      [-45, -36, 8, 2.7, 2.4],
+      [-30, -28, 5, 2.1, 7],
+      [-13, -40, 10, 2.4, 2],
+      [6, -31, 5, 3.2, 6],
+      [27, -38, 7, 2.2, 2.2],
+      [46, -24, 5, 2.6, 8],
+      [-48, -4, 6, 2.7, 7],
+      [-28, 8, 8, 2.2, 2.2],
+      [-10, -8, 4, 2.7, 9],
+      [12, 4, 10, 2.1, 2],
+      [31, -7, 5, 2.8, 6],
+      [49, 10, 8, 2.3, 2.5],
+      [-42, 30, 9, 2.2, 2],
+      [-18, 33, 5, 3.1, 6],
+      [5, 25, 8, 2.4, 2.2],
+      [27, 31, 4, 2.8, 8],
+      [47, 29, 8, 2.1, 2]
     ];
     placements.forEach(([x, z, width, height, depth]) => {
       const cover = new THREE.Mesh(new THREE.BoxGeometry(width, height, depth), coverMaterial.clone());
@@ -471,12 +502,14 @@
   function createWeaponPickups() {
     const pickupGeometry = new THREE.BoxGeometry(1.2, 0.42, 1.2);
     const slots = [
-      [-28, 14, 1],
-      [-16, -23, 2],
-      [0, 15, 4],
-      [16, -24, 6],
-      [28, 4, 8],
-      [5, -7, 9]
+      [-48, 34, 1],
+      [-36, -42, 2],
+      [-8, 36, 4],
+      [18, -44, 6],
+      [44, 19, 8],
+      [6, -12, 9],
+      [52, -34, 3],
+      [-52, -9, 7]
     ];
     slots.forEach(([x, z, weaponIndex]) => {
       const weapon = weapons[weaponIndex];
@@ -774,9 +807,9 @@
 
   function placeTarget(target, fresh = false) {
     target.position.set(
-      THREE.MathUtils.randFloat(-30, 30),
+      THREE.MathUtils.randFloat(-48, 48),
       0,
-      THREE.MathUtils.randFloat(-26, 16)
+      THREE.MathUtils.randFloat(-42, 30)
     );
     setWalkDestination(target);
     if (!fresh) {
@@ -834,6 +867,8 @@
     setScoped(false);
     player.position.set(0, 2.1, 22);
     player.velocity.set(0, 0, 0);
+    player.verticalVelocity = 0;
+    player.grounded = true;
     player.yaw = 0;
     player.pitch = 0;
     player.health = player.maxHealth;
@@ -932,9 +967,11 @@
     window.targetRangeFpsStatus.onlinePeers = remotePlayers.size;
     window.targetRangeFpsStatus.player = {
       x: Number(player.position.x.toFixed(2)),
+      y: Number(player.position.y.toFixed(2)),
       z: Number(player.position.z.toFixed(2)),
       yaw: Number(player.yaw.toFixed(3)),
-      health: Math.max(0, Math.ceil(player.health))
+      health: Math.max(0, Math.ceil(player.health)),
+      grounded: player.grounded
     };
     document.body.dataset.fpsTargets = String(targets.length);
     document.body.dataset.fpsArmedTargets = String(targets.filter((target) => target.userData.armed).length);
@@ -956,6 +993,8 @@
     document.body.dataset.fpsWeaponSlot = weapons[state.weaponIndex].slot;
     document.body.dataset.fpsRunning = String(state.running);
     document.body.dataset.fpsHealth = String(Math.max(0, Math.ceil(player.health)));
+    document.body.dataset.fpsPlayerY = player.position.y.toFixed(2);
+    document.body.dataset.fpsGrounded = String(player.grounded);
     document.body.dataset.fpsAmmo = ammoValue.textContent;
     document.body.dataset.fpsRedScore = String(state.redScore);
     document.body.dataset.fpsBlueScore = String(state.blueScore);
@@ -1057,8 +1096,22 @@
     const finalSpeed = state.scoped ? speed * 0.62 : speed;
     player.velocity.lerp(tempDirection.multiplyScalar(finalSpeed), 1 - Math.pow(0.02, delta));
     player.position.addScaledVector(player.velocity, delta);
-    player.position.x = THREE.MathUtils.clamp(player.position.x, -34, 34);
-    player.position.z = THREE.MathUtils.clamp(player.position.z, -31, 28);
+    player.verticalVelocity -= gravity * delta;
+    player.position.y += player.verticalVelocity * delta;
+    if (player.position.y <= groundY) {
+      player.position.y = groundY;
+      player.verticalVelocity = 0;
+      player.grounded = true;
+    }
+    player.position.x = THREE.MathUtils.clamp(player.position.x, arenaBounds.playerMinX, arenaBounds.playerMaxX);
+    player.position.z = THREE.MathUtils.clamp(player.position.z, arenaBounds.playerMinZ, arenaBounds.playerMaxZ);
+  }
+
+  function jump() {
+    if (!state.running || !player.grounded) return;
+    player.verticalVelocity = jumpVelocity;
+    player.grounded = false;
+    playTone(360, 0.045, "triangle");
   }
 
   function updateTargets(delta) {
@@ -1085,8 +1138,8 @@
       if (walkDirection.lengthSq() > 0.001) {
         walkDirection.normalize();
         target.position.addScaledVector(walkDirection, data.speed * botDelta);
-        target.position.x = THREE.MathUtils.clamp(target.position.x, -36, 36);
-        target.position.z = THREE.MathUtils.clamp(target.position.z, -34, 24);
+        target.position.x = THREE.MathUtils.clamp(target.position.x, arenaBounds.botMinX, arenaBounds.botMaxX);
+        target.position.z = THREE.MathUtils.clamp(target.position.z, arenaBounds.botMinZ, arenaBounds.botMaxZ);
         const walkYaw = Math.atan2(walkDirection.x, walkDirection.z);
         let yawDelta = walkYaw - target.rotation.y;
         yawDelta = Math.atan2(Math.sin(yawDelta), Math.cos(yawDelta));
@@ -1112,7 +1165,7 @@
         }
       }
 
-      if (Math.abs(target.position.x) > 38 || target.position.z > 26 || target.position.z < -36) {
+      if (target.position.x < arenaBounds.botMinX || target.position.x > arenaBounds.botMaxX || target.position.z > arenaBounds.botMaxZ || target.position.z < arenaBounds.botMinZ) {
         placeTarget(target);
       }
     });
@@ -1130,12 +1183,14 @@
         0,
         cover.position.z + THREE.MathUtils.randFloatSpread(5.5)
       );
+      target.userData.destination.x = THREE.MathUtils.clamp(target.userData.destination.x, arenaBounds.botMinX, arenaBounds.botMaxX);
+      target.userData.destination.z = THREE.MathUtils.clamp(target.userData.destination.z, arenaBounds.botMinZ, arenaBounds.botMaxZ);
       return;
     }
     target.userData.destination.set(
-      THREE.MathUtils.randFloat(-34, 34),
+      THREE.MathUtils.randFloat(arenaBounds.botMinX, arenaBounds.botMaxX),
       0,
-      THREE.MathUtils.randFloat(-32, 22)
+      THREE.MathUtils.randFloat(arenaBounds.botMinZ, arenaBounds.botMaxZ)
     );
   }
 
@@ -1606,8 +1661,8 @@
       if (!pickup.visible) {
         if (now >= pickup.userData.respawnAt) {
           pickup.visible = true;
-          pickup.position.x = THREE.MathUtils.randFloat(-30, 30);
-          pickup.position.z = THREE.MathUtils.randFloat(-24, 18);
+          pickup.position.x = THREE.MathUtils.randFloat(-50, 50);
+          pickup.position.z = THREE.MathUtils.randFloat(-42, 34);
         }
         return;
       }
@@ -1670,7 +1725,7 @@
     const drawDot = (x, z, color, radius = 4) => {
       miniMapContext.fillStyle = color;
       miniMapContext.beginPath();
-      miniMapContext.arc(scale(x, -42, 42), scale(z, -38, 28), radius, 0, Math.PI * 2);
+      miniMapContext.arc(scale(x, arenaBounds.mapMinX, arenaBounds.mapMaxX), scale(z, arenaBounds.mapMinZ, arenaBounds.mapMaxZ), radius, 0, Math.PI * 2);
       miniMapContext.fill();
     };
     drawDot(controlPoint.x, controlPoint.z, state.controlOwner === "blue" ? "#43d5ff" : state.controlOwner === "red" ? "#ff4c65" : "#ffd166", 6);
@@ -1753,7 +1808,7 @@
     }
     if (event.code === "Space") {
       event.preventDefault();
-      shoot();
+      jump();
     }
     if (event.code === "Escape" && state.running) {
       endGame();
@@ -1818,6 +1873,10 @@
   touchFire.addEventListener("pointerdown", (event) => {
     event.preventDefault();
     shoot();
+  });
+  touchJump.addEventListener("pointerdown", (event) => {
+    event.preventDefault();
+    jump();
   });
   touchScope.addEventListener("pointerdown", (event) => {
     event.preventDefault();
