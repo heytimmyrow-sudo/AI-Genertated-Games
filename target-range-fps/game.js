@@ -11,8 +11,12 @@
   const endPanel = document.getElementById("endPanel");
   const endTitle = document.getElementById("endTitle");
   const endStats = document.getElementById("endStats");
+  const hitPanel = document.getElementById("hitPanel");
+  const hitStats = document.getElementById("hitStats");
   const startButton = document.getElementById("startButton");
   const againButton = document.getElementById("againButton");
+  const retryButton = document.getElementById("retryButton");
+  const menuButton = document.getElementById("menuButton");
   const resetButton = document.getElementById("resetButton");
   const touchFire = document.getElementById("touchFire");
   const gameShell = document.querySelector(".game-shell");
@@ -43,6 +47,9 @@
     scoped: false,
     weaponIndex: 0,
     nextFireAt: 0,
+    hitCount: 0,
+    enemyShots: 0,
+    lastEnemyShotAt: 0,
     best: Number(localStorage.getItem(bestKey) || 0)
   };
 
@@ -75,6 +82,7 @@
   const touchMoves = new Set();
   const targets = [];
   const bullets = [];
+  const enemyBullets = [];
   const particles = [];
   let lastScopeToggleAt = 0;
   const tempDirection = new THREE.Vector3();
@@ -84,6 +92,7 @@
   const bulletStart = new THREE.Vector3();
   const bulletEnd = new THREE.Vector3();
   const muzzlePosition = new THREE.Vector3();
+  const closestPoint = new THREE.Vector3();
 
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
   renderer.shadowMap.enabled = true;
@@ -139,6 +148,7 @@
   const robotArmorMaterial = new THREE.MeshStandardMaterial({ color: 0x223142, roughness: 0.5, metalness: 0.3 });
   const robotJointMaterial = new THREE.MeshStandardMaterial({ color: 0xff4c65, emissive: 0x6e1322, emissiveIntensity: 0.35 });
   const robotCoreMaterial = new THREE.MeshStandardMaterial({ color: 0x4ff0b1, emissive: 0x1ca675, emissiveIntensity: 0.85 });
+  const enemyGunMaterial = new THREE.MeshStandardMaterial({ color: 0x111820, roughness: 0.32, metalness: 0.72 });
   bestValue.textContent = state.best;
   syncWeaponHud();
   resize();
@@ -220,6 +230,8 @@
     const rightLeg = new THREE.Mesh(new THREE.BoxGeometry(0.34, 1.22, 0.34), robotArmorMaterial.clone());
     const leftShoulder = new THREE.Mesh(new THREE.SphereGeometry(0.22, 16, 10), robotJointMaterial.clone());
     const rightShoulder = new THREE.Mesh(new THREE.SphereGeometry(0.22, 16, 10), robotJointMaterial.clone());
+    const enemyGun = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.18, 0.88), enemyGunMaterial.clone());
+    const armed = targets.length % 3 === 0 || Math.random() < 0.24;
 
     body.position.y = 2.22;
     chest.position.set(0, 2.38, 0.31);
@@ -231,13 +243,15 @@
     rightLeg.position.set(0.28, 0.74, 0);
     leftShoulder.position.set(-0.72, 2.8, 0);
     rightShoulder.position.set(0.72, 2.8, 0);
+    enemyGun.position.set(0.92, 2.1, 0.42);
 
-    [body, chest, head, eye, leftArm, rightArm, leftLeg, rightLeg, leftShoulder, rightShoulder].forEach((part) => {
+    [body, chest, head, eye, leftArm, rightArm, leftLeg, rightLeg, leftShoulder, rightShoulder, enemyGun].forEach((part) => {
       part.castShadow = true;
       part.receiveShadow = true;
       part.userData.targetRoot = group;
-      group.add(part);
     });
+    [body, chest, head, eye, leftArm, rightArm, leftLeg, rightLeg, leftShoulder, rightShoulder].forEach((part) => group.add(part));
+    if (armed) group.add(enemyGun);
     group.userData = {
       body,
       chest,
@@ -246,15 +260,19 @@
       rightArm,
       leftLeg,
       rightLeg,
+      enemyGun,
+      armed,
       core: chest,
       health: 1,
       value: 150,
       age: 0,
+      shotCooldown: 1200 + Math.random() * 1600,
+      nextShotAt: performance.now() + 350 + Math.random() * 900,
       phase: Math.random() * Math.PI * 2,
-      speed: 0.72 + Math.random() * 0.55,
+      speed: 0.95 + Math.random() * 0.85,
       lane: Math.random() > 0.5 ? 1 : -1,
       radius: 12 + Math.random() * 22,
-      baseY: Math.random() * 3.6
+      baseY: 0
     };
     scene.add(group);
     targets.push(group);
@@ -265,7 +283,7 @@
   function placeTarget(target, fresh = false) {
     const angle = -Math.PI / 2 + (Math.random() - 0.5) * 1.8;
     const distance = target.userData.radius;
-    target.position.set(Math.cos(angle) * distance, target.userData.baseY, Math.sin(angle) * distance - 10);
+    target.position.set(Math.cos(angle) * distance, 0, Math.sin(angle) * distance - 10);
     if (!fresh) {
       target.userData.phase = Math.random() * Math.PI * 2;
       target.userData.speed += 0.04;
@@ -278,6 +296,7 @@
       scene.remove(target);
     }
     clearBullets();
+    clearEnemyBullets();
     const total = 7 + state.wave;
     for (let index = 0; index < total; index += 1) {
       makeTarget();
@@ -294,6 +313,8 @@
     state.spawnTimer = 0;
     state.recoilTimer = 0;
     state.nextFireAt = 0;
+    state.hitCount = 0;
+    state.lastEnemyShotAt = 0;
     setScoped(false);
     player.position.set(0, 2.1, 22);
     player.velocity.set(0, 0, 0);
@@ -301,6 +322,7 @@
     player.pitch = 0;
     startPanel.hidden = true;
     endPanel.hidden = true;
+    hitPanel.hidden = true;
     resetTargets();
     syncHud();
     requestCanvasLock();
@@ -320,6 +342,27 @@
     endPanel.hidden = false;
   }
 
+  function showHitScreen(source = "A robot tagged you.") {
+    if (!state.running) return;
+    state.running = false;
+    state.hitCount += 1;
+    setScoped(false);
+    document.exitPointerLock?.();
+    hitStats.textContent = `${source} Score ${state.score} | Wave ${state.wave}`;
+    hitPanel.hidden = false;
+  }
+
+  function showMenu() {
+    state.running = false;
+    setScoped(false);
+    clearBullets();
+    clearEnemyBullets();
+    document.exitPointerLock?.();
+    hitPanel.hidden = true;
+    endPanel.hidden = true;
+    startPanel.hidden = false;
+  }
+
   function requestCanvasLock() {
     if (!canvas.requestPointerLock || !matchMedia("(hover: hover)").matches) return;
     try {
@@ -337,7 +380,11 @@
     waveValue.textContent = state.wave;
     syncWeaponHud();
     window.targetRangeFpsStatus.targets = targets.length;
+    window.targetRangeFpsStatus.armedTargets = targets.filter((target) => target.userData.armed).length;
     window.targetRangeFpsStatus.bullets = bullets.length;
+    window.targetRangeFpsStatus.enemyBullets = enemyBullets.length;
+    window.targetRangeFpsStatus.hitCount = state.hitCount;
+    window.targetRangeFpsStatus.enemyShots = state.enemyShots;
     window.targetRangeFpsStatus.scoped = state.scoped;
     window.targetRangeFpsStatus.weapon = weapons[state.weaponIndex].name;
     window.targetRangeFpsStatus.weaponSlot = weapons[state.weaponIndex].slot;
@@ -348,7 +395,11 @@
       yaw: Number(player.yaw.toFixed(3))
     };
     document.body.dataset.fpsTargets = String(targets.length);
+    document.body.dataset.fpsArmedTargets = String(targets.filter((target) => target.userData.armed).length);
     document.body.dataset.fpsBullets = String(bullets.length);
+    document.body.dataset.fpsEnemyBullets = String(enemyBullets.length);
+    document.body.dataset.fpsHitCount = String(state.hitCount);
+    document.body.dataset.fpsEnemyShots = String(state.enemyShots);
     document.body.dataset.fpsScoped = String(state.scoped);
     document.body.dataset.fpsWeapon = weapons[state.weaponIndex].name;
     document.body.dataset.fpsWeaponSlot = weapons[state.weaponIndex].slot;
@@ -429,11 +480,13 @@
   }
 
   function updateTargets(delta) {
+    const now = performance.now();
+    let nextEnemyShotIn = Infinity;
     targets.forEach((target, index) => {
       const data = target.userData;
       data.age += delta;
       target.position.x += Math.sin(data.age * data.speed + data.phase) * delta * 7.5 * data.lane;
-      target.position.y = data.baseY + Math.sin(data.age * 2.1 + data.phase) * 0.55;
+      target.position.y = 0;
       target.position.z += Math.cos(data.age * data.speed * 0.8 + index) * delta * 2.4;
       const lookYaw = Math.atan2(camera.position.x - target.position.x, camera.position.z - target.position.z);
       target.rotation.y = lookYaw + Math.sin(data.age * 2 + data.phase) * 0.16;
@@ -443,11 +496,24 @@
       data.rightArm.rotation.x = Math.sin(data.age * 5 + data.phase + Math.PI) * 0.34;
       data.leftLeg.rotation.x = Math.sin(data.age * 5 + data.phase + Math.PI) * 0.18;
       data.rightLeg.rotation.x = Math.sin(data.age * 5 + data.phase) * 0.18;
+      if (data.armed) {
+        data.enemyGun.rotation.x = -0.08 + Math.sin(data.age * 3 + data.phase) * 0.04;
+        nextEnemyShotIn = Math.min(nextEnemyShotIn, (data.nextShotAt - now) / 1000);
+        if (state.running && now >= data.nextShotAt && camera.position.distanceTo(target.position) < 86) {
+          shootEnemyBullet(target);
+          data.nextShotAt = now + data.shotCooldown + Math.random() * 1100;
+          nextEnemyShotIn = Math.min(nextEnemyShotIn, (data.nextShotAt - now) / 1000);
+        }
+      }
 
       if (Math.abs(target.position.x) > 38 || target.position.z > 26 || target.position.z < -36) {
         placeTarget(target);
       }
     });
+    if (Number.isFinite(nextEnemyShotIn)) {
+      document.body.dataset.fpsNextEnemyShot = Math.max(0, nextEnemyShotIn).toFixed(2);
+      window.targetRangeFpsStatus.nextEnemyShot = Number(document.body.dataset.fpsNextEnemyShot);
+    }
   }
 
   function spawnParticles(position, color) {
@@ -466,6 +532,34 @@
       scene.add(particle);
       particles.push(particle);
     }
+  }
+
+  function shootEnemyBullet(target) {
+    const start = target.localToWorld(new THREE.Vector3(0.92, 2.12, 0.96));
+    const aimPoint = camera.position.clone();
+    aimPoint.y -= 0.18;
+    const direction = aimPoint.sub(start).normalize();
+    direction.x += (Math.random() - 0.5) * 0.035;
+    direction.y += (Math.random() - 0.5) * 0.018;
+    direction.z += (Math.random() - 0.5) * 0.035;
+    direction.normalize();
+
+    const shot = new THREE.Mesh(
+      new THREE.SphereGeometry(0.09, 12, 8),
+      new THREE.MeshBasicMaterial({ color: 0xff4c65 })
+    );
+    shot.position.copy(start);
+    shot.userData.velocity = direction.multiplyScalar(45);
+    shot.userData.life = 1.35;
+    shot.userData.previous = start.clone();
+    shot.userData.updatedAt = performance.now();
+    shot.add(new THREE.PointLight(0xff4c65, 1.5, 6, 2));
+    scene.add(shot);
+    enemyBullets.push(shot);
+    state.enemyShots += 1;
+    state.lastEnemyShotAt = performance.now();
+    document.body.dataset.fpsEnemyBullets = String(enemyBullets.length);
+    document.body.dataset.fpsEnemyShots = String(state.enemyShots);
   }
 
   function updateParticles(delta) {
@@ -516,6 +610,14 @@
     document.body.dataset.fpsBullets = "0";
   }
 
+  function clearEnemyBullets() {
+    while (enemyBullets.length) {
+      const bullet = enemyBullets.pop();
+      scene.remove(bullet);
+    }
+    document.body.dataset.fpsEnemyBullets = "0";
+  }
+
   function updateBullets(delta) {
     for (let index = bullets.length - 1; index >= 0; index -= 1) {
       const bullet = bullets[index];
@@ -548,6 +650,40 @@
       }
     }
     document.body.dataset.fpsBullets = String(bullets.length);
+  }
+
+  function updateEnemyBullets(delta) {
+    const now = performance.now();
+    const playerHitRadius = state.scoped ? 0.92 : 1.18;
+    for (let index = enemyBullets.length - 1; index >= 0; index -= 1) {
+      const bullet = enemyBullets[index];
+      const step = Math.min((now - bullet.userData.updatedAt) / 1000, 0.25);
+      bullet.userData.updatedAt = now;
+      bullet.userData.previous.copy(bullet.position);
+      bullet.position.addScaledVector(bullet.userData.velocity, step || delta);
+      bullet.userData.life -= step || delta;
+      if (state.running && distanceToSegment(camera.position, bullet.userData.previous, bullet.position) < playerHitRadius) {
+        spawnParticles(camera.position, bullet.material.color);
+        scene.remove(bullet);
+        enemyBullets.splice(index, 1);
+        showHitScreen("A robot shot you.");
+        break;
+      }
+      if (bullet.userData.life <= 0 || bullet.position.length() > 120) {
+        scene.remove(bullet);
+        enemyBullets.splice(index, 1);
+      }
+    }
+    document.body.dataset.fpsEnemyBullets = String(enemyBullets.length);
+  }
+
+  function distanceToSegment(point, start, end) {
+    bulletDirection.copy(end).sub(start);
+    const lengthSquared = bulletDirection.lengthSq();
+    if (lengthSquared === 0) return point.distanceTo(start);
+    const t = THREE.MathUtils.clamp(closestPoint.copy(point).sub(start).dot(bulletDirection) / lengthSquared, 0, 1);
+    closestPoint.copy(start).addScaledVector(bulletDirection, t);
+    return point.distanceTo(closestPoint);
   }
 
   function shoot() {
@@ -620,10 +756,12 @@
       updateMovement(delta);
       updateTargets(delta);
       updateBullets(delta);
+      updateEnemyBullets(delta);
       syncHud();
     } else {
       updateTargets(delta * 0.45);
       updateBullets(delta);
+      updateEnemyBullets(delta);
     }
 
     state.recoilTimer = Math.max(0, state.recoilTimer - delta * 8);
@@ -718,6 +856,8 @@
 
   startButton.addEventListener("click", startGame);
   againButton.addEventListener("click", startGame);
+  retryButton.addEventListener("click", startGame);
+  menuButton.addEventListener("click", showMenu);
   touchFire.addEventListener("pointerdown", (event) => {
     event.preventDefault();
     shoot();

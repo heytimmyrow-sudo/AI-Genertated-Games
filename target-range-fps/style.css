@@ -218,7 +218,8 @@ button {
 }
 
 .center-panel,
-.end-panel {
+.end-panel,
+.hit-panel {
   position: absolute;
   top: 50%;
   left: 50%;
@@ -234,7 +235,8 @@ button {
 }
 
 .center-panel[hidden],
-.end-panel[hidden] {
+.end-panel[hidden],
+.hit-panel[hidden] {
   display: none;
 }
 
@@ -259,7 +261,8 @@ h2 {
 }
 
 .center-panel button,
-.end-panel button {
+.end-panel button,
+.hit-panel button {
   width: 100%;
   min-height: 48px;
   margin-top: 10px;
@@ -267,14 +270,16 @@ h2 {
   box-shadow: 0 12px 30px rgba(255, 209, 102, 0.24);
 }
 
-.center-panel .secondary {
+.center-panel .secondary,
+.hit-panel .secondary {
   background: rgba(255, 255, 255, 0.1);
   color: var(--ink);
   box-shadow: none;
 }
 
 .best-line,
-#endStats {
+#endStats,
+#hitStats {
   margin: 16px 0 0;
   color: var(--muted);
 }
@@ -377,7 +382,8 @@ h2 {
   }
 
   .center-panel,
-  .end-panel {
+  .end-panel,
+  .hit-panel {
     padding: 22px;
   }
 }
