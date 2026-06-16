@@ -57,6 +57,7 @@
   const targets = [];
   const bullets = [];
   const particles = [];
+  let lastScopeToggleAt = 0;
   const tempDirection = new THREE.Vector3();
   const forward = new THREE.Vector3();
   const right = new THREE.Vector3();
@@ -338,6 +339,15 @@
     window.targetRangeFpsStatus.scoped = state.scoped;
   }
 
+  function toggleScopeFromInput(event) {
+    if (!state.running || event.target.closest("button")) return;
+    event.preventDefault();
+    const now = performance.now();
+    if (now - lastScopeToggleAt < 90) return;
+    lastScopeToggleAt = now;
+    setScoped(!state.scoped);
+  }
+
   function updateCamera() {
     camera.rotation.order = "YXZ";
     camera.rotation.y = player.yaw;
@@ -571,13 +581,7 @@
     if (state.running) event.preventDefault();
   });
   window.addEventListener("mousedown", (event) => {
-    if (event.button === 2 && state.running && !event.target.closest("button")) {
-      event.preventDefault();
-      setScoped(true);
-    }
-  });
-  window.addEventListener("mouseup", (event) => {
-    if (event.button === 2) setScoped(false);
+    if (event.button === 2) toggleScopeFromInput(event);
   });
   window.addEventListener("keydown", (event) => {
     keys.add(event.code);
@@ -602,16 +606,11 @@
     if (!state.running) return;
     if (document.pointerLockElement !== canvas) requestCanvasLock();
     if (event.button === 2) {
-      event.preventDefault();
-      setScoped(true);
+      toggleScopeFromInput(event);
       return;
     }
     shoot();
   });
-  window.addEventListener("pointerup", (event) => {
-    if (event.button === 2) setScoped(false);
-  });
-  window.addEventListener("blur", () => setScoped(false));
 
   document.querySelectorAll("[data-move]").forEach((button) => {
     const move = button.dataset.move;
