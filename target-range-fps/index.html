@@ -22,8 +22,26 @@
         <span><b id="waveValue">1</b>Wave</span>
         <span><b id="weaponSlotValue">1</b>Slot</span>
         <span><b id="weaponValue">Pistol</b>Weapon</span>
+        <span><b id="healthValue">100</b>Health</span>
+        <span><b id="ammoValue">12/12</b>Ammo</span>
+        <span><b id="redScoreValue">0</b>Red</span>
+        <span><b id="blueScoreValue">0</b>Blue</span>
       </div>
     </section>
+
+    <section class="match-panel" aria-label="Match status">
+      <strong id="objectiveValue">Team Deathmatch</strong>
+      <p id="roundValue">Round 1 | First to 25</p>
+    </section>
+
+    <canvas class="minimap" id="miniMap" width="160" height="160" aria-label="Minimap"></canvas>
+
+    <div class="kill-feed" id="killFeed" aria-live="polite"></div>
+
+    <div class="hit-marker" id="hitMarker" aria-hidden="true">
+      <span></span>
+      <span></span>
+    </div>
 
     <div class="crosshair" aria-hidden="true">
       <span></span>
@@ -50,6 +68,35 @@
     <section class="center-panel" id="startPanel">
       <p class="kicker">Moving Target Arena</p>
       <h1>Target Range FPS</h1>
+      <div class="settings-grid" aria-label="Match settings">
+        <label>Mode
+          <select id="modeSelect">
+            <option value="tdm">Team Deathmatch</option>
+            <option value="control">Control Point</option>
+          </select>
+        </label>
+        <label>Bots
+          <select id="botCountSelect">
+            <option value="8">8</option>
+            <option value="12" selected>12</option>
+            <option value="16">16</option>
+          </select>
+        </label>
+        <label>Difficulty
+          <select id="difficultySelect">
+            <option value="easy">Easy</option>
+            <option value="normal" selected>Normal</option>
+            <option value="hard">Hard</option>
+          </select>
+        </label>
+        <label>Length
+          <select id="matchLengthSelect">
+            <option value="15">15</option>
+            <option value="25" selected>25</option>
+            <option value="40">40</option>
+          </select>
+        </label>
+      </div>
       <button id="startButton" type="button">Start Run</button>
       <button class="secondary" id="resetButton" type="button">Reset Best</button>
       <p class="best-line">Best: <strong id="bestValue">0</strong></p>
@@ -77,11 +124,14 @@
         <button data-move="backward" type="button">▼</button>
         <button data-move="right" type="button">▶</button>
       </div>
-      <button class="fire-button" id="touchFire" type="button">●</button>
+      <div class="action-buttons">
+        <button class="scope-button" id="touchScope" type="button">Scope</button>
+        <button class="fire-button" id="touchFire" type="button">●</button>
+      </div>
     </div>
   </main>
 
   <script src="../vendor/three.min.js"></script>
-  <script src="./game.js?v=walk-teams-20260616"></script>
+  <script src="./game.js?v=full-upgrades-20260616"></script>
 </body>
 </html>

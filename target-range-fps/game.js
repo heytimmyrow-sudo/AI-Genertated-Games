@@ -6,8 +6,22 @@
   const waveValue = document.getElementById("waveValue");
   const weaponSlotValue = document.getElementById("weaponSlotValue");
   const weaponValue = document.getElementById("weaponValue");
+  const healthValue = document.getElementById("healthValue");
+  const ammoValue = document.getElementById("ammoValue");
+  const redScoreValue = document.getElementById("redScoreValue");
+  const blueScoreValue = document.getElementById("blueScoreValue");
+  const objectiveValue = document.getElementById("objectiveValue");
+  const roundValue = document.getElementById("roundValue");
   const blueTeamValue = document.getElementById("blueTeamValue");
   const redTeamValue = document.getElementById("redTeamValue");
+  const killFeed = document.getElementById("killFeed");
+  const hitMarker = document.getElementById("hitMarker");
+  const miniMap = document.getElementById("miniMap");
+  const miniMapContext = miniMap.getContext("2d");
+  const modeSelect = document.getElementById("modeSelect");
+  const botCountSelect = document.getElementById("botCountSelect");
+  const difficultySelect = document.getElementById("difficultySelect");
+  const matchLengthSelect = document.getElementById("matchLengthSelect");
   const bestValue = document.getElementById("bestValue");
   const startPanel = document.getElementById("startPanel");
   const endPanel = document.getElementById("endPanel");
@@ -21,6 +35,7 @@
   const menuButton = document.getElementById("menuButton");
   const resetButton = document.getElementById("resetButton");
   const touchFire = document.getElementById("touchFire");
+  const touchScope = document.getElementById("touchScope");
   const gameShell = document.querySelector(".game-shell");
 
   const bestKey = "targetRangeFpsBest";
@@ -34,7 +49,9 @@
     yaw: 0,
     pitch: 0,
     velocity: new THREE.Vector3(),
-    position: new THREE.Vector3(0, 2.1, 22)
+    position: new THREE.Vector3(0, 2.1, 22),
+    maxHealth: 100,
+    health: 100
   };
 
   const state = {
@@ -54,6 +71,16 @@
     botHits: 0,
     lastEnemyShotAt: 0,
     botCounter: 0,
+    round: 1,
+    matchTarget: 25,
+    botCount: 12,
+    mode: "tdm",
+    difficulty: "normal",
+    redScore: 0,
+    blueScore: 0,
+    controlOwner: null,
+    controlTickAt: 0,
+    reloadUntil: 0,
     best: Number(localStorage.getItem(bestKey) || 0)
   };
 
@@ -63,17 +90,27 @@
   };
 
   const weapons = [
-    { slot: "1", name: "Pistol", cooldown: 260, pellets: 1, spread: 0.002, speed: 86, life: 1.15, radius: 0.075, color: 0xffd166, recoil: 1, points: 1 },
-    { slot: "2", name: "Burst", cooldown: 170, pellets: 1, spread: 0.006, speed: 94, life: 1.08, radius: 0.055, color: 0x43d5ff, recoil: 0.72, points: 0.82 },
-    { slot: "3", name: "Scatter", cooldown: 560, pellets: 7, spread: 0.052, speed: 76, life: 0.72, radius: 0.065, color: 0xff8a4c, recoil: 1.35, points: 0.46 },
-    { slot: "4", name: "Rail", cooldown: 820, pellets: 1, spread: 0, speed: 150, life: 0.82, radius: 0.05, color: 0xf7fafc, recoil: 1.85, points: 2.25 },
-    { slot: "5", name: "Plasma", cooldown: 440, pellets: 1, spread: 0.01, speed: 58, life: 1.6, radius: 0.16, color: 0x9b5cff, recoil: 0.95, points: 1.35 },
-    { slot: "6", name: "Arc", cooldown: 380, pellets: 3, spread: 0.024, speed: 82, life: 1.05, radius: 0.08, color: 0x4ff0b1, recoil: 0.85, points: 0.74 },
-    { slot: "7", name: "SMG", cooldown: 90, pellets: 1, spread: 0.018, speed: 98, life: 0.86, radius: 0.045, color: 0xff4c65, recoil: 0.44, points: 0.52 },
-    { slot: "8", name: "Cannon", cooldown: 980, pellets: 1, spread: 0.004, speed: 66, life: 1.45, radius: 0.22, color: 0xffc857, recoil: 2.25, points: 2.8 },
-    { slot: "9", name: "Needler", cooldown: 130, pellets: 2, spread: 0.015, speed: 112, life: 0.94, radius: 0.038, color: 0xc7ff4f, recoil: 0.36, points: 0.45 },
-    { slot: "0", name: "Nova", cooldown: 1250, pellets: 10, spread: 0.06, speed: 72, life: 1.2, radius: 0.1, color: 0xff6bd6, recoil: 2.7, points: 0.72 }
+    { slot: "1", name: "Pistol", cooldown: 260, pellets: 1, spread: 0.002, speed: 86, life: 1.15, radius: 0.075, color: 0xffd166, recoil: 1, points: 1, damage: 30, mag: 12, reload: 850 },
+    { slot: "2", name: "Burst", cooldown: 170, pellets: 1, spread: 0.006, speed: 94, life: 1.08, radius: 0.055, color: 0x43d5ff, recoil: 0.72, points: 0.82, damage: 20, mag: 24, reload: 1050 },
+    { slot: "3", name: "Scatter", cooldown: 560, pellets: 7, spread: 0.052, speed: 76, life: 0.72, radius: 0.065, color: 0xff8a4c, recoil: 1.35, points: 0.46, damage: 13, mag: 6, reload: 1350 },
+    { slot: "4", name: "Rail", cooldown: 820, pellets: 1, spread: 0, speed: 150, life: 0.82, radius: 0.05, color: 0xf7fafc, recoil: 1.85, points: 2.25, damage: 96, mag: 4, reload: 1600 },
+    { slot: "5", name: "Plasma", cooldown: 440, pellets: 1, spread: 0.01, speed: 58, life: 1.6, radius: 0.16, color: 0x9b5cff, recoil: 0.95, points: 1.35, damage: 52, mag: 8, reload: 1400 },
+    { slot: "6", name: "Arc", cooldown: 380, pellets: 3, spread: 0.024, speed: 82, life: 1.05, radius: 0.08, color: 0x4ff0b1, recoil: 0.85, points: 0.74, damage: 18, mag: 15, reload: 1150 },
+    { slot: "7", name: "SMG", cooldown: 90, pellets: 1, spread: 0.018, speed: 98, life: 0.86, radius: 0.045, color: 0xff4c65, recoil: 0.44, points: 0.52, damage: 13, mag: 36, reload: 1100 },
+    { slot: "8", name: "Cannon", cooldown: 980, pellets: 1, spread: 0.004, speed: 66, life: 1.45, radius: 0.22, color: 0xffc857, recoil: 2.25, points: 2.8, damage: 120, mag: 3, reload: 1900 },
+    { slot: "9", name: "Needler", cooldown: 130, pellets: 2, spread: 0.015, speed: 112, life: 0.94, radius: 0.038, color: 0xc7ff4f, recoil: 0.36, points: 0.45, damage: 10, mag: 40, reload: 950 },
+    { slot: "0", name: "Nova", cooldown: 1250, pellets: 10, spread: 0.06, speed: 72, life: 1.2, radius: 0.1, color: 0xff6bd6, recoil: 2.7, points: 0.72, damage: 16, mag: 2, reload: 2200 }
   ];
+
+  const botClasses = [
+    { name: "Rifle", health: 100, speed: 1, shot: 1, colorBoost: 0 },
+    { name: "Heavy", health: 170, speed: 0.72, shot: 0.8, colorBoost: -0.08 },
+    { name: "Sniper", health: 80, speed: 0.86, shot: 1.35, colorBoost: 0.08 },
+    { name: "Medic", health: 90, speed: 1.05, shot: 0.72, colorBoost: 0.16 },
+    { name: "Shotgun", health: 115, speed: 0.94, shot: 0.9, colorBoost: -0.02 }
+  ];
+
+  const weaponAmmo = weapons.map((weapon) => weapon.mag);
 
   window.targetRangeFpsStatus = {
     ready: false,
@@ -96,6 +133,9 @@
     });
     updateTargets(step);
     updateEnemyBullets(step);
+    updateObjective(performance.now());
+    updatePickups(step);
+    drawMiniMap();
     syncHud();
     return window.targetRangeFpsStatus;
   };
@@ -106,6 +146,10 @@
   const bullets = [];
   const enemyBullets = [];
   const particles = [];
+  const coverObjects = [];
+  const weaponPickups = [];
+  let audioContext = null;
+  let hitMarkerTimeout = null;
   let lastScopeToggleAt = 0;
   const tempDirection = new THREE.Vector3();
   const forward = new THREE.Vector3();
@@ -117,6 +161,12 @@
   const closestPoint = new THREE.Vector3();
   const walkTarget = new THREE.Vector3();
   const walkDirection = new THREE.Vector3();
+  const controlPoint = new THREE.Vector3(0, 0, -6);
+  const difficultySettings = {
+    easy: { playerDamage: 0.7, botDamage: 0.85, fireRate: 1.25 },
+    normal: { playerDamage: 1, botDamage: 1, fireRate: 1 },
+    hard: { playerDamage: 1.25, botDamage: 1.15, fireRate: 0.74 }
+  };
 
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
   renderer.shadowMap.enabled = true;
@@ -169,6 +219,9 @@
   scene.add(camera);
 
   const enemyGunMaterial = new THREE.MeshStandardMaterial({ color: 0x111820, roughness: 0.32, metalness: 0.72 });
+  createCoverObjects();
+  createControlPoint();
+  createWeaponPickups();
   bestValue.textContent = state.best;
   syncWeaponHud();
   resize();
@@ -183,6 +236,67 @@
     wall.castShadow = true;
     wall.receiveShadow = true;
     scene.add(wall);
+  }
+
+  function createCoverObjects() {
+    const coverMaterial = new THREE.MeshStandardMaterial({ color: 0x25384b, roughness: 0.76, metalness: 0.18 });
+    const placements = [
+      [-22, -12, 6, 2.5, 2.2],
+      [-8, -18, 7, 2.2, 2],
+      [12, -16, 5, 2.8, 2.3],
+      [25, -7, 4, 2.2, 6],
+      [-26, 6, 4, 2.5, 5],
+      [4, 7, 7, 2.4, 2],
+      [22, 11, 5, 2.2, 3],
+      [-5, -4, 3, 1.7, 6]
+    ];
+    placements.forEach(([x, z, width, height, depth]) => {
+      const cover = new THREE.Mesh(new THREE.BoxGeometry(width, height, depth), coverMaterial.clone());
+      cover.position.set(x, height / 2, z);
+      cover.castShadow = true;
+      cover.receiveShadow = true;
+      scene.add(cover);
+      coverObjects.push(cover);
+    });
+  }
+
+  function createControlPoint() {
+    const base = new THREE.Mesh(
+      new THREE.CylinderGeometry(4.2, 4.2, 0.14, 48),
+      new THREE.MeshBasicMaterial({ color: 0xffd166, transparent: true, opacity: 0.28 })
+    );
+    base.position.copy(controlPoint).setY(0.08);
+    scene.add(base);
+    const beacon = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.12, 0.32, 4.2, 18),
+      new THREE.MeshBasicMaterial({ color: 0xffd166, transparent: true, opacity: 0.42 })
+    );
+    beacon.position.copy(controlPoint).setY(2.1);
+    scene.add(beacon);
+  }
+
+  function createWeaponPickups() {
+    const pickupGeometry = new THREE.BoxGeometry(1.2, 0.42, 1.2);
+    const slots = [
+      [-28, 14, 1],
+      [-16, -23, 2],
+      [0, 15, 4],
+      [16, -24, 6],
+      [28, 4, 8],
+      [5, -7, 9]
+    ];
+    slots.forEach(([x, z, weaponIndex]) => {
+      const weapon = weapons[weaponIndex];
+      const pickup = new THREE.Mesh(
+        pickupGeometry,
+        new THREE.MeshStandardMaterial({ color: weapon.color, emissive: weapon.color, emissiveIntensity: 0.18, roughness: 0.34 })
+      );
+      pickup.position.set(x, 0.55, z);
+      pickup.castShadow = true;
+      pickup.userData = { weaponIndex, respawnAt: 0, baseY: 0.55 };
+      scene.add(pickup);
+      weaponPickups.push(pickup);
+    });
   }
 
   function makeGridTexture() {
@@ -244,6 +358,7 @@
     state.botCounter += 1;
     const teamKey = botNumber % 4 === 0 || botNumber % 5 === 0 ? "red" : "blue";
     const team = teams[teamKey];
+    const botClass = botClasses[(botNumber - 1) % botClasses.length];
     const robotBodyMaterial = new THREE.MeshStandardMaterial({ color: team.color, roughness: 0.42, metalness: 0.55 });
     const robotArmorMaterial = new THREE.MeshStandardMaterial({ color: team.dark, roughness: 0.5, metalness: 0.3 });
     const robotJointMaterial = new THREE.MeshStandardMaterial({ color: team.color, emissive: team.glow, emissiveIntensity: 0.35 });
@@ -260,6 +375,8 @@
     const rightShoulder = new THREE.Mesh(new THREE.SphereGeometry(0.22, 16, 10), robotJointMaterial.clone());
     const enemyGun = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.18, 0.88), enemyGunMaterial.clone());
     const avatar = new THREE.Mesh(new THREE.SphereGeometry(0.18, 16, 10), robotCoreMaterial.clone());
+    const healthBack = new THREE.Mesh(new THREE.BoxGeometry(1.35, 0.1, 0.08), new THREE.MeshBasicMaterial({ color: 0x050910 }));
+    const healthFill = new THREE.Mesh(new THREE.BoxGeometry(1.26, 0.08, 0.09), new THREE.MeshBasicMaterial({ color: team.color }));
     const armed = targets.length % 3 === 0 || Math.random() < 0.24;
 
     body.position.y = 2.22;
@@ -274,17 +391,21 @@
     rightShoulder.position.set(0.72, 2.8, 0);
     enemyGun.position.set(0.92, 2.1, 0.42);
     avatar.position.set(0, 4.1, 0);
+    healthBack.position.set(0, 4.44, 0);
+    healthFill.position.set(0, 4.45, 0.02);
 
     [body, chest, head, eye, leftArm, rightArm, leftLeg, rightLeg, leftShoulder, rightShoulder, enemyGun, avatar].forEach((part) => {
       part.castShadow = true;
       part.receiveShadow = true;
       part.userData.targetRoot = group;
     });
-    [body, chest, head, eye, leftArm, rightArm, leftLeg, rightLeg, leftShoulder, rightShoulder, avatar].forEach((part) => group.add(part));
+    [body, chest, head, eye, leftArm, rightArm, leftLeg, rightLeg, leftShoulder, rightShoulder, avatar, healthBack, healthFill].forEach((part) => group.add(part));
     if (armed) group.add(enemyGun);
+    const maxHealth = Math.round(botClass.health * (teamKey === "blue" ? 1.04 : 1));
     group.userData = {
       name: `Bot ${botNumber}`,
       team: teamKey,
+      className: botClass.name,
       body,
       chest,
       head,
@@ -294,18 +415,22 @@
       rightLeg,
       enemyGun,
       avatar,
+      healthFill,
       armed,
       core: chest,
-      health: 1,
+      health: maxHealth,
+      maxHealth,
+      alive: true,
+      respawnAt: 0,
       value: 150,
       age: 0,
-      shotCooldown: 1200 + Math.random() * 1600,
+      shotCooldown: (1200 + Math.random() * 1600) / botClass.shot,
       nextShotAt: performance.now() + 350 + Math.random() * 900,
       updatedAt: performance.now(),
       destination: new THREE.Vector3(),
       turnSpeed: 4 + Math.random() * 2,
       phase: Math.random() * Math.PI * 2,
-      speed: 3.4 + Math.random() * 1.8,
+      speed: (3.4 + Math.random() * 1.8) * botClass.speed,
       lane: Math.random() > 0.5 ? 1 : -1,
       radius: 12 + Math.random() * 22,
       baseY: 0
@@ -338,7 +463,7 @@
     clearBullets();
     clearEnemyBullets();
     state.botCounter = 0;
-    const total = 7 + state.wave;
+    const total = state.botCount + Math.min(state.wave - 1, 6);
     for (let index = 0; index < total; index += 1) {
       makeTarget();
     }
@@ -347,21 +472,37 @@
   }
 
   function startGame() {
+    applySettings();
     state.running = true;
     state.score = 0;
     state.streak = 0;
     state.wave = 1;
-    state.timeLeft = 90;
+    state.timeLeft = state.mode === "control" ? 120 : 90;
     state.spawnTimer = 0;
     state.recoilTimer = 0;
     state.nextFireAt = 0;
     state.hitCount = 0;
+    state.botHits = 0;
     state.lastEnemyShotAt = 0;
+    state.redScore = 0;
+    state.blueScore = 0;
+    state.controlOwner = null;
+    state.controlTickAt = performance.now() + 2500;
+    state.reloadUntil = 0;
+    weaponAmmo.forEach((_, index) => {
+      weaponAmmo[index] = weapons[index].mag;
+    });
+    weaponPickups.forEach((pickup) => {
+      pickup.visible = true;
+      pickup.userData.respawnAt = 0;
+    });
+    killFeed.replaceChildren();
     setScoped(false);
     player.position.set(0, 2.1, 22);
     player.velocity.set(0, 0, 0);
     player.yaw = 0;
     player.pitch = 0;
+    player.health = player.maxHealth;
     startPanel.hidden = true;
     endPanel.hidden = true;
     hitPanel.hidden = true;
@@ -370,7 +511,14 @@
     requestCanvasLock();
   }
 
-  function endGame() {
+  function applySettings() {
+    state.mode = modeSelect.value;
+    state.botCount = Number(botCountSelect.value);
+    state.difficulty = difficultySelect.value;
+    state.matchTarget = Number(matchLengthSelect.value);
+  }
+
+  function endGame(reason = "") {
     state.running = false;
     setScoped(false);
     document.exitPointerLock?.();
@@ -379,8 +527,9 @@
       localStorage.setItem(bestKey, String(state.best));
     }
     bestValue.textContent = state.best;
-    endTitle.textContent = state.score >= 5000 ? "Sharp shooting" : "Run complete";
-    endStats.textContent = `Score ${state.score} | Streak ${state.streak} | Wave ${state.wave}`;
+    const winner = state.redScore === state.blueScore ? "Draw" : `${state.redScore > state.blueScore ? "Red" : "Blue"} wins`;
+    endTitle.textContent = reason || winner;
+    endStats.textContent = `Score ${state.score} | Red ${state.redScore} | Blue ${state.blueScore} | Wave ${state.wave}`;
     endPanel.hidden = false;
   }
 
@@ -390,7 +539,7 @@
     state.hitCount += 1;
     setScoped(false);
     document.exitPointerLock?.();
-    hitStats.textContent = `${source} Score ${state.score} | Wave ${state.wave}`;
+    hitStats.textContent = `${source} Red ${state.redScore} | Blue ${state.blueScore} | Score ${state.score}`;
     hitPanel.hidden = false;
   }
 
@@ -420,9 +569,17 @@
     streakValue.textContent = state.streak;
     timeValue.textContent = Math.max(0, Math.ceil(state.timeLeft));
     waveValue.textContent = state.wave;
+    healthValue.textContent = Math.max(0, Math.ceil(player.health));
+    redScoreValue.textContent = state.redScore;
+    blueScoreValue.textContent = state.blueScore;
+    roundValue.textContent = `Round ${state.round} | First to ${state.matchTarget}`;
+    objectiveValue.textContent = state.mode === "control"
+      ? `Control Point: ${state.controlOwner ? teams[state.controlOwner].name : "Neutral"}`
+      : "Team Deathmatch";
     syncWeaponHud();
     window.targetRangeFpsStatus.targets = targets.length;
-    window.targetRangeFpsStatus.armedTargets = targets.filter((target) => target.userData.armed).length;
+    window.targetRangeFpsStatus.aliveTargets = targets.filter((target) => target.userData.alive).length;
+    window.targetRangeFpsStatus.armedTargets = targets.filter((target) => target.userData.armed && target.userData.alive).length;
     window.targetRangeFpsStatus.bullets = bullets.length;
     window.targetRangeFpsStatus.enemyBullets = enemyBullets.length;
     window.targetRangeFpsStatus.hitCount = state.hitCount;
@@ -436,13 +593,16 @@
     window.targetRangeFpsStatus.player = {
       x: Number(player.position.x.toFixed(2)),
       z: Number(player.position.z.toFixed(2)),
-      yaw: Number(player.yaw.toFixed(3))
+      yaw: Number(player.yaw.toFixed(3)),
+      health: Math.max(0, Math.ceil(player.health))
     };
     document.body.dataset.fpsTargets = String(targets.length);
     document.body.dataset.fpsArmedTargets = String(targets.filter((target) => target.userData.armed).length);
     document.body.dataset.fpsBotPositions = JSON.stringify(targets.slice(0, 5).map((target) => ({
       name: target.userData.name,
       team: target.userData.team,
+      alive: target.userData.alive,
+      health: Math.ceil(target.userData.health),
       x: Number(target.position.x.toFixed(2)),
       z: Number(target.position.z.toFixed(2))
     })));
@@ -455,6 +615,12 @@
     document.body.dataset.fpsWeapon = weapons[state.weaponIndex].name;
     document.body.dataset.fpsWeaponSlot = weapons[state.weaponIndex].slot;
     document.body.dataset.fpsRunning = String(state.running);
+    document.body.dataset.fpsHealth = String(Math.max(0, Math.ceil(player.health)));
+    document.body.dataset.fpsAmmo = ammoValue.textContent;
+    document.body.dataset.fpsRedScore = String(state.redScore);
+    document.body.dataset.fpsBlueScore = String(state.blueScore);
+    document.body.dataset.fpsMode = state.mode;
+    document.body.dataset.fpsObjective = state.controlOwner || "neutral";
   }
 
   function getTeamRosters() {
@@ -477,11 +643,17 @@
     const weapon = weapons[state.weaponIndex];
     weaponSlotValue.textContent = weapon.slot;
     weaponValue.textContent = weapon.name;
+    if (state.reloadUntil > performance.now()) {
+      ammoValue.textContent = "Reload";
+    } else {
+      ammoValue.textContent = `${weaponAmmo[state.weaponIndex]}/${weapon.mag}`;
+    }
   }
 
   function equipWeapon(index) {
     if (index < 0 || index >= weapons.length) return;
     state.weaponIndex = index;
+    state.reloadUntil = 0;
     const weapon = weapons[state.weaponIndex];
     syncWeaponHud();
     document.body.dataset.fpsWeapon = weapon.name;
@@ -551,6 +723,10 @@
     let nextEnemyShotIn = Infinity;
     targets.forEach((target) => {
       const data = target.userData;
+      if (!data.alive) {
+        if (data.respawnAt && now >= data.respawnAt) respawnBot(target);
+        return;
+      }
       const botDelta = Math.min((now - data.updatedAt) / 1000, 0.5) || delta;
       data.updatedAt = now;
       data.age += botDelta;
@@ -587,7 +763,8 @@
         nextEnemyShotIn = Math.min(nextEnemyShotIn, (data.nextShotAt - now) / 1000);
         if (state.running && now >= data.nextShotAt && camera.position.distanceTo(target.position) < 86) {
           shootEnemyBullet(target);
-          data.nextShotAt = now + data.shotCooldown + Math.random() * 1100;
+          const setting = difficultySettings[state.difficulty] || difficultySettings.normal;
+          data.nextShotAt = now + data.shotCooldown * setting.fireRate + Math.random() * 1100;
           nextEnemyShotIn = Math.min(nextEnemyShotIn, (data.nextShotAt - now) / 1000);
         }
       }
@@ -603,6 +780,15 @@
   }
 
   function setWalkDestination(target) {
+    if (coverObjects.length && Math.random() < 0.4) {
+      const cover = coverObjects[Math.floor(Math.random() * coverObjects.length)];
+      target.userData.destination.set(
+        cover.position.x + THREE.MathUtils.randFloatSpread(5.5),
+        0,
+        cover.position.z + THREE.MathUtils.randFloatSpread(5.5)
+      );
+      return;
+    }
     target.userData.destination.set(
       THREE.MathUtils.randFloat(-34, 34),
       0,
@@ -628,6 +814,105 @@
     }
   }
 
+  function addFeed(message) {
+    const item = document.createElement("p");
+    item.textContent = message;
+    killFeed.prepend(item);
+    while (killFeed.children.length > 5) {
+      killFeed.lastElementChild.remove();
+    }
+  }
+
+  function showHitMarker() {
+    hitMarker.classList.add("is-active");
+    clearTimeout(hitMarkerTimeout);
+    hitMarkerTimeout = setTimeout(() => hitMarker.classList.remove("is-active"), 130);
+  }
+
+  function playTone(frequency, duration = 0.05, type = "square") {
+    try {
+      audioContext ||= new (window.AudioContext || window.webkitAudioContext)();
+      const oscillator = audioContext.createOscillator();
+      const gain = audioContext.createGain();
+      oscillator.type = type;
+      oscillator.frequency.value = frequency;
+      gain.gain.setValueAtTime(0.035, audioContext.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + duration);
+      oscillator.connect(gain);
+      gain.connect(audioContext.destination);
+      oscillator.start();
+      oscillator.stop(audioContext.currentTime + duration);
+    } catch (error) {
+      audioContext = null;
+    }
+  }
+
+  function updateHealthBar(target) {
+    const ratio = THREE.MathUtils.clamp(target.userData.health / target.userData.maxHealth, 0, 1);
+    target.userData.healthFill.scale.x = ratio;
+    target.userData.healthFill.position.x = -0.63 * (1 - ratio);
+  }
+
+  function damageBot(target, amount, attackerTeam, attackerName, hitPoint = null) {
+    const data = target.userData;
+    if (!data.alive || data.team === attackerTeam) return false;
+    data.health -= amount;
+    updateHealthBar(target);
+    spawnParticles(hitPoint || target.position.clone().add(new THREE.Vector3(0, 2.2, 0)), data.core.material.color);
+    if (attackerName === "P1") showHitMarker();
+    playTone(attackerName === "P1" ? 520 : 280, 0.045, "triangle");
+    if (data.health > 0) return false;
+
+    data.alive = false;
+    data.respawnAt = performance.now() + 2600;
+    target.visible = false;
+    state.botHits += 1;
+    if (attackerTeam === "red") state.redScore += 1;
+    if (attackerTeam === "blue") state.blueScore += 1;
+    if (attackerName === "P1") {
+      const closeBonus = Math.max(0, Math.floor((32 - camera.position.distanceTo(target.position)) * 2));
+      const streakBonus = Math.min(400, state.streak * 20);
+      state.score += data.value + closeBonus + streakBonus;
+      state.streak += 1;
+      if (state.streak % 8 === 0) {
+        state.wave += 1;
+        makeTarget();
+      }
+    }
+    addFeed(`${attackerName} dropped ${data.name} (${data.className})`);
+    checkRoundEnd();
+    return true;
+  }
+
+  function respawnBot(target) {
+    const data = target.userData;
+    data.health = data.maxHealth;
+    data.alive = true;
+    data.respawnAt = 0;
+    target.visible = true;
+    updateHealthBar(target);
+    placeTarget(target);
+    addFeed(`${data.name} respawned`);
+  }
+
+  function damagePlayer(amount, source) {
+    if (!state.running || player.health <= 0) return;
+    const setting = difficultySettings[state.difficulty] || difficultySettings.normal;
+    player.health -= amount * setting.playerDamage;
+    spawnParticles(camera.position, teams.blue.color);
+    playTone(130, 0.08, "sawtooth");
+    if (player.health > 0) {
+      addFeed(`${source} hit P1`);
+      syncHud();
+      return;
+    }
+    player.health = 0;
+    state.blueScore += 1;
+    addFeed(`${source} eliminated P1`);
+    checkRoundEnd();
+    if (state.running) showHitScreen(`${source} shot you.`);
+  }
+
   function shootEnemyBullet(target) {
     const start = target.localToWorld(new THREE.Vector3(0.92, 2.12, 0.96));
     const aimPoint = getAimPointForTeam(target.userData.team);
@@ -648,6 +933,8 @@
     shot.userData.previous = start.clone();
     shot.userData.updatedAt = performance.now();
     shot.userData.team = target.userData.team;
+    shot.userData.damage = 22 * ((difficultySettings[state.difficulty] || difficultySettings.normal).botDamage || 1);
+    shot.userData.source = target.userData.name;
     shot.add(new THREE.PointLight(teams[target.userData.team].color, 1.5, 6, 2));
     scene.add(shot);
     enemyBullets.push(shot);
@@ -659,13 +946,13 @@
 
   function getAimPointForTeam(teamKey) {
     if (teamKey === "blue") {
-      const redBots = targets.filter((target) => target.userData.team === "red");
+      const redBots = targets.filter((target) => target.userData.team === "red" && target.userData.alive);
       if (redBots.length && Math.random() < 0.72) {
         return redBots[Math.floor(Math.random() * redBots.length)].position.clone().add(new THREE.Vector3(0, 2.2, 0));
       }
       return camera.position.clone().add(new THREE.Vector3(0, -0.18, 0));
     }
-    const blueBots = targets.filter((target) => target.userData.team === "blue");
+    const blueBots = targets.filter((target) => target.userData.team === "blue" && target.userData.alive);
     if (!blueBots.length) return null;
     return blueBots[Math.floor(Math.random() * blueBots.length)].position.clone().add(new THREE.Vector3(0, 2.2, 0));
   }
@@ -739,7 +1026,7 @@
       raycaster.far = travel + 0.24;
       const hits = raycaster.intersectObjects(targets, true);
       if (hits.length) {
-        const hitGroup = hits.map((hit) => getTargetGroup(hit.object)).find((target) => target?.userData.team !== "red");
+        const hitGroup = hits.map((hit) => getTargetGroup(hit.object)).find((target) => target?.userData.team !== "red" && target.userData.alive);
         if (hitGroup) {
           const hit = hits.find((candidate) => getTargetGroup(candidate.object) === hitGroup);
           bullet.position.copy(hit.point);
@@ -772,17 +1059,14 @@
       bullet.position.addScaledVector(bullet.userData.velocity, step || delta);
       bullet.userData.life -= step || delta;
       if (state.running && bullet.userData.team === "blue" && distanceToSegment(camera.position, bullet.userData.previous, bullet.position) < playerHitRadius) {
-        spawnParticles(camera.position, bullet.material.color);
         scene.remove(bullet);
         enemyBullets.splice(index, 1);
-        showHitScreen("A robot shot you.");
+        damagePlayer(bullet.userData.damage, bullet.userData.source || "A robot");
         break;
       }
       const botHit = getEnemyBulletHit(bullet);
       if (botHit) {
-        spawnParticles(botHit.position.clone().add(new THREE.Vector3(0, 2.2, 0)), botHit.userData.core.material.color);
-        state.botHits += 1;
-        placeTarget(botHit);
+        damageBot(botHit, bullet.userData.damage, bullet.userData.team, bullet.userData.source || "Bot", botHit.position.clone().add(new THREE.Vector3(0, 2.2, 0)));
         scene.remove(bullet);
         enemyBullets.splice(index, 1);
         document.body.dataset.fpsBotHits = String(state.botHits);
@@ -800,6 +1084,7 @@
   function getEnemyBulletHit(bullet) {
     return targets.find((target) => (
       target.userData.team !== bullet.userData.team &&
+      target.userData.alive &&
       (
         distanceToSegment(target.position.clone().add(new THREE.Vector3(0, 2.2, 0)), bullet.userData.previous, bullet.position) < 1.35 ||
         distanceToSegment(target.position.clone().add(new THREE.Vector3(0, 1.1, 0)), bullet.userData.previous, bullet.position) < 0.95
@@ -821,6 +1106,14 @@
     const weapon = weapons[state.weaponIndex];
     const now = performance.now();
     if (now < state.nextFireAt) return;
+    if (now < state.reloadUntil) return;
+    if (weaponAmmo[state.weaponIndex] <= 0) {
+      state.reloadUntil = now + weapon.reload;
+      addFeed(`Reloading ${weapon.name}`);
+      syncWeaponHud();
+      return;
+    }
+    weaponAmmo[state.weaponIndex] -= 1;
     state.nextFireAt = now + (state.scoped ? weapon.cooldown * 1.08 : weapon.cooldown);
     state.recoilTimer = weapon.recoil;
     state.flashTimer = 0.07;
@@ -838,20 +1131,16 @@
       }
       makeBullet(weapon, direction);
     }
+    playTone(210 + state.weaponIndex * 32, 0.045, weapon.name === "Rail" ? "sine" : "square");
+    if (weaponAmmo[state.weaponIndex] <= 0) {
+      state.reloadUntil = now + weapon.reload;
+      addFeed(`Reloading ${weapon.name}`);
+    }
+    syncWeaponHud();
   }
 
   function handleTargetHit(hitGroup, hitPoint, weapon) {
-    const closeBonus = Math.max(0, Math.floor((32 - camera.position.distanceTo(hitGroup.position)) * 2));
-    const streakBonus = Math.min(400, state.streak * 20);
-    const points = Math.round((hitGroup.userData.value + closeBonus + streakBonus) * weapon.points);
-    state.score += points;
-    state.streak += 1;
-    spawnParticles(hitPoint, hitGroup.userData.core.material.color);
-    placeTarget(hitGroup);
-    if (state.streak % 8 === 0) {
-      state.wave += 1;
-      makeTarget();
-    }
+    damageBot(hitGroup, weapon.damage, "red", "P1", hitPoint);
     syncHud();
   }
 
@@ -865,6 +1154,95 @@
     return null;
   }
 
+  function updateReload(now) {
+    if (state.reloadUntil && now >= state.reloadUntil) {
+      weaponAmmo[state.weaponIndex] = weapons[state.weaponIndex].mag;
+      state.reloadUntil = 0;
+      addFeed(`${weapons[state.weaponIndex].name} ready`);
+      playTone(680, 0.05, "triangle");
+      syncWeaponHud();
+    }
+  }
+
+  function updatePickups(delta) {
+    const now = performance.now();
+    weaponPickups.forEach((pickup) => {
+      if (!pickup.visible) {
+        if (now >= pickup.userData.respawnAt) {
+          pickup.visible = true;
+          pickup.position.x = THREE.MathUtils.randFloat(-30, 30);
+          pickup.position.z = THREE.MathUtils.randFloat(-24, 18);
+        }
+        return;
+      }
+      pickup.rotation.y += delta * 1.8;
+      pickup.position.y = pickup.userData.baseY + Math.sin(now * 0.004 + pickup.userData.weaponIndex) * 0.12;
+      if (player.position.distanceTo(pickup.position) < 2.1) {
+        const pickupWeapon = pickup.userData.weaponIndex;
+        weaponAmmo[pickupWeapon] = weapons[pickupWeapon].mag;
+        equipWeapon(pickupWeapon);
+        pickup.visible = false;
+        pickup.userData.respawnAt = now + 9000;
+        state.reloadUntil = 0;
+        addFeed(`Picked up ${weapons[pickupWeapon].name}`);
+        playTone(820, 0.08, "triangle");
+      }
+    });
+  }
+
+  function updateObjective(now) {
+    if (state.mode !== "control") return;
+    let redPresence = player.position.distanceTo(controlPoint) < 7 ? 1 : 0;
+    let bluePresence = 0;
+    targets.forEach((target) => {
+      if (!target.userData.alive || target.position.distanceTo(controlPoint) >= 7) return;
+      if (target.userData.team === "red") redPresence += 1;
+      if (target.userData.team === "blue") bluePresence += 1;
+    });
+    const owner = redPresence === bluePresence ? null : (redPresence > bluePresence ? "red" : "blue");
+    if (owner !== state.controlOwner) {
+      state.controlOwner = owner;
+      addFeed(owner ? `${teams[owner].name} captured control` : "Control point neutral");
+    }
+    if (state.controlOwner && now >= state.controlTickAt) {
+      if (state.controlOwner === "red") state.redScore += 1;
+      if (state.controlOwner === "blue") state.blueScore += 1;
+      state.controlTickAt = now + 2200;
+      checkRoundEnd();
+    }
+  }
+
+  function checkRoundEnd() {
+    if (!state.running) return;
+    if (state.redScore >= state.matchTarget || state.blueScore >= state.matchTarget) {
+      const winner = state.redScore > state.blueScore ? "Red wins" : "Blue wins";
+      endGame(winner);
+    }
+  }
+
+  function drawMiniMap() {
+    const size = miniMap.width;
+    miniMapContext.clearRect(0, 0, size, size);
+    miniMapContext.fillStyle = "rgba(5, 9, 16, 0.78)";
+    miniMapContext.fillRect(0, 0, size, size);
+    miniMapContext.strokeStyle = "rgba(255, 255, 255, 0.22)";
+    miniMapContext.strokeRect(8, 8, size - 16, size - 16);
+    const scale = (value, min, max) => 8 + ((value - min) / (max - min)) * (size - 16);
+    const drawDot = (x, z, color, radius = 4) => {
+      miniMapContext.fillStyle = color;
+      miniMapContext.beginPath();
+      miniMapContext.arc(scale(x, -42, 42), scale(z, -38, 28), radius, 0, Math.PI * 2);
+      miniMapContext.fill();
+    };
+    drawDot(controlPoint.x, controlPoint.z, state.controlOwner === "blue" ? "#43d5ff" : state.controlOwner === "red" ? "#ff4c65" : "#ffd166", 6);
+    coverObjects.forEach((cover) => drawDot(cover.position.x, cover.position.z, "rgba(158, 179, 201, 0.45)", 2.5));
+    weaponPickups.filter((pickup) => pickup.visible).forEach((pickup) => drawDot(pickup.position.x, pickup.position.z, "#ffd166", 3));
+    targets.filter((target) => target.userData.alive).forEach((target) => {
+      drawDot(target.position.x, target.position.z, target.userData.team === "blue" ? "#43d5ff" : "#ff4c65", 3.5);
+    });
+    drawDot(player.position.x, player.position.z, "#ffffff", 5);
+  }
+
   function animate() {
     requestAnimationFrame(animate);
     const delta = Math.min(clock.getDelta(), 0.04);
@@ -872,10 +1250,11 @@
     document.body.dataset.fpsFrames = String(window.targetRangeFpsStatus.frames);
 
     if (state.running) {
+      const now = performance.now();
       state.timeLeft -= delta;
       if (state.timeLeft <= 0) {
         state.timeLeft = 0;
-        endGame();
+        endGame("Time up");
       }
       state.spawnTimer += delta;
       if (state.spawnTimer > 12 && targets.length < 18) {
@@ -885,14 +1264,19 @@
         syncTeamHud();
       }
       updateMovement(delta);
+      updateReload(now);
+      updatePickups(delta);
+      updateObjective(now);
       updateTargets(delta);
       updateBullets(delta);
       updateEnemyBullets(delta);
+      drawMiniMap();
       syncHud();
     } else {
       updateTargets(delta * 0.45);
       updateBullets(delta);
       updateEnemyBullets(delta);
+      drawMiniMap();
     }
 
     state.recoilTimer = Math.max(0, state.recoilTimer - delta * 8);
@@ -992,6 +1376,10 @@
   touchFire.addEventListener("pointerdown", (event) => {
     event.preventDefault();
     shoot();
+  });
+  touchScope.addEventListener("pointerdown", (event) => {
+    event.preventDefault();
+    if (state.running) setScoped(!state.scoped);
   });
   resetButton.addEventListener("click", () => {
     state.best = 0;
