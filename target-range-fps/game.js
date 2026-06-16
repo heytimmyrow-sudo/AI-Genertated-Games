@@ -6,6 +6,8 @@
   const waveValue = document.getElementById("waveValue");
   const weaponSlotValue = document.getElementById("weaponSlotValue");
   const weaponValue = document.getElementById("weaponValue");
+  const blueTeamValue = document.getElementById("blueTeamValue");
+  const redTeamValue = document.getElementById("redTeamValue");
   const bestValue = document.getElementById("bestValue");
   const startPanel = document.getElementById("startPanel");
   const endPanel = document.getElementById("endPanel");
@@ -50,7 +52,13 @@
     hitCount: 0,
     enemyShots: 0,
     lastEnemyShotAt: 0,
+    botCounter: 0,
     best: Number(localStorage.getItem(bestKey) || 0)
+  };
+
+  const teams = {
+    blue: { name: "Blue", color: 0x43d5ff, dark: 0x18384c, glow: 0x0c6f8f },
+    red: { name: "Red", color: 0xff4c65, dark: 0x4a1824, glow: 0x8f182b }
   };
 
   const weapons = [
@@ -75,6 +83,7 @@
     scoped: false,
     weapon: "Pistol",
     weaponSlot: "1",
+    teams: { blue: [], red: ["P1"] },
     running: false
   };
 
@@ -144,10 +153,6 @@
   camera.add(gun);
   scene.add(camera);
 
-  const robotBodyMaterial = new THREE.MeshStandardMaterial({ color: 0x8ea7b8, roughness: 0.42, metalness: 0.55 });
-  const robotArmorMaterial = new THREE.MeshStandardMaterial({ color: 0x223142, roughness: 0.5, metalness: 0.3 });
-  const robotJointMaterial = new THREE.MeshStandardMaterial({ color: 0xff4c65, emissive: 0x6e1322, emissiveIntensity: 0.35 });
-  const robotCoreMaterial = new THREE.MeshStandardMaterial({ color: 0x4ff0b1, emissive: 0x1ca675, emissiveIntensity: 0.85 });
   const enemyGunMaterial = new THREE.MeshStandardMaterial({ color: 0x111820, roughness: 0.32, metalness: 0.72 });
   bestValue.textContent = state.best;
   syncWeaponHud();
@@ -220,9 +225,17 @@
 
   function makeTarget() {
     const group = new THREE.Group();
-    const body = new THREE.Mesh(new THREE.BoxGeometry(1.05, 1.55, 0.55), robotBodyMaterial.clone());
-    const chest = new THREE.Mesh(new THREE.BoxGeometry(0.52, 0.52, 0.12), robotCoreMaterial.clone());
-    const head = new THREE.Mesh(new THREE.BoxGeometry(0.78, 0.62, 0.62), robotArmorMaterial.clone());
+    const botNumber = state.botCounter + 1;
+    state.botCounter += 1;
+    const teamKey = botNumber % 4 === 0 || botNumber % 5 === 0 ? "red" : "blue";
+    const team = teams[teamKey];
+    const robotBodyMaterial = new THREE.MeshStandardMaterial({ color: team.color, roughness: 0.42, metalness: 0.55 });
+    const robotArmorMaterial = new THREE.MeshStandardMaterial({ color: team.dark, roughness: 0.5, metalness: 0.3 });
+    const robotJointMaterial = new THREE.MeshStandardMaterial({ color: team.color, emissive: team.glow, emissiveIntensity: 0.35 });
+    const robotCoreMaterial = new THREE.MeshStandardMaterial({ color: team.color, emissive: team.glow, emissiveIntensity: 0.85 });
+    const body = new THREE.Mesh(new THREE.BoxGeometry(1.05, 1.55, 0.55), robotBodyMaterial);
+    const chest = new THREE.Mesh(new THREE.BoxGeometry(0.52, 0.52, 0.12), robotCoreMaterial);
+    const head = new THREE.Mesh(new THREE.BoxGeometry(0.78, 0.62, 0.62), robotArmorMaterial);
     const eye = new THREE.Mesh(new THREE.BoxGeometry(0.48, 0.08, 0.04), robotCoreMaterial.clone());
     const leftArm = new THREE.Mesh(new THREE.BoxGeometry(0.28, 1.25, 0.3), robotBodyMaterial.clone());
     const rightArm = new THREE.Mesh(new THREE.BoxGeometry(0.28, 1.25, 0.3), robotBodyMaterial.clone());
@@ -231,6 +244,7 @@
     const leftShoulder = new THREE.Mesh(new THREE.SphereGeometry(0.22, 16, 10), robotJointMaterial.clone());
     const rightShoulder = new THREE.Mesh(new THREE.SphereGeometry(0.22, 16, 10), robotJointMaterial.clone());
     const enemyGun = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.18, 0.88), enemyGunMaterial.clone());
+    const avatar = new THREE.Mesh(new THREE.SphereGeometry(0.18, 16, 10), robotCoreMaterial.clone());
     const armed = targets.length % 3 === 0 || Math.random() < 0.24;
 
     body.position.y = 2.22;
@@ -244,15 +258,18 @@
     leftShoulder.position.set(-0.72, 2.8, 0);
     rightShoulder.position.set(0.72, 2.8, 0);
     enemyGun.position.set(0.92, 2.1, 0.42);
+    avatar.position.set(0, 4.1, 0);
 
-    [body, chest, head, eye, leftArm, rightArm, leftLeg, rightLeg, leftShoulder, rightShoulder, enemyGun].forEach((part) => {
+    [body, chest, head, eye, leftArm, rightArm, leftLeg, rightLeg, leftShoulder, rightShoulder, enemyGun, avatar].forEach((part) => {
       part.castShadow = true;
       part.receiveShadow = true;
       part.userData.targetRoot = group;
     });
-    [body, chest, head, eye, leftArm, rightArm, leftLeg, rightLeg, leftShoulder, rightShoulder].forEach((part) => group.add(part));
+    [body, chest, head, eye, leftArm, rightArm, leftLeg, rightLeg, leftShoulder, rightShoulder, avatar].forEach((part) => group.add(part));
     if (armed) group.add(enemyGun);
     group.userData = {
+      name: `Bot ${botNumber}`,
+      team: teamKey,
       body,
       chest,
       head,
@@ -261,6 +278,7 @@
       leftLeg,
       rightLeg,
       enemyGun,
+      avatar,
       armed,
       core: chest,
       health: 1,
@@ -277,6 +295,7 @@
     scene.add(group);
     targets.push(group);
     placeTarget(group, true);
+    syncTeamHud();
     return group;
   }
 
@@ -297,11 +316,13 @@
     }
     clearBullets();
     clearEnemyBullets();
+    state.botCounter = 0;
     const total = 7 + state.wave;
     for (let index = 0; index < total; index += 1) {
       makeTarget();
     }
     window.targetRangeFpsStatus.targets = targets.length;
+    syncTeamHud();
   }
 
   function startGame() {
@@ -385,6 +406,7 @@
     window.targetRangeFpsStatus.enemyBullets = enemyBullets.length;
     window.targetRangeFpsStatus.hitCount = state.hitCount;
     window.targetRangeFpsStatus.enemyShots = state.enemyShots;
+    window.targetRangeFpsStatus.teams = getTeamRosters();
     window.targetRangeFpsStatus.scoped = state.scoped;
     window.targetRangeFpsStatus.weapon = weapons[state.weaponIndex].name;
     window.targetRangeFpsStatus.weaponSlot = weapons[state.weaponIndex].slot;
@@ -404,6 +426,22 @@
     document.body.dataset.fpsWeapon = weapons[state.weaponIndex].name;
     document.body.dataset.fpsWeaponSlot = weapons[state.weaponIndex].slot;
     document.body.dataset.fpsRunning = String(state.running);
+  }
+
+  function getTeamRosters() {
+    return targets.reduce((rosters, target) => {
+      rosters[target.userData.team].push(target.userData.name);
+      return rosters;
+    }, { blue: [], red: ["P1"] });
+  }
+
+  function syncTeamHud() {
+    const rosters = getTeamRosters();
+    blueTeamValue.textContent = rosters.blue.length ? rosters.blue.join(", ") : "None";
+    redTeamValue.textContent = rosters.red.join(", ");
+    window.targetRangeFpsStatus.teams = rosters;
+    document.body.dataset.fpsBlueTeam = rosters.blue.join(", ");
+    document.body.dataset.fpsRedTeam = rosters.red.join(", ");
   }
 
   function syncWeaponHud() {
@@ -492,6 +530,7 @@
       target.rotation.y = lookYaw + Math.sin(data.age * 2 + data.phase) * 0.16;
       target.rotation.z = Math.sin(data.age * 2 + data.phase) * 0.22;
       data.core.scale.setScalar(1 + Math.sin(data.age * 8) * 0.12);
+      data.avatar.position.y = 4.1 + Math.sin(data.age * 4 + data.phase) * 0.08;
       data.leftArm.rotation.x = Math.sin(data.age * 5 + data.phase) * 0.34;
       data.rightArm.rotation.x = Math.sin(data.age * 5 + data.phase + Math.PI) * 0.34;
       data.leftLeg.rotation.x = Math.sin(data.age * 5 + data.phase + Math.PI) * 0.18;
@@ -536,8 +575,8 @@
 
   function shootEnemyBullet(target) {
     const start = target.localToWorld(new THREE.Vector3(0.92, 2.12, 0.96));
-    const aimPoint = camera.position.clone();
-    aimPoint.y -= 0.18;
+    const aimPoint = getAimPointForTeam(target.userData.team);
+    if (!aimPoint) return;
     const direction = aimPoint.sub(start).normalize();
     direction.x += (Math.random() - 0.5) * 0.035;
     direction.y += (Math.random() - 0.5) * 0.018;
@@ -546,20 +585,34 @@
 
     const shot = new THREE.Mesh(
       new THREE.SphereGeometry(0.09, 12, 8),
-      new THREE.MeshBasicMaterial({ color: 0xff4c65 })
+      new THREE.MeshBasicMaterial({ color: teams[target.userData.team].color })
     );
     shot.position.copy(start);
     shot.userData.velocity = direction.multiplyScalar(45);
     shot.userData.life = 1.35;
     shot.userData.previous = start.clone();
     shot.userData.updatedAt = performance.now();
-    shot.add(new THREE.PointLight(0xff4c65, 1.5, 6, 2));
+    shot.userData.team = target.userData.team;
+    shot.add(new THREE.PointLight(teams[target.userData.team].color, 1.5, 6, 2));
     scene.add(shot);
     enemyBullets.push(shot);
     state.enemyShots += 1;
     state.lastEnemyShotAt = performance.now();
     document.body.dataset.fpsEnemyBullets = String(enemyBullets.length);
     document.body.dataset.fpsEnemyShots = String(state.enemyShots);
+  }
+
+  function getAimPointForTeam(teamKey) {
+    if (teamKey === "blue") {
+      const redBots = targets.filter((target) => target.userData.team === "red");
+      if (redBots.length && Math.random() < 0.38) {
+        return redBots[Math.floor(Math.random() * redBots.length)].position.clone().add(new THREE.Vector3(0, 2.2, 0));
+      }
+      return camera.position.clone().add(new THREE.Vector3(0, -0.18, 0));
+    }
+    const blueBots = targets.filter((target) => target.userData.team === "blue");
+    if (!blueBots.length) return null;
+    return blueBots[Math.floor(Math.random() * blueBots.length)].position.clone().add(new THREE.Vector3(0, 2.2, 0));
   }
 
   function updateParticles(delta) {
@@ -631,10 +684,11 @@
       raycaster.far = travel + 0.24;
       const hits = raycaster.intersectObjects(targets, true);
       if (hits.length) {
-        const hitGroup = getTargetGroup(hits[0].object);
+        const hitGroup = hits.map((hit) => getTargetGroup(hit.object)).find((target) => target?.userData.team !== "red");
         if (hitGroup) {
-          bullet.position.copy(hits[0].point);
-          handleTargetHit(hitGroup, hits[0].point, bullet.userData.weapon);
+          const hit = hits.find((candidate) => getTargetGroup(candidate.object) === hitGroup);
+          bullet.position.copy(hit.point);
+          handleTargetHit(hitGroup, hit.point, bullet.userData.weapon);
           scene.remove(bullet);
           bullets.splice(index, 1);
           continue;
@@ -662,12 +716,21 @@
       bullet.userData.previous.copy(bullet.position);
       bullet.position.addScaledVector(bullet.userData.velocity, step || delta);
       bullet.userData.life -= step || delta;
-      if (state.running && distanceToSegment(camera.position, bullet.userData.previous, bullet.position) < playerHitRadius) {
+      if (state.running && bullet.userData.team === "blue" && distanceToSegment(camera.position, bullet.userData.previous, bullet.position) < playerHitRadius) {
         spawnParticles(camera.position, bullet.material.color);
         scene.remove(bullet);
         enemyBullets.splice(index, 1);
         showHitScreen("A robot shot you.");
         break;
+      }
+      const botHit = getEnemyBulletHit(bullet);
+      if (botHit) {
+        spawnParticles(botHit.position.clone().add(new THREE.Vector3(0, 2.2, 0)), botHit.userData.core.material.color);
+        placeTarget(botHit);
+        scene.remove(bullet);
+        enemyBullets.splice(index, 1);
+        syncTeamHud();
+        continue;
       }
       if (bullet.userData.life <= 0 || bullet.position.length() > 120) {
         scene.remove(bullet);
@@ -675,6 +738,13 @@
       }
     }
     document.body.dataset.fpsEnemyBullets = String(enemyBullets.length);
+  }
+
+  function getEnemyBulletHit(bullet) {
+    return targets.find((target) => (
+      target.userData.team !== bullet.userData.team &&
+      distanceToSegment(target.position.clone().add(new THREE.Vector3(0, 2.1, 0)), bullet.userData.previous, bullet.position) < 1.05
+    ));
   }
 
   function distanceToSegment(point, start, end) {
@@ -752,6 +822,7 @@
         state.spawnTimer = 0;
         state.wave += 1;
         makeTarget();
+        syncTeamHud();
       }
       updateMovement(delta);
       updateTargets(delta);
