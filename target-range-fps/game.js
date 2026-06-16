@@ -455,33 +455,117 @@
 
   function createCoverObjects() {
     const coverMaterial = new THREE.MeshStandardMaterial({ color: 0x25384b, roughness: 0.76, metalness: 0.18 });
-    const placements = [
-      [-45, -36, 8, 2.7, 2.4],
-      [-30, -28, 5, 2.1, 7],
-      [-13, -40, 10, 2.4, 2],
-      [6, -31, 5, 3.2, 6],
-      [27, -38, 7, 2.2, 2.2],
-      [46, -24, 5, 2.6, 8],
-      [-48, -4, 6, 2.7, 7],
-      [-28, 8, 8, 2.2, 2.2],
-      [-10, -8, 4, 2.7, 9],
-      [12, 4, 10, 2.1, 2],
-      [31, -7, 5, 2.8, 6],
-      [49, 10, 8, 2.3, 2.5],
-      [-42, 30, 9, 2.2, 2],
-      [-18, 33, 5, 3.1, 6],
-      [5, 25, 8, 2.4, 2.2],
-      [27, 31, 4, 2.8, 8],
-      [47, 29, 8, 2.1, 2]
-    ];
-    placements.forEach(([x, z, width, height, depth]) => {
-      const cover = new THREE.Mesh(new THREE.BoxGeometry(width, height, depth), coverMaterial.clone());
-      cover.position.set(x, height / 2, z);
-      cover.castShadow = true;
-      cover.receiveShadow = true;
-      scene.add(cover);
-      coverObjects.push(cover);
+    const crateMaterial = new THREE.MeshStandardMaterial({ color: 0x33485d, roughness: 0.68, metalness: 0.22 });
+    const rampMaterial = new THREE.MeshStandardMaterial({ color: 0x2a4052, roughness: 0.7, metalness: 0.16 });
+    const trimMaterial = new THREE.MeshStandardMaterial({ color: 0x43d5ff, emissive: 0x0c6f8f, emissiveIntensity: 0.18, roughness: 0.42 });
+
+    addBarricade(-44, -38, 12, 2.7, 2.2, 0, coverMaterial, trimMaterial);
+    addBarricade(-9, -39, 16, 2.3, 2, 0.08, coverMaterial, trimMaterial);
+    addBarricade(31, -38, 12, 2.5, 2.4, -0.08, coverMaterial, trimMaterial);
+    addBarricade(-51, -7, 10, 2.8, 2.3, Math.PI / 2, coverMaterial, trimMaterial);
+    addBarricade(-14, -7, 5, 2.8, 11, 0, coverMaterial, trimMaterial);
+    addBarricade(18, 3, 17, 2.2, 2.2, 0.12, coverMaterial, trimMaterial);
+    addBarricade(50, 12, 11, 2.5, 2.4, Math.PI / 2, coverMaterial, trimMaterial);
+    addBarricade(-42, 31, 15, 2.2, 2, -0.1, coverMaterial, trimMaterial);
+    addBarricade(31, 31, 7, 2.9, 11, 0, coverMaterial, trimMaterial);
+
+    addCrateStack(-29, -28, 3, crateMaterial, trimMaterial);
+    addCrateStack(7, -30, 4, crateMaterial, trimMaterial);
+    addCrateStack(46, -25, 3, crateMaterial, trimMaterial);
+    addCrateStack(-27, 9, 4, crateMaterial, trimMaterial);
+    addCrateStack(-18, 33, 3, crateMaterial, trimMaterial);
+    addCrateStack(4, 25, 3, crateMaterial, trimMaterial);
+
+    addTower(-4, -19, 3.2, 8.5, coverMaterial, trimMaterial);
+    addTower(38, -6, 3.4, 9.5, coverMaterial, trimMaterial);
+    addTower(-37, 19, 3.4, 8.8, coverMaterial, trimMaterial);
+    addTower(11, 33, 3.1, 8.2, coverMaterial, trimMaterial);
+
+    addRamp(-24, -3, 7.5, 1.8, 5.5, 0.18, rampMaterial);
+    addRamp(24, -19, 7.5, 1.8, 5.5, -0.2, rampMaterial);
+    addRamp(-2, 15, 9, 2, 5.5, Math.PI, rampMaterial);
+
+    addArchway(0, -47, 11, 7.5, 2.2, coverMaterial, trimMaterial);
+    addArchway(0, 40, 13, 8, 2.2, coverMaterial, trimMaterial);
+  }
+
+  function registerObstacle(mesh, navigable = true) {
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
+    scene.add(mesh);
+    if (navigable) coverObjects.push(mesh);
+    return mesh;
+  }
+
+  function addBarricade(x, z, width, height, depth, rotation, material, trimMaterial) {
+    const group = new THREE.Group();
+    group.position.set(x, 0, z);
+    group.rotation.y = rotation;
+    const base = new THREE.Mesh(new THREE.BoxGeometry(width, height, depth), material.clone());
+    const cap = new THREE.Mesh(new THREE.BoxGeometry(width + 0.5, 0.22, depth + 0.25), trimMaterial.clone());
+    base.position.y = height / 2;
+    cap.position.y = height + 0.15;
+    [base, cap].forEach((part) => {
+      part.castShadow = true;
+      part.receiveShadow = true;
+      group.add(part);
     });
+    registerObstacle(group);
+  }
+
+  function addCrateStack(x, z, count, material, trimMaterial) {
+    const group = new THREE.Group();
+    group.position.set(x, 0, z);
+    for (let index = 0; index < count; index += 1) {
+      const size = index % 2 === 0 ? 2.3 : 1.9;
+      const crate = new THREE.Mesh(new THREE.BoxGeometry(size, size, size), material.clone());
+      crate.position.set((index % 2) * 1.7 - 0.85, size / 2 + Math.floor(index / 2) * 1.7, Math.sin(index) * 0.55);
+      crate.rotation.y = index * 0.22;
+      crate.castShadow = true;
+      crate.receiveShadow = true;
+      group.add(crate);
+    }
+    const beacon = new THREE.Mesh(new THREE.BoxGeometry(3.8, 0.12, 0.18), trimMaterial.clone());
+    beacon.position.set(0, 2.65, 0);
+    group.add(beacon);
+    registerObstacle(group);
+  }
+
+  function addTower(x, z, radius, height, material, trimMaterial) {
+    const tower = new THREE.Mesh(new THREE.CylinderGeometry(radius, radius * 1.12, height, 8), material.clone());
+    tower.position.set(x, height / 2, z);
+    tower.rotation.y = Math.PI / 8;
+    registerObstacle(tower);
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(radius * 1.05, 0.08, 8, 24), trimMaterial.clone());
+    ring.position.set(x, height + 0.08, z);
+    ring.rotation.x = Math.PI / 2;
+    registerObstacle(ring, false);
+  }
+
+  function addRamp(x, z, width, height, depth, rotation, material) {
+    const ramp = new THREE.Mesh(new THREE.BoxGeometry(width, height, depth), material.clone());
+    ramp.position.set(x, height / 2, z);
+    ramp.rotation.set(-0.22, rotation, 0);
+    registerObstacle(ramp);
+  }
+
+  function addArchway(x, z, width, height, depth, material, trimMaterial) {
+    const group = new THREE.Group();
+    group.position.set(x, 0, z);
+    const left = new THREE.Mesh(new THREE.BoxGeometry(1.7, height, depth), material.clone());
+    const right = new THREE.Mesh(new THREE.BoxGeometry(1.7, height, depth), material.clone());
+    const top = new THREE.Mesh(new THREE.BoxGeometry(width, 1.4, depth), material.clone());
+    const trim = new THREE.Mesh(new THREE.BoxGeometry(width + 0.8, 0.2, depth + 0.4), trimMaterial.clone());
+    left.position.set(-width / 2, height / 2, 0);
+    right.position.set(width / 2, height / 2, 0);
+    top.position.set(0, height, 0);
+    trim.position.set(0, height + 0.82, 0);
+    [left, right, top, trim].forEach((part) => {
+      part.castShadow = true;
+      part.receiveShadow = true;
+      group.add(part);
+    });
+    registerObstacle(group);
   }
 
   function createControlPoint() {
