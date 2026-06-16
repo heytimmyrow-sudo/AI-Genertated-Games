@@ -4,6 +4,8 @@
   const streakValue = document.getElementById("streakValue");
   const timeValue = document.getElementById("timeValue");
   const waveValue = document.getElementById("waveValue");
+  const weaponSlotValue = document.getElementById("weaponSlotValue");
+  const weaponValue = document.getElementById("weaponValue");
   const bestValue = document.getElementById("bestValue");
   const startPanel = document.getElementById("startPanel");
   const endPanel = document.getElementById("endPanel");
@@ -39,8 +41,23 @@
     flashTimer: 0,
     recoilTimer: 0,
     scoped: false,
+    weaponIndex: 0,
+    nextFireAt: 0,
     best: Number(localStorage.getItem(bestKey) || 0)
   };
+
+  const weapons = [
+    { slot: "1", name: "Pistol", cooldown: 260, pellets: 1, spread: 0.002, speed: 86, life: 1.15, radius: 0.075, color: 0xffd166, recoil: 1, points: 1 },
+    { slot: "2", name: "Burst", cooldown: 170, pellets: 1, spread: 0.006, speed: 94, life: 1.08, radius: 0.055, color: 0x43d5ff, recoil: 0.72, points: 0.82 },
+    { slot: "3", name: "Scatter", cooldown: 560, pellets: 7, spread: 0.052, speed: 76, life: 0.72, radius: 0.065, color: 0xff8a4c, recoil: 1.35, points: 0.46 },
+    { slot: "4", name: "Rail", cooldown: 820, pellets: 1, spread: 0, speed: 150, life: 0.82, radius: 0.05, color: 0xf7fafc, recoil: 1.85, points: 2.25 },
+    { slot: "5", name: "Plasma", cooldown: 440, pellets: 1, spread: 0.01, speed: 58, life: 1.6, radius: 0.16, color: 0x9b5cff, recoil: 0.95, points: 1.35 },
+    { slot: "6", name: "Arc", cooldown: 380, pellets: 3, spread: 0.024, speed: 82, life: 1.05, radius: 0.08, color: 0x4ff0b1, recoil: 0.85, points: 0.74 },
+    { slot: "7", name: "SMG", cooldown: 90, pellets: 1, spread: 0.018, speed: 98, life: 0.86, radius: 0.045, color: 0xff4c65, recoil: 0.44, points: 0.52 },
+    { slot: "8", name: "Cannon", cooldown: 980, pellets: 1, spread: 0.004, speed: 66, life: 1.45, radius: 0.22, color: 0xffc857, recoil: 2.25, points: 2.8 },
+    { slot: "9", name: "Needler", cooldown: 130, pellets: 2, spread: 0.015, speed: 112, life: 0.94, radius: 0.038, color: 0xc7ff4f, recoil: 0.36, points: 0.45 },
+    { slot: "0", name: "Nova", cooldown: 1250, pellets: 10, spread: 0.06, speed: 72, life: 1.2, radius: 0.1, color: 0xff6bd6, recoil: 2.7, points: 0.72 }
+  ];
 
   window.targetRangeFpsStatus = {
     ready: false,
@@ -49,6 +66,8 @@
     bullets: 0,
     player: { x: 0, z: 22, yaw: 0 },
     scoped: false,
+    weapon: "Pistol",
+    weaponSlot: "1",
     running: false
   };
 
@@ -120,9 +139,8 @@
   const robotArmorMaterial = new THREE.MeshStandardMaterial({ color: 0x223142, roughness: 0.5, metalness: 0.3 });
   const robotJointMaterial = new THREE.MeshStandardMaterial({ color: 0xff4c65, emissive: 0x6e1322, emissiveIntensity: 0.35 });
   const robotCoreMaterial = new THREE.MeshStandardMaterial({ color: 0x4ff0b1, emissive: 0x1ca675, emissiveIntensity: 0.85 });
-  const bulletMaterial = new THREE.MeshBasicMaterial({ color: 0xffd166 });
-
   bestValue.textContent = state.best;
+  syncWeaponHud();
   resize();
   resetTargets();
   window.targetRangeFpsStatus.ready = true;
@@ -185,6 +203,7 @@
     barrel.rotation.x = Math.PI / 2;
     sight.position.set(0.34, -0.1, -0.82);
     group.add(grip, body, barrel, sight);
+    group.userData = { body, barrel, sight };
     group.position.set(0, 0, 0);
     return group;
   }
@@ -274,6 +293,7 @@
     state.timeLeft = 90;
     state.spawnTimer = 0;
     state.recoilTimer = 0;
+    state.nextFireAt = 0;
     setScoped(false);
     player.position.set(0, 2.1, 22);
     player.velocity.set(0, 0, 0);
@@ -315,9 +335,12 @@
     streakValue.textContent = state.streak;
     timeValue.textContent = Math.max(0, Math.ceil(state.timeLeft));
     waveValue.textContent = state.wave;
+    syncWeaponHud();
     window.targetRangeFpsStatus.targets = targets.length;
     window.targetRangeFpsStatus.bullets = bullets.length;
     window.targetRangeFpsStatus.scoped = state.scoped;
+    window.targetRangeFpsStatus.weapon = weapons[state.weaponIndex].name;
+    window.targetRangeFpsStatus.weaponSlot = weapons[state.weaponIndex].slot;
     window.targetRangeFpsStatus.running = state.running;
     window.targetRangeFpsStatus.player = {
       x: Number(player.position.x.toFixed(2)),
@@ -327,7 +350,28 @@
     document.body.dataset.fpsTargets = String(targets.length);
     document.body.dataset.fpsBullets = String(bullets.length);
     document.body.dataset.fpsScoped = String(state.scoped);
+    document.body.dataset.fpsWeapon = weapons[state.weaponIndex].name;
+    document.body.dataset.fpsWeaponSlot = weapons[state.weaponIndex].slot;
     document.body.dataset.fpsRunning = String(state.running);
+  }
+
+  function syncWeaponHud() {
+    const weapon = weapons[state.weaponIndex];
+    weaponSlotValue.textContent = weapon.slot;
+    weaponValue.textContent = weapon.name;
+  }
+
+  function equipWeapon(index) {
+    if (index < 0 || index >= weapons.length) return;
+    state.weaponIndex = index;
+    const weapon = weapons[state.weaponIndex];
+    syncWeaponHud();
+    document.body.dataset.fpsWeapon = weapon.name;
+    document.body.dataset.fpsWeaponSlot = weapon.slot;
+    window.targetRangeFpsStatus.weapon = weapon.name;
+    window.targetRangeFpsStatus.weaponSlot = weapon.slot;
+    gun.userData.sight.material.color.setHex(weapon.color);
+    gun.userData.sight.material.emissive.setHex(weapon.color);
   }
 
   function setScoped(scoped) {
@@ -440,19 +484,25 @@
     }
   }
 
-  function makeBullet() {
-    const bullet = new THREE.Mesh(new THREE.SphereGeometry(0.075, 12, 8), bulletMaterial);
-    const glow = new THREE.PointLight(0xffd166, 1.4, 5, 2);
+  function makeBullet(weapon, direction) {
+    const bullet = new THREE.Mesh(
+      new THREE.SphereGeometry(weapon.radius, 12, 8),
+      new THREE.MeshBasicMaterial({ color: weapon.color })
+    );
+    const glow = new THREE.PointLight(weapon.color, weapon.name === "Nova" ? 2.2 : 1.4, 5 + weapon.radius * 18, 2);
     camera.updateMatrixWorld();
     muzzlePosition.set(0.34, -0.25, -1.32);
     camera.localToWorld(muzzlePosition);
-    camera.getWorldDirection(bulletDirection).normalize();
     bullet.position.copy(muzzlePosition);
     bullet.userData.previous = muzzlePosition.clone();
-    bullet.userData.velocity = bulletDirection.clone().multiplyScalar(86);
-    bullet.userData.life = 1.15;
+    bullet.userData.velocity = direction.clone().multiplyScalar(weapon.speed);
+    bullet.userData.life = weapon.life;
     bullet.userData.distance = 0;
+    bullet.userData.weapon = weapon;
     bullet.add(glow);
+    if (weapon.name === "Rail") {
+      bullet.scale.set(0.72, 0.72, 4.5);
+    }
     scene.add(bullet);
     bullets.push(bullet);
     document.body.dataset.fpsBullets = String(bullets.length);
@@ -482,7 +532,7 @@
         const hitGroup = getTargetGroup(hits[0].object);
         if (hitGroup) {
           bullet.position.copy(hits[0].point);
-          handleTargetHit(hitGroup, hits[0].point);
+          handleTargetHit(hitGroup, hits[0].point, bullet.userData.weapon);
           scene.remove(bullet);
           bullets.splice(index, 1);
           continue;
@@ -502,16 +552,32 @@
 
   function shoot() {
     if (!state.running) return;
-    state.recoilTimer = 1;
+    const weapon = weapons[state.weaponIndex];
+    const now = performance.now();
+    if (now < state.nextFireAt) return;
+    state.nextFireAt = now + (state.scoped ? weapon.cooldown * 1.08 : weapon.cooldown);
+    state.recoilTimer = weapon.recoil;
     state.flashTimer = 0.07;
     muzzleLight.intensity = 9;
-    makeBullet();
+    camera.updateMatrixWorld();
+    camera.getWorldDirection(bulletDirection).normalize();
+    for (let pellet = 0; pellet < weapon.pellets; pellet += 1) {
+      const spread = state.scoped ? weapon.spread * 0.35 : weapon.spread;
+      const direction = bulletDirection.clone();
+      if (spread > 0) {
+        direction.x += (Math.random() - 0.5) * spread;
+        direction.y += (Math.random() - 0.5) * spread;
+        direction.z += (Math.random() - 0.5) * spread;
+        direction.normalize();
+      }
+      makeBullet(weapon, direction);
+    }
   }
 
-  function handleTargetHit(hitGroup, hitPoint) {
+  function handleTargetHit(hitGroup, hitPoint, weapon) {
     const closeBonus = Math.max(0, Math.floor((32 - camera.position.distanceTo(hitGroup.position)) * 2));
     const streakBonus = Math.min(400, state.streak * 20);
-    const points = hitGroup.userData.value + closeBonus + streakBonus;
+    const points = Math.round((hitGroup.userData.value + closeBonus + streakBonus) * weapon.points);
     state.score += points;
     state.streak += 1;
     spawnParticles(hitPoint, hitGroup.userData.core.material.color);
@@ -585,6 +651,11 @@
   });
   window.addEventListener("keydown", (event) => {
     keys.add(event.code);
+    if (/^Digit[0-9]$/.test(event.code)) {
+      event.preventDefault();
+      equipWeapon(event.code === "Digit0" ? 9 : Number(event.code.slice(5)) - 1);
+      return;
+    }
     if (event.code === "Space") {
       event.preventDefault();
       shoot();

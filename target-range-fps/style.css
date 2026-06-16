@@ -88,9 +88,9 @@ button {
 
 .stat-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(76px, 1fr));
+  grid-template-columns: repeat(6, minmax(74px, 1fr));
   gap: 8px;
-  width: min(540px, calc(100vw - 250px));
+  width: min(760px, calc(100vw - 250px));
 }
 
 .stat-grid span {
@@ -362,7 +362,7 @@ h2 {
   }
 
   .stat-grid {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     width: 100%;
   }
 
