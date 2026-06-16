@@ -97,6 +97,13 @@
           </select>
         </label>
       </div>
+      <div class="online-grid" aria-label="Online match">
+        <input id="playerNameInput" maxlength="12" placeholder="Player name" value="P1" aria-label="Player name">
+        <button class="secondary" id="hostOnlineButton" type="button">Host Online</button>
+        <input id="roomCodeInput" maxlength="8" placeholder="Room code" aria-label="Room code">
+        <button class="secondary" id="joinOnlineButton" type="button">Join Online</button>
+        <p id="onlineStatusValue">Offline: bots still play.</p>
+      </div>
       <button id="startButton" type="button">Start Run</button>
       <button class="secondary" id="resetButton" type="button">Reset Best</button>
       <p class="best-line">Best: <strong id="bestValue">0</strong></p>
@@ -132,6 +139,7 @@
   </main>
 
   <script src="../vendor/three.min.js"></script>
-  <script src="./game.js?v=full-upgrades-20260616"></script>
+  <script src="./peerjs.min.js"></script>
+  <script src="./game.js?v=online-bots-20260616"></script>
 </body>
 </html>

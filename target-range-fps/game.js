@@ -22,6 +22,11 @@
   const botCountSelect = document.getElementById("botCountSelect");
   const difficultySelect = document.getElementById("difficultySelect");
   const matchLengthSelect = document.getElementById("matchLengthSelect");
+  const playerNameInput = document.getElementById("playerNameInput");
+  const roomCodeInput = document.getElementById("roomCodeInput");
+  const hostOnlineButton = document.getElementById("hostOnlineButton");
+  const joinOnlineButton = document.getElementById("joinOnlineButton");
+  const onlineStatusValue = document.getElementById("onlineStatusValue");
   const bestValue = document.getElementById("bestValue");
   const startPanel = document.getElementById("startPanel");
   const endPanel = document.getElementById("endPanel");
@@ -148,8 +153,13 @@
   const particles = [];
   const coverObjects = [];
   const weaponPickups = [];
+  const remotePlayers = new Map();
+  const remotePlayerMaterial = new THREE.MeshStandardMaterial({ color: teams.red.color, roughness: 0.42, metalness: 0.45 });
+  const remotePlayerCoreMaterial = new THREE.MeshStandardMaterial({ color: teams.red.color, emissive: teams.red.glow, emissiveIntensity: 0.72 });
   let audioContext = null;
   let hitMarkerTimeout = null;
+  let nextNetworkSendAt = 0;
+  let nextHostSyncAt = 0;
   let lastScopeToggleAt = 0;
   const tempDirection = new THREE.Vector3();
   const forward = new THREE.Vector3();
@@ -166,6 +176,15 @@
     easy: { playerDamage: 0.7, botDamage: 0.85, fireRate: 1.25 },
     normal: { playerDamage: 1, botDamage: 1, fireRate: 1 },
     hard: { playerDamage: 1.25, botDamage: 1.15, fireRate: 0.74 }
+  };
+  const net = {
+    peer: null,
+    id: "",
+    roomCode: "",
+    isHost: false,
+    online: false,
+    connections: new Map(),
+    playerName: "P1"
   };
 
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
@@ -238,6 +257,180 @@
     scene.add(wall);
   }
 
+  function updateOnlineStatus(message) {
+    onlineStatusValue.textContent = message;
+    document.body.dataset.fpsOnline = net.online ? (net.isHost ? "host" : "guest") : "offline";
+    document.body.dataset.fpsRoom = net.roomCode;
+  }
+
+  function getPlayerName() {
+    const cleanName = playerNameInput.value.trim().replace(/[^\w -]/g, "").slice(0, 12);
+    return cleanName || "P1";
+  }
+
+  function makeRoomCode() {
+    return Math.random().toString(36).slice(2, 6).toUpperCase();
+  }
+
+  function ensurePeerAvailable() {
+    if (!window.Peer) {
+      updateOnlineStatus("Online failed: PeerJS could not load.");
+      return false;
+    }
+    return true;
+  }
+
+  function hostOnline() {
+    if (!ensurePeerAvailable()) return;
+    cleanupNetwork();
+    net.isHost = true;
+    net.online = true;
+    net.playerName = getPlayerName();
+    net.roomCode = makeRoomCode();
+    net.id = `trfps-${net.roomCode}`;
+    updateOnlineStatus(`Hosting room ${net.roomCode}. Share this code.`);
+    net.peer = new Peer(net.id, { debug: 0 });
+    net.peer.on("open", () => updateOnlineStatus(`Hosting room ${net.roomCode}. Share this code.`));
+    net.peer.on("connection", (connection) => registerConnection(connection));
+    net.peer.on("error", (error) => {
+      if (error?.type === "unavailable-id" || error?.type === "invalid-id") {
+        cleanupNetwork();
+        updateOnlineStatus("Host failed. Try Host Online again.");
+        return;
+      }
+      updateOnlineStatus(`Hosting ${net.roomCode}. Connection hiccup; room is still open.`);
+    });
+  }
+
+  function joinOnline() {
+    if (!ensurePeerAvailable()) return;
+    const code = roomCodeInput.value.trim().toUpperCase();
+    if (!code) {
+      updateOnlineStatus("Type a room code first.");
+      return;
+    }
+    cleanupNetwork();
+    net.isHost = false;
+    net.online = true;
+    net.playerName = getPlayerName();
+    net.roomCode = code;
+    updateOnlineStatus(`Joining room ${code}...`);
+    net.peer = new Peer(undefined, { debug: 0 });
+    net.peer.on("open", () => {
+      net.id = net.peer.id;
+      const connection = net.peer.connect(`trfps-${code}`, { reliable: false });
+      registerConnection(connection);
+    });
+    net.peer.on("error", () => {
+      cleanupNetwork();
+      updateOnlineStatus("Join failed. Check the room code.");
+    });
+  }
+
+  function cleanupNetwork() {
+    net.connections.forEach((connection) => connection.close?.());
+    net.connections.clear();
+    remotePlayers.forEach((remote) => scene.remove(remote.group));
+    remotePlayers.clear();
+    if (net.peer) {
+      net.peer.destroy?.();
+      net.peer = null;
+    }
+    net.online = false;
+    net.isHost = false;
+    net.id = "";
+    net.roomCode = "";
+    syncTeamHud();
+    updateOnlineStatus("Offline: bots still play.");
+  }
+
+  function registerConnection(connection) {
+    connection.on("open", () => {
+      net.connections.set(connection.peer, connection);
+      connection.send({
+        type: "hello",
+        id: net.id || net.peer?.id,
+        name: net.playerName,
+        host: net.isHost,
+        running: state.running,
+        settings: getSettingsPayload()
+      });
+      if (net.isHost && state.running) sendStartToConnection(connection);
+      updateOnlineStatus(net.isHost
+        ? `Hosting ${net.roomCode} | Players ${net.connections.size + 1}`
+        : `Connected to ${net.roomCode}`);
+    });
+    connection.on("data", (message) => handleNetworkMessage(connection, message));
+    connection.on("close", () => {
+      net.connections.delete(connection.peer);
+      removeRemotePlayer(connection.peer);
+      updateOnlineStatus(net.isHost
+        ? `Hosting ${net.roomCode} | Players ${net.connections.size + 1}`
+        : "Disconnected from host.");
+    });
+    connection.on("error", () => updateOnlineStatus("Online connection hiccup."));
+  }
+
+  function handleNetworkMessage(connection, message) {
+    if (!message || typeof message !== "object") return;
+    if (message.type === "hello") {
+      upsertRemotePlayer(connection.peer, message.name || "Player");
+      syncTeamHud();
+      return;
+    }
+    if (message.type === "start" && !net.isHost) {
+      applyRemoteSettings(message.settings);
+      startGame({ fromNetwork: true });
+      return;
+    }
+    if (message.type === "player") {
+      const remotePeerId = net.isHost ? connection.peer : (message.peer || connection.peer);
+      upsertRemotePlayer(remotePeerId, message.name || "Player", message);
+      if (net.isHost) broadcast({ ...message, peer: connection.peer }, connection.peer);
+      return;
+    }
+    if (message.type === "shot") {
+      spawnRemoteShot(message);
+      if (net.isHost) {
+        handleRemoteShot(connection.peer, message);
+        broadcast({ ...message, peer: connection.peer }, connection.peer);
+      }
+      return;
+    }
+    if (message.type === "world" && !net.isHost) {
+      applyWorldSnapshot(message);
+      return;
+    }
+    if (message.type === "damage" && !net.isHost) {
+      damagePlayer(message.amount || 0, message.source || "Online robot");
+      return;
+    }
+    if (message.type === "feed") addFeed(message.text || "Online event");
+  }
+
+  function broadcast(message, exceptPeer = "") {
+    net.connections.forEach((connection, peerId) => {
+      if (peerId !== exceptPeer && connection.open) connection.send(message);
+    });
+  }
+
+  function getSettingsPayload() {
+    return {
+      mode: state.mode,
+      botCount: state.botCount,
+      difficulty: state.difficulty,
+      matchTarget: state.matchTarget
+    };
+  }
+
+  function applyRemoteSettings(settings = {}) {
+    modeSelect.value = settings.mode || modeSelect.value;
+    botCountSelect.value = String(settings.botCount || botCountSelect.value);
+    difficultySelect.value = settings.difficulty || difficultySelect.value;
+    matchLengthSelect.value = String(settings.matchTarget || matchLengthSelect.value);
+    applySettings();
+  }
+
   function createCoverObjects() {
     const coverMaterial = new THREE.MeshStandardMaterial({ color: 0x25384b, roughness: 0.76, metalness: 0.18 });
     const placements = [
@@ -296,6 +489,143 @@
       pickup.userData = { weaponIndex, respawnAt: 0, baseY: 0.55 };
       scene.add(pickup);
       weaponPickups.push(pickup);
+    });
+  }
+
+  function makeRemotePlayer(name) {
+    const group = new THREE.Group();
+    const body = new THREE.Mesh(new THREE.BoxGeometry(0.78, 1.35, 0.48), remotePlayerMaterial.clone());
+    const head = new THREE.Mesh(new THREE.BoxGeometry(0.54, 0.46, 0.54), remotePlayerMaterial.clone());
+    const core = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.22, 0.08), remotePlayerCoreMaterial.clone());
+    const gunModel = new THREE.Mesh(
+      new THREE.BoxGeometry(0.18, 0.16, 0.82),
+      new THREE.MeshStandardMaterial({ color: 0x101820, roughness: 0.32, metalness: 0.7 })
+    );
+    const marker = new THREE.Mesh(new THREE.SphereGeometry(0.16, 16, 10), remotePlayerCoreMaterial.clone());
+    body.position.y = 1.25;
+    head.position.y = 2.18;
+    core.position.set(0, 1.46, 0.28);
+    gunModel.position.set(0.6, 1.32, 0.45);
+    marker.position.y = 2.95;
+    [body, head, core, gunModel, marker].forEach((part) => {
+      part.castShadow = true;
+      part.receiveShadow = true;
+      group.add(part);
+    });
+    group.userData = { name, team: "red", body, head, core, gunModel, marker, health: 100 };
+    scene.add(group);
+    return group;
+  }
+
+  function upsertRemotePlayer(peerId, name, message = null) {
+    if (!peerId) return null;
+    let remote = remotePlayers.get(peerId);
+    if (!remote) {
+      remote = { group: makeRemotePlayer(name), name, lastSeen: performance.now() };
+      remotePlayers.set(peerId, remote);
+    }
+    remote.name = name || remote.name;
+    remote.lastSeen = performance.now();
+    if (message?.position) {
+      remote.group.position.set(message.position.x, 0, message.position.z);
+      remote.group.rotation.y = message.yaw || 0;
+      remote.group.userData.health = message.health ?? remote.group.userData.health;
+      remote.group.userData.marker.visible = Boolean(message.scoped);
+    }
+    return remote;
+  }
+
+  function removeRemotePlayer(peerId) {
+    const remote = remotePlayers.get(peerId);
+    if (!remote) return;
+    scene.remove(remote.group);
+    remotePlayers.delete(peerId);
+    syncTeamHud();
+  }
+
+  function getPlayerSnapshot() {
+    return {
+      type: "player",
+      name: net.playerName,
+      position: {
+        x: Number(player.position.x.toFixed(3)),
+        y: Number(player.position.y.toFixed(3)),
+        z: Number(player.position.z.toFixed(3))
+      },
+      yaw: Number(player.yaw.toFixed(4)),
+      pitch: Number(player.pitch.toFixed(4)),
+      health: Math.max(0, Math.ceil(player.health)),
+      weaponIndex: state.weaponIndex,
+      scoped: state.scoped
+    };
+  }
+
+  function getBotSnapshot() {
+    return targets.map((target) => ({
+      name: target.userData.name,
+      team: target.userData.team,
+      x: Number(target.position.x.toFixed(3)),
+      z: Number(target.position.z.toFixed(3)),
+      yaw: Number(target.rotation.y.toFixed(4)),
+      health: Math.ceil(target.userData.health),
+      maxHealth: target.userData.maxHealth,
+      alive: target.userData.alive,
+      armed: target.userData.armed,
+      className: target.userData.className
+    }));
+  }
+
+  function applyWorldSnapshot(message) {
+    if (typeof message.redScore === "number") state.redScore = message.redScore;
+    if (typeof message.blueScore === "number") state.blueScore = message.blueScore;
+    if (typeof message.timeLeft === "number") state.timeLeft = message.timeLeft;
+    if (typeof message.controlOwner !== "undefined") state.controlOwner = message.controlOwner;
+    if (Array.isArray(message.bots)) {
+      while (targets.length < message.bots.length) makeTarget();
+      message.bots.forEach((snapshot, index) => {
+        const target = targets[index];
+        if (!target) return;
+        target.position.set(snapshot.x, 0, snapshot.z);
+        target.rotation.y = snapshot.yaw;
+        target.userData.health = snapshot.health;
+        target.userData.maxHealth = snapshot.maxHealth || target.userData.maxHealth;
+        target.userData.alive = snapshot.alive;
+        target.userData.team = snapshot.team;
+        target.userData.name = snapshot.name;
+        target.userData.className = snapshot.className || target.userData.className;
+        target.visible = snapshot.alive;
+        updateHealthBar(target);
+      });
+    }
+    syncTeamHud();
+  }
+
+  function sendStartToConnection(connection) {
+    if (connection.open) connection.send({ type: "start", settings: getSettingsPayload() });
+  }
+
+  function sendNetworkUpdates(now) {
+    if (!net.online || now < nextNetworkSendAt) return;
+    nextNetworkSendAt = now + 75;
+    const snapshot = getPlayerSnapshot();
+    if (net.isHost) {
+      broadcast(snapshot);
+    } else {
+      const hostConnection = [...net.connections.values()][0];
+      if (hostConnection?.open) hostConnection.send(snapshot);
+    }
+  }
+
+  function sendHostWorld(now) {
+    if (!net.online || !net.isHost || now < nextHostSyncAt) return;
+    nextHostSyncAt = now + 120;
+    broadcast({
+      type: "world",
+      bots: getBotSnapshot(),
+      redScore: state.redScore,
+      blueScore: state.blueScore,
+      timeLeft: state.timeLeft,
+      controlOwner: state.controlOwner
     });
   }
 
@@ -471,8 +801,12 @@
     syncTeamHud();
   }
 
-  function startGame() {
-    applySettings();
+  function startGame(options = {}) {
+    if (net.online && !net.isHost && !options.fromNetwork) {
+      updateOnlineStatus("Connected. Waiting for host to start.");
+      return;
+    }
+    if (!options.fromNetwork) applySettings();
     state.running = true;
     state.score = 0;
     state.streak = 0;
@@ -508,6 +842,10 @@
     hitPanel.hidden = true;
     resetTargets();
     syncHud();
+    if (net.online && net.isHost && !options.fromNetwork) {
+      broadcast({ type: "start", settings: getSettingsPayload() });
+      updateOnlineStatus(`Hosting ${net.roomCode} | Players ${net.connections.size + 1}`);
+    }
     requestCanvasLock();
   }
 
@@ -590,6 +928,8 @@
     window.targetRangeFpsStatus.weapon = weapons[state.weaponIndex].name;
     window.targetRangeFpsStatus.weaponSlot = weapons[state.weaponIndex].slot;
     window.targetRangeFpsStatus.running = state.running;
+    window.targetRangeFpsStatus.online = net.online ? (net.isHost ? "host" : "guest") : "offline";
+    window.targetRangeFpsStatus.onlinePeers = remotePlayers.size;
     window.targetRangeFpsStatus.player = {
       x: Number(player.position.x.toFixed(2)),
       z: Number(player.position.z.toFixed(2)),
@@ -621,13 +961,16 @@
     document.body.dataset.fpsBlueScore = String(state.blueScore);
     document.body.dataset.fpsMode = state.mode;
     document.body.dataset.fpsObjective = state.controlOwner || "neutral";
+    document.body.dataset.fpsOnlinePeers = String(remotePlayers.size);
   }
 
   function getTeamRosters() {
-    return targets.reduce((rosters, target) => {
-      rosters[target.userData.team].push(target.userData.name);
-      return rosters;
+    const rosters = targets.reduce((currentRosters, target) => {
+      currentRosters[target.userData.team].push(target.userData.name);
+      return currentRosters;
     }, { blue: [], red: ["P1"] });
+    remotePlayers.forEach((remote) => rosters.red.push(remote.name));
+    return rosters;
   }
 
   function syncTeamHud() {
@@ -947,8 +1290,11 @@
   function getAimPointForTeam(teamKey) {
     if (teamKey === "blue") {
       const redBots = targets.filter((target) => target.userData.team === "red" && target.userData.alive);
-      if (redBots.length && Math.random() < 0.72) {
-        return redBots[Math.floor(Math.random() * redBots.length)].position.clone().add(new THREE.Vector3(0, 2.2, 0));
+      const redPlayers = [...remotePlayers.values()].map((remote) => remote.group);
+      const options = [...redBots, ...redPlayers];
+      if (options.length && Math.random() < 0.78) {
+        const target = options[Math.floor(Math.random() * options.length)];
+        return target.position.clone().add(new THREE.Vector3(0, target.userData?.health ? 1.8 : 2.2, 0));
       }
       return camera.position.clone().add(new THREE.Vector3(0, -0.18, 0));
     }
@@ -997,6 +1343,38 @@
     document.body.dataset.fpsBullets = String(bullets.length);
   }
 
+  function spawnRemoteShot(message) {
+    if (!message.position || !message.direction) return;
+    const weapon = weapons[message.weaponIndex] || weapons[0];
+    const bullet = new THREE.Mesh(
+      new THREE.SphereGeometry(Math.max(weapon.radius * 0.8, 0.04), 10, 8),
+      new THREE.MeshBasicMaterial({ color: weapon.color })
+    );
+    bullet.position.set(message.position.x, message.position.y || 1.8, message.position.z);
+    bullet.userData.velocity = new THREE.Vector3(message.direction.x, message.direction.y, message.direction.z).normalize().multiplyScalar(weapon.speed);
+    bullet.userData.life = 0.5;
+    bullet.add(new THREE.PointLight(weapon.color, 1.1, 4, 2));
+    scene.add(bullet);
+    particles.push(bullet);
+  }
+
+  function handleRemoteShot(peerId, message) {
+    if (!message.position || !message.direction) return;
+    const weapon = weapons[message.weaponIndex] || weapons[0];
+    const start = new THREE.Vector3(message.position.x, message.position.y || 1.8, message.position.z);
+    const direction = new THREE.Vector3(message.direction.x, message.direction.y, message.direction.z).normalize();
+    raycaster.set(start, direction);
+    raycaster.far = 90;
+    const hits = raycaster.intersectObjects(targets, true);
+    const hitGroup = hits.map((hit) => getTargetGroup(hit.object)).find((target) => target?.userData.team !== "red" && target.userData.alive);
+    if (!hitGroup) return;
+    const hit = hits.find((candidate) => getTargetGroup(candidate.object) === hitGroup);
+    const remote = remotePlayers.get(peerId);
+    const attackerName = remote?.name || "Online player";
+    damageBot(hitGroup, weapon.damage, "red", attackerName, hit?.point);
+    broadcast({ type: "feed", text: `${attackerName} hit ${hitGroup.userData.name}` });
+  }
+
   function clearBullets() {
     while (bullets.length) {
       const bullet = bullets.pop();
@@ -1030,7 +1408,8 @@
         if (hitGroup) {
           const hit = hits.find((candidate) => getTargetGroup(candidate.object) === hitGroup);
           bullet.position.copy(hit.point);
-          handleTargetHit(hitGroup, hit.point, bullet.userData.weapon);
+          if (!net.online || net.isHost) handleTargetHit(hitGroup, hit.point, bullet.userData.weapon);
+          if (net.online && !net.isHost) showHitMarker();
           scene.remove(bullet);
           bullets.splice(index, 1);
           continue;
@@ -1064,6 +1443,13 @@
         damagePlayer(bullet.userData.damage, bullet.userData.source || "A robot");
         break;
       }
+      const remoteHit = net.isHost && bullet.userData.team === "blue" ? getRemotePlayerBulletHit(bullet) : null;
+      if (remoteHit) {
+        damageRemotePlayer(remoteHit.peerId, bullet.userData.damage, bullet.userData.source || "A robot");
+        scene.remove(bullet);
+        enemyBullets.splice(index, 1);
+        continue;
+      }
       const botHit = getEnemyBulletHit(bullet);
       if (botHit) {
         damageBot(botHit, bullet.userData.damage, bullet.userData.team, bullet.userData.source || "Bot", botHit.position.clone().add(new THREE.Vector3(0, 2.2, 0)));
@@ -1090,6 +1476,30 @@
         distanceToSegment(target.position.clone().add(new THREE.Vector3(0, 1.1, 0)), bullet.userData.previous, bullet.position) < 0.95
       )
     ));
+  }
+
+  function getRemotePlayerBulletHit(bullet) {
+    for (const [peerId, remote] of remotePlayers.entries()) {
+      if (distanceToSegment(remote.group.position.clone().add(new THREE.Vector3(0, 1.35, 0)), bullet.userData.previous, bullet.position) < 1.18) {
+        return { peerId, remote };
+      }
+    }
+    return null;
+  }
+
+  function damageRemotePlayer(peerId, amount, source) {
+    const remote = remotePlayers.get(peerId);
+    const connection = net.connections.get(peerId);
+    if (!remote || !connection?.open) return;
+    remote.group.userData.health = Math.max(0, (remote.group.userData.health || 100) - amount);
+    connection.send({ type: "damage", amount, source });
+    if (remote.group.userData.health <= 0) {
+      state.blueScore += 1;
+      remote.group.userData.health = 100;
+      addFeed(`${source} eliminated ${remote.name}`);
+      broadcast({ type: "feed", text: `${source} eliminated ${remote.name}` });
+      checkRoundEnd();
+    }
   }
 
   function distanceToSegment(point, start, end) {
@@ -1130,6 +1540,7 @@
         direction.normalize();
       }
       makeBullet(weapon, direction);
+      sendShotMessage(weapon, direction);
     }
     playTone(210 + state.weaponIndex * 32, 0.045, weapon.name === "Rail" ? "sine" : "square");
     if (weaponAmmo[state.weaponIndex] <= 0) {
@@ -1137,6 +1548,31 @@
       addFeed(`Reloading ${weapon.name}`);
     }
     syncWeaponHud();
+  }
+
+  function sendShotMessage(weapon, direction) {
+    if (!net.online) return;
+    const message = {
+      type: "shot",
+      name: net.playerName,
+      weaponIndex: state.weaponIndex,
+      position: {
+        x: Number(muzzlePosition.x.toFixed(3)),
+        y: Number(muzzlePosition.y.toFixed(3)),
+        z: Number(muzzlePosition.z.toFixed(3))
+      },
+      direction: {
+        x: Number(direction.x.toFixed(4)),
+        y: Number(direction.y.toFixed(4)),
+        z: Number(direction.z.toFixed(4))
+      }
+    };
+    if (net.isHost) {
+      broadcast(message);
+    } else {
+      const hostConnection = [...net.connections.values()][0];
+      if (hostConnection?.open) hostConnection.send(message);
+    }
   }
 
   function handleTargetHit(hitGroup, hitPoint, weapon) {
@@ -1199,6 +1635,9 @@
       if (target.userData.team === "red") redPresence += 1;
       if (target.userData.team === "blue") bluePresence += 1;
     });
+    remotePlayers.forEach((remote) => {
+      if (remote.group.position.distanceTo(controlPoint) < 7) redPresence += 1;
+    });
     const owner = redPresence === bluePresence ? null : (redPresence > bluePresence ? "red" : "blue");
     if (owner !== state.controlOwner) {
       state.controlOwner = owner;
@@ -1240,6 +1679,7 @@
     targets.filter((target) => target.userData.alive).forEach((target) => {
       drawDot(target.position.x, target.position.z, target.userData.team === "blue" ? "#43d5ff" : "#ff4c65", 3.5);
     });
+    remotePlayers.forEach((remote) => drawDot(remote.group.position.x, remote.group.position.z, "#ff4c65", 4));
     drawDot(player.position.x, player.position.z, "#ffffff", 5);
   }
 
@@ -1266,10 +1706,12 @@
       updateMovement(delta);
       updateReload(now);
       updatePickups(delta);
-      updateObjective(now);
-      updateTargets(delta);
+      if (!net.online || net.isHost) updateObjective(now);
+      if (!net.online || net.isHost) updateTargets(delta);
       updateBullets(delta);
-      updateEnemyBullets(delta);
+      if (!net.online || net.isHost) updateEnemyBullets(delta);
+      sendNetworkUpdates(now);
+      sendHostWorld(now);
       drawMiniMap();
       syncHud();
     } else {
@@ -1380,6 +1822,11 @@
   touchScope.addEventListener("pointerdown", (event) => {
     event.preventDefault();
     if (state.running) setScoped(!state.scoped);
+  });
+  hostOnlineButton.addEventListener("click", hostOnline);
+  joinOnlineButton.addEventListener("click", joinOnline);
+  roomCodeInput.addEventListener("input", () => {
+    roomCodeInput.value = roomCodeInput.value.toUpperCase();
   });
   resetButton.addEventListener("click", () => {
     state.best = 0;

@@ -407,6 +407,39 @@ button {
   padding: 8px;
 }
 
+.online-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0 0 12px;
+}
+
+.online-grid input {
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--ink);
+  font: inherit;
+  padding: 10px;
+}
+
+.online-grid button {
+  min-height: 42px;
+  margin-top: 0;
+}
+
+.online-grid p {
+  grid-column: 1 / -1;
+  margin: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(67, 213, 255, 0.08);
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
 .center-panel[hidden],
 .end-panel[hidden],
 .hit-panel[hidden] {
