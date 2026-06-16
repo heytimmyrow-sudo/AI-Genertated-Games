@@ -51,6 +51,7 @@
     nextFireAt: 0,
     hitCount: 0,
     enemyShots: 0,
+    botHits: 0,
     lastEnemyShotAt: 0,
     botCounter: 0,
     best: Number(localStorage.getItem(bestKey) || 0)
@@ -86,6 +87,18 @@
     teams: { blue: [], red: ["P1"] },
     running: false
   };
+  window.targetRangeFpsDebugStep = (seconds = 1) => {
+    const step = Math.min(Math.max(Number(seconds) || 0, 0), 5);
+    if (!state.running) return window.targetRangeFpsStatus;
+    targets.forEach((target) => {
+      target.userData.updatedAt = performance.now() - step * 1000;
+      if (target.userData.armed) target.userData.nextShotAt = performance.now() - 1;
+    });
+    updateTargets(step);
+    updateEnemyBullets(step);
+    syncHud();
+    return window.targetRangeFpsStatus;
+  };
 
   const keys = new Set();
   const touchMoves = new Set();
@@ -102,6 +115,8 @@
   const bulletEnd = new THREE.Vector3();
   const muzzlePosition = new THREE.Vector3();
   const closestPoint = new THREE.Vector3();
+  const walkTarget = new THREE.Vector3();
+  const walkDirection = new THREE.Vector3();
 
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
   renderer.shadowMap.enabled = true;
@@ -286,8 +301,11 @@
       age: 0,
       shotCooldown: 1200 + Math.random() * 1600,
       nextShotAt: performance.now() + 350 + Math.random() * 900,
+      updatedAt: performance.now(),
+      destination: new THREE.Vector3(),
+      turnSpeed: 4 + Math.random() * 2,
       phase: Math.random() * Math.PI * 2,
-      speed: 0.95 + Math.random() * 0.85,
+      speed: 3.4 + Math.random() * 1.8,
       lane: Math.random() > 0.5 ? 1 : -1,
       radius: 12 + Math.random() * 22,
       baseY: 0
@@ -300,12 +318,15 @@
   }
 
   function placeTarget(target, fresh = false) {
-    const angle = -Math.PI / 2 + (Math.random() - 0.5) * 1.8;
-    const distance = target.userData.radius;
-    target.position.set(Math.cos(angle) * distance, 0, Math.sin(angle) * distance - 10);
+    target.position.set(
+      THREE.MathUtils.randFloat(-30, 30),
+      0,
+      THREE.MathUtils.randFloat(-26, 16)
+    );
+    setWalkDestination(target);
     if (!fresh) {
       target.userData.phase = Math.random() * Math.PI * 2;
-      target.userData.speed += 0.04;
+      target.userData.speed = Math.min(target.userData.speed + 0.12, 7.2);
     }
   }
 
@@ -406,6 +427,7 @@
     window.targetRangeFpsStatus.enemyBullets = enemyBullets.length;
     window.targetRangeFpsStatus.hitCount = state.hitCount;
     window.targetRangeFpsStatus.enemyShots = state.enemyShots;
+    window.targetRangeFpsStatus.botHits = state.botHits;
     window.targetRangeFpsStatus.teams = getTeamRosters();
     window.targetRangeFpsStatus.scoped = state.scoped;
     window.targetRangeFpsStatus.weapon = weapons[state.weaponIndex].name;
@@ -418,10 +440,17 @@
     };
     document.body.dataset.fpsTargets = String(targets.length);
     document.body.dataset.fpsArmedTargets = String(targets.filter((target) => target.userData.armed).length);
+    document.body.dataset.fpsBotPositions = JSON.stringify(targets.slice(0, 5).map((target) => ({
+      name: target.userData.name,
+      team: target.userData.team,
+      x: Number(target.position.x.toFixed(2)),
+      z: Number(target.position.z.toFixed(2))
+    })));
     document.body.dataset.fpsBullets = String(bullets.length);
     document.body.dataset.fpsEnemyBullets = String(enemyBullets.length);
     document.body.dataset.fpsHitCount = String(state.hitCount);
     document.body.dataset.fpsEnemyShots = String(state.enemyShots);
+    document.body.dataset.fpsBotHits = String(state.botHits);
     document.body.dataset.fpsScoped = String(state.scoped);
     document.body.dataset.fpsWeapon = weapons[state.weaponIndex].name;
     document.body.dataset.fpsWeaponSlot = weapons[state.weaponIndex].slot;
@@ -520,21 +549,39 @@
   function updateTargets(delta) {
     const now = performance.now();
     let nextEnemyShotIn = Infinity;
-    targets.forEach((target, index) => {
+    targets.forEach((target) => {
       const data = target.userData;
-      data.age += delta;
-      target.position.x += Math.sin(data.age * data.speed + data.phase) * delta * 7.5 * data.lane;
+      const botDelta = Math.min((now - data.updatedAt) / 1000, 0.5) || delta;
+      data.updatedAt = now;
+      data.age += botDelta;
+      walkTarget.copy(data.destination);
+      walkDirection.copy(walkTarget).sub(target.position);
+      walkDirection.y = 0;
+      const distanceToGoal = walkDirection.length();
+      if (distanceToGoal < 1.6) {
+        setWalkDestination(target);
+        walkDirection.copy(data.destination).sub(target.position);
+        walkDirection.y = 0;
+      }
+      if (walkDirection.lengthSq() > 0.001) {
+        walkDirection.normalize();
+        target.position.addScaledVector(walkDirection, data.speed * botDelta);
+        target.position.x = THREE.MathUtils.clamp(target.position.x, -36, 36);
+        target.position.z = THREE.MathUtils.clamp(target.position.z, -34, 24);
+        const walkYaw = Math.atan2(walkDirection.x, walkDirection.z);
+        let yawDelta = walkYaw - target.rotation.y;
+        yawDelta = Math.atan2(Math.sin(yawDelta), Math.cos(yawDelta));
+        target.rotation.y += THREE.MathUtils.clamp(yawDelta, -data.turnSpeed * botDelta, data.turnSpeed * botDelta);
+      }
       target.position.y = 0;
-      target.position.z += Math.cos(data.age * data.speed * 0.8 + index) * delta * 2.4;
-      const lookYaw = Math.atan2(camera.position.x - target.position.x, camera.position.z - target.position.z);
-      target.rotation.y = lookYaw + Math.sin(data.age * 2 + data.phase) * 0.16;
-      target.rotation.z = Math.sin(data.age * 2 + data.phase) * 0.22;
+      target.rotation.z = Math.sin(data.age * 5 + data.phase) * 0.025;
       data.core.scale.setScalar(1 + Math.sin(data.age * 8) * 0.12);
       data.avatar.position.y = 4.1 + Math.sin(data.age * 4 + data.phase) * 0.08;
-      data.leftArm.rotation.x = Math.sin(data.age * 5 + data.phase) * 0.34;
-      data.rightArm.rotation.x = Math.sin(data.age * 5 + data.phase + Math.PI) * 0.34;
-      data.leftLeg.rotation.x = Math.sin(data.age * 5 + data.phase + Math.PI) * 0.18;
-      data.rightLeg.rotation.x = Math.sin(data.age * 5 + data.phase) * 0.18;
+      const stride = data.age * data.speed * 2.4 + data.phase;
+      data.leftArm.rotation.x = Math.sin(stride + Math.PI) * 0.42;
+      data.rightArm.rotation.x = Math.sin(stride) * 0.42;
+      data.leftLeg.rotation.x = Math.sin(stride) * 0.34;
+      data.rightLeg.rotation.x = Math.sin(stride + Math.PI) * 0.34;
       if (data.armed) {
         data.enemyGun.rotation.x = -0.08 + Math.sin(data.age * 3 + data.phase) * 0.04;
         nextEnemyShotIn = Math.min(nextEnemyShotIn, (data.nextShotAt - now) / 1000);
@@ -553,6 +600,14 @@
       document.body.dataset.fpsNextEnemyShot = Math.max(0, nextEnemyShotIn).toFixed(2);
       window.targetRangeFpsStatus.nextEnemyShot = Number(document.body.dataset.fpsNextEnemyShot);
     }
+  }
+
+  function setWalkDestination(target) {
+    target.userData.destination.set(
+      THREE.MathUtils.randFloat(-34, 34),
+      0,
+      THREE.MathUtils.randFloat(-32, 22)
+    );
   }
 
   function spawnParticles(position, color) {
@@ -605,7 +660,7 @@
   function getAimPointForTeam(teamKey) {
     if (teamKey === "blue") {
       const redBots = targets.filter((target) => target.userData.team === "red");
-      if (redBots.length && Math.random() < 0.38) {
+      if (redBots.length && Math.random() < 0.72) {
         return redBots[Math.floor(Math.random() * redBots.length)].position.clone().add(new THREE.Vector3(0, 2.2, 0));
       }
       return camera.position.clone().add(new THREE.Vector3(0, -0.18, 0));
@@ -726,9 +781,11 @@
       const botHit = getEnemyBulletHit(bullet);
       if (botHit) {
         spawnParticles(botHit.position.clone().add(new THREE.Vector3(0, 2.2, 0)), botHit.userData.core.material.color);
+        state.botHits += 1;
         placeTarget(botHit);
         scene.remove(bullet);
         enemyBullets.splice(index, 1);
+        document.body.dataset.fpsBotHits = String(state.botHits);
         syncTeamHud();
         continue;
       }
@@ -743,7 +800,10 @@
   function getEnemyBulletHit(bullet) {
     return targets.find((target) => (
       target.userData.team !== bullet.userData.team &&
-      distanceToSegment(target.position.clone().add(new THREE.Vector3(0, 2.1, 0)), bullet.userData.previous, bullet.position) < 1.05
+      (
+        distanceToSegment(target.position.clone().add(new THREE.Vector3(0, 2.2, 0)), bullet.userData.previous, bullet.position) < 1.35 ||
+        distanceToSegment(target.position.clone().add(new THREE.Vector3(0, 1.1, 0)), bullet.userData.previous, bullet.position) < 0.95
+      )
     ));
   }
 
