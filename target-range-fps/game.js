@@ -28,6 +28,7 @@
   const joinOnlineButton = document.getElementById("joinOnlineButton");
   const copyRoomButton = document.getElementById("copyRoomButton");
   const leaveOnlineButton = document.getElementById("leaveOnlineButton");
+  const sniperShortcutButton = document.getElementById("sniperShortcutButton");
   const onlineStatusValue = document.getElementById("onlineStatusValue");
   const bestValue = document.getElementById("bestValue");
   const startPanel = document.getElementById("startPanel");
@@ -1029,10 +1030,12 @@
   function placeTarget(target, fresh = false) {
     if (state.mode === "sniper" && target.userData.team === "blue" && sniperPerches.length) {
       const perch = sniperPerches[(state.botCounter + targets.indexOf(target)) % sniperPerches.length];
+      const angle = Math.random() * Math.PI * 2;
+      const distance = THREE.MathUtils.randFloat(6.2, 9.5);
       target.position.set(
-        perch.x + THREE.MathUtils.randFloatSpread(4.8),
+        perch.x + Math.cos(angle) * distance,
         0,
-        perch.z + THREE.MathUtils.randFloatSpread(4.8)
+        perch.z + Math.sin(angle) * distance
       );
     } else {
       target.position.set(
@@ -1041,6 +1044,7 @@
         THREE.MathUtils.randFloat(-42, 30)
       );
     }
+    target.position.copy(findSafeBotPosition(target.position));
     setWalkDestination(target);
     if (!fresh) {
       target.userData.phase = Math.random() * Math.PI * 2;
@@ -1292,6 +1296,42 @@
     return blocked;
   }
 
+  function isObstacleBlocked(position, radius = 1.1) {
+    return obstacleColliders.some(({ box }) => {
+      if (position.y < box.min.y - 0.35 || position.y > box.max.y + 2.5) return false;
+      const closestX = THREE.MathUtils.clamp(position.x, box.min.x, box.max.x);
+      const closestZ = THREE.MathUtils.clamp(position.z, box.min.z, box.max.z);
+      const offsetX = position.x - closestX;
+      const offsetZ = position.z - closestZ;
+      return offsetX * offsetX + offsetZ * offsetZ < radius * radius;
+    });
+  }
+
+  function findSafeBotPosition(basePosition, radius = 1.1) {
+    const safePosition = basePosition.clone();
+    safePosition.x = THREE.MathUtils.clamp(safePosition.x, arenaBounds.botMinX, arenaBounds.botMaxX);
+    safePosition.z = THREE.MathUtils.clamp(safePosition.z, arenaBounds.botMinZ, arenaBounds.botMaxZ);
+    safePosition.y = 0;
+    if (!isObstacleBlocked(safePosition, radius)) return safePosition;
+    for (let ring = 2; ring <= 18; ring += 2) {
+      for (let step = 0; step < 12; step += 1) {
+        const angle = (Math.PI * 2 * step) / 12 + ring * 0.21;
+        safePosition.set(
+          THREE.MathUtils.clamp(basePosition.x + Math.cos(angle) * ring, arenaBounds.botMinX, arenaBounds.botMaxX),
+          0,
+          THREE.MathUtils.clamp(basePosition.z + Math.sin(angle) * ring, arenaBounds.botMinZ, arenaBounds.botMaxZ)
+        );
+        if (!isObstacleBlocked(safePosition, radius)) return safePosition.clone();
+      }
+    }
+    safePosition.set(
+      THREE.MathUtils.randFloat(arenaBounds.botMinX, arenaBounds.botMaxX),
+      0,
+      THREE.MathUtils.randFloat(arenaBounds.botMinZ, arenaBounds.botMaxZ)
+    );
+    return isObstacleBlocked(safePosition, radius) ? new THREE.Vector3(0, 0, 0) : safePosition;
+  }
+
   function getObstacleHit(start, direction, maxDistance) {
     let closestHit = null;
     let closestDistance = Infinity;
@@ -1541,6 +1581,7 @@
       );
       target.userData.destination.x = THREE.MathUtils.clamp(target.userData.destination.x, arenaBounds.botMinX, arenaBounds.botMaxX);
       target.userData.destination.z = THREE.MathUtils.clamp(target.userData.destination.z, arenaBounds.botMinZ, arenaBounds.botMaxZ);
+      target.userData.destination.copy(findSafeBotPosition(target.userData.destination));
       return;
     }
     target.userData.destination.set(
@@ -1548,6 +1589,7 @@
       0,
       THREE.MathUtils.randFloat(arenaBounds.botMinZ, arenaBounds.botMaxZ)
     );
+    target.userData.destination.copy(findSafeBotPosition(target.userData.destination));
   }
 
   function sendBotToCover(target) {
@@ -1565,6 +1607,7 @@
     target.userData.destination.copy(cover.position).addScaledVector(awayFromEnemy, 3.2);
     target.userData.destination.x = THREE.MathUtils.clamp(target.userData.destination.x, arenaBounds.botMinX, arenaBounds.botMaxX);
     target.userData.destination.z = THREE.MathUtils.clamp(target.userData.destination.z, arenaBounds.botMinZ, arenaBounds.botMaxZ);
+    target.userData.destination.copy(findSafeBotPosition(target.userData.destination));
   }
 
   function spawnParticles(position, color) {
@@ -2340,6 +2383,10 @@
   }, { passive: true });
 
   startButton.addEventListener("click", startGame);
+  sniperShortcutButton.addEventListener("click", () => {
+    modeSelect.value = "sniper";
+    startGame();
+  });
   againButton.addEventListener("click", startGame);
   retryButton.addEventListener("click", startGame);
   menuButton.addEventListener("click", showMenu);
