@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Target Range FPS</title>
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+  <main class="game-shell">
+    <canvas id="gameCanvas" aria-label="Target Range FPS game arena"></canvas>
+
+    <section class="hud" aria-label="Game status">
+      <div class="brand">
+        <span class="brand-mark"></span>
+        <strong>Target Range FPS</strong>
+      </div>
+      <div class="stat-grid">
+        <span><b id="scoreValue">0</b>Score</span>
+        <span><b id="streakValue">0</b>Streak</span>
+        <span><b id="timeValue">90</b>Time</span>
+        <span><b id="waveValue">1</b>Wave</span>
+      </div>
+    </section>
+
+    <div class="crosshair" aria-hidden="true">
+      <span></span>
+      <span></span>
+    </div>
+
+    <section class="center-panel" id="startPanel">
+      <p class="kicker">Moving Target Arena</p>
+      <h1>Target Range FPS</h1>
+      <button id="startButton" type="button">Start Run</button>
+      <button class="secondary" id="resetButton" type="button">Reset Best</button>
+      <p class="best-line">Best: <strong id="bestValue">0</strong></p>
+    </section>
+
+    <section class="end-panel" id="endPanel" hidden>
+      <p class="kicker">Run Complete</p>
+      <h2 id="endTitle">Nice run</h2>
+      <p id="endStats">Score 0</p>
+      <button id="againButton" type="button">Play Again</button>
+    </section>
+
+    <div class="mobile-controls" aria-hidden="true">
+      <div class="move-pad">
+        <button data-move="forward" type="button">▲</button>
+        <button data-move="left" type="button">◀</button>
+        <button data-move="backward" type="button">▼</button>
+        <button data-move="right" type="button">▶</button>
+      </div>
+      <button class="fire-button" id="touchFire" type="button">●</button>
+    </div>
+  </main>
+
+  <script src="../vendor/three.min.js"></script>
+  <script src="./game.js"></script>
+</body>
+</html>
