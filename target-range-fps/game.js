@@ -19,7 +19,6 @@
   const camera = new THREE.PerspectiveCamera(72, 1, 0.1, 160);
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
   const raycaster = new THREE.Raycaster();
-  const pointer = new THREE.Vector2(0, 0);
   const clock = new THREE.Clock();
 
   const player = {
@@ -45,16 +44,23 @@
     ready: false,
     frames: 0,
     targets: 0,
+    bullets: 0,
+    player: { x: 0, z: 22, yaw: 0 },
     running: false
   };
 
   const keys = new Set();
   const touchMoves = new Set();
   const targets = [];
+  const bullets = [];
   const particles = [];
   const tempDirection = new THREE.Vector3();
   const forward = new THREE.Vector3();
   const right = new THREE.Vector3();
+  const bulletDirection = new THREE.Vector3();
+  const bulletStart = new THREE.Vector3();
+  const bulletEnd = new THREE.Vector3();
+  const muzzlePosition = new THREE.Vector3();
 
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
   renderer.shadowMap.enabled = true;
@@ -102,11 +108,15 @@
 
   const muzzleLight = new THREE.PointLight(0xffd166, 0, 12, 2);
   camera.add(muzzleLight);
+  const gun = makeGun();
+  camera.add(gun);
   scene.add(camera);
 
-  const targetMaterial = new THREE.MeshStandardMaterial({ color: 0xff4c65, roughness: 0.38, metalness: 0.16 });
-  const targetRingMaterial = new THREE.MeshStandardMaterial({ color: 0xffd166, roughness: 0.3, metalness: 0.22 });
-  const targetCoreMaterial = new THREE.MeshStandardMaterial({ color: 0x4ff0b1, emissive: 0x1ca675, emissiveIntensity: 0.65 });
+  const robotBodyMaterial = new THREE.MeshStandardMaterial({ color: 0x8ea7b8, roughness: 0.42, metalness: 0.55 });
+  const robotArmorMaterial = new THREE.MeshStandardMaterial({ color: 0x223142, roughness: 0.5, metalness: 0.3 });
+  const robotJointMaterial = new THREE.MeshStandardMaterial({ color: 0xff4c65, emissive: 0x6e1322, emissiveIntensity: 0.35 });
+  const robotCoreMaterial = new THREE.MeshStandardMaterial({ color: 0x4ff0b1, emissive: 0x1ca675, emissiveIntensity: 0.85 });
+  const bulletMaterial = new THREE.MeshBasicMaterial({ color: 0xffd166 });
 
   bestValue.textContent = state.best;
   resize();
@@ -145,28 +155,83 @@
     return new THREE.CanvasTexture(gridCanvas);
   }
 
+  function makeGun() {
+    const group = new THREE.Group();
+    const grip = new THREE.Mesh(
+      new THREE.BoxGeometry(0.22, 0.48, 0.18),
+      new THREE.MeshStandardMaterial({ color: 0x121a22, roughness: 0.46, metalness: 0.45 })
+    );
+    const body = new THREE.Mesh(
+      new THREE.BoxGeometry(0.34, 0.28, 0.78),
+      new THREE.MeshStandardMaterial({ color: 0x2a3948, roughness: 0.34, metalness: 0.6 })
+    );
+    const barrel = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.055, 0.07, 0.74, 16),
+      new THREE.MeshStandardMaterial({ color: 0x070b10, roughness: 0.24, metalness: 0.85 })
+    );
+    const sight = new THREE.Mesh(
+      new THREE.BoxGeometry(0.16, 0.07, 0.2),
+      new THREE.MeshStandardMaterial({ color: 0xffd166, emissive: 0x7a4f00, emissiveIntensity: 0.3 })
+    );
+
+    body.position.set(0.34, -0.28, -0.76);
+    grip.position.set(0.28, -0.56, -0.48);
+    grip.rotation.x = -0.28;
+    barrel.position.set(0.34, -0.25, -1.2);
+    barrel.rotation.x = Math.PI / 2;
+    sight.position.set(0.34, -0.1, -0.82);
+    group.add(grip, body, barrel, sight);
+    group.position.set(0, 0, 0);
+    return group;
+  }
+
   function makeTarget() {
     const group = new THREE.Group();
-    const body = new THREE.Mesh(new THREE.SphereGeometry(1.05, 32, 20), targetMaterial.clone());
-    const ring = new THREE.Mesh(new THREE.TorusGeometry(1.18, 0.08, 12, 40), targetRingMaterial.clone());
-    const core = new THREE.Mesh(new THREE.SphereGeometry(0.34, 20, 12), targetCoreMaterial.clone());
+    const body = new THREE.Mesh(new THREE.BoxGeometry(1.05, 1.55, 0.55), robotBodyMaterial.clone());
+    const chest = new THREE.Mesh(new THREE.BoxGeometry(0.52, 0.52, 0.12), robotCoreMaterial.clone());
+    const head = new THREE.Mesh(new THREE.BoxGeometry(0.78, 0.62, 0.62), robotArmorMaterial.clone());
+    const eye = new THREE.Mesh(new THREE.BoxGeometry(0.48, 0.08, 0.04), robotCoreMaterial.clone());
+    const leftArm = new THREE.Mesh(new THREE.BoxGeometry(0.28, 1.25, 0.3), robotBodyMaterial.clone());
+    const rightArm = new THREE.Mesh(new THREE.BoxGeometry(0.28, 1.25, 0.3), robotBodyMaterial.clone());
+    const leftLeg = new THREE.Mesh(new THREE.BoxGeometry(0.34, 1.22, 0.34), robotArmorMaterial.clone());
+    const rightLeg = new THREE.Mesh(new THREE.BoxGeometry(0.34, 1.22, 0.34), robotArmorMaterial.clone());
+    const leftShoulder = new THREE.Mesh(new THREE.SphereGeometry(0.22, 16, 10), robotJointMaterial.clone());
+    const rightShoulder = new THREE.Mesh(new THREE.SphereGeometry(0.22, 16, 10), robotJointMaterial.clone());
 
-    body.castShadow = true;
-    ring.castShadow = true;
-    core.castShadow = true;
-    group.add(body, ring, core);
+    body.position.y = 2.22;
+    chest.position.set(0, 2.38, 0.31);
+    head.position.y = 3.32;
+    eye.position.set(0, 3.38, 0.33);
+    leftArm.position.set(-0.82, 2.12, 0);
+    rightArm.position.set(0.82, 2.12, 0);
+    leftLeg.position.set(-0.28, 0.74, 0);
+    rightLeg.position.set(0.28, 0.74, 0);
+    leftShoulder.position.set(-0.72, 2.8, 0);
+    rightShoulder.position.set(0.72, 2.8, 0);
+
+    [body, chest, head, eye, leftArm, rightArm, leftLeg, rightLeg, leftShoulder, rightShoulder].forEach((part) => {
+      part.castShadow = true;
+      part.receiveShadow = true;
+      part.userData.targetRoot = group;
+      group.add(part);
+    });
     group.userData = {
       body,
-      ring,
-      core,
+      chest,
+      head,
+      leftArm,
+      rightArm,
+      leftLeg,
+      rightLeg,
+      core: chest,
       health: 1,
-      value: 100,
+      value: 150,
       age: 0,
       phase: Math.random() * Math.PI * 2,
       speed: 0.72 + Math.random() * 0.55,
       lane: Math.random() > 0.5 ? 1 : -1,
       radius: 12 + Math.random() * 22,
-      baseY: 2.2 + Math.random() * 5.4
+      baseY: Math.random() * 3.6
     };
     scene.add(group);
     targets.push(group);
@@ -189,6 +254,7 @@
       const target = targets.pop();
       scene.remove(target);
     }
+    clearBullets();
     const total = 7 + state.wave;
     for (let index = 0; index < total; index += 1) {
       makeTarget();
@@ -212,9 +278,7 @@
     endPanel.hidden = true;
     resetTargets();
     syncHud();
-    if (canvas.requestPointerLock && matchMedia("(hover: hover)").matches) {
-      canvas.requestPointerLock();
-    }
+    requestCanvasLock();
   }
 
   function endGame() {
@@ -230,14 +294,31 @@
     endPanel.hidden = false;
   }
 
+  function requestCanvasLock() {
+    if (!canvas.requestPointerLock || !matchMedia("(hover: hover)").matches) return;
+    try {
+      const lockRequest = canvas.requestPointerLock();
+      if (lockRequest?.catch) lockRequest.catch(() => {});
+    } catch (error) {
+      // Some embedded browsers reject pointer lock even after a user gesture.
+    }
+  }
+
   function syncHud() {
     scoreValue.textContent = state.score;
     streakValue.textContent = state.streak;
     timeValue.textContent = Math.max(0, Math.ceil(state.timeLeft));
     waveValue.textContent = state.wave;
     window.targetRangeFpsStatus.targets = targets.length;
+    window.targetRangeFpsStatus.bullets = bullets.length;
     window.targetRangeFpsStatus.running = state.running;
+    window.targetRangeFpsStatus.player = {
+      x: Number(player.position.x.toFixed(2)),
+      z: Number(player.position.z.toFixed(2)),
+      yaw: Number(player.yaw.toFixed(3))
+    };
     document.body.dataset.fpsTargets = String(targets.length);
+    document.body.dataset.fpsBullets = String(bullets.length);
     document.body.dataset.fpsRunning = String(state.running);
   }
 
@@ -249,6 +330,7 @@
     if (state.recoilTimer > 0) {
       camera.rotation.x -= state.recoilTimer * 0.018;
     }
+    gun.position.z = state.recoilTimer > 0 ? state.recoilTimer * 0.08 : 0;
   }
 
   function updateMovement(delta) {
@@ -257,8 +339,8 @@
     const movingLeft = keys.has("KeyA") || keys.has("ArrowLeft") || touchMoves.has("left");
     const movingRight = keys.has("KeyD") || keys.has("ArrowRight") || touchMoves.has("right");
 
-    forward.set(Math.sin(player.yaw), 0, Math.cos(player.yaw) * -1).normalize();
-    right.set(Math.cos(player.yaw), 0, Math.sin(player.yaw)).normalize();
+    forward.set(-Math.sin(player.yaw), 0, -Math.cos(player.yaw)).normalize();
+    right.set(Math.cos(player.yaw), 0, -Math.sin(player.yaw)).normalize();
     tempDirection.set(0, 0, 0);
     if (movingForward) tempDirection.add(forward);
     if (movingBack) tempDirection.sub(forward);
@@ -278,12 +360,16 @@
       const data = target.userData;
       data.age += delta;
       target.position.x += Math.sin(data.age * data.speed + data.phase) * delta * 7.5 * data.lane;
-      target.position.y = data.baseY + Math.sin(data.age * 2.1 + data.phase) * 1.2;
+      target.position.y = data.baseY + Math.sin(data.age * 2.1 + data.phase) * 0.55;
       target.position.z += Math.cos(data.age * data.speed * 0.8 + index) * delta * 2.4;
-      target.rotation.y += delta * (1.2 + state.wave * 0.1);
+      const lookYaw = Math.atan2(camera.position.x - target.position.x, camera.position.z - target.position.z);
+      target.rotation.y = lookYaw + Math.sin(data.age * 2 + data.phase) * 0.16;
       target.rotation.z = Math.sin(data.age * 2 + data.phase) * 0.22;
-      data.ring.rotation.z += delta * 2.5;
       data.core.scale.setScalar(1 + Math.sin(data.age * 8) * 0.12);
+      data.leftArm.rotation.x = Math.sin(data.age * 5 + data.phase) * 0.34;
+      data.rightArm.rotation.x = Math.sin(data.age * 5 + data.phase + Math.PI) * 0.34;
+      data.leftLeg.rotation.x = Math.sin(data.age * 5 + data.phase + Math.PI) * 0.18;
+      data.rightLeg.rotation.x = Math.sin(data.age * 5 + data.phase) * 0.18;
 
       if (Math.abs(target.position.x) > 38 || target.position.z > 26 || target.position.z < -36) {
         placeTarget(target);
@@ -325,35 +411,91 @@
     }
   }
 
+  function makeBullet() {
+    const bullet = new THREE.Mesh(new THREE.SphereGeometry(0.075, 12, 8), bulletMaterial);
+    const glow = new THREE.PointLight(0xffd166, 1.4, 5, 2);
+    camera.updateMatrixWorld();
+    muzzlePosition.set(0.34, -0.25, -1.32);
+    camera.localToWorld(muzzlePosition);
+    camera.getWorldDirection(bulletDirection).normalize();
+    bullet.position.copy(muzzlePosition);
+    bullet.userData.previous = muzzlePosition.clone();
+    bullet.userData.velocity = bulletDirection.clone().multiplyScalar(86);
+    bullet.userData.life = 1.15;
+    bullet.userData.distance = 0;
+    bullet.add(glow);
+    scene.add(bullet);
+    bullets.push(bullet);
+    document.body.dataset.fpsBullets = String(bullets.length);
+  }
+
+  function clearBullets() {
+    while (bullets.length) {
+      const bullet = bullets.pop();
+      scene.remove(bullet);
+    }
+    document.body.dataset.fpsBullets = "0";
+  }
+
+  function updateBullets(delta) {
+    for (let index = bullets.length - 1; index >= 0; index -= 1) {
+      const bullet = bullets[index];
+      bulletStart.copy(bullet.position);
+      bullet.userData.previous.copy(bulletStart);
+      bullet.position.addScaledVector(bullet.userData.velocity, delta);
+      bulletEnd.copy(bullet.position);
+      const travel = bulletStart.distanceTo(bulletEnd);
+      bulletDirection.copy(bulletEnd).sub(bulletStart).normalize();
+      raycaster.set(bulletStart, bulletDirection);
+      raycaster.far = travel + 0.24;
+      const hits = raycaster.intersectObjects(targets, true);
+      if (hits.length) {
+        const hitGroup = getTargetGroup(hits[0].object);
+        if (hitGroup) {
+          bullet.position.copy(hits[0].point);
+          handleTargetHit(hitGroup, hits[0].point);
+          scene.remove(bullet);
+          bullets.splice(index, 1);
+          continue;
+        }
+      }
+
+      bullet.userData.life -= delta;
+      bullet.userData.distance += travel;
+      if (bullet.userData.life <= 0 || bullet.userData.distance > 95) {
+        scene.remove(bullet);
+        bullets.splice(index, 1);
+        state.streak = 0;
+      }
+    }
+    document.body.dataset.fpsBullets = String(bullets.length);
+  }
+
   function shoot() {
     if (!state.running) return;
     state.recoilTimer = 1;
     state.flashTimer = 0.07;
     muzzleLight.intensity = 9;
-    raycaster.setFromCamera(pointer, camera);
-    const hits = raycaster.intersectObjects(targets, true);
-    if (hits.length) {
-      const hitGroup = getTargetGroup(hits[0].object);
-      if (hitGroup) {
-        const closeBonus = Math.max(0, Math.floor((32 - camera.position.distanceTo(hitGroup.position)) * 2));
-        const streakBonus = Math.min(400, state.streak * 20);
-        const points = hitGroup.userData.value + closeBonus + streakBonus;
-        state.score += points;
-        state.streak += 1;
-        spawnParticles(hits[0].point, hitGroup.userData.core.material.color);
-        placeTarget(hitGroup);
-        if (state.streak % 8 === 0) {
-          state.wave += 1;
-          makeTarget();
-        }
-      }
-    } else {
-      state.streak = 0;
+    makeBullet();
+  }
+
+  function handleTargetHit(hitGroup, hitPoint) {
+    const closeBonus = Math.max(0, Math.floor((32 - camera.position.distanceTo(hitGroup.position)) * 2));
+    const streakBonus = Math.min(400, state.streak * 20);
+    const points = hitGroup.userData.value + closeBonus + streakBonus;
+    state.score += points;
+    state.streak += 1;
+    spawnParticles(hitPoint, hitGroup.userData.core.material.color);
+    placeTarget(hitGroup);
+    if (state.streak % 8 === 0) {
+      state.wave += 1;
+      makeTarget();
     }
     syncHud();
   }
 
   function getTargetGroup(object) {
+    if (object.userData.targetRoot) return object.userData.targetRoot;
     let current = object;
     while (current && current.parent) {
       if (targets.includes(current)) return current;
@@ -382,9 +524,11 @@
       }
       updateMovement(delta);
       updateTargets(delta);
+      updateBullets(delta);
       syncHud();
     } else {
       updateTargets(delta * 0.45);
+      updateBullets(delta);
     }
 
     state.recoilTimer = Math.max(0, state.recoilTimer - delta * 8);
@@ -425,9 +569,7 @@
   window.addEventListener("pointerdown", (event) => {
     if (event.target.closest("button")) return;
     if (!state.running) return;
-    if (canvas.requestPointerLock && matchMedia("(hover: hover)").matches && document.pointerLockElement !== canvas) {
-      canvas.requestPointerLock();
-    }
+    if (document.pointerLockElement !== canvas) requestCanvasLock();
     shoot();
   });
 
