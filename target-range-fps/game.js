@@ -165,6 +165,7 @@
   const coverObjects = [];
   const obstacleColliders = [];
   const allObstacleColliders = [];
+  const sniperPerches = [];
   const weaponPickups = [];
   const remotePlayers = new Map();
   const remotePlayerMaterial = new THREE.MeshStandardMaterial({ color: teams.red.color, roughness: 0.42, metalness: 0.45 });
@@ -518,6 +519,11 @@
     addBunker(-43, -20, coverMaterial, trimMaterial);
     addBunker(42, 30, coverMaterial, trimMaterial);
     addBridge(0, -5, coverMaterial, trimMaterial);
+    addSniperPerch(-52, -46, coverMaterial, trimMaterial);
+    addSniperPerch(52, -46, coverMaterial, trimMaterial);
+    addSniperPerch(-52, 38, coverMaterial, trimMaterial);
+    addSniperPerch(52, 38, coverMaterial, trimMaterial);
+    addSniperPerch(0, 42, coverMaterial, trimMaterial);
   }
 
   function registerObstacle(mesh, navigable = true, options = {}) {
@@ -646,6 +652,28 @@
       part.receiveShadow = true;
       group.add(part);
     });
+    registerObstacle(group, true, { destructible: false });
+  }
+
+  function addSniperPerch(x, z, material, trimMaterial) {
+    const group = new THREE.Group();
+    group.position.set(x, 0, z);
+    const stem = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1.45, 9.5, 8), material.clone());
+    const platform = new THREE.Mesh(new THREE.CylinderGeometry(3.4, 3.8, 0.55, 8), trimMaterial.clone());
+    const railA = new THREE.Mesh(new THREE.BoxGeometry(5.2, 0.8, 0.28), material.clone());
+    const railB = new THREE.Mesh(new THREE.BoxGeometry(5.2, 0.8, 0.28), material.clone());
+    const ladder = new THREE.Mesh(new THREE.BoxGeometry(0.42, 7.2, 0.3), trimMaterial.clone());
+    stem.position.y = 4.75;
+    platform.position.y = 9.8;
+    railA.position.set(0, 10.45, -2.8);
+    railB.position.set(0, 10.45, 2.8);
+    ladder.position.set(2.65, 4.5, 0);
+    [stem, platform, railA, railB, ladder].forEach((part) => {
+      part.castShadow = true;
+      part.receiveShadow = true;
+      group.add(part);
+    });
+    sniperPerches.push(new THREE.Vector3(x, 0, z));
     registerObstacle(group, true, { destructible: false });
   }
 
@@ -903,7 +931,12 @@
       : (botNumber % 4 === 0 || botNumber % 5 === 0 ? "red" : "blue");
     const team = teams[teamKey];
     const isBoss = state.mode === "boss" && botNumber === 1;
-    const botClass = isBoss ? { ...botClasses[5], name: "Boss", health: 720, speed: 0.52, shot: 0.92, damage: 1.8, range: 104, pellets: 3 } : botClasses[(botNumber - 1) % botClasses.length];
+    const isSniperTowerBot = state.mode === "sniper" && teamKey === "blue";
+    const botClass = isBoss
+      ? { ...botClasses[5], name: "Boss", health: 720, speed: 0.52, shot: 0.92, damage: 1.8, range: 104, pellets: 3 }
+      : isSniperTowerBot
+        ? { ...botClasses[2], name: botNumber % 3 === 0 ? "Tower Guard" : "Sniper", health: 95, speed: 0.72, shot: 1.65, damage: 1.72, range: 125 }
+        : botClasses[(botNumber - 1) % botClasses.length];
     const robotBodyMaterial = new THREE.MeshStandardMaterial({ color: team.color, roughness: 0.42, metalness: 0.55 });
     const robotArmorMaterial = new THREE.MeshStandardMaterial({ color: team.dark, roughness: 0.5, metalness: 0.3 });
     const robotJointMaterial = new THREE.MeshStandardMaterial({ color: team.color, emissive: team.glow, emissiveIntensity: 0.35 });
@@ -965,7 +998,7 @@
       armed,
       isBoss,
       damageScale: botClass.damage || 1,
-      range: botClass.range || 86,
+      range: state.mode === "sniper" ? Math.max(botClass.range || 86, 118) : botClass.range || 86,
       pellets: botClass.pellets || 1,
       heal: botClass.heal || 0,
       core: chest,
@@ -975,7 +1008,7 @@
       respawnAt: 0,
       value: isBoss ? 1200 : 150,
       age: 0,
-      shotCooldown: (1200 + Math.random() * 1600) / botClass.shot,
+      shotCooldown: ((state.mode === "sniper" ? 980 : 1200) + Math.random() * 1600) / botClass.shot,
       nextShotAt: performance.now() + 350 + Math.random() * 900,
       updatedAt: performance.now(),
       destination: new THREE.Vector3(),
@@ -994,11 +1027,20 @@
   }
 
   function placeTarget(target, fresh = false) {
-    target.position.set(
-      THREE.MathUtils.randFloat(-48, 48),
-      0,
-      THREE.MathUtils.randFloat(-42, 30)
-    );
+    if (state.mode === "sniper" && target.userData.team === "blue" && sniperPerches.length) {
+      const perch = sniperPerches[(state.botCounter + targets.indexOf(target)) % sniperPerches.length];
+      target.position.set(
+        perch.x + THREE.MathUtils.randFloatSpread(4.8),
+        0,
+        perch.z + THREE.MathUtils.randFloatSpread(4.8)
+      );
+    } else {
+      target.position.set(
+        THREE.MathUtils.randFloat(-48, 48),
+        0,
+        THREE.MathUtils.randFloat(-42, 30)
+      );
+    }
     setWalkDestination(target);
     if (!fresh) {
       target.userData.phase = Math.random() * Math.PI * 2;
@@ -1014,7 +1056,11 @@
     clearBullets();
     clearEnemyBullets();
     state.botCounter = 0;
-    const total = state.mode === "boss" ? Math.max(6, Math.floor(state.botCount / 2)) : state.botCount + Math.min(state.wave - 1, 6);
+    const total = state.mode === "boss"
+      ? Math.max(6, Math.floor(state.botCount / 2))
+      : state.mode === "sniper"
+        ? state.botCount + 4
+        : state.botCount + Math.min(state.wave - 1, 6);
     for (let index = 0; index < total; index += 1) {
       makeTarget();
     }
@@ -1032,7 +1078,7 @@
     state.score = 0;
     state.streak = 0;
     state.wave = 1;
-    state.timeLeft = state.mode === "control" ? 120 : (state.mode === "survival" || state.mode === "boss" ? 180 : 90);
+    state.timeLeft = state.mode === "control" ? 120 : (state.mode === "survival" || state.mode === "boss" || state.mode === "sniper" ? 180 : 90);
     state.spawnTimer = 0;
     state.recoilTimer = 0;
     state.nextFireAt = 0;
@@ -1052,6 +1098,11 @@
     weaponAmmo.forEach((_, index) => {
       weaponAmmo[index] = weapons[index].mag;
     });
+    if (state.mode === "sniper") {
+      state.weaponIndex = 3;
+      weaponAmmo[3] = weapons[3].mag + 4;
+      state.weaponUpgrade = 1;
+    }
     weaponPickups.forEach((pickup) => {
       pickup.visible = true;
       pickup.userData.respawnAt = 0;
@@ -1206,6 +1257,7 @@
     if (state.mode === "control") return `Control Point: ${state.controlOwner ? teams[state.controlOwner].name : "Neutral"}`;
     if (state.mode === "survival") return "Survival: hold out against waves";
     if (state.mode === "boss") return "Boss Hunt: drop the heavy boss";
+    if (state.mode === "sniper") return "Sniper Tower: clear the tower squads";
     return "Team Deathmatch";
   }
 
@@ -2173,7 +2225,7 @@
         endGame("Time up");
       }
       state.spawnTimer += delta;
-      if (state.mode !== "boss" && state.spawnTimer > (state.mode === "survival" ? 9 : 12) && targets.length < 18) {
+      if (state.mode !== "boss" && state.spawnTimer > (state.mode === "survival" ? 9 : state.mode === "sniper" ? 14 : 12) && targets.length < (state.mode === "sniper" ? 22 : 18)) {
         state.spawnTimer = 0;
         state.wave += 1;
         makeTarget();
