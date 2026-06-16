@@ -26,6 +26,8 @@
   const roomCodeInput = document.getElementById("roomCodeInput");
   const hostOnlineButton = document.getElementById("hostOnlineButton");
   const joinOnlineButton = document.getElementById("joinOnlineButton");
+  const copyRoomButton = document.getElementById("copyRoomButton");
+  const leaveOnlineButton = document.getElementById("leaveOnlineButton");
   const onlineStatusValue = document.getElementById("onlineStatusValue");
   const bestValue = document.getElementById("bestValue");
   const startPanel = document.getElementById("startPanel");
@@ -89,6 +91,10 @@
     controlOwner: null,
     controlTickAt: 0,
     reloadUntil: 0,
+    armor: 0,
+    speedBoostUntil: 0,
+    weaponUpgrade: 0,
+    shieldUntil: 0,
     best: Number(localStorage.getItem(bestKey) || 0)
   };
 
@@ -105,17 +111,19 @@
     { slot: "5", name: "Plasma", cooldown: 440, pellets: 1, spread: 0.01, speed: 58, life: 1.6, radius: 0.16, color: 0x9b5cff, recoil: 0.95, points: 1.35, damage: 52, mag: 8, reload: 1400 },
     { slot: "6", name: "Arc", cooldown: 380, pellets: 3, spread: 0.024, speed: 82, life: 1.05, radius: 0.08, color: 0x4ff0b1, recoil: 0.85, points: 0.74, damage: 18, mag: 15, reload: 1150 },
     { slot: "7", name: "SMG", cooldown: 90, pellets: 1, spread: 0.018, speed: 98, life: 0.86, radius: 0.045, color: 0xff4c65, recoil: 0.44, points: 0.52, damage: 13, mag: 36, reload: 1100 },
-    { slot: "8", name: "Cannon", cooldown: 980, pellets: 1, spread: 0.004, speed: 66, life: 1.45, radius: 0.22, color: 0xffc857, recoil: 2.25, points: 2.8, damage: 120, mag: 3, reload: 1900 },
+    { slot: "8", name: "Cannon", cooldown: 980, pellets: 1, spread: 0.004, speed: 66, life: 1.45, radius: 0.22, color: 0xffc857, recoil: 2.25, points: 2.8, damage: 120, mag: 3, reload: 1900, splash: 5.8 },
     { slot: "9", name: "Needler", cooldown: 130, pellets: 2, spread: 0.015, speed: 112, life: 0.94, radius: 0.038, color: 0xc7ff4f, recoil: 0.36, points: 0.45, damage: 10, mag: 40, reload: 950 },
-    { slot: "0", name: "Nova", cooldown: 1250, pellets: 10, spread: 0.06, speed: 72, life: 1.2, radius: 0.1, color: 0xff6bd6, recoil: 2.7, points: 0.72, damage: 16, mag: 2, reload: 2200 }
+    { slot: "0", name: "Nova", cooldown: 1250, pellets: 10, spread: 0.06, speed: 72, life: 1.2, radius: 0.1, color: 0xff6bd6, recoil: 2.7, points: 0.72, damage: 16, mag: 2, reload: 2200, splash: 4.2 }
   ];
 
   const botClasses = [
-    { name: "Rifle", health: 100, speed: 1, shot: 1, colorBoost: 0 },
-    { name: "Heavy", health: 170, speed: 0.72, shot: 0.8, colorBoost: -0.08 },
-    { name: "Sniper", health: 80, speed: 0.86, shot: 1.35, colorBoost: 0.08 },
-    { name: "Medic", health: 90, speed: 1.05, shot: 0.72, colorBoost: 0.16 },
-    { name: "Shotgun", health: 115, speed: 0.94, shot: 0.9, colorBoost: -0.02 }
+    { name: "Rifle", health: 100, speed: 1, shot: 1, damage: 1, range: 86, colorBoost: 0 },
+    { name: "Heavy", health: 190, speed: 0.68, shot: 0.78, damage: 1.35, range: 72, colorBoost: -0.08 },
+    { name: "Sniper", health: 80, speed: 0.86, shot: 1.45, damage: 1.55, range: 112, colorBoost: 0.08 },
+    { name: "Medic", health: 90, speed: 1.08, shot: 0.72, damage: 0.72, range: 76, heal: 12, colorBoost: 0.16 },
+    { name: "Shotgun", health: 115, speed: 0.94, shot: 0.9, damage: 0.86, range: 48, pellets: 4, colorBoost: -0.02 },
+    { name: "Shield", health: 230, speed: 0.58, shot: 0.62, damage: 0.9, range: 68, colorBoost: -0.16 },
+    { name: "Scout", health: 70, speed: 1.42, shot: 1.15, damage: 0.78, range: 82, colorBoost: 0.2 }
   ];
 
   const weaponAmmo = weapons.map((weapon) => weapon.mag);
@@ -156,6 +164,7 @@
   const particles = [];
   const coverObjects = [];
   const obstacleColliders = [];
+  const allObstacleColliders = [];
   const weaponPickups = [];
   const remotePlayers = new Map();
   const remotePlayerMaterial = new THREE.MeshStandardMaterial({ color: teams.red.color, roughness: 0.42, metalness: 0.45 });
@@ -313,6 +322,7 @@
     net.playerName = getPlayerName();
     net.roomCode = makeRoomCode();
     net.id = `trfps-${net.roomCode}`;
+    roomCodeInput.value = net.roomCode;
     updateOnlineStatus(`Hosting room ${net.roomCode}. Share this code.`);
     net.peer = new Peer(net.id, { debug: 0 });
     net.peer.on("open", () => updateOnlineStatus(`Hosting room ${net.roomCode}. Share this code.`));
@@ -350,6 +360,21 @@
       cleanupNetwork();
       updateOnlineStatus("Join failed. Check the room code.");
     });
+  }
+
+  async function copyRoomCode() {
+    if (!net.roomCode) {
+      updateOnlineStatus("Host or join a room first.");
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(net.roomCode);
+      updateOnlineStatus(`Copied room ${net.roomCode}.`);
+    } catch (error) {
+      roomCodeInput.value = net.roomCode;
+      roomCodeInput.select();
+      updateOnlineStatus(`Room code: ${net.roomCode}`);
+    }
   }
 
   function cleanupNetwork() {
@@ -490,9 +515,12 @@
 
     addArchway(0, -47, 11, 7.5, 2.2, coverMaterial, trimMaterial);
     addArchway(0, 40, 13, 8, 2.2, coverMaterial, trimMaterial);
+    addBunker(-43, -20, coverMaterial, trimMaterial);
+    addBunker(42, 30, coverMaterial, trimMaterial);
+    addBridge(0, -5, coverMaterial, trimMaterial);
   }
 
-  function registerObstacle(mesh, navigable = true) {
+  function registerObstacle(mesh, navigable = true, options = {}) {
     mesh.castShadow = true;
     mesh.receiveShadow = true;
     scene.add(mesh);
@@ -500,7 +528,16 @@
       coverObjects.push(mesh);
       mesh.updateMatrixWorld(true);
       obstacleBox.setFromObject(mesh);
-      obstacleColliders.push({ object: mesh, box: obstacleBox.clone() });
+      const collider = {
+        object: mesh,
+        box: obstacleBox.clone(),
+        destructible: Boolean(options.destructible || options.health),
+        health: options.health || 0,
+        maxHealth: options.health || 0,
+        weak: Boolean(options.weak)
+      };
+      obstacleColliders.push(collider);
+      allObstacleColliders.push(collider);
     }
     return mesh;
   }
@@ -518,7 +555,7 @@
       part.receiveShadow = true;
       group.add(part);
     });
-    registerObstacle(group);
+    registerObstacle(group, true, { destructible: width < 11, health: 180 });
   }
 
   function addCrateStack(x, z, count, material, trimMaterial) {
@@ -536,7 +573,7 @@
     const beacon = new THREE.Mesh(new THREE.BoxGeometry(3.8, 0.12, 0.18), trimMaterial.clone());
     beacon.position.set(0, 2.65, 0);
     group.add(beacon);
-    registerObstacle(group);
+    registerObstacle(group, true, { destructible: true, health: 120 + count * 45, weak: true });
   }
 
   function addTower(x, z, radius, height, material, trimMaterial) {
@@ -576,6 +613,42 @@
     registerObstacle(group);
   }
 
+  function addBunker(x, z, material, trimMaterial) {
+    const group = new THREE.Group();
+    group.position.set(x, 0, z);
+    const back = new THREE.Mesh(new THREE.BoxGeometry(10, 3.2, 1.2), material.clone());
+    const left = new THREE.Mesh(new THREE.BoxGeometry(1.2, 3.2, 7), material.clone());
+    const right = new THREE.Mesh(new THREE.BoxGeometry(1.2, 3.2, 7), material.clone());
+    const roof = new THREE.Mesh(new THREE.BoxGeometry(10.6, 0.42, 7.6), trimMaterial.clone());
+    back.position.set(0, 1.6, -3.1);
+    left.position.set(-4.7, 1.6, 0);
+    right.position.set(4.7, 1.6, 0);
+    roof.position.set(0, 3.42, 0);
+    [back, left, right, roof].forEach((part) => {
+      part.castShadow = true;
+      part.receiveShadow = true;
+      group.add(part);
+    });
+    registerObstacle(group, true, { destructible: false });
+  }
+
+  function addBridge(x, z, material, trimMaterial) {
+    const group = new THREE.Group();
+    group.position.set(x, 0, z);
+    const deck = new THREE.Mesh(new THREE.BoxGeometry(18, 0.45, 3.8), material.clone());
+    const railA = new THREE.Mesh(new THREE.BoxGeometry(18.5, 1.2, 0.35), trimMaterial.clone());
+    const railB = new THREE.Mesh(new THREE.BoxGeometry(18.5, 1.2, 0.35), trimMaterial.clone());
+    deck.position.y = 2.4;
+    railA.position.set(0, 3.05, -2.05);
+    railB.position.set(0, 3.05, 2.05);
+    [deck, railA, railB].forEach((part) => {
+      part.castShadow = true;
+      part.receiveShadow = true;
+      group.add(part);
+    });
+    registerObstacle(group, true, { destructible: false });
+  }
+
   function createControlPoint() {
     const base = new THREE.Mesh(
       new THREE.CylinderGeometry(4.2, 4.2, 0.14, 48),
@@ -592,26 +665,40 @@
   }
 
   function createWeaponPickups() {
-    const pickupGeometry = new THREE.BoxGeometry(1.2, 0.42, 1.2);
     const slots = [
-      [-48, 34, 1],
-      [-36, -42, 2],
-      [-8, 36, 4],
-      [18, -44, 6],
-      [44, 19, 8],
-      [6, -12, 9],
-      [52, -34, 3],
-      [-52, -9, 7]
+      [-48, 34, "weapon", 1],
+      [-36, -42, "weapon", 2],
+      [-8, 36, "weapon", 4],
+      [18, -44, "weapon", 6],
+      [44, 19, "weapon", 8],
+      [6, -12, "weapon", 9],
+      [52, -34, "weapon", 3],
+      [-52, -9, "weapon", 7],
+      [-18, -2, "health"],
+      [28, 12, "armor"],
+      [0, 33, "speed"],
+      [-42, 12, "upgrade"],
+      [38, -34, "shield"]
     ];
-    slots.forEach(([x, z, weaponIndex]) => {
+    const pickupTypes = {
+      health: { color: 0x4ff0b1, label: "Medkit", geometry: new THREE.BoxGeometry(1.05, 0.5, 1.05) },
+      armor: { color: 0x43d5ff, label: "Armor", geometry: new THREE.CylinderGeometry(0.7, 0.7, 0.36, 6) },
+      speed: { color: 0xc7ff4f, label: "Speed Boost", geometry: new THREE.OctahedronGeometry(0.72, 0) },
+      upgrade: { color: 0xffd166, label: "Weapon Upgrade", geometry: new THREE.DodecahedronGeometry(0.68, 0) },
+      shield: { color: 0xff6bd6, label: "Shield", geometry: new THREE.IcosahedronGeometry(0.7, 0) }
+    };
+    slots.forEach(([x, z, type, weaponIndex = 0]) => {
       const weapon = weapons[weaponIndex];
+      const pickupInfo = type === "weapon"
+        ? { color: weapon.color, label: weapon.name, geometry: new THREE.BoxGeometry(1.2, 0.42, 1.2) }
+        : pickupTypes[type];
       const pickup = new THREE.Mesh(
-        pickupGeometry,
-        new THREE.MeshStandardMaterial({ color: weapon.color, emissive: weapon.color, emissiveIntensity: 0.18, roughness: 0.34 })
+        pickupInfo.geometry,
+        new THREE.MeshStandardMaterial({ color: pickupInfo.color, emissive: pickupInfo.color, emissiveIntensity: 0.2, roughness: 0.34 })
       );
       pickup.position.set(x, 0.55, z);
       pickup.castShadow = true;
-      pickup.userData = { weaponIndex, respawnAt: 0, baseY: 0.55 };
+      pickup.userData = { type, label: pickupInfo.label, weaponIndex, respawnAt: 0, baseY: 0.55 };
       scene.add(pickup);
       weaponPickups.push(pickup);
     });
@@ -811,9 +898,12 @@
     const group = new THREE.Group();
     const botNumber = state.botCounter + 1;
     state.botCounter += 1;
-    const teamKey = botNumber % 4 === 0 || botNumber % 5 === 0 ? "red" : "blue";
+    const teamKey = state.mode === "survival" || state.mode === "boss"
+      ? (botNumber % 5 === 0 ? "red" : "blue")
+      : (botNumber % 4 === 0 || botNumber % 5 === 0 ? "red" : "blue");
     const team = teams[teamKey];
-    const botClass = botClasses[(botNumber - 1) % botClasses.length];
+    const isBoss = state.mode === "boss" && botNumber === 1;
+    const botClass = isBoss ? { ...botClasses[5], name: "Boss", health: 720, speed: 0.52, shot: 0.92, damage: 1.8, range: 104, pellets: 3 } : botClasses[(botNumber - 1) % botClasses.length];
     const robotBodyMaterial = new THREE.MeshStandardMaterial({ color: team.color, roughness: 0.42, metalness: 0.55 });
     const robotArmorMaterial = new THREE.MeshStandardMaterial({ color: team.dark, roughness: 0.5, metalness: 0.3 });
     const robotJointMaterial = new THREE.MeshStandardMaterial({ color: team.color, emissive: team.glow, emissiveIntensity: 0.35 });
@@ -857,6 +947,7 @@
     [body, chest, head, eye, leftArm, rightArm, leftLeg, rightLeg, leftShoulder, rightShoulder, avatar, healthBack, healthFill].forEach((part) => group.add(part));
     if (armed) group.add(enemyGun);
     const maxHealth = Math.round(botClass.health * (teamKey === "blue" ? 1.04 : 1));
+    if (isBoss) group.scale.setScalar(1.55);
     group.userData = {
       name: `Bot ${botNumber}`,
       team: teamKey,
@@ -872,12 +963,17 @@
       avatar,
       healthFill,
       armed,
+      isBoss,
+      damageScale: botClass.damage || 1,
+      range: botClass.range || 86,
+      pellets: botClass.pellets || 1,
+      heal: botClass.heal || 0,
       core: chest,
       health: maxHealth,
       maxHealth,
       alive: true,
       respawnAt: 0,
-      value: 150,
+      value: isBoss ? 1200 : 150,
       age: 0,
       shotCooldown: (1200 + Math.random() * 1600) / botClass.shot,
       nextShotAt: performance.now() + 350 + Math.random() * 900,
@@ -918,7 +1014,7 @@
     clearBullets();
     clearEnemyBullets();
     state.botCounter = 0;
-    const total = state.botCount + Math.min(state.wave - 1, 6);
+    const total = state.mode === "boss" ? Math.max(6, Math.floor(state.botCount / 2)) : state.botCount + Math.min(state.wave - 1, 6);
     for (let index = 0; index < total; index += 1) {
       makeTarget();
     }
@@ -936,7 +1032,7 @@
     state.score = 0;
     state.streak = 0;
     state.wave = 1;
-    state.timeLeft = state.mode === "control" ? 120 : 90;
+    state.timeLeft = state.mode === "control" ? 120 : (state.mode === "survival" || state.mode === "boss" ? 180 : 90);
     state.spawnTimer = 0;
     state.recoilTimer = 0;
     state.nextFireAt = 0;
@@ -948,6 +1044,11 @@
     state.controlOwner = null;
     state.controlTickAt = performance.now() + 2500;
     state.reloadUntil = 0;
+    state.armor = 0;
+    state.speedBoostUntil = 0;
+    state.weaponUpgrade = 0;
+    state.shieldUntil = 0;
+    restoreDestructibleCover();
     weaponAmmo.forEach((_, index) => {
       weaponAmmo[index] = weapons[index].mag;
     });
@@ -1038,9 +1139,7 @@
     redScoreValue.textContent = state.redScore;
     blueScoreValue.textContent = state.blueScore;
     roundValue.textContent = `Round ${state.round} | First to ${state.matchTarget}`;
-    objectiveValue.textContent = state.mode === "control"
-      ? `Control Point: ${state.controlOwner ? teams[state.controlOwner].name : "Neutral"}`
-      : "Team Deathmatch";
+    objectiveValue.textContent = getObjectiveText();
     syncWeaponHud();
     window.targetRangeFpsStatus.targets = targets.length;
     window.targetRangeFpsStatus.aliveTargets = targets.filter((target) => target.userData.alive).length;
@@ -1054,10 +1153,13 @@
     window.targetRangeFpsStatus.scoped = state.scoped;
     window.targetRangeFpsStatus.weapon = weapons[state.weaponIndex].name;
     window.targetRangeFpsStatus.weaponSlot = weapons[state.weaponIndex].slot;
+    window.targetRangeFpsStatus.weaponUpgrade = state.weaponUpgrade;
+    window.targetRangeFpsStatus.armor = Math.ceil(state.armor);
     window.targetRangeFpsStatus.running = state.running;
     window.targetRangeFpsStatus.online = net.online ? (net.isHost ? "host" : "guest") : "offline";
     window.targetRangeFpsStatus.onlinePeers = remotePlayers.size;
     window.targetRangeFpsStatus.obstacleColliders = obstacleColliders.length;
+    window.targetRangeFpsStatus.destructibleCover = obstacleColliders.filter((collider) => collider.destructible).length;
     window.targetRangeFpsStatus.player = {
       x: Number(player.position.x.toFixed(2)),
       y: Number(player.position.y.toFixed(2)),
@@ -1084,6 +1186,8 @@
     document.body.dataset.fpsScoped = String(state.scoped);
     document.body.dataset.fpsWeapon = weapons[state.weaponIndex].name;
     document.body.dataset.fpsWeaponSlot = weapons[state.weaponIndex].slot;
+    document.body.dataset.fpsWeaponUpgrade = String(state.weaponUpgrade);
+    document.body.dataset.fpsArmor = String(Math.ceil(state.armor));
     document.body.dataset.fpsRunning = String(state.running);
     document.body.dataset.fpsHealth = String(Math.max(0, Math.ceil(player.health)));
     document.body.dataset.fpsPlayerY = player.position.y.toFixed(2);
@@ -1095,6 +1199,14 @@
     document.body.dataset.fpsObjective = state.controlOwner || "neutral";
     document.body.dataset.fpsOnlinePeers = String(remotePlayers.size);
     document.body.dataset.fpsObstacleColliders = String(obstacleColliders.length);
+    document.body.dataset.fpsDestructibleCover = String(obstacleColliders.filter((collider) => collider.destructible).length);
+  }
+
+  function getObjectiveText() {
+    if (state.mode === "control") return `Control Point: ${state.controlOwner ? teams[state.controlOwner].name : "Neutral"}`;
+    if (state.mode === "survival") return "Survival: hold out against waves";
+    if (state.mode === "boss") return "Boss Hunt: drop the heavy boss";
+    return "Team Deathmatch";
   }
 
   function resolveObstacleCollision(position, radius) {
@@ -1133,16 +1245,39 @@
     let closestDistance = Infinity;
     raycaster.set(start, direction);
     raycaster.far = maxDistance;
-    obstacleColliders.forEach(({ box }) => {
-      const hit = raycaster.ray.intersectBox(box, obstacleHitPoint);
+    obstacleColliders.forEach((collider) => {
+      const hit = raycaster.ray.intersectBox(collider.box, obstacleHitPoint);
       if (!hit) return;
       const distance = start.distanceTo(hit);
       if (distance <= maxDistance && distance < closestDistance) {
         closestDistance = distance;
-        closestHit = hit.clone();
+        closestHit = { point: hit.clone(), collider };
       }
     });
-    return closestHit ? { point: closestHit, distance: closestDistance } : null;
+    return closestHit ? { ...closestHit, distance: closestDistance } : null;
+  }
+
+  function damageObstacle(collider, amount, hitPoint) {
+    if (!collider?.destructible) return false;
+    collider.health -= amount;
+    if (collider.object.material?.emissive) collider.object.material.emissive.setHex(0xff6b4a);
+    if (collider.health > 0) return false;
+    collider.object.visible = false;
+    coverObjects.splice(coverObjects.indexOf(collider.object), 1);
+    obstacleColliders.splice(obstacleColliders.indexOf(collider), 1);
+    spawnParticles(hitPoint || collider.object.position, collider.weak ? 0xffd166 : 0xff8a4c);
+    addFeed("Cover destroyed");
+    return true;
+  }
+
+  function restoreDestructibleCover() {
+    allObstacleColliders.forEach((collider) => {
+      if (!collider.destructible) return;
+      collider.health = collider.maxHealth;
+      collider.object.visible = true;
+      if (!coverObjects.includes(collider.object)) coverObjects.push(collider.object);
+      if (!obstacleColliders.includes(collider)) obstacleColliders.push(collider);
+    });
   }
 
   function getTeamRosters() {
@@ -1234,7 +1369,7 @@
     if (movingLeft) tempDirection.sub(right);
     if (tempDirection.lengthSq() > 0) tempDirection.normalize();
 
-    const speed = keys.has("ShiftLeft") || keys.has("ShiftRight") ? 15 : 10.5;
+    const speed = (keys.has("ShiftLeft") || keys.has("ShiftRight") ? 15 : 10.5) * (performance.now() < state.speedBoostUntil ? 1.35 : 1);
     const finalSpeed = state.scoped ? speed * 0.62 : speed;
     player.velocity.lerp(tempDirection.multiplyScalar(finalSpeed), 1 - Math.pow(0.02, delta));
     player.position.addScaledVector(player.velocity, delta);
@@ -1273,6 +1408,19 @@
       const botDelta = Math.min((now - data.updatedAt) / 1000, 0.5) || delta;
       data.updatedAt = now;
       data.age += botDelta;
+      if (data.heal && now > (data.nextHealAt || 0)) {
+        const ally = targets.find((candidate) => candidate !== target && candidate.userData.team === data.team && candidate.userData.alive && candidate.userData.health < candidate.userData.maxHealth && candidate.position.distanceTo(target.position) < 8);
+        if (ally) {
+          ally.userData.health = Math.min(ally.userData.maxHealth, ally.userData.health + data.heal);
+          updateHealthBar(ally);
+          spawnParticles(ally.position.clone().add(new THREE.Vector3(0, 2.2, 0)), teams[data.team].color);
+          data.nextHealAt = now + 2400;
+        }
+      }
+      if (data.health < data.maxHealth * 0.38 && now > (data.nextCoverSeekAt || 0)) {
+        sendBotToCover(target);
+        data.nextCoverSeekAt = now + 2600;
+      }
       walkTarget.copy(data.destination);
       walkDirection.copy(walkTarget).sub(target.position);
       walkDirection.y = 0;
@@ -1312,7 +1460,8 @@
       if (data.armed) {
         data.enemyGun.rotation.x = -0.08 + Math.sin(data.age * 3 + data.phase) * 0.04;
         nextEnemyShotIn = Math.min(nextEnemyShotIn, (data.nextShotAt - now) / 1000);
-        if (state.running && now >= data.nextShotAt && camera.position.distanceTo(target.position) < 86) {
+        const aimPoint = getAimPointForTeam(data.team);
+        if (state.running && now >= data.nextShotAt && aimPoint && target.position.distanceTo(aimPoint) < data.range) {
           shootEnemyBullet(target);
           const setting = difficultySettings[state.difficulty] || difficultySettings.normal;
           data.nextShotAt = now + data.shotCooldown * setting.fireRate + Math.random() * 1100;
@@ -1347,6 +1496,23 @@
       0,
       THREE.MathUtils.randFloat(arenaBounds.botMinZ, arenaBounds.botMaxZ)
     );
+  }
+
+  function sendBotToCover(target) {
+    if (!coverObjects.length) return setWalkDestination(target);
+    const cover = coverObjects
+      .map((object) => ({ object, distance: object.position.distanceTo(target.position) }))
+      .sort((left, right) => left.distance - right.distance)[0]?.object;
+    if (!cover) return setWalkDestination(target);
+    const awayFromEnemy = target.userData.team === "blue"
+      ? target.position.clone().sub(camera.position)
+      : target.position.clone().sub(controlPoint);
+    awayFromEnemy.y = 0;
+    if (awayFromEnemy.lengthSq() < 0.1) awayFromEnemy.set(Math.random() - 0.5, 0, Math.random() - 0.5);
+    awayFromEnemy.normalize();
+    target.userData.destination.copy(cover.position).addScaledVector(awayFromEnemy, 3.2);
+    target.userData.destination.x = THREE.MathUtils.clamp(target.userData.destination.x, arenaBounds.botMinX, arenaBounds.botMaxX);
+    target.userData.destination.z = THREE.MathUtils.clamp(target.userData.destination.z, arenaBounds.botMinZ, arenaBounds.botMaxZ);
   }
 
   function spawnParticles(position, color) {
@@ -1427,14 +1593,35 @@
       const streakBonus = Math.min(400, state.streak * 20);
       state.score += data.value + closeBonus + streakBonus;
       state.streak += 1;
-      if (state.streak % 8 === 0) {
+      if (state.mode !== "boss" && state.streak % 8 === 0) {
         state.wave += 1;
         makeTarget();
       }
     }
+    if (data.isBoss && attackerTeam === "red") {
+      state.redScore = state.matchTarget;
+      endGame("Boss destroyed");
+      return true;
+    }
+    if (state.mode === "survival" && !targets.some((candidate) => candidate.userData.alive && candidate.userData.team === "blue")) {
+      state.wave += 1;
+      for (let index = 0; index < Math.min(4 + state.wave, 12); index += 1) makeTarget();
+      addFeed(`Wave ${state.wave} incoming`);
+    }
     addFeed(`${attackerName} dropped ${data.name} (${data.className})`);
     checkRoundEnd();
     return true;
+  }
+
+  function applySplashDamage(center, weapon, attackerTeam, attackerName) {
+    if (!weapon.splash) return;
+    targets.forEach((target) => {
+      if (!target.userData.alive || target.userData.team === attackerTeam) return;
+      const distance = target.position.distanceTo(center);
+      if (distance > weapon.splash) return;
+      const falloff = 1 - distance / weapon.splash;
+      damageBot(target, weapon.damage * 0.55 * falloff, attackerTeam, attackerName, center);
+    });
   }
 
   function respawnBot(target) {
@@ -1451,7 +1638,14 @@
   function damagePlayer(amount, source) {
     if (!state.running || player.health <= 0) return;
     const setting = difficultySettings[state.difficulty] || difficultySettings.normal;
-    player.health -= amount * setting.playerDamage;
+    let incomingDamage = amount * setting.playerDamage;
+    if (performance.now() < state.shieldUntil) incomingDamage *= 0.35;
+    if (state.armor > 0) {
+      const absorbed = Math.min(state.armor, incomingDamage * 0.65);
+      state.armor -= absorbed;
+      incomingDamage -= absorbed;
+    }
+    player.health -= incomingDamage;
     spawnParticles(camera.position, teams.blue.color);
     playTone(130, 0.08, "sawtooth");
     if (player.health > 0) {
@@ -1470,27 +1664,31 @@
     const start = target.localToWorld(new THREE.Vector3(0.92, 2.12, 0.96));
     const aimPoint = getAimPointForTeam(target.userData.team);
     if (!aimPoint) return;
-    const direction = aimPoint.sub(start).normalize();
-    direction.x += (Math.random() - 0.5) * 0.035;
-    direction.y += (Math.random() - 0.5) * 0.018;
-    direction.z += (Math.random() - 0.5) * 0.035;
-    direction.normalize();
-
-    const shot = new THREE.Mesh(
-      new THREE.SphereGeometry(0.09, 12, 8),
-      new THREE.MeshBasicMaterial({ color: teams[target.userData.team].color })
-    );
-    shot.position.copy(start);
-    shot.userData.velocity = direction.multiplyScalar(45);
-    shot.userData.life = 1.35;
-    shot.userData.previous = start.clone();
-    shot.userData.updatedAt = performance.now();
-    shot.userData.team = target.userData.team;
-    shot.userData.damage = 22 * ((difficultySettings[state.difficulty] || difficultySettings.normal).botDamage || 1);
-    shot.userData.source = target.userData.name;
-    shot.add(new THREE.PointLight(teams[target.userData.team].color, 1.5, 6, 2));
-    scene.add(shot);
-    enemyBullets.push(shot);
+    const baseDirection = aimPoint.sub(start).normalize();
+    const pellets = target.userData.pellets || 1;
+    for (let pellet = 0; pellet < pellets; pellet += 1) {
+      const direction = baseDirection.clone();
+      const spread = pellets > 1 ? 0.075 : 0.035;
+      direction.x += (Math.random() - 0.5) * spread;
+      direction.y += (Math.random() - 0.5) * 0.02;
+      direction.z += (Math.random() - 0.5) * spread;
+      direction.normalize();
+      const shot = new THREE.Mesh(
+        new THREE.SphereGeometry(target.userData.isBoss ? 0.14 : 0.09, 12, 8),
+        new THREE.MeshBasicMaterial({ color: teams[target.userData.team].color })
+      );
+      shot.position.copy(start);
+      shot.userData.velocity = direction.multiplyScalar(target.userData.className === "Sniper" ? 62 : 45);
+      shot.userData.life = target.userData.className === "Sniper" ? 1.75 : 1.35;
+      shot.userData.previous = start.clone();
+      shot.userData.updatedAt = performance.now();
+      shot.userData.team = target.userData.team;
+      shot.userData.damage = (pellets > 1 ? 14 : 22) * (target.userData.damageScale || 1) * ((difficultySettings[state.difficulty] || difficultySettings.normal).botDamage || 1);
+      shot.userData.source = target.userData.name;
+      shot.add(new THREE.PointLight(teams[target.userData.team].color, 1.5, 6, 2));
+      scene.add(shot);
+      enemyBullets.push(shot);
+    }
     state.enemyShots += 1;
     state.lastEnemyShotAt = performance.now();
     document.body.dataset.fpsEnemyBullets = String(enemyBullets.length);
@@ -1582,7 +1780,11 @@
     const hitGroup = hits.map((hit) => getTargetGroup(hit.object)).find((target) => target?.userData.team !== "red" && target.userData.alive);
     if (!hitGroup) return;
     const hit = hits.find((candidate) => getTargetGroup(candidate.object) === hitGroup);
-    if (obstacleHit && hit && obstacleHit.distance < start.distanceTo(hit.point)) return;
+    if (obstacleHit && hit && obstacleHit.distance < start.distanceTo(hit.point)) {
+      damageObstacle(obstacleHit.collider, weapon.damage, obstacleHit.point);
+      applySplashDamage(obstacleHit.point, weapon, "red", remotePlayers.get(peerId)?.name || "Online player");
+      return;
+    }
     const remote = remotePlayers.get(peerId);
     const attackerName = remote?.name || "Online player";
     damageBot(hitGroup, weapon.damage, "red", attackerName, hit?.point);
@@ -1627,6 +1829,8 @@
           if (obstacleHit && obstacleHit.distance < bulletStart.distanceTo(hit.point)) {
             bullet.position.copy(obstacleHit.point);
             spawnParticles(obstacleHit.point, bullet.material.color);
+            damageObstacle(obstacleHit.collider, bullet.userData.weapon.damage, obstacleHit.point);
+            applySplashDamage(obstacleHit.point, bullet.userData.weapon, "red", "P1");
             scene.remove(bullet);
             bullets.splice(index, 1);
             state.streak = 0;
@@ -1643,6 +1847,8 @@
       if (obstacleHit) {
         bullet.position.copy(obstacleHit.point);
         spawnParticles(obstacleHit.point, bullet.material.color);
+        damageObstacle(obstacleHit.collider, bullet.userData.weapon.damage, obstacleHit.point);
+        applySplashDamage(obstacleHit.point, bullet.userData.weapon, "red", "P1");
         scene.remove(bullet);
         bullets.splice(index, 1);
         state.streak = 0;
@@ -1678,6 +1884,7 @@
         if (obstacleHit) {
           bullet.position.copy(obstacleHit.point);
           spawnParticles(obstacleHit.point, bullet.material.color);
+          damageObstacle(obstacleHit.collider, bullet.userData.damage, obstacleHit.point);
           scene.remove(bullet);
           enemyBullets.splice(index, 1);
           continue;
@@ -1770,7 +1977,8 @@
       return;
     }
     weaponAmmo[state.weaponIndex] -= 1;
-    state.nextFireAt = now + (state.scoped ? weapon.cooldown * 1.08 : weapon.cooldown);
+    const upgradeScale = 1 + state.weaponUpgrade * 0.08;
+    state.nextFireAt = now + (state.scoped ? weapon.cooldown * 1.08 : weapon.cooldown) / (1 + state.weaponUpgrade * 0.04);
     state.recoilTimer = weapon.recoil;
     state.flashTimer = 0.07;
     muzzleLight.intensity = 9;
@@ -1785,7 +1993,7 @@
         direction.z += (Math.random() - 0.5) * spread;
         direction.normalize();
       }
-      makeBullet(weapon, direction);
+      makeBullet({ ...weapon, damage: weapon.damage * upgradeScale }, direction);
       sendShotMessage(weapon, direction);
     }
     playTone(210 + state.weaponIndex * 32, 0.045, weapon.name === "Rail" ? "sine" : "square");
@@ -1823,6 +2031,7 @@
 
   function handleTargetHit(hitGroup, hitPoint, weapon) {
     damageBot(hitGroup, weapon.damage, "red", "P1", hitPoint);
+    applySplashDamage(hitPoint, weapon, "red", "P1");
     syncHud();
   }
 
@@ -1860,16 +2069,37 @@
       pickup.rotation.y += delta * 1.8;
       pickup.position.y = pickup.userData.baseY + Math.sin(now * 0.004 + pickup.userData.weaponIndex) * 0.12;
       if (player.position.distanceTo(pickup.position) < 2.1) {
-        const pickupWeapon = pickup.userData.weaponIndex;
-        weaponAmmo[pickupWeapon] = weapons[pickupWeapon].mag;
-        equipWeapon(pickupWeapon);
+        applyPickup(pickup);
         pickup.visible = false;
-        pickup.userData.respawnAt = now + 9000;
-        state.reloadUntil = 0;
-        addFeed(`Picked up ${weapons[pickupWeapon].name}`);
-        playTone(820, 0.08, "triangle");
+        pickup.userData.respawnAt = now + (pickup.userData.type === "weapon" ? 9000 : 12000);
       }
     });
+  }
+
+  function applyPickup(pickup) {
+    const now = performance.now();
+    if (pickup.userData.type === "weapon") {
+      const pickupWeapon = pickup.userData.weaponIndex;
+      weaponAmmo[pickupWeapon] = weapons[pickupWeapon].mag;
+      equipWeapon(pickupWeapon);
+      state.reloadUntil = 0;
+    } else if (pickup.userData.type === "health") {
+      player.health = Math.min(player.maxHealth, player.health + 42);
+    } else if (pickup.userData.type === "armor") {
+      state.armor = Math.min(100, state.armor + 55);
+    } else if (pickup.userData.type === "speed") {
+      state.speedBoostUntil = now + 9500;
+    } else if (pickup.userData.type === "upgrade") {
+      state.weaponUpgrade = Math.min(5, state.weaponUpgrade + 1);
+      weapons.forEach((weapon, index) => {
+        weaponAmmo[index] = Math.min(weapon.mag + state.weaponUpgrade * 2, weaponAmmo[index] + 3);
+      });
+    } else if (pickup.userData.type === "shield") {
+      state.shieldUntil = now + 8000;
+    }
+    addFeed(`Picked up ${pickup.userData.label}`);
+    playTone(820, 0.08, "triangle");
+    syncHud();
   }
 
   function updateObjective(now) {
@@ -1943,7 +2173,7 @@
         endGame("Time up");
       }
       state.spawnTimer += delta;
-      if (state.spawnTimer > 12 && targets.length < 18) {
+      if (state.mode !== "boss" && state.spawnTimer > (state.mode === "survival" ? 9 : 12) && targets.length < 18) {
         state.spawnTimer = 0;
         state.wave += 1;
         makeTarget();
@@ -2075,6 +2305,8 @@
   });
   hostOnlineButton.addEventListener("click", hostOnline);
   joinOnlineButton.addEventListener("click", joinOnline);
+  copyRoomButton.addEventListener("click", copyRoomCode);
+  leaveOnlineButton.addEventListener("click", cleanupNetwork);
   roomCodeInput.addEventListener("input", () => {
     roomCodeInput.value = roomCodeInput.value.toUpperCase();
   });

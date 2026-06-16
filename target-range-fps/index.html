@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Target Range FPS</title>
-  <link rel="stylesheet" href="./style.css">
+  <link rel="stylesheet" href="./style.css?v=upgrade-pack-4-20260616">
 </head>
 <body>
   <main class="game-shell">
@@ -73,6 +73,8 @@
           <select id="modeSelect">
             <option value="tdm">Team Deathmatch</option>
             <option value="control">Control Point</option>
+            <option value="survival">Survival Waves</option>
+            <option value="boss">Boss Hunt</option>
           </select>
         </label>
         <label>Bots
@@ -102,6 +104,8 @@
         <button class="secondary" id="hostOnlineButton" type="button">Host Online</button>
         <input id="roomCodeInput" maxlength="8" placeholder="Room code" aria-label="Room code">
         <button class="secondary" id="joinOnlineButton" type="button">Join Online</button>
+        <button class="secondary" id="copyRoomButton" type="button">Copy Room</button>
+        <button class="secondary" id="leaveOnlineButton" type="button">Leave</button>
         <p id="onlineStatusValue">Offline: bots still play.</p>
       </div>
       <button id="startButton" type="button">Start Run</button>
@@ -141,6 +145,6 @@
 
   <script src="../vendor/three.min.js"></script>
   <script src="./peerjs.min.js"></script>
-  <script src="./game.js?v=solid-obstacles-20260616"></script>
+  <script src="./game.js?v=upgrade-pack-4-20260616"></script>
 </body>
 </html>
