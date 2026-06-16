@@ -152,6 +152,71 @@ button {
   height: 34px;
 }
 
+.scope-overlay {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+
+.scope-overlay::before {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at center, transparent 0 25vmin, rgba(0, 0, 0, 0.72) calc(25vmin + 2px)),
+    radial-gradient(circle at center, rgba(67, 213, 255, 0.08), transparent 26vmin);
+  content: "";
+}
+
+.scope-overlay::after {
+  width: min(50vmin, 520px);
+  aspect-ratio: 1;
+  border: 2px solid rgba(247, 250, 252, 0.82);
+  border-radius: 50%;
+  box-shadow:
+    inset 0 0 28px rgba(67, 213, 255, 0.14),
+    0 0 26px rgba(67, 213, 255, 0.18);
+  content: "";
+}
+
+.scope-overlay span {
+  position: absolute;
+  width: min(50vmin, 520px);
+  aspect-ratio: 1;
+}
+
+.scope-overlay span::before,
+.scope-overlay span::after {
+  position: absolute;
+  background: rgba(247, 250, 252, 0.76);
+  content: "";
+}
+
+.scope-overlay span::before {
+  top: 50%;
+  left: 8%;
+  width: 84%;
+  height: 1px;
+}
+
+.scope-overlay span::after {
+  top: 8%;
+  left: 50%;
+  width: 1px;
+  height: 84%;
+}
+
+.game-shell.is-scoped .scope-overlay {
+  opacity: 1;
+}
+
+.game-shell.is-scoped .crosshair {
+  opacity: 0;
+}
+
 .center-panel,
 .end-panel {
   position: absolute;

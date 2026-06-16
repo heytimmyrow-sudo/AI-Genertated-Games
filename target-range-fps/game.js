@@ -13,6 +13,7 @@
   const againButton = document.getElementById("againButton");
   const resetButton = document.getElementById("resetButton");
   const touchFire = document.getElementById("touchFire");
+  const gameShell = document.querySelector(".game-shell");
 
   const bestKey = "targetRangeFpsBest";
   const scene = new THREE.Scene();
@@ -37,6 +38,7 @@
     spawnTimer: 0,
     flashTimer: 0,
     recoilTimer: 0,
+    scoped: false,
     best: Number(localStorage.getItem(bestKey) || 0)
   };
 
@@ -46,6 +48,7 @@
     targets: 0,
     bullets: 0,
     player: { x: 0, z: 22, yaw: 0 },
+    scoped: false,
     running: false
   };
 
@@ -270,6 +273,7 @@
     state.timeLeft = 90;
     state.spawnTimer = 0;
     state.recoilTimer = 0;
+    setScoped(false);
     player.position.set(0, 2.1, 22);
     player.velocity.set(0, 0, 0);
     player.yaw = 0;
@@ -283,6 +287,7 @@
 
   function endGame() {
     state.running = false;
+    setScoped(false);
     document.exitPointerLock?.();
     if (state.score > state.best) {
       state.best = state.score;
@@ -311,6 +316,7 @@
     waveValue.textContent = state.wave;
     window.targetRangeFpsStatus.targets = targets.length;
     window.targetRangeFpsStatus.bullets = bullets.length;
+    window.targetRangeFpsStatus.scoped = state.scoped;
     window.targetRangeFpsStatus.running = state.running;
     window.targetRangeFpsStatus.player = {
       x: Number(player.position.x.toFixed(2)),
@@ -319,7 +325,17 @@
     };
     document.body.dataset.fpsTargets = String(targets.length);
     document.body.dataset.fpsBullets = String(bullets.length);
+    document.body.dataset.fpsScoped = String(state.scoped);
     document.body.dataset.fpsRunning = String(state.running);
+  }
+
+  function setScoped(scoped) {
+    state.scoped = scoped && state.running;
+    gameShell.classList.toggle("is-scoped", state.scoped);
+    camera.fov = state.scoped ? 36 : 72;
+    camera.updateProjectionMatrix();
+    document.body.dataset.fpsScoped = String(state.scoped);
+    window.targetRangeFpsStatus.scoped = state.scoped;
   }
 
   function updateCamera() {
@@ -328,9 +344,11 @@
     camera.rotation.x = player.pitch;
     camera.position.copy(player.position);
     if (state.recoilTimer > 0) {
-      camera.rotation.x -= state.recoilTimer * 0.018;
+      camera.rotation.x -= state.recoilTimer * (state.scoped ? 0.008 : 0.018);
     }
-    gun.position.z = state.recoilTimer > 0 ? state.recoilTimer * 0.08 : 0;
+    gun.position.z = state.recoilTimer > 0 ? state.recoilTimer * (state.scoped ? 0.035 : 0.08) : 0;
+    gun.position.x = state.scoped ? -0.08 : 0;
+    gun.position.y = state.scoped ? 0.04 : 0;
   }
 
   function updateMovement(delta) {
@@ -349,7 +367,8 @@
     if (tempDirection.lengthSq() > 0) tempDirection.normalize();
 
     const speed = keys.has("ShiftLeft") || keys.has("ShiftRight") ? 15 : 10.5;
-    player.velocity.lerp(tempDirection.multiplyScalar(speed), 1 - Math.pow(0.02, delta));
+    const finalSpeed = state.scoped ? speed * 0.62 : speed;
+    player.velocity.lerp(tempDirection.multiplyScalar(finalSpeed), 1 - Math.pow(0.02, delta));
     player.position.addScaledVector(player.velocity, delta);
     player.position.x = THREE.MathUtils.clamp(player.position.x, -34, 34);
     player.position.z = THREE.MathUtils.clamp(player.position.z, -31, 28);
@@ -548,6 +567,18 @@
   }
 
   window.addEventListener("resize", resize);
+  window.addEventListener("contextmenu", (event) => {
+    if (state.running) event.preventDefault();
+  });
+  window.addEventListener("mousedown", (event) => {
+    if (event.button === 2 && state.running && !event.target.closest("button")) {
+      event.preventDefault();
+      setScoped(true);
+    }
+  });
+  window.addEventListener("mouseup", (event) => {
+    if (event.button === 2) setScoped(false);
+  });
   window.addEventListener("keydown", (event) => {
     keys.add(event.code);
     if (event.code === "Space") {
@@ -570,8 +601,17 @@
     if (event.target.closest("button")) return;
     if (!state.running) return;
     if (document.pointerLockElement !== canvas) requestCanvasLock();
+    if (event.button === 2) {
+      event.preventDefault();
+      setScoped(true);
+      return;
+    }
     shoot();
   });
+  window.addEventListener("pointerup", (event) => {
+    if (event.button === 2) setScoped(false);
+  });
+  window.addEventListener("blur", () => setScoped(false));
 
   document.querySelectorAll("[data-move]").forEach((button) => {
     const move = button.dataset.move;
