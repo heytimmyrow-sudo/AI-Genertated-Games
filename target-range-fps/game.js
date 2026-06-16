@@ -167,6 +167,7 @@
   const obstacleColliders = [];
   const allObstacleColliders = [];
   const sniperPerches = [];
+  const sniperMapObjects = [];
   const weaponPickups = [];
   const remotePlayers = new Map();
   const remotePlayerMaterial = new THREE.MeshStandardMaterial({ color: teams.red.color, roughness: 0.42, metalness: 0.45 });
@@ -195,6 +196,14 @@
     hard: { playerDamage: 1.25, botDamage: 1.15, fireRate: 0.74 }
   };
   const groundY = 2.1;
+  const sniperTower = {
+    center: new THREE.Vector3(0, 13.2, 35),
+    halfSize: 4.6,
+    botMinX: -52,
+    botMaxX: 52,
+    botMinZ: -46,
+    botMaxZ: 12
+  };
   const jumpVelocity = 8.8;
   const gravity = 25;
   const arenaBounds = {
@@ -275,6 +284,7 @@
 
   const enemyGunMaterial = new THREE.MeshStandardMaterial({ color: 0x111820, roughness: 0.32, metalness: 0.72 });
   createCoverObjects();
+  createSniperTowerMap();
   createControlPoint();
   createWeaponPickups();
   bestValue.textContent = state.best;
@@ -525,6 +535,46 @@
     addSniperPerch(-52, 38, coverMaterial, trimMaterial);
     addSniperPerch(52, 38, coverMaterial, trimMaterial);
     addSniperPerch(0, 42, coverMaterial, trimMaterial);
+  }
+
+  function createSniperTowerMap() {
+    const towerMaterial = new THREE.MeshStandardMaterial({ color: 0x27384a, roughness: 0.68, metalness: 0.24 });
+    const railMaterial = new THREE.MeshStandardMaterial({ color: 0xffd166, emissive: 0x7a4f00, emissiveIntensity: 0.24, roughness: 0.38 });
+    const rangeMaterial = new THREE.MeshBasicMaterial({ color: 0x43d5ff, transparent: true, opacity: 0.16 });
+    const group = new THREE.Group();
+    const shaft = new THREE.Mesh(new THREE.CylinderGeometry(3.2, 4.2, 13.2, 10), towerMaterial);
+    const deck = new THREE.Mesh(new THREE.BoxGeometry(11, 0.65, 11), towerMaterial.clone());
+    const railNorth = new THREE.Mesh(new THREE.BoxGeometry(11.6, 1.2, 0.32), railMaterial.clone());
+    const railSouth = new THREE.Mesh(new THREE.BoxGeometry(11.6, 1.2, 0.32), railMaterial.clone());
+    const railWest = new THREE.Mesh(new THREE.BoxGeometry(0.32, 1.2, 11.6), railMaterial.clone());
+    const railEast = new THREE.Mesh(new THREE.BoxGeometry(0.32, 1.2, 11.6), railMaterial.clone());
+    shaft.position.set(sniperTower.center.x, 6.6, sniperTower.center.z);
+    deck.position.copy(sniperTower.center).setY(sniperTower.center.y - 0.42);
+    railNorth.position.set(sniperTower.center.x, sniperTower.center.y + 0.45, sniperTower.center.z - 5.6);
+    railSouth.position.set(sniperTower.center.x, sniperTower.center.y + 0.45, sniperTower.center.z + 5.6);
+    railWest.position.set(sniperTower.center.x - 5.6, sniperTower.center.y + 0.45, sniperTower.center.z);
+    railEast.position.set(sniperTower.center.x + 5.6, sniperTower.center.y + 0.45, sniperTower.center.z);
+    [shaft, deck, railNorth, railSouth, railWest, railEast].forEach((part) => {
+      part.castShadow = true;
+      part.receiveShadow = true;
+      group.add(part);
+    });
+    for (let lane = 0; lane < 5; lane += 1) {
+      const marker = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.06, 56), rangeMaterial.clone());
+      marker.position.set(-40 + lane * 20, 0.08, -17);
+      group.add(marker);
+    }
+    for (let distance = 0; distance < 4; distance += 1) {
+      const stripe = new THREE.Mesh(new THREE.BoxGeometry(110, 0.07, 0.4), rangeMaterial.clone());
+      stripe.position.set(0, 0.09, 8 - distance * 15);
+      group.add(stripe);
+    }
+    const label = new THREE.Mesh(new THREE.BoxGeometry(26, 0.12, 1.6), railMaterial.clone());
+    label.position.set(0, 0.16, 15);
+    group.add(label);
+    group.visible = false;
+    scene.add(group);
+    sniperMapObjects.push(group);
   }
 
   function registerObstacle(mesh, navigable = true, options = {}) {
@@ -927,16 +977,18 @@
     const group = new THREE.Group();
     const botNumber = state.botCounter + 1;
     state.botCounter += 1;
-    const teamKey = state.mode === "survival" || state.mode === "boss"
+    const teamKey = state.mode === "sniper"
+      ? "blue"
+      : state.mode === "survival" || state.mode === "boss"
       ? (botNumber % 5 === 0 ? "red" : "blue")
       : (botNumber % 4 === 0 || botNumber % 5 === 0 ? "red" : "blue");
     const team = teams[teamKey];
     const isBoss = state.mode === "boss" && botNumber === 1;
-    const isSniperTowerBot = state.mode === "sniper" && teamKey === "blue";
+    const isSniperTowerBot = state.mode === "sniper";
     const botClass = isBoss
       ? { ...botClasses[5], name: "Boss", health: 720, speed: 0.52, shot: 0.92, damage: 1.8, range: 104, pellets: 3 }
       : isSniperTowerBot
-        ? { ...botClasses[2], name: botNumber % 3 === 0 ? "Tower Guard" : "Sniper", health: 95, speed: 0.72, shot: 1.65, damage: 1.72, range: 125 }
+        ? { ...botClasses[6], name: botNumber % 3 === 0 ? "Fast Target" : "Moving Target", health: 75, speed: 1.35, shot: 0, damage: 0, range: 0 }
         : botClasses[(botNumber - 1) % botClasses.length];
     const robotBodyMaterial = new THREE.MeshStandardMaterial({ color: team.color, roughness: 0.42, metalness: 0.55 });
     const robotArmorMaterial = new THREE.MeshStandardMaterial({ color: team.dark, roughness: 0.5, metalness: 0.3 });
@@ -956,7 +1008,7 @@
     const avatar = new THREE.Mesh(new THREE.SphereGeometry(0.18, 16, 10), robotCoreMaterial.clone());
     const healthBack = new THREE.Mesh(new THREE.BoxGeometry(1.35, 0.1, 0.08), new THREE.MeshBasicMaterial({ color: 0x050910 }));
     const healthFill = new THREE.Mesh(new THREE.BoxGeometry(1.26, 0.08, 0.09), new THREE.MeshBasicMaterial({ color: team.color }));
-    const armed = targets.length % 3 === 0 || Math.random() < 0.24;
+    const armed = state.mode !== "sniper" && (targets.length % 3 === 0 || Math.random() < 0.24);
 
     body.position.y = 2.22;
     chest.position.set(0, 2.38, 0.31);
@@ -999,7 +1051,7 @@
       armed,
       isBoss,
       damageScale: botClass.damage || 1,
-      range: state.mode === "sniper" ? Math.max(botClass.range || 86, 118) : botClass.range || 86,
+      range: botClass.range || 86,
       pellets: botClass.pellets || 1,
       heal: botClass.heal || 0,
       core: chest,
@@ -1009,7 +1061,7 @@
       respawnAt: 0,
       value: isBoss ? 1200 : 150,
       age: 0,
-      shotCooldown: ((state.mode === "sniper" ? 980 : 1200) + Math.random() * 1600) / botClass.shot,
+      shotCooldown: botClass.shot ? (1200 + Math.random() * 1600) / botClass.shot : Infinity,
       nextShotAt: performance.now() + 350 + Math.random() * 900,
       updatedAt: performance.now(),
       destination: new THREE.Vector3(),
@@ -1028,14 +1080,11 @@
   }
 
   function placeTarget(target, fresh = false) {
-    if (state.mode === "sniper" && target.userData.team === "blue" && sniperPerches.length) {
-      const perch = sniperPerches[(state.botCounter + targets.indexOf(target)) % sniperPerches.length];
-      const angle = Math.random() * Math.PI * 2;
-      const distance = THREE.MathUtils.randFloat(6.2, 9.5);
+    if (state.mode === "sniper") {
       target.position.set(
-        perch.x + Math.cos(angle) * distance,
+        THREE.MathUtils.randFloat(sniperTower.botMinX, sniperTower.botMaxX),
         0,
-        perch.z + Math.sin(angle) * distance
+        THREE.MathUtils.randFloat(sniperTower.botMinZ, sniperTower.botMaxZ)
       );
     } else {
       target.position.set(
@@ -1044,7 +1093,7 @@
         THREE.MathUtils.randFloat(-42, 30)
       );
     }
-    target.position.copy(findSafeBotPosition(target.position));
+    if (state.mode !== "sniper") target.position.copy(findSafeBotPosition(target.position));
     setWalkDestination(target);
     if (!fresh) {
       target.userData.phase = Math.random() * Math.PI * 2;
@@ -1063,7 +1112,7 @@
     const total = state.mode === "boss"
       ? Math.max(6, Math.floor(state.botCount / 2))
       : state.mode === "sniper"
-        ? state.botCount + 4
+        ? state.botCount + 8
         : state.botCount + Math.min(state.wave - 1, 6);
     for (let index = 0; index < total; index += 1) {
       makeTarget();
@@ -1111,14 +1160,15 @@
       pickup.visible = true;
       pickup.userData.respawnAt = 0;
     });
+    applyModeEnvironment();
     killFeed.replaceChildren();
     setScoped(false);
-    player.position.set(0, 2.1, 22);
+    player.position.copy(state.mode === "sniper" ? sniperTower.center : new THREE.Vector3(0, 2.1, 22));
     player.velocity.set(0, 0, 0);
     player.verticalVelocity = 0;
     player.grounded = true;
     player.yaw = 0;
-    player.pitch = 0;
+    player.pitch = state.mode === "sniper" ? -0.22 : 0;
     player.health = player.maxHealth;
     startPanel.hidden = true;
     endPanel.hidden = true;
@@ -1130,6 +1180,25 @@
       updateOnlineStatus(`Hosting ${net.roomCode} | Players ${net.connections.size + 1}`);
     }
     requestCanvasLock();
+  }
+
+  function applyModeEnvironment() {
+    const sniperMode = state.mode === "sniper";
+    sniperMapObjects.forEach((object) => {
+      object.visible = sniperMode;
+    });
+    coverObjects.forEach((object) => {
+      object.visible = !sniperMode;
+    });
+    weaponPickups.forEach((pickup) => {
+      pickup.visible = !sniperMode;
+    });
+    scene.background.set(sniperMode ? 0x101822 : 0x07101a);
+    scene.fog.color.set(sniperMode ? 0x101822 : 0x07101a);
+    scene.fog.near = sniperMode ? 55 : 28;
+    scene.fog.far = sniperMode ? 150 : 92;
+    floor.material.color.setHex(sniperMode ? 0x1d2a20 : 0x15202b);
+    floorTexture.repeat.set(sniperMode ? 14 : 22, sniperMode ? 14 : 20);
   }
 
   function applySettings() {
@@ -1261,13 +1330,14 @@
     if (state.mode === "control") return `Control Point: ${state.controlOwner ? teams[state.controlOwner].name : "Neutral"}`;
     if (state.mode === "survival") return "Survival: hold out against waves";
     if (state.mode === "boss") return "Boss Hunt: drop the heavy boss";
-    if (state.mode === "sniper") return "Sniper Tower: clear the tower squads";
+    if (state.mode === "sniper") return "Sniper Tower: stay on the tower, clear moving targets";
     return "Team Deathmatch";
   }
 
   function resolveObstacleCollision(position, radius) {
     let blocked = false;
-    obstacleColliders.forEach(({ box }) => {
+    obstacleColliders.forEach(({ object, box }) => {
+      if (!object.visible) return;
       if (position.y < box.min.y - 0.35 || position.y > box.max.y + 2.5) return;
       const closestX = THREE.MathUtils.clamp(position.x, box.min.x, box.max.x);
       const closestZ = THREE.MathUtils.clamp(position.z, box.min.z, box.max.z);
@@ -1297,7 +1367,8 @@
   }
 
   function isObstacleBlocked(position, radius = 1.1) {
-    return obstacleColliders.some(({ box }) => {
+    return obstacleColliders.some(({ object, box }) => {
+      if (!object.visible) return false;
       if (position.y < box.min.y - 0.35 || position.y > box.max.y + 2.5) return false;
       const closestX = THREE.MathUtils.clamp(position.x, box.min.x, box.max.x);
       const closestZ = THREE.MathUtils.clamp(position.z, box.min.z, box.max.z);
@@ -1338,6 +1409,7 @@
     raycaster.set(start, direction);
     raycaster.far = maxDistance;
     obstacleColliders.forEach((collider) => {
+      if (!collider.object.visible) return;
       const hit = raycaster.ray.intersectBox(collider.box, obstacleHitPoint);
       if (!hit) return;
       const distance = start.distanceTo(hit);
@@ -1447,6 +1519,10 @@
   }
 
   function updateMovement(delta) {
+    if (state.mode === "sniper") {
+      updateSniperTowerMovement(delta);
+      return;
+    }
     const movingForward = keys.has("KeyW") || keys.has("ArrowUp") || touchMoves.has("forward");
     const movingBack = keys.has("KeyS") || keys.has("ArrowDown") || touchMoves.has("backward");
     const movingLeft = keys.has("KeyA") || keys.has("ArrowLeft") || touchMoves.has("left");
@@ -1481,7 +1557,30 @@
     }
   }
 
+  function updateSniperTowerMovement(delta) {
+    const movingForward = keys.has("KeyW") || keys.has("ArrowUp") || touchMoves.has("forward");
+    const movingBack = keys.has("KeyS") || keys.has("ArrowDown") || touchMoves.has("backward");
+    const movingLeft = keys.has("KeyA") || keys.has("ArrowLeft") || touchMoves.has("left");
+    const movingRight = keys.has("KeyD") || keys.has("ArrowRight") || touchMoves.has("right");
+    forward.set(-Math.sin(player.yaw), 0, -Math.cos(player.yaw)).normalize();
+    right.set(Math.cos(player.yaw), 0, -Math.sin(player.yaw)).normalize();
+    tempDirection.set(0, 0, 0);
+    if (movingForward) tempDirection.add(forward);
+    if (movingBack) tempDirection.sub(forward);
+    if (movingRight) tempDirection.add(right);
+    if (movingLeft) tempDirection.sub(right);
+    if (tempDirection.lengthSq() > 0) tempDirection.normalize();
+    player.velocity.lerp(tempDirection.multiplyScalar(state.scoped ? 3.2 : 5.2), 1 - Math.pow(0.025, delta));
+    player.position.addScaledVector(player.velocity, delta);
+    player.position.x = THREE.MathUtils.clamp(player.position.x, sniperTower.center.x - sniperTower.halfSize, sniperTower.center.x + sniperTower.halfSize);
+    player.position.z = THREE.MathUtils.clamp(player.position.z, sniperTower.center.z - sniperTower.halfSize, sniperTower.center.z + sniperTower.halfSize);
+    player.position.y = sniperTower.center.y;
+    player.verticalVelocity = 0;
+    player.grounded = true;
+  }
+
   function jump() {
+    if (state.mode === "sniper") return;
     if (!state.running || !player.grounded) return;
     player.verticalVelocity = jumpVelocity;
     player.grounded = false;
@@ -1509,7 +1608,7 @@
           data.nextHealAt = now + 2400;
         }
       }
-      if (data.health < data.maxHealth * 0.38 && now > (data.nextCoverSeekAt || 0)) {
+      if (state.mode !== "sniper" && data.health < data.maxHealth * 0.38 && now > (data.nextCoverSeekAt || 0)) {
         sendBotToCover(target);
         data.nextCoverSeekAt = now + 2600;
       }
@@ -1527,11 +1626,12 @@
         const previousZ = target.position.z;
         walkDirection.normalize();
         target.position.addScaledVector(walkDirection, data.speed * botDelta);
-        target.position.x = THREE.MathUtils.clamp(target.position.x, arenaBounds.botMinX, arenaBounds.botMaxX);
-        target.position.z = THREE.MathUtils.clamp(target.position.z, arenaBounds.botMinZ, arenaBounds.botMaxZ);
-        const blocked = resolveObstacleCollision(target.position, 1.05);
-        target.position.x = THREE.MathUtils.clamp(target.position.x, arenaBounds.botMinX, arenaBounds.botMaxX);
-        target.position.z = THREE.MathUtils.clamp(target.position.z, arenaBounds.botMinZ, arenaBounds.botMaxZ);
+        const botBounds = state.mode === "sniper" ? sniperTower : arenaBounds;
+        target.position.x = THREE.MathUtils.clamp(target.position.x, botBounds.botMinX, botBounds.botMaxX);
+        target.position.z = THREE.MathUtils.clamp(target.position.z, botBounds.botMinZ, botBounds.botMaxZ);
+        const blocked = state.mode === "sniper" ? false : resolveObstacleCollision(target.position, 1.05);
+        target.position.x = THREE.MathUtils.clamp(target.position.x, botBounds.botMinX, botBounds.botMaxX);
+        target.position.z = THREE.MathUtils.clamp(target.position.z, botBounds.botMinZ, botBounds.botMaxZ);
         if (blocked || Math.hypot(target.position.x - previousX, target.position.z - previousZ) < 0.08) {
           setWalkDestination(target);
         }
@@ -1549,7 +1649,7 @@
       data.rightArm.rotation.x = Math.sin(stride) * 0.42;
       data.leftLeg.rotation.x = Math.sin(stride) * 0.34;
       data.rightLeg.rotation.x = Math.sin(stride + Math.PI) * 0.34;
-      if (data.armed) {
+      if (data.armed && state.mode !== "sniper") {
         data.enemyGun.rotation.x = -0.08 + Math.sin(data.age * 3 + data.phase) * 0.04;
         nextEnemyShotIn = Math.min(nextEnemyShotIn, (data.nextShotAt - now) / 1000);
         const aimPoint = getAimPointForTeam(data.team);
@@ -1561,7 +1661,8 @@
         }
       }
 
-      if (target.position.x < arenaBounds.botMinX || target.position.x > arenaBounds.botMaxX || target.position.z > arenaBounds.botMaxZ || target.position.z < arenaBounds.botMinZ) {
+      const activeBounds = state.mode === "sniper" ? sniperTower : arenaBounds;
+      if (target.position.x < activeBounds.botMinX || target.position.x > activeBounds.botMaxX || target.position.z > activeBounds.botMaxZ || target.position.z < activeBounds.botMinZ) {
         placeTarget(target);
       }
     });
@@ -1572,6 +1673,14 @@
   }
 
   function setWalkDestination(target) {
+    if (state.mode === "sniper") {
+      target.userData.destination.set(
+        THREE.MathUtils.randFloat(sniperTower.botMinX, sniperTower.botMaxX),
+        0,
+        THREE.MathUtils.randFloat(sniperTower.botMinZ, sniperTower.botMaxZ)
+      );
+      return;
+    }
     if (coverObjects.length && Math.random() < 0.4) {
       const cover = coverObjects[Math.floor(Math.random() * coverObjects.length)];
       target.userData.destination.set(
