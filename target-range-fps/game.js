@@ -155,6 +155,7 @@
   const enemyBullets = [];
   const particles = [];
   const coverObjects = [];
+  const obstacleColliders = [];
   const weaponPickups = [];
   const remotePlayers = new Map();
   const remotePlayerMaterial = new THREE.MeshStandardMaterial({ color: teams.red.color, roughness: 0.42, metalness: 0.45 });
@@ -174,6 +175,8 @@
   const closestPoint = new THREE.Vector3();
   const walkTarget = new THREE.Vector3();
   const walkDirection = new THREE.Vector3();
+  const obstacleBox = new THREE.Box3();
+  const obstacleHitPoint = new THREE.Vector3();
   const controlPoint = new THREE.Vector3(0, 0, -6);
   const difficultySettings = {
     easy: { playerDamage: 0.7, botDamage: 0.85, fireRate: 1.25 },
@@ -493,7 +496,12 @@
     mesh.castShadow = true;
     mesh.receiveShadow = true;
     scene.add(mesh);
-    if (navigable) coverObjects.push(mesh);
+    if (navigable) {
+      coverObjects.push(mesh);
+      mesh.updateMatrixWorld(true);
+      obstacleBox.setFromObject(mesh);
+      obstacleColliders.push({ object: mesh, box: obstacleBox.clone() });
+    }
     return mesh;
   }
 
@@ -1049,6 +1057,7 @@
     window.targetRangeFpsStatus.running = state.running;
     window.targetRangeFpsStatus.online = net.online ? (net.isHost ? "host" : "guest") : "offline";
     window.targetRangeFpsStatus.onlinePeers = remotePlayers.size;
+    window.targetRangeFpsStatus.obstacleColliders = obstacleColliders.length;
     window.targetRangeFpsStatus.player = {
       x: Number(player.position.x.toFixed(2)),
       y: Number(player.position.y.toFixed(2)),
@@ -1085,6 +1094,55 @@
     document.body.dataset.fpsMode = state.mode;
     document.body.dataset.fpsObjective = state.controlOwner || "neutral";
     document.body.dataset.fpsOnlinePeers = String(remotePlayers.size);
+    document.body.dataset.fpsObstacleColliders = String(obstacleColliders.length);
+  }
+
+  function resolveObstacleCollision(position, radius) {
+    let blocked = false;
+    obstacleColliders.forEach(({ box }) => {
+      if (position.y < box.min.y - 0.35 || position.y > box.max.y + 2.5) return;
+      const closestX = THREE.MathUtils.clamp(position.x, box.min.x, box.max.x);
+      const closestZ = THREE.MathUtils.clamp(position.z, box.min.z, box.max.z);
+      const offsetX = position.x - closestX;
+      const offsetZ = position.z - closestZ;
+      const distanceSq = offsetX * offsetX + offsetZ * offsetZ;
+      if (distanceSq >= radius * radius) return;
+      blocked = true;
+      if (distanceSq > 0.0001) {
+        const distance = Math.sqrt(distanceSq);
+        const pushDistance = radius - distance;
+        position.x += (offsetX / distance) * pushDistance;
+        position.z += (offsetZ / distance) * pushDistance;
+        return;
+      }
+      const pushLeft = Math.abs(position.x - box.min.x);
+      const pushRight = Math.abs(box.max.x - position.x);
+      const pushBack = Math.abs(position.z - box.min.z);
+      const pushFront = Math.abs(box.max.z - position.z);
+      const nearestSide = Math.min(pushLeft, pushRight, pushBack, pushFront);
+      if (nearestSide === pushLeft) position.x = box.min.x - radius;
+      else if (nearestSide === pushRight) position.x = box.max.x + radius;
+      else if (nearestSide === pushBack) position.z = box.min.z - radius;
+      else position.z = box.max.z + radius;
+    });
+    return blocked;
+  }
+
+  function getObstacleHit(start, direction, maxDistance) {
+    let closestHit = null;
+    let closestDistance = Infinity;
+    raycaster.set(start, direction);
+    raycaster.far = maxDistance;
+    obstacleColliders.forEach(({ box }) => {
+      const hit = raycaster.ray.intersectBox(box, obstacleHitPoint);
+      if (!hit) return;
+      const distance = start.distanceTo(hit);
+      if (distance <= maxDistance && distance < closestDistance) {
+        closestDistance = distance;
+        closestHit = hit.clone();
+      }
+    });
+    return closestHit ? { point: closestHit, distance: closestDistance } : null;
   }
 
   function getTeamRosters() {
@@ -1189,6 +1247,11 @@
     }
     player.position.x = THREE.MathUtils.clamp(player.position.x, arenaBounds.playerMinX, arenaBounds.playerMaxX);
     player.position.z = THREE.MathUtils.clamp(player.position.z, arenaBounds.playerMinZ, arenaBounds.playerMaxZ);
+    if (resolveObstacleCollision(player.position, 0.9)) {
+      player.velocity.multiplyScalar(0.35);
+      player.position.x = THREE.MathUtils.clamp(player.position.x, arenaBounds.playerMinX, arenaBounds.playerMaxX);
+      player.position.z = THREE.MathUtils.clamp(player.position.z, arenaBounds.playerMinZ, arenaBounds.playerMaxZ);
+    }
   }
 
   function jump() {
@@ -1220,10 +1283,18 @@
         walkDirection.y = 0;
       }
       if (walkDirection.lengthSq() > 0.001) {
+        const previousX = target.position.x;
+        const previousZ = target.position.z;
         walkDirection.normalize();
         target.position.addScaledVector(walkDirection, data.speed * botDelta);
         target.position.x = THREE.MathUtils.clamp(target.position.x, arenaBounds.botMinX, arenaBounds.botMaxX);
         target.position.z = THREE.MathUtils.clamp(target.position.z, arenaBounds.botMinZ, arenaBounds.botMaxZ);
+        const blocked = resolveObstacleCollision(target.position, 1.05);
+        target.position.x = THREE.MathUtils.clamp(target.position.x, arenaBounds.botMinX, arenaBounds.botMaxX);
+        target.position.z = THREE.MathUtils.clamp(target.position.z, arenaBounds.botMinZ, arenaBounds.botMaxZ);
+        if (blocked || Math.hypot(target.position.x - previousX, target.position.z - previousZ) < 0.08) {
+          setWalkDestination(target);
+        }
         const walkYaw = Math.atan2(walkDirection.x, walkDirection.z);
         let yawDelta = walkYaw - target.rotation.y;
         yawDelta = Math.atan2(Math.sin(yawDelta), Math.cos(yawDelta));
@@ -1504,10 +1575,14 @@
     const direction = new THREE.Vector3(message.direction.x, message.direction.y, message.direction.z).normalize();
     raycaster.set(start, direction);
     raycaster.far = 90;
+    const obstacleHit = getObstacleHit(start, direction, 90);
+    raycaster.set(start, direction);
+    raycaster.far = 90;
     const hits = raycaster.intersectObjects(targets, true);
     const hitGroup = hits.map((hit) => getTargetGroup(hit.object)).find((target) => target?.userData.team !== "red" && target.userData.alive);
     if (!hitGroup) return;
     const hit = hits.find((candidate) => getTargetGroup(candidate.object) === hitGroup);
+    if (obstacleHit && hit && obstacleHit.distance < start.distanceTo(hit.point)) return;
     const remote = remotePlayers.get(peerId);
     const attackerName = remote?.name || "Online player";
     damageBot(hitGroup, weapon.damage, "red", attackerName, hit?.point);
@@ -1541,11 +1616,22 @@
       bulletDirection.copy(bulletEnd).sub(bulletStart).normalize();
       raycaster.set(bulletStart, bulletDirection);
       raycaster.far = travel + 0.24;
+      const obstacleHit = getObstacleHit(bulletStart, bulletDirection, travel + 0.24);
+      raycaster.set(bulletStart, bulletDirection);
+      raycaster.far = travel + 0.24;
       const hits = raycaster.intersectObjects(targets, true);
       if (hits.length) {
         const hitGroup = hits.map((hit) => getTargetGroup(hit.object)).find((target) => target?.userData.team !== "red" && target.userData.alive);
         if (hitGroup) {
           const hit = hits.find((candidate) => getTargetGroup(candidate.object) === hitGroup);
+          if (obstacleHit && obstacleHit.distance < bulletStart.distanceTo(hit.point)) {
+            bullet.position.copy(obstacleHit.point);
+            spawnParticles(obstacleHit.point, bullet.material.color);
+            scene.remove(bullet);
+            bullets.splice(index, 1);
+            state.streak = 0;
+            continue;
+          }
           bullet.position.copy(hit.point);
           if (!net.online || net.isHost) handleTargetHit(hitGroup, hit.point, bullet.userData.weapon);
           if (net.online && !net.isHost) showHitMarker();
@@ -1553,6 +1639,14 @@
           bullets.splice(index, 1);
           continue;
         }
+      }
+      if (obstacleHit) {
+        bullet.position.copy(obstacleHit.point);
+        spawnParticles(obstacleHit.point, bullet.material.color);
+        scene.remove(bullet);
+        bullets.splice(index, 1);
+        state.streak = 0;
+        continue;
       }
 
       bullet.userData.life -= delta;
@@ -1576,6 +1670,19 @@
       bullet.userData.previous.copy(bullet.position);
       bullet.position.addScaledVector(bullet.userData.velocity, step || delta);
       bullet.userData.life -= step || delta;
+      bulletDirection.copy(bullet.position).sub(bullet.userData.previous);
+      const travel = bulletDirection.length();
+      if (travel > 0.001) {
+        bulletDirection.normalize();
+        const obstacleHit = getObstacleHit(bullet.userData.previous, bulletDirection, travel + 0.24);
+        if (obstacleHit) {
+          bullet.position.copy(obstacleHit.point);
+          spawnParticles(obstacleHit.point, bullet.material.color);
+          scene.remove(bullet);
+          enemyBullets.splice(index, 1);
+          continue;
+        }
+      }
       if (state.running && bullet.userData.team === "blue" && distanceToSegment(camera.position, bullet.userData.previous, bullet.position) < playerHitRadius) {
         scene.remove(bullet);
         enemyBullets.splice(index, 1);
