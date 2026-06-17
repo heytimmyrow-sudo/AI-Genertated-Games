@@ -50,6 +50,7 @@
   const gameShell = document.querySelector(".game-shell");
 
   const bestKey = "targetRangeFpsBest";
+  const sniperBestKey = "targetRangeFpsSniperBest";
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(72, 1, 0.1, 160);
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
@@ -100,7 +101,11 @@
     shieldUntil: 0,
     countdownUntil: 0,
     comboExpireAt: 0,
-    best: Number(localStorage.getItem(bestKey) || 0)
+    sniperLevel: 1,
+    sniperGoal: 25,
+    tenSecondAnnounced: false,
+    best: Number(localStorage.getItem(bestKey) || 0),
+    sniperBest: Number(localStorage.getItem(sniperBestKey) || 0)
   };
 
   const teams = {
@@ -172,6 +177,7 @@
   const allObstacleColliders = [];
   const sniperPerches = [];
   const sniperMapObjects = [];
+  const sniperShields = [];
   const weaponPickups = [];
   const remotePlayers = new Map();
   const remotePlayerMaterial = new THREE.MeshStandardMaterial({ color: teams.red.color, roughness: 0.42, metalness: 0.45 });
@@ -579,6 +585,41 @@
     const label = new THREE.Mesh(new THREE.BoxGeometry(26, 0.12, 1.6), railMaterial.clone());
     label.position.set(0, 0.16, 15);
     group.add(label);
+    const shieldMaterial = new THREE.MeshStandardMaterial({
+      color: 0x43d5ff,
+      emissive: 0x0c6f8f,
+      emissiveIntensity: 0.32,
+      transparent: true,
+      opacity: 0.62,
+      roughness: 0.28,
+      metalness: 0.18
+    });
+    [-36, 0, 36].forEach((x, index) => {
+      const shield = new THREE.Mesh(new THREE.BoxGeometry(6.8, 5.2, 0.34), shieldMaterial.clone());
+      shield.position.set(x, 4.4 + index * 0.35, -12 - index * 13);
+      shield.castShadow = true;
+      shield.receiveShadow = true;
+      shield.visible = false;
+      shield.userData.baseX = x;
+      shield.userData.baseY = shield.position.y;
+      shield.userData.baseZ = shield.position.z;
+      shield.userData.phase = index * 1.9;
+      shield.userData.speed = 0.75 + index * 0.18;
+      group.add(shield);
+      shield.updateMatrixWorld(true);
+      const collider = {
+        object: shield,
+        box: new THREE.Box3().setFromObject(shield),
+        destructible: false,
+        health: 0,
+        maxHealth: 0,
+        weak: false,
+        sniperShield: true
+      };
+      obstacleColliders.push(collider);
+      allObstacleColliders.push(collider);
+      sniperShields.push(collider);
+    });
     group.visible = false;
     scene.add(group);
     sniperMapObjects.push(group);
@@ -1089,7 +1130,9 @@
 
   function makeArcheryTarget(group, targetNumber) {
     const fastTarget = targetNumber % 3 === 0;
-    const difficultySpeed = state.difficulty === "hard" ? 1.35 : state.difficulty === "easy" ? 0.78 : 1;
+    const targetType = targetNumber % 9 === 0 ? "bonus" : targetNumber % 5 === 0 ? "tiny" : targetNumber % 4 === 0 ? "zigzag" : fastTarget ? "fast" : "normal";
+    const levelScale = 1 + (state.sniperLevel - 1) * 0.16;
+    const difficultySpeed = (state.difficulty === "hard" ? 1.35 : state.difficulty === "easy" ? 0.78 : 1) * levelScale;
     const difficultyHealth = state.difficulty === "hard" ? 112 : state.difficulty === "easy" ? 82 : 100;
     const makeTargetMaterial = (color, emissive = 0x000000) => new THREE.MeshStandardMaterial({
       color,
@@ -1132,10 +1175,23 @@
       group.add(part);
     });
     group.add(healthBack, healthFill);
+    const targetScale = targetType === "tiny" ? 0.68 : targetType === "bonus" ? 0.56 : 1;
+    if (targetScale !== 1) group.scale.setScalar(targetScale);
+    if (targetType === "bonus") {
+      [backboard, ringBlack, ringBlue, ringRed, bullseye].forEach((part) => {
+        part.material = goldMaterial.clone();
+      });
+      backboard.material.color.setHex(0xfff2a8);
+      ringBlack.material.color.setHex(0xffc857);
+      ringBlue.material.color.setHex(0xff9f1c);
+      ringRed.material.color.setHex(0xff6b35);
+      bullseye.material.color.setHex(0xffffff);
+    }
     group.userData = {
       name: `Target ${targetNumber}`,
       team: "blue",
-      className: fastTarget ? "Fast Archery Target" : "Archery Target",
+      className: targetType === "bonus" ? "Bonus Target" : targetType === "tiny" ? "Tiny Target" : targetType === "zigzag" ? "Zig-Zag Target" : fastTarget ? "Fast Archery Target" : "Archery Target",
+      targetType,
       body: backboard,
       chest: bullseye,
       head: ringRed,
@@ -1157,7 +1213,7 @@
       maxHealth: difficultyHealth,
       alive: true,
       respawnAt: 0,
-      value: fastTarget ? 220 : 170,
+      value: targetType === "bonus" ? 650 : targetType === "tiny" ? 330 : targetType === "zigzag" ? 260 : fastTarget ? 220 : 170,
       age: 0,
       shotCooldown: Infinity,
       nextShotAt: Infinity,
@@ -1165,12 +1221,13 @@
       destination: new THREE.Vector3(),
       turnSpeed: 2.6 + Math.random(),
       phase: Math.random() * Math.PI * 2,
-      speed: (fastTarget ? 5.2 : 3.7) * difficultySpeed,
+      speed: (targetType === "tiny" ? 6.4 : targetType === "zigzag" ? 5.5 : fastTarget ? 5.2 : 3.7) * difficultySpeed,
       lane: Math.random() > 0.5 ? 1 : -1,
       radius: 12 + Math.random() * 22,
       baseY: 1.25 + Math.random() * 1.1,
       floatAmplitude: 0.2 + Math.random() * 0.28,
-      floatSpeed: 2.2 + Math.random() * 1.3
+      floatSpeed: 2.2 + Math.random() * 1.3,
+      zigzagAmplitude: targetType === "zigzag" ? 0.9 + Math.random() * 0.8 : 0
     };
     scene.add(group);
     targets.push(group);
@@ -1263,7 +1320,9 @@
     state.weaponUpgrade = 0;
     state.shieldUntil = 0;
     state.comboExpireAt = 0;
-    state.countdownUntil = state.mode === "sniper" ? performance.now() + 3200 : 0;
+    state.sniperLevel = 1;
+    state.tenSecondAnnounced = false;
+    state.countdownUntil = state.mode === "sniper" ? performance.now() + 3000 : 0;
     restoreDestructibleCover();
     weaponAmmo.forEach((_, index) => {
       weaponAmmo[index] = weapons[index].mag;
@@ -1310,6 +1369,9 @@
     weaponPickups.forEach((pickup) => {
       pickup.visible = !sniperMode;
     });
+    sniperShields.forEach((collider) => {
+      collider.object.visible = sniperMode;
+    });
     scene.background.set(sniperMode ? 0x101822 : 0x07101a);
     scene.fog.color.set(sniperMode ? 0x101822 : 0x07101a);
     scene.fog.near = sniperMode ? 55 : 28;
@@ -1323,6 +1385,7 @@
     state.botCount = Number(botCountSelect.value);
     state.difficulty = difficultySelect.value;
     state.matchTarget = Number(matchLengthSelect.value);
+    bestValue.textContent = state.mode === "sniper" ? state.sniperBest : state.best;
   }
 
   function endGame(reason = "") {
@@ -1332,15 +1395,19 @@
     setScoped(false);
     updateCountdownOverlay();
     document.exitPointerLock?.();
-    if (state.score > state.best) {
+    if (state.mode !== "sniper" && state.score > state.best) {
       state.best = state.score;
       localStorage.setItem(bestKey, String(state.best));
     }
-    bestValue.textContent = state.best;
+    if (state.mode === "sniper" && state.score > state.sniperBest) {
+      state.sniperBest = state.score;
+      localStorage.setItem(sniperBestKey, String(state.sniperBest));
+    }
+    bestValue.textContent = state.mode === "sniper" ? state.sniperBest : state.best;
     const winner = state.redScore === state.blueScore ? "Draw" : `${state.redScore > state.blueScore ? "Red" : "Blue"} wins`;
     endTitle.textContent = reason || winner;
     endStats.textContent = state.mode === "sniper"
-      ? `Score ${state.score} | Targets ${state.botHits} | Time ${Math.ceil(state.timeLeft)}`
+      ? `Score ${state.score} | Targets ${state.botHits}/${state.sniperGoal} | Level ${state.sniperLevel} | Time ${Math.ceil(state.timeLeft)}`
       : `Score ${state.score} | Red ${state.redScore} | Blue ${state.blueScore} | Wave ${state.wave}`;
     endPanel.hidden = false;
     syncHud();
@@ -1388,12 +1455,12 @@
     streakValue.textContent = state.streak;
     timeValue.textContent = Math.max(0, Math.ceil(state.timeLeft));
     killedValue.textContent = state.botHits;
-    waveValue.textContent = state.wave;
+    waveValue.textContent = state.mode === "sniper" ? state.sniperLevel : state.wave;
     healthValue.textContent = Math.max(0, Math.ceil(player.health));
     redScoreValue.textContent = state.redScore;
     blueScoreValue.textContent = state.blueScore;
     roundValue.textContent = state.mode === "sniper"
-      ? `Timer ${Math.max(0, Math.ceil(state.timeLeft))} | No. Killed ${state.botHits}`
+      ? `Level ${state.sniperLevel} | Timer ${Math.max(0, Math.ceil(state.timeLeft))} | No. Killed ${state.botHits}/${state.sniperGoal} | Best ${state.sniperBest}`
       : `Round ${state.round} | First to ${state.matchTarget}`;
     objectiveValue.textContent = getObjectiveText();
     syncWeaponHud();
@@ -1405,6 +1472,9 @@
     window.targetRangeFpsStatus.hitCount = state.hitCount;
     window.targetRangeFpsStatus.enemyShots = state.enemyShots;
     window.targetRangeFpsStatus.botHits = state.botHits;
+    window.targetRangeFpsStatus.sniperLevel = state.sniperLevel;
+    window.targetRangeFpsStatus.sniperGoal = state.sniperGoal;
+    window.targetRangeFpsStatus.sniperBest = state.sniperBest;
     window.targetRangeFpsStatus.teams = getTeamRosters();
     window.targetRangeFpsStatus.scoped = state.scoped;
     window.targetRangeFpsStatus.weapon = weapons[state.weaponIndex].name;
@@ -1439,6 +1509,9 @@
     document.body.dataset.fpsHitCount = String(state.hitCount);
     document.body.dataset.fpsEnemyShots = String(state.enemyShots);
     document.body.dataset.fpsBotHits = String(state.botHits);
+    document.body.dataset.fpsSniperLevel = String(state.sniperLevel);
+    document.body.dataset.fpsSniperGoal = String(state.sniperGoal);
+    document.body.dataset.fpsSniperBest = String(state.sniperBest);
     document.body.dataset.fpsTimer = String(Math.max(0, Math.ceil(state.timeLeft)));
     document.body.dataset.fpsCountdown = String(getCountdownSeconds());
     document.body.dataset.fpsScoped = String(state.scoped);
@@ -1474,7 +1547,7 @@
     if (state.mode === "control") return `Control Point: ${state.controlOwner ? teams[state.controlOwner].name : "Neutral"}`;
     if (state.mode === "survival") return "Survival: hold out against waves";
     if (state.mode === "boss") return "Boss Hunt: drop the heavy boss";
-    if (state.mode === "sniper") return "Sniper Tower: flat floating targets. Holding right-click ends the run.";
+    if (state.mode === "sniper") return `Sniper Tower: clear ${state.sniperGoal} targets. Bonus/tiny/zig-zag targets score more.`;
     return "Team Deathmatch";
   }
 
@@ -1566,6 +1639,12 @@
   }
 
   function damageObstacle(collider, amount, hitPoint) {
+    if (collider?.sniperShield) {
+      spawnParticles(hitPoint || collider.object.position, 0x43d5ff);
+      addFeed("Shield blocked shot");
+      playTone(180, 0.05, "sawtooth");
+      return false;
+    }
     if (!collider?.destructible) return false;
     collider.health -= amount;
     if (collider.object.material?.emissive) collider.object.material.emissive.setHex(0xff6b4a);
@@ -1813,6 +1892,10 @@
       }
       if (state.mode === "sniper") {
         target.position.y = data.baseY + Math.sin(data.age * 2.8 + data.phase) * 0.28;
+        if (data.zigzagAmplitude) {
+          target.position.x += Math.sin(data.age * 4.6 + data.phase) * data.zigzagAmplitude * botDelta;
+          target.position.x = THREE.MathUtils.clamp(target.position.x, sniperTower.botMinX, sniperTower.botMaxX);
+        }
         target.lookAt(sniperTower.center.x, target.position.y + 2.7, sniperTower.center.z);
         data.core.scale.setScalar(1 + Math.sin(data.age * 7) * 0.08);
         return;
@@ -1847,6 +1930,18 @@
       document.body.dataset.fpsNextEnemyShot = Math.max(0, nextEnemyShotIn).toFixed(2);
       window.targetRangeFpsStatus.nextEnemyShot = Number(document.body.dataset.fpsNextEnemyShot);
     }
+  }
+
+  function updateSniperShields(now) {
+    if (state.mode !== "sniper") return;
+    sniperShields.forEach((collider) => {
+      const shield = collider.object;
+      if (!shield.visible) return;
+      shield.position.x = shield.userData.baseX + Math.sin(now * 0.001 * shield.userData.speed + shield.userData.phase) * 12;
+      shield.position.y = shield.userData.baseY + Math.sin(now * 0.0013 + shield.userData.phase) * 0.65;
+      shield.updateMatrixWorld(true);
+      collider.box.setFromObject(shield);
+    });
   }
 
   function setWalkDestination(target) {
@@ -1968,6 +2063,18 @@
     data.respawnAt = performance.now() + 2600;
     target.visible = false;
     state.botHits += 1;
+    if (state.mode === "sniper") {
+      const nextLevel = Math.min(9, Math.floor(state.botHits / 5) + 1);
+      if (nextLevel > state.sniperLevel) {
+        state.sniperLevel = nextLevel;
+        addFeed(`Level ${state.sniperLevel}: targets faster`);
+        playTone(660 + state.sniperLevel * 35, 0.09, "sine");
+        targets.forEach((candidate) => {
+          if (candidate.userData.alive) candidate.userData.speed *= 1.08;
+        });
+        for (let index = 0; index < Math.min(state.sniperLevel, 3); index += 1) makeTarget();
+      }
+    }
     if (attackerTeam === "red") state.redScore += 1;
     if (attackerTeam === "blue") state.blueScore += 1;
     if (attackerName === "P1") {
@@ -1995,6 +2102,10 @@
       state.wave += 1;
       for (let index = 0; index < Math.min(4 + state.wave, 12); index += 1) makeTarget();
       addFeed(`Wave ${state.wave} incoming`);
+    }
+    if (state.mode === "sniper" && state.botHits >= state.sniperGoal) {
+      endGame("Range cleared");
+      return true;
     }
     addFeed(`${attackerName} dropped ${data.name} (${data.className})`);
     checkRoundEnd();
@@ -2574,6 +2685,11 @@
         return;
       }
       state.timeLeft -= delta;
+      if (state.mode === "sniper" && !state.tenSecondAnnounced && state.timeLeft <= 10) {
+        state.tenSecondAnnounced = true;
+        addFeed("10 seconds!");
+        playTone(980, 0.12, "square");
+      }
       if (state.timeLeft <= 0) {
         state.timeLeft = 0;
         endGame("Time up");
@@ -2590,6 +2706,7 @@
       updatePickups(delta);
       if (!net.online || net.isHost) updateObjective(now);
       if (!net.online || net.isHost) updateTargets(delta);
+      updateSniperShields(now);
       updateBullets(delta);
       if (!net.online || net.isHost) updateEnemyBullets(delta);
       sendNetworkUpdates(now);
@@ -2598,6 +2715,7 @@
       syncHud();
     } else {
       updateTargets(delta * 0.45);
+      updateSniperShields(performance.now());
       updateBullets(delta);
       updateEnemyBullets(delta);
       drawMiniMap();
@@ -2709,6 +2827,10 @@
     modeSelect.value = "sniper";
     startGame();
   });
+  modeSelect.addEventListener("change", () => {
+    const selectedMode = modeSelect.value;
+    bestValue.textContent = selectedMode === "sniper" ? state.sniperBest : state.best;
+  });
   againButton.addEventListener("click", startGame);
   retryButton.addEventListener("click", startGame);
   menuButton.addEventListener("click", showMenu);
@@ -2741,7 +2863,9 @@
   });
   resetButton.addEventListener("click", () => {
     state.best = 0;
+    state.sniperBest = 0;
     localStorage.removeItem(bestKey);
+    localStorage.removeItem(sniperBestKey);
     bestValue.textContent = "0";
   });
 })();
