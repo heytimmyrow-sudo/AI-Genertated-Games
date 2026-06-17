@@ -200,10 +200,11 @@
     center: new THREE.Vector3(0, 13.2, 35),
     eyeHeight: 2.2,
     halfSize: 4.6,
-    botMinX: -52,
-    botMaxX: 52,
-    botMinZ: -46,
-    botMaxZ: 12
+    botMinX: -70,
+    botMaxX: 70,
+    botMinZ: -58,
+    botMaxZ: 8,
+    spacing: 13
   };
   const jumpVelocity = 8.8;
   const gravity = 25;
@@ -978,6 +979,7 @@
     const group = new THREE.Group();
     const botNumber = state.botCounter + 1;
     state.botCounter += 1;
+    if (state.mode === "sniper") return makeArcheryTarget(group, botNumber);
     const teamKey = state.mode === "sniper"
       ? "blue"
       : state.mode === "survival" || state.mode === "boss"
@@ -1080,13 +1082,100 @@
     return group;
   }
 
+  function makeArcheryTarget(group, targetNumber) {
+    const fastTarget = targetNumber % 3 === 0;
+    const standMaterial = new THREE.MeshStandardMaterial({ color: 0x6f4a2d, roughness: 0.82, metalness: 0.05 });
+    const whiteMaterial = new THREE.MeshStandardMaterial({ color: 0xf8f4df, roughness: 0.72, metalness: 0.02 });
+    const blackMaterial = new THREE.MeshStandardMaterial({ color: 0x1b1d21, roughness: 0.8, metalness: 0.02 });
+    const blueMaterial = new THREE.MeshStandardMaterial({ color: 0x2c7be5, roughness: 0.65, metalness: 0.02 });
+    const redMaterial = new THREE.MeshStandardMaterial({ color: 0xe63946, roughness: 0.65, metalness: 0.02 });
+    const goldMaterial = new THREE.MeshStandardMaterial({ color: 0xffc857, roughness: 0.55, metalness: 0.05, emissive: 0x4d3200, emissiveIntensity: 0.12 });
+    const backboard = new THREE.Mesh(new THREE.CylinderGeometry(1.72, 1.72, 0.18, 48), standMaterial);
+    const ringWhite = new THREE.Mesh(new THREE.CylinderGeometry(1.55, 1.55, 0.08, 48), whiteMaterial);
+    const ringBlack = new THREE.Mesh(new THREE.CylinderGeometry(1.22, 1.22, 0.09, 48), blackMaterial);
+    const ringBlue = new THREE.Mesh(new THREE.CylinderGeometry(0.92, 0.92, 0.1, 48), blueMaterial);
+    const ringRed = new THREE.Mesh(new THREE.CylinderGeometry(0.62, 0.62, 0.11, 48), redMaterial);
+    const bullseye = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 0.12, 48), goldMaterial);
+    const post = new THREE.Mesh(new THREE.BoxGeometry(0.28, 2.2, 0.28), standMaterial.clone());
+    const leftFoot = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.16, 0.24), standMaterial.clone());
+    const rightFoot = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.16, 1.8), standMaterial.clone());
+    const healthBack = new THREE.Mesh(new THREE.BoxGeometry(1.35, 0.1, 0.08), new THREE.MeshBasicMaterial({ color: 0x050910 }));
+    const healthFill = new THREE.Mesh(new THREE.BoxGeometry(1.26, 0.08, 0.09), new THREE.MeshBasicMaterial({ color: 0xffc857 }));
+
+    [backboard, ringWhite, ringBlack, ringBlue, ringRed, bullseye].forEach((part) => {
+      part.rotation.x = Math.PI / 2;
+      part.position.y = 2.55;
+      part.userData.targetRoot = group;
+    });
+    backboard.position.z = -0.09;
+    ringWhite.position.z = 0.02;
+    ringBlack.position.z = 0.08;
+    ringBlue.position.z = 0.14;
+    ringRed.position.z = 0.2;
+    bullseye.position.z = 0.27;
+    post.position.y = 1.1;
+    leftFoot.position.set(0, 0.08, 0);
+    rightFoot.position.set(0, 0.09, 0);
+    healthBack.position.set(0, 4.48, 0);
+    healthFill.position.set(0, 4.49, 0.02);
+    [post, leftFoot, rightFoot, healthBack, healthFill].forEach((part) => {
+      part.userData.targetRoot = group;
+    });
+    [backboard, ringWhite, ringBlack, ringBlue, ringRed, bullseye, post, leftFoot, rightFoot].forEach((part) => {
+      part.castShadow = true;
+      part.receiveShadow = true;
+      group.add(part);
+    });
+    group.add(healthBack, healthFill);
+    group.userData = {
+      name: `Target ${targetNumber}`,
+      team: "blue",
+      className: fastTarget ? "Fast Archery Target" : "Archery Target",
+      body: backboard,
+      chest: bullseye,
+      head: ringRed,
+      leftArm: ringBlack,
+      rightArm: ringBlue,
+      leftLeg: post,
+      rightLeg: post,
+      enemyGun: null,
+      avatar: bullseye,
+      healthFill,
+      armed: false,
+      isBoss: false,
+      damageScale: 0,
+      range: 0,
+      pellets: 1,
+      heal: 0,
+      core: bullseye,
+      health: 100,
+      maxHealth: 100,
+      alive: true,
+      respawnAt: 0,
+      value: fastTarget ? 220 : 170,
+      age: 0,
+      shotCooldown: Infinity,
+      nextShotAt: Infinity,
+      updatedAt: performance.now(),
+      destination: new THREE.Vector3(),
+      turnSpeed: 2.6 + Math.random(),
+      phase: Math.random() * Math.PI * 2,
+      speed: fastTarget ? 5.2 : 3.7,
+      lane: Math.random() > 0.5 ? 1 : -1,
+      radius: 12 + Math.random() * 22,
+      baseY: 0
+    };
+    scene.add(group);
+    targets.push(group);
+    placeTarget(group, true);
+    syncTeamHud();
+    return group;
+  }
+
   function placeTarget(target, fresh = false) {
     if (state.mode === "sniper") {
-      target.position.set(
-        THREE.MathUtils.randFloat(sniperTower.botMinX, sniperTower.botMaxX),
-        0,
-        THREE.MathUtils.randFloat(sniperTower.botMinZ, sniperTower.botMaxZ)
-      );
+      const position = findSniperTargetPosition(target);
+      target.position.set(position.x, 0, position.z);
     } else {
       target.position.set(
         THREE.MathUtils.randFloat(-48, 48),
@@ -1100,6 +1189,21 @@
       target.userData.phase = Math.random() * Math.PI * 2;
       target.userData.speed = Math.min(target.userData.speed + 0.12, 7.2);
     }
+  }
+
+  function findSniperTargetPosition(excludedTarget = null) {
+    const candidate = new THREE.Vector3();
+    for (let attempt = 0; attempt < 80; attempt += 1) {
+      candidate.set(
+        THREE.MathUtils.randFloat(sniperTower.botMinX, sniperTower.botMaxX),
+        0,
+        THREE.MathUtils.randFloat(sniperTower.botMinZ, sniperTower.botMaxZ)
+      );
+      if (targets.every((target) => target === excludedTarget || !target.userData.alive || target.position.distanceTo(candidate) >= sniperTower.spacing)) {
+        return candidate.clone();
+      }
+    }
+    return candidate.clone();
   }
 
   function resetTargets() {
@@ -1163,7 +1267,7 @@
     });
     applyModeEnvironment();
     killFeed.replaceChildren();
-    setScoped(false);
+    setScoped(state.mode === "sniper");
     player.position.copy(state.mode === "sniper" ? sniperTower.center : new THREE.Vector3(0, 2.1, 22));
     player.velocity.set(0, 0, 0);
     player.verticalVelocity = 0;
@@ -1220,8 +1324,11 @@
     bestValue.textContent = state.best;
     const winner = state.redScore === state.blueScore ? "Draw" : `${state.redScore > state.blueScore ? "Red" : "Blue"} wins`;
     endTitle.textContent = reason || winner;
-    endStats.textContent = `Score ${state.score} | Red ${state.redScore} | Blue ${state.blueScore} | Wave ${state.wave}`;
+    endStats.textContent = state.mode === "sniper"
+      ? `Score ${state.score} | Targets ${state.botHits} | Time ${Math.ceil(state.timeLeft)}`
+      : `Score ${state.score} | Red ${state.redScore} | Blue ${state.blueScore} | Wave ${state.wave}`;
     endPanel.hidden = false;
+    syncHud();
   }
 
   function showHitScreen(source = "A robot tagged you.") {
@@ -1331,7 +1438,7 @@
     if (state.mode === "control") return `Control Point: ${state.controlOwner ? teams[state.controlOwner].name : "Neutral"}`;
     if (state.mode === "survival") return "Survival: hold out against waves";
     if (state.mode === "boss") return "Boss Hunt: drop the heavy boss";
-    if (state.mode === "sniper") return "Sniper Tower: stay on the tower, clear moving targets";
+    if (state.mode === "sniper") return "Sniper Tower: scope-only archery targets. Right-click ends the run.";
     return "Team Deathmatch";
   }
 
@@ -1504,6 +1611,11 @@
   function toggleScopeFromInput(event) {
     if (!state.running || event.target.closest("button")) return;
     event.preventDefault();
+    if (state.mode === "sniper") {
+      setScoped(true);
+      endGame("Scope dropped - run over");
+      return;
+    }
     const now = performance.now();
     if (now - lastScopeToggleAt < 90) return;
     lastScopeToggleAt = now;
@@ -1683,11 +1795,8 @@
 
   function setWalkDestination(target) {
     if (state.mode === "sniper") {
-      target.userData.destination.set(
-        THREE.MathUtils.randFloat(sniperTower.botMinX, sniperTower.botMaxX),
-        0,
-        THREE.MathUtils.randFloat(sniperTower.botMinZ, sniperTower.botMaxZ)
-      );
+      const position = findSniperTargetPosition(target);
+      target.userData.destination.set(position.x, 0, position.z);
       return;
     }
     if (coverObjects.length && Math.random() < 0.4) {
@@ -1806,7 +1915,7 @@
       const streakBonus = Math.min(400, state.streak * 20);
       state.score += data.value + closeBonus + streakBonus;
       state.streak += 1;
-      if (state.mode !== "boss" && state.streak % 8 === 0) {
+      if (state.mode !== "boss" && state.mode !== "sniper" && state.streak % 8 === 0) {
         state.wave += 1;
         makeTarget();
       }
@@ -2180,6 +2289,7 @@
   function shoot() {
     if (!state.running) return;
     if (state.mode === "sniper" && state.weaponIndex !== 3) equipWeapon(3);
+    if (state.mode === "sniper" && !state.scoped) return;
     const weapon = weapons[state.weaponIndex];
     const now = performance.now();
     if (now < state.nextFireAt) return;
@@ -2523,7 +2633,13 @@
   });
   touchScope.addEventListener("pointerdown", (event) => {
     event.preventDefault();
-    if (state.running) setScoped(!state.scoped);
+    if (!state.running) return;
+    if (state.mode === "sniper") {
+      setScoped(true);
+      endGame("Scope dropped - run over");
+      return;
+    }
+    setScoped(!state.scoped);
   });
   hostOnlineButton.addEventListener("click", hostOnline);
   joinOnlineButton.addEventListener("click", joinOnline);
