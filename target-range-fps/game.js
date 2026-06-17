@@ -17,6 +17,7 @@
   const redTeamValue = document.getElementById("redTeamValue");
   const killFeed = document.getElementById("killFeed");
   const hitMarker = document.getElementById("hitMarker");
+  const countdownOverlay = document.getElementById("countdownOverlay");
   const miniMap = document.getElementById("miniMap");
   const miniMapContext = miniMap.getContext("2d");
   const modeSelect = document.getElementById("modeSelect");
@@ -97,6 +98,8 @@
     speedBoostUntil: 0,
     weaponUpgrade: 0,
     shieldUntil: 0,
+    countdownUntil: 0,
+    comboExpireAt: 0,
     best: Number(localStorage.getItem(bestKey) || 0)
   };
 
@@ -1086,6 +1089,8 @@
 
   function makeArcheryTarget(group, targetNumber) {
     const fastTarget = targetNumber % 3 === 0;
+    const difficultySpeed = state.difficulty === "hard" ? 1.35 : state.difficulty === "easy" ? 0.78 : 1;
+    const difficultyHealth = state.difficulty === "hard" ? 112 : state.difficulty === "easy" ? 82 : 100;
     const makeTargetMaterial = (color, emissive = 0x000000) => new THREE.MeshStandardMaterial({
       color,
       emissive,
@@ -1148,8 +1153,8 @@
       pellets: 1,
       heal: 0,
       core: bullseye,
-      health: 100,
-      maxHealth: 100,
+      health: difficultyHealth,
+      maxHealth: difficultyHealth,
       alive: true,
       respawnAt: 0,
       value: fastTarget ? 220 : 170,
@@ -1160,10 +1165,12 @@
       destination: new THREE.Vector3(),
       turnSpeed: 2.6 + Math.random(),
       phase: Math.random() * Math.PI * 2,
-      speed: fastTarget ? 5.2 : 3.7,
+      speed: (fastTarget ? 5.2 : 3.7) * difficultySpeed,
       lane: Math.random() > 0.5 ? 1 : -1,
       radius: 12 + Math.random() * 22,
-      baseY: 1.25
+      baseY: 1.25 + Math.random() * 1.1,
+      floatAmplitude: 0.2 + Math.random() * 0.28,
+      floatSpeed: 2.2 + Math.random() * 1.3
     };
     scene.add(group);
     targets.push(group);
@@ -1199,7 +1206,8 @@
         0,
         THREE.MathUtils.randFloat(sniperTower.botMinZ, sniperTower.botMaxZ)
       );
-      if (targets.every((target) => target === excludedTarget || !target.userData.alive || target.position.distanceTo(candidate) >= sniperTower.spacing)) {
+      const farEnoughFromSelf = !excludedTarget || excludedTarget.position.distanceTo(candidate) >= 26;
+      if (farEnoughFromSelf && targets.every((target) => target === excludedTarget || !target.userData.alive || target.position.distanceTo(candidate) >= sniperTower.spacing)) {
         return candidate.clone();
       }
     }
@@ -1236,7 +1244,9 @@
     state.score = 0;
     state.streak = 0;
     state.wave = 1;
-    state.timeLeft = state.mode === "control" ? 120 : (state.mode === "survival" || state.mode === "boss" || state.mode === "sniper" ? 180 : 90);
+    state.timeLeft = state.mode === "sniper"
+      ? (state.difficulty === "hard" ? 135 : state.difficulty === "easy" ? 210 : 180)
+      : state.mode === "control" ? 120 : (state.mode === "survival" || state.mode === "boss" ? 180 : 90);
     state.spawnTimer = 0;
     state.recoilTimer = 0;
     state.nextFireAt = 0;
@@ -1252,6 +1262,8 @@
     state.speedBoostUntil = 0;
     state.weaponUpgrade = 0;
     state.shieldUntil = 0;
+    state.comboExpireAt = 0;
+    state.countdownUntil = state.mode === "sniper" ? performance.now() + 3200 : 0;
     restoreDestructibleCover();
     weaponAmmo.forEach((_, index) => {
       weaponAmmo[index] = weapons[index].mag;
@@ -1315,8 +1327,10 @@
 
   function endGame(reason = "") {
     state.running = false;
+    state.countdownUntil = 0;
     cancelScopeHoldPenalty();
     setScoped(false);
+    updateCountdownOverlay();
     document.exitPointerLock?.();
     if (state.score > state.best) {
       state.best = state.score;
@@ -1336,8 +1350,10 @@
     if (!state.running) return;
     state.running = false;
     state.hitCount += 1;
+    state.countdownUntil = 0;
     cancelScopeHoldPenalty();
     setScoped(false);
+    updateCountdownOverlay();
     document.exitPointerLock?.();
     hitStats.textContent = `${source} Red ${state.redScore} | Blue ${state.blueScore} | Score ${state.score}`;
     hitPanel.hidden = false;
@@ -1345,8 +1361,10 @@
 
   function showMenu() {
     state.running = false;
+    state.countdownUntil = 0;
     cancelScopeHoldPenalty();
     setScoped(false);
+    updateCountdownOverlay();
     clearBullets();
     clearEnemyBullets();
     document.exitPointerLock?.();
@@ -1422,6 +1440,7 @@
     document.body.dataset.fpsEnemyShots = String(state.enemyShots);
     document.body.dataset.fpsBotHits = String(state.botHits);
     document.body.dataset.fpsTimer = String(Math.max(0, Math.ceil(state.timeLeft)));
+    document.body.dataset.fpsCountdown = String(getCountdownSeconds());
     document.body.dataset.fpsScoped = String(state.scoped);
     document.body.dataset.fpsWeapon = weapons[state.weaponIndex].name;
     document.body.dataset.fpsWeaponSlot = weapons[state.weaponIndex].slot;
@@ -1439,6 +1458,16 @@
     document.body.dataset.fpsOnlinePeers = String(remotePlayers.size);
     document.body.dataset.fpsObstacleColliders = String(obstacleColliders.length);
     document.body.dataset.fpsDestructibleCover = String(obstacleColliders.filter((collider) => collider.destructible).length);
+  }
+
+  function getCountdownSeconds(now = performance.now()) {
+    return state.running && state.countdownUntil > now ? Math.ceil((state.countdownUntil - now) / 1000) : 0;
+  }
+
+  function updateCountdownOverlay(now = performance.now()) {
+    const seconds = getCountdownSeconds(now);
+    countdownOverlay.hidden = seconds <= 0;
+    countdownOverlay.textContent = seconds > 0 ? String(seconds) : "GO";
   }
 
   function getObjectiveText() {
@@ -1891,10 +1920,13 @@
     }
   }
 
-  function showHitMarker() {
+  function showHitMarker(bullseye = false) {
+    hitMarker.classList.toggle("is-bullseye", bullseye);
     hitMarker.classList.add("is-active");
     clearTimeout(hitMarkerTimeout);
-    hitMarkerTimeout = setTimeout(() => hitMarker.classList.remove("is-active"), 130);
+    hitMarkerTimeout = setTimeout(() => {
+      hitMarker.classList.remove("is-active", "is-bullseye");
+    }, bullseye ? 220 : 130);
   }
 
   function playTone(frequency, duration = 0.05, type = "square") {
@@ -1921,14 +1953,15 @@
     target.userData.healthFill.position.x = -0.63 * (1 - ratio);
   }
 
-  function damageBot(target, amount, attackerTeam, attackerName, hitPoint = null) {
+  function damageBot(target, amount, attackerTeam, attackerName, hitPoint = null, options = {}) {
     const data = target.userData;
     if (!data.alive || data.team === attackerTeam) return false;
-    data.health -= amount;
+    const bullseye = Boolean(options.bullseye);
+    data.health -= bullseye ? amount * 1.35 : amount;
     updateHealthBar(target);
-    spawnParticles(hitPoint || target.position.clone().add(new THREE.Vector3(0, 2.2, 0)), data.core.material.color);
-    if (attackerName === "P1") showHitMarker();
-    playTone(attackerName === "P1" ? 520 : 280, 0.045, "triangle");
+    spawnParticles(hitPoint || target.position.clone().add(new THREE.Vector3(0, 2.2, 0)), bullseye ? 0xffc857 : data.core.material.color);
+    if (attackerName === "P1") showHitMarker(bullseye);
+    playTone(attackerName === "P1" ? (bullseye ? 880 : 520) : 280, bullseye ? 0.08 : 0.045, bullseye ? "sine" : "triangle");
     if (data.health > 0) return false;
 
     data.alive = false;
@@ -1940,8 +1973,14 @@
     if (attackerName === "P1") {
       const closeBonus = Math.max(0, Math.floor((32 - camera.position.distanceTo(target.position)) * 2));
       const streakBonus = Math.min(400, state.streak * 20);
-      state.score += data.value + closeBonus + streakBonus;
+      const bullseyeBonus = bullseye ? 350 : 0;
+      const now = performance.now();
+      if (state.mode === "sniper" && now > state.comboExpireAt) state.streak = 0;
+      state.comboExpireAt = state.mode === "sniper" ? now + 2400 : state.comboExpireAt;
+      state.score += data.value + closeBonus + streakBonus + bullseyeBonus;
       state.streak += 1;
+      if (bullseye) addFeed(`Bullseye +${bullseyeBonus}`);
+      if (state.mode === "sniper" && state.streak > 2) addFeed(`Combo x${state.streak}`);
       if (state.mode !== "boss" && state.mode !== "sniper" && state.streak % 8 === 0) {
         state.wave += 1;
         makeTarget();
@@ -2186,7 +2225,7 @@
             continue;
           }
           bullet.position.copy(hit.point);
-          if (!net.online || net.isHost) handleTargetHit(hitGroup, hit.point, bullet.userData.weapon);
+          if (!net.online || net.isHost) handleTargetHit(hitGroup, hit.point, bullet.userData.weapon, hit.object);
           if (net.online && !net.isHost) showHitMarker();
           scene.remove(bullet);
           bullets.splice(index, 1);
@@ -2315,6 +2354,7 @@
 
   function shoot() {
     if (!state.running) return;
+    if (getCountdownSeconds() > 0) return;
     if (state.mode === "sniper" && state.weaponIndex !== 3) equipWeapon(3);
     if (state.mode === "sniper" && !state.scoped) return;
     const weapon = weapons[state.weaponIndex];
@@ -2380,8 +2420,9 @@
     }
   }
 
-  function handleTargetHit(hitGroup, hitPoint, weapon) {
-    damageBot(hitGroup, weapon.damage, "red", "P1", hitPoint);
+  function handleTargetHit(hitGroup, hitPoint, weapon, hitObject = null) {
+    const bullseye = state.mode === "sniper" && hitObject === hitGroup.userData.core;
+    damageBot(hitGroup, weapon.damage, "red", "P1", hitPoint, { bullseye });
     applySplashDamage(hitPoint, weapon, "red", "P1");
     syncHud();
   }
@@ -2518,6 +2559,20 @@
 
     if (state.running) {
       const now = performance.now();
+      updateCountdownOverlay(now);
+      const countdownActive = getCountdownSeconds(now) > 0;
+      if (countdownActive) {
+        updateMovement(delta);
+        drawMiniMap();
+        syncHud();
+        state.recoilTimer = Math.max(0, state.recoilTimer - delta * 8);
+        state.flashTimer = Math.max(0, state.flashTimer - delta);
+        muzzleLight.intensity = state.flashTimer > 0 ? 9 : 0;
+        updateParticles(delta);
+        updateCamera();
+        renderer.render(scene, camera);
+        return;
+      }
       state.timeLeft -= delta;
       if (state.timeLeft <= 0) {
         state.timeLeft = 0;

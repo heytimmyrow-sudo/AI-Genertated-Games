@@ -88,9 +88,9 @@ button {
 
 .stat-grid {
   display: grid;
-  grid-template-columns: repeat(10, minmax(64px, 1fr));
+  grid-template-columns: repeat(11, minmax(64px, 1fr));
   gap: 8px;
-  width: min(1040px, calc(100vw - 250px));
+  width: min(1140px, calc(100vw - 250px));
 }
 
 .stat-grid span {
@@ -166,8 +166,10 @@ button {
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(circle at center, transparent 0 25vmin, rgba(0, 0, 0, 0.72) calc(25vmin + 2px)),
-    radial-gradient(circle at center, rgba(67, 213, 255, 0.08), transparent 26vmin);
+    radial-gradient(circle at center, rgba(247, 250, 252, 0.05) 0 2px, transparent 3px 25vmin, rgba(0, 0, 0, 0.82) calc(25vmin + 2px)),
+    radial-gradient(circle at center, rgba(67, 213, 255, 0.1), transparent 26vmin),
+    linear-gradient(rgba(247, 250, 252, 0.06) 50%, transparent 50%);
+  background-size: auto, auto, 100% 4px;
   content: "";
 }
 
@@ -177,8 +179,9 @@ button {
   border: 2px solid rgba(247, 250, 252, 0.82);
   border-radius: 50%;
   box-shadow:
-    inset 0 0 28px rgba(67, 213, 255, 0.14),
-    0 0 26px rgba(67, 213, 255, 0.18);
+    inset 0 0 28px rgba(67, 213, 255, 0.18),
+    inset 0 0 0 12px rgba(0, 0, 0, 0.22),
+    0 0 34px rgba(67, 213, 255, 0.24);
   content: "";
 }
 
@@ -215,6 +218,31 @@ button {
 
 .game-shell.is-scoped .crosshair {
   opacity: 0;
+}
+
+.countdown-overlay {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  z-index: 9;
+  display: grid;
+  width: 160px;
+  height: 160px;
+  place-items: center;
+  border: 2px solid rgba(255, 200, 87, 0.85);
+  border-radius: 999px;
+  background: rgba(5, 9, 16, 0.58);
+  color: var(--accent);
+  font-size: clamp(4rem, 12vw, 7rem);
+  font-weight: 900;
+  text-shadow: 0 0 28px rgba(255, 200, 87, 0.7);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  backdrop-filter: blur(10px);
+}
+
+.countdown-overlay[hidden] {
+  display: none;
 }
 
 .match-panel {
@@ -295,6 +323,11 @@ button {
   position: absolute;
   background: var(--hot);
   box-shadow: 0 0 14px rgba(255, 76, 101, 0.65);
+}
+
+.hit-marker.is-bullseye span {
+  background: var(--accent);
+  box-shadow: 0 0 18px rgba(255, 200, 87, 0.9);
 }
 
 .hit-marker span:first-child {
