@@ -3,6 +3,7 @@
   const scoreValue = document.getElementById("scoreValue");
   const streakValue = document.getElementById("streakValue");
   const timeValue = document.getElementById("timeValue");
+  const killedValue = document.getElementById("killedValue");
   const waveValue = document.getElementById("waveValue");
   const weaponSlotValue = document.getElementById("weaponSlotValue");
   const weaponValue = document.getElementById("weaponValue");
@@ -177,6 +178,7 @@
   let nextNetworkSendAt = 0;
   let nextHostSyncAt = 0;
   let lastScopeToggleAt = 0;
+  let scopeHoldTimer = null;
   const tempDirection = new THREE.Vector3();
   const forward = new THREE.Vector3();
   const right = new THREE.Vector3();
@@ -1084,44 +1086,42 @@
 
   function makeArcheryTarget(group, targetNumber) {
     const fastTarget = targetNumber % 3 === 0;
-    const standMaterial = new THREE.MeshStandardMaterial({ color: 0x6f4a2d, roughness: 0.82, metalness: 0.05 });
-    const whiteMaterial = new THREE.MeshStandardMaterial({ color: 0xf8f4df, roughness: 0.72, metalness: 0.02 });
-    const blackMaterial = new THREE.MeshStandardMaterial({ color: 0x1b1d21, roughness: 0.8, metalness: 0.02 });
-    const blueMaterial = new THREE.MeshStandardMaterial({ color: 0x2c7be5, roughness: 0.65, metalness: 0.02 });
-    const redMaterial = new THREE.MeshStandardMaterial({ color: 0xe63946, roughness: 0.65, metalness: 0.02 });
-    const goldMaterial = new THREE.MeshStandardMaterial({ color: 0xffc857, roughness: 0.55, metalness: 0.05, emissive: 0x4d3200, emissiveIntensity: 0.12 });
-    const backboard = new THREE.Mesh(new THREE.CylinderGeometry(1.72, 1.72, 0.18, 48), standMaterial);
-    const ringWhite = new THREE.Mesh(new THREE.CylinderGeometry(1.55, 1.55, 0.08, 48), whiteMaterial);
-    const ringBlack = new THREE.Mesh(new THREE.CylinderGeometry(1.22, 1.22, 0.09, 48), blackMaterial);
-    const ringBlue = new THREE.Mesh(new THREE.CylinderGeometry(0.92, 0.92, 0.1, 48), blueMaterial);
-    const ringRed = new THREE.Mesh(new THREE.CylinderGeometry(0.62, 0.62, 0.11, 48), redMaterial);
-    const bullseye = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 0.12, 48), goldMaterial);
-    const post = new THREE.Mesh(new THREE.BoxGeometry(0.28, 2.2, 0.28), standMaterial.clone());
-    const leftFoot = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.16, 0.24), standMaterial.clone());
-    const rightFoot = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.16, 1.8), standMaterial.clone());
+    const makeTargetMaterial = (color, emissive = 0x000000) => new THREE.MeshStandardMaterial({
+      color,
+      emissive,
+      emissiveIntensity: emissive ? 0.16 : 0,
+      roughness: 0.72,
+      metalness: 0.02,
+      side: THREE.DoubleSide
+    });
+    const whiteMaterial = makeTargetMaterial(0xf8f4df);
+    const blackMaterial = makeTargetMaterial(0x1b1d21);
+    const blueMaterial = makeTargetMaterial(0x2c7be5);
+    const redMaterial = makeTargetMaterial(0xe63946);
+    const goldMaterial = makeTargetMaterial(0xffc857, 0x4d3200);
+    const backboard = new THREE.Mesh(new THREE.CircleGeometry(1.78, 64), whiteMaterial);
+    const ringBlack = new THREE.Mesh(new THREE.CircleGeometry(1.36, 64), blackMaterial);
+    const ringBlue = new THREE.Mesh(new THREE.CircleGeometry(1.04, 64), blueMaterial);
+    const ringRed = new THREE.Mesh(new THREE.CircleGeometry(0.7, 64), redMaterial);
+    const bullseye = new THREE.Mesh(new THREE.CircleGeometry(0.34, 64), goldMaterial);
     const healthBack = new THREE.Mesh(new THREE.BoxGeometry(1.35, 0.1, 0.08), new THREE.MeshBasicMaterial({ color: 0x050910 }));
     const healthFill = new THREE.Mesh(new THREE.BoxGeometry(1.26, 0.08, 0.09), new THREE.MeshBasicMaterial({ color: 0xffc857 }));
 
-    [backboard, ringWhite, ringBlack, ringBlue, ringRed, bullseye].forEach((part) => {
-      part.rotation.x = Math.PI / 2;
-      part.position.y = 2.55;
+    [backboard, ringBlack, ringBlue, ringRed, bullseye].forEach((part) => {
+      part.position.y = 2.7;
       part.userData.targetRoot = group;
     });
     backboard.position.z = -0.09;
-    ringWhite.position.z = 0.02;
-    ringBlack.position.z = 0.08;
-    ringBlue.position.z = 0.14;
-    ringRed.position.z = 0.2;
-    bullseye.position.z = 0.27;
-    post.position.y = 1.1;
-    leftFoot.position.set(0, 0.08, 0);
-    rightFoot.position.set(0, 0.09, 0);
+    ringBlack.position.z = -0.05;
+    ringBlue.position.z = -0.01;
+    ringRed.position.z = 0.03;
+    bullseye.position.z = 0.07;
     healthBack.position.set(0, 4.48, 0);
     healthFill.position.set(0, 4.49, 0.02);
-    [post, leftFoot, rightFoot, healthBack, healthFill].forEach((part) => {
+    [healthBack, healthFill].forEach((part) => {
       part.userData.targetRoot = group;
     });
-    [backboard, ringWhite, ringBlack, ringBlue, ringRed, bullseye, post, leftFoot, rightFoot].forEach((part) => {
+    [backboard, ringBlack, ringBlue, ringRed, bullseye].forEach((part) => {
       part.castShadow = true;
       part.receiveShadow = true;
       group.add(part);
@@ -1136,8 +1136,8 @@
       head: ringRed,
       leftArm: ringBlack,
       rightArm: ringBlue,
-      leftLeg: post,
-      rightLeg: post,
+      leftLeg: backboard,
+      rightLeg: backboard,
       enemyGun: null,
       avatar: bullseye,
       healthFill,
@@ -1163,7 +1163,7 @@
       speed: fastTarget ? 5.2 : 3.7,
       lane: Math.random() > 0.5 ? 1 : -1,
       radius: 12 + Math.random() * 22,
-      baseY: 0
+      baseY: 1.25
     };
     scene.add(group);
     targets.push(group);
@@ -1175,7 +1175,7 @@
   function placeTarget(target, fresh = false) {
     if (state.mode === "sniper") {
       const position = findSniperTargetPosition(target);
-      target.position.set(position.x, 0, position.z);
+      target.position.set(position.x, target.userData.baseY || 0, position.z);
     } else {
       target.position.set(
         THREE.MathUtils.randFloat(-48, 48),
@@ -1315,6 +1315,7 @@
 
   function endGame(reason = "") {
     state.running = false;
+    cancelScopeHoldPenalty();
     setScoped(false);
     document.exitPointerLock?.();
     if (state.score > state.best) {
@@ -1335,6 +1336,7 @@
     if (!state.running) return;
     state.running = false;
     state.hitCount += 1;
+    cancelScopeHoldPenalty();
     setScoped(false);
     document.exitPointerLock?.();
     hitStats.textContent = `${source} Red ${state.redScore} | Blue ${state.blueScore} | Score ${state.score}`;
@@ -1343,6 +1345,7 @@
 
   function showMenu() {
     state.running = false;
+    cancelScopeHoldPenalty();
     setScoped(false);
     clearBullets();
     clearEnemyBullets();
@@ -1366,11 +1369,14 @@
     scoreValue.textContent = state.score;
     streakValue.textContent = state.streak;
     timeValue.textContent = Math.max(0, Math.ceil(state.timeLeft));
+    killedValue.textContent = state.botHits;
     waveValue.textContent = state.wave;
     healthValue.textContent = Math.max(0, Math.ceil(player.health));
     redScoreValue.textContent = state.redScore;
     blueScoreValue.textContent = state.blueScore;
-    roundValue.textContent = `Round ${state.round} | First to ${state.matchTarget}`;
+    roundValue.textContent = state.mode === "sniper"
+      ? `Timer ${Math.max(0, Math.ceil(state.timeLeft))} | No. Killed ${state.botHits}`
+      : `Round ${state.round} | First to ${state.matchTarget}`;
     objectiveValue.textContent = getObjectiveText();
     syncWeaponHud();
     window.targetRangeFpsStatus.targets = targets.length;
@@ -1415,6 +1421,7 @@
     document.body.dataset.fpsHitCount = String(state.hitCount);
     document.body.dataset.fpsEnemyShots = String(state.enemyShots);
     document.body.dataset.fpsBotHits = String(state.botHits);
+    document.body.dataset.fpsTimer = String(Math.max(0, Math.ceil(state.timeLeft)));
     document.body.dataset.fpsScoped = String(state.scoped);
     document.body.dataset.fpsWeapon = weapons[state.weaponIndex].name;
     document.body.dataset.fpsWeaponSlot = weapons[state.weaponIndex].slot;
@@ -1438,7 +1445,7 @@
     if (state.mode === "control") return `Control Point: ${state.controlOwner ? teams[state.controlOwner].name : "Neutral"}`;
     if (state.mode === "survival") return "Survival: hold out against waves";
     if (state.mode === "boss") return "Boss Hunt: drop the heavy boss";
-    if (state.mode === "sniper") return "Sniper Tower: scope-only archery targets. Right-click ends the run.";
+    if (state.mode === "sniper") return "Sniper Tower: flat floating targets. Holding right-click ends the run.";
     return "Team Deathmatch";
   }
 
@@ -1612,14 +1619,28 @@
     if (!state.running || event.target.closest("button")) return;
     event.preventDefault();
     if (state.mode === "sniper") {
-      setScoped(true);
-      endGame("Scope dropped - run over");
+      beginScopeHoldPenalty();
       return;
     }
     const now = performance.now();
     if (now - lastScopeToggleAt < 90) return;
     lastScopeToggleAt = now;
     setScoped(!state.scoped);
+  }
+
+  function beginScopeHoldPenalty() {
+    if (scopeHoldTimer || !state.running || state.mode !== "sniper") return;
+    setScoped(true);
+    scopeHoldTimer = setTimeout(() => {
+      scopeHoldTimer = null;
+      if (state.running && state.mode === "sniper") endGame("Held scope too long - run over");
+    }, 360);
+  }
+
+  function cancelScopeHoldPenalty() {
+    if (!scopeHoldTimer) return;
+    clearTimeout(scopeHoldTimer);
+    scopeHoldTimer = null;
   }
 
   function updateCamera() {
@@ -1760,6 +1781,12 @@
         let yawDelta = walkYaw - target.rotation.y;
         yawDelta = Math.atan2(Math.sin(yawDelta), Math.cos(yawDelta));
         target.rotation.y += THREE.MathUtils.clamp(yawDelta, -data.turnSpeed * botDelta, data.turnSpeed * botDelta);
+      }
+      if (state.mode === "sniper") {
+        target.position.y = data.baseY + Math.sin(data.age * 2.8 + data.phase) * 0.28;
+        target.lookAt(sniperTower.center.x, target.position.y + 2.7, sniperTower.center.z);
+        data.core.scale.setScalar(1 + Math.sin(data.age * 7) * 0.08);
+        return;
       }
       target.position.y = 0;
       target.rotation.z = Math.sin(data.age * 5 + data.phase) * 0.025;
@@ -2544,6 +2571,9 @@
   window.addEventListener("mousedown", (event) => {
     if (event.button === 2) toggleScopeFromInput(event);
   });
+  window.addEventListener("mouseup", (event) => {
+    if (event.button === 2) cancelScopeHoldPenalty();
+  });
   window.addEventListener("keydown", (event) => {
     keys.add(event.code);
     if (/^Digit[0-9]$/.test(event.code)) {
@@ -2581,6 +2611,10 @@
     }
     shoot();
   });
+  window.addEventListener("pointerup", (event) => {
+    if (event.button === 2) cancelScopeHoldPenalty();
+  });
+  window.addEventListener("pointercancel", cancelScopeHoldPenalty);
 
   document.querySelectorAll("[data-move]").forEach((button) => {
     const move = button.dataset.move;
@@ -2635,12 +2669,14 @@
     event.preventDefault();
     if (!state.running) return;
     if (state.mode === "sniper") {
-      setScoped(true);
-      endGame("Scope dropped - run over");
+      beginScopeHoldPenalty();
       return;
     }
     setScoped(!state.scoped);
   });
+  touchScope.addEventListener("pointerup", cancelScopeHoldPenalty);
+  touchScope.addEventListener("pointercancel", cancelScopeHoldPenalty);
+  touchScope.addEventListener("pointerleave", cancelScopeHoldPenalty);
   hostOnlineButton.addEventListener("click", hostOnline);
   joinOnlineButton.addEventListener("click", joinOnline);
   copyRoomButton.addEventListener("click", copyRoomCode);
