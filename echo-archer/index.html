@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Echo Archer</title>
+  <link rel="stylesheet" href="styles/main.css">
+</head>
+<body>
+  <main id="game-shell" aria-label="Echo Archer game">
+    <canvas id="game-canvas"></canvas>
+    <section id="hud" aria-live="polite">
+      <div class="brand">
+        <span class="brand-mark"></span>
+        <div>
+          <h1>Echo Archer</h1>
+          <p id="camera-mode">Third-person camera</p>
+        </div>
+      </div>
+      <aside id="quest-tracker">
+        <span id="quest-title">Training Grounds</span>
+        <strong id="quest-objective">Speak with the trainer</strong>
+        <button id="find-landmark-button" type="button" hidden>Find Landmark</button>
+      </aside>
+      <section id="player-health" aria-live="polite">
+        <span>Archer Health</span>
+        <strong id="player-health-text">100 / 100</strong>
+        <span class="player-health-track">
+          <span id="player-health-fill"></span>
+        </span>
+      </section>
+      <div class="status-bar">
+        <span id="lock-state">Click to enter mouse look</span>
+        <span id="controls-state">Shortcuts</span>
+        <span>WASD Move</span>
+        <span>Mouse Look</span>
+        <span>LMB Draw / Shoot</span>
+        <span>Space Jump</span>
+        <span>Shift Sprint</span>
+        <span>C First / Third</span>
+        <span>I Inventory</span>
+        <span>M World Map</span>
+        <span>J Journal</span>
+        <span>K Skill Tree</span>
+        <span>R Mount</span>
+        <span>P Photo / Stats</span>
+        <span id="time-state" class="hud-secondary">Day</span>
+        <span id="weather-state" class="hud-secondary">Clear</span>
+        <span id="wind-state" class="hud-secondary">Wind Calm</span>
+        <span id="arrow-state">Standard Arrow</span>
+        <span id="gold-state">Gold 45</span>
+        <span id="reputation-state" class="hud-secondary">Rep 0</span>
+        <span id="guild-rank-state">Novice Archer</span>
+        <span id="level-state">Lv 1</span>
+        <span id="xp-state">XP 0/100</span>
+        <span id="challenge-state" class="hud-secondary">Targets 0/5</span>
+        <span id="accuracy-state" class="hud-secondary">Accuracy 0%</span>
+        <span id="region-state">Forest Meadow</span>
+      </div>
+    </section>
+    <div id="reticle" aria-hidden="true">
+      <span class="reticle-ring"></span>
+      <span class="reticle-line reticle-line-top"></span>
+      <span class="reticle-line reticle-line-right"></span>
+      <span class="reticle-line reticle-line-bottom"></span>
+      <span class="reticle-line reticle-line-left"></span>
+      <span class="reticle-power"></span>
+    </div>
+    <div id="score-popups" aria-hidden="true"></div>
+    <div id="enemy-bars" aria-hidden="true"></div>
+    <section id="boss-health" aria-live="polite">
+      <span id="boss-name">Barkhide Stalker</span>
+      <span class="boss-health-track">
+        <span id="boss-health-fill"></span>
+      </span>
+    </section>
+    <div id="interaction-prompt" aria-hidden="true">E Talk</div>
+    <section id="dialogue-box" aria-live="polite">
+      <span id="dialogue-speaker">Trainer</span>
+      <p id="dialogue-text"></p>
+    </section>
+    <div id="quest-toast" aria-live="polite"></div>
+    <section id="photo-mode-overlay" aria-live="polite">
+      <strong>Photo Mode</strong>
+      <span>WASD move camera • Space / Shift height • Mouse look • P or Esc exit</span>
+    </section>
+    <section id="master-ceremony" aria-live="polite">
+      <strong>MASTER ARCHER</strong>
+      <span>The guild recognizes your title. The adventure continues.</span>
+    </section>
+    <section id="audio-controls" data-ui-interactive="true" aria-label="Audio controls">
+      <button id="mute-toggle" type="button" aria-pressed="true">Mute</button>
+      <label>
+        <span>Vol</span>
+        <input id="volume-slider" type="range" min="0" max="1" step="0.05" value="0.55">
+      </label>
+    </section>
+    <section id="upgrade-menu" data-ui-interactive="true" aria-live="polite">
+      <header>
+        <span>Upgrades</span>
+        <strong id="upgrade-points">0 points</strong>
+      </header>
+      <div id="upgrade-list"></div>
+    </section>
+    <section id="inventory-menu" data-ui-interactive="true" aria-live="polite">
+      <header>
+        <span>Inventory</span>
+        <strong>I Close</strong>
+      </header>
+      <nav id="inventory-tabs" aria-label="Inventory categories"></nav>
+      <div id="inventory-list"></div>
+      <aside id="inventory-details"></aside>
+    </section>
+    <section id="shop-menu" data-ui-interactive="true" aria-live="polite">
+      <header>
+        <div>
+          <span id="shop-title">Guild Shop</span>
+          <p id="shop-description">Select gear to buy.</p>
+        </div>
+        <button id="shop-close" type="button">Close</button>
+      </header>
+      <div id="shop-items"></div>
+      <footer>
+        <button id="shop-sell" type="button">Sell Selected Inventory Item</button>
+        <span>Better stock unlocks with Guild Reputation.</span>
+      </footer>
+    </section>
+    <section id="quest-board-menu" data-ui-interactive="true" aria-live="polite">
+      <header>
+        <div>
+          <span>Guild Village Quest Board</span>
+          <p>Repeatable village work for gold, XP, and reputation.</p>
+        </div>
+        <button id="quest-board-close" type="button">Close</button>
+      </header>
+      <div id="quest-board-items"></div>
+      <footer>
+        <span>Jobs refresh automatically when completed.</span>
+      </footer>
+    </section>
+    <section id="skill-tree-menu" class="rpg-panel" data-ui-interactive="true" aria-live="polite">
+      <header>
+        <span>Skill Tree</span>
+        <strong id="skill-points">1 point</strong>
+      </header>
+      <div id="skill-tree"></div>
+      <footer>K Close • Branch choices shape your build</footer>
+    </section>
+    <section id="character-stats-menu" class="rpg-panel" data-ui-interactive="true" aria-live="polite">
+      <header>
+        <span>Character Build</span>
+        <strong>P Close</strong>
+      </header>
+      <div id="character-stats-body"></div>
+      <footer>Skills, gear sets, bows, and mounts all contribute.</footer>
+    </section>
+    <section id="mount-menu" class="rpg-panel" data-ui-interactive="true" aria-live="polite">
+      <header>
+        <span>Mounts</span>
+        <strong>M Close</strong>
+      </header>
+      <div id="mount-body"></div>
+      <footer>Equip mounts from Inventory, then press R during gameplay.</footer>
+    </section>
+    <section id="world-map-menu" data-ui-interactive="true" aria-live="polite">
+      <header>
+        <div>
+          <span>World Map</span>
+          <p id="world-map-subtitle">Discovered routes, landmarks, quests, and fast travel.</p>
+        </div>
+        <button id="world-map-close" type="button">Close</button>
+      </header>
+      <div id="world-map-content">
+        <div id="world-map-canvas" aria-label="Parchment world map"></div>
+        <aside id="world-map-details"></aside>
+      </div>
+      <footer>
+        <span>M Close • Click discovered icons to fast travel • Secrets stay hidden until found</span>
+      </footer>
+    </section>
+    <section id="journal-menu" class="rpg-panel" data-ui-interactive="true" aria-live="polite">
+      <header>
+        <span>Adventure Journal</span>
+        <strong>J Close</strong>
+      </header>
+      <div id="journal-body"></div>
+      <footer>Tracks landmarks, bosses, bows, quests, and temple completions.</footer>
+    </section>
+  </main>
+
+  <script src="vendor/three.min.js"></script>
+  <script type="module" src="src/main.js"></script>
+</body>
+</html>

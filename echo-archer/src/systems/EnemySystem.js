@@ -1,0 +1,230 @@
+import { SETTINGS } from "../config/settings.js";
+import { Enemy } from "../entities/Enemy.js";
+
+const { THREE } = window;
+
+export class EnemySystem {
+  constructor(scene, world, ui, feedback = null) {
+    this.scene = scene;
+    this.world = world;
+    this.ui = ui;
+    this.feedback = feedback;
+    this.slots = [
+      { type: "crawler", position: [-9, -7], patrol: [[-9, -7], [-15, -5], [-16, -11], [-8, -12]], respawnTimer: 0 },
+      { type: "wolf", position: [12, -8], patrol: [[12, -8], [19, -6], [18, -13], [10, -14]], respawnTimer: 0 },
+      { type: "crawler", position: [-31, 16], patrol: [[-31, 16], [-34, 11], [-29, 7], [-25, 13]], respawnTimer: 0 },
+      { type: "wolf", position: [-17, 17], patrol: [[-17, 17], [-21, 21], [-26, 18], [-21, 13]], respawnTimer: 0 },
+      { type: "crawler", position: [30, 25], patrol: [[30, 25], [34, 21], [29, 17], [25, 22]], respawnTimer: 0 },
+      { type: "crawler", position: [-31, 25], patrol: [[-31, 25], [-28, 23], [-26, 26], [-29, 28]], respawnTimer: 0 },
+      { type: "wolf", position: [-27, 29], patrol: [[-27, 29], [-24, 26], [-22, 29], [-25, 32]], respawnTimer: 0 },
+      { type: "crawler", position: [-25, 21], patrol: [[-25, 21], [-22, 23], [-24, 25], [-27, 23]], respawnTimer: 0 },
+      { type: "snowWolf", position: [-68, 78], patrol: [[-68, 78], [-73, 82], [-69, 87], [-63, 83]], respawnTimer: 0 },
+      { type: "iceStag", position: [-88, 95], patrol: [[-88, 95], [-94, 98], [-91, 105], [-84, 102]], respawnTimer: 0 },
+      { type: "frostCrawler", position: [-101, 70], patrol: [[-101, 70], [-106, 74], [-102, 79], [-96, 75]], respawnTimer: 0 },
+      { type: "snowWolf", position: [-116, 108], patrol: [[-116, 108], [-121, 112], [-115, 118], [-109, 113]], respawnTimer: 0 },
+      { type: "cliffRaptor", position: [108, -86], patrol: [[108, -86], [114, -90], [111, -98], [102, -94]], respawnTimer: 0 },
+      { type: "tideCrawler", position: [118, -111], patrol: [[118, -111], [124, -114], [121, -120], [114, -118]], respawnTimer: 0 },
+      { type: "windGull", position: [86, -79], patrol: [[86, -79], [92, -84], [88, -91], [80, -86]], respawnTimer: 0 },
+      { type: "shellbackBeast", position: [100, -116], patrol: [[100, -116], [106, -121], [98, -124], [92, -118]], respawnTimer: 0 },
+      { type: "mistStag", position: [87, 100], patrol: [[87, 100], [94, 104], [90, 112], [81, 108]], respawnTimer: 0 },
+      { type: "glowFox", position: [118, 70], patrol: [[118, 70], [124, 74], [120, 80], [112, 77]], respawnTimer: 0 },
+      { type: "rootBeast", position: [74, 78], patrol: [[74, 78], [80, 82], [76, 90], [69, 86]], respawnTimer: 0 },
+      { type: "forestWisp", position: [111, 105], patrol: [[111, 105], [116, 110], [109, 116], [103, 109]], respawnTimer: 0 },
+      { type: "marshStalker", position: [-91, -84], patrol: [[-91, -84], [-98, -88], [-94, -96], [-86, -91]], respawnTimer: 0 },
+      { type: "mudCrawler", position: [-113, -88], patrol: [[-113, -88], [-119, -91], [-116, -99], [-108, -96]], respawnTimer: 0 },
+      { type: "mireBat", position: [-119, -74], patrol: [[-119, -74], [-125, -78], [-121, -84], [-113, -80]], respawnTimer: 0 },
+      { type: "swampHornbeast", position: [-92, -62], patrol: [[-92, -62], [-101, -64], [-104, -56], [-95, -53]], respawnTimer: 0 },
+      { type: "canyonStrider", position: [-12, 118], patrol: [[-12, 118], [-19, 114], [-15, 126], [-7, 123]], respawnTimer: 0 },
+      { type: "rockbackRam", position: [18, 126], patrol: [[18, 126], [25, 132], [19, 139], [12, 133]], respawnTimer: 0 },
+      { type: "dustRaptor", position: [-28, 132], patrol: [[-28, 132], [-34, 137], [-29, 144], [-21, 139]], respawnTimer: 0 },
+      { type: "sandViper", position: [6, 146], patrol: [[6, 146], [13, 148], [9, 154], [0, 151]], respawnTimer: 0 },
+      { type: "ashHound", position: [-125, 136], patrol: [[-125, 136], [-132, 132], [-128, 144], [-118, 142]], respawnTimer: 0 },
+      { type: "emberDrake", position: [-101, 150], patrol: [[-101, 150], [-108, 156], [-96, 160], [-92, 150]], respawnTimer: 0 },
+      { type: "magmaCrawler", position: [-153, 124], patrol: [[-153, 124], [-160, 127], [-155, 134], [-146, 130]], respawnTimer: 0 },
+      { type: "firehornBeast", position: [-140, 108], patrol: [[-140, 108], [-148, 112], [-139, 119], [-130, 113]], respawnTimer: 0 },
+      { type: "astralStag", position: [126, 46], patrol: [[126, 46], [132, 50], [128, 58], [119, 54]], respawnTimer: 0 },
+      { type: "crystalWyrm", position: [145, 35], patrol: [[145, 35], [153, 38], [150, 47], [140, 43]], respawnTimer: 0 },
+      { type: "starboundHunter", position: [157, 53], patrol: [[157, 53], [164, 57], [159, 65], [151, 61]], respawnTimer: 0 },
+      { type: "celestialWisp", position: [137, 68], patrol: [[137, 68], [144, 72], [139, 78], [130, 73]], respawnTimer: 0 },
+      { type: "moonclawBeast", position: [165, 34], patrol: [[165, 34], [171, 39], [166, 47], [158, 42]], respawnTimer: 0 },
+      { type: "wolf", position: [-69, 58], patrol: [[-69, 58], [-74, 60], [-78, 55], [-72, 51]], respawnTimer: 0 },
+      { type: "crawler", position: [-86, 44], patrol: [[-86, 44], [-91, 48], [-88, 54], [-82, 50]], respawnTimer: 0 },
+      { type: "dustRaptor", position: [-62, 42], patrol: [[-62, 42], [-58, 49], [-64, 54], [-70, 48]], respawnTimer: 0 },
+      { type: "plainsStag", position: [130, -160], patrol: [[130, -160], [139, -166], [148, -158], [138, -151]], respawnTimer: 0 },
+      { type: "riverfang", position: [160, -137], patrol: [[160, -137], [168, -133], [164, -126], [154, -130]], respawnTimer: 0 },
+      { type: "skyHawk", position: [116, -124], patrol: [[116, -124], [126, -128], [122, -138], [112, -134]], respawnTimer: 0 },
+      { type: "frontierWolf", position: [145, -118], patrol: [[145, -118], [153, -121], [151, -130], [140, -128]], respawnTimer: 0 },
+      { type: "stonehideGrazer", position: [151, -154], patrol: [[151, -154], [160, -160], [168, -152], [158, -144]], respawnTimer: 0 },
+      { type: "kingdomSentinel", position: [91, -146], patrol: [[91, -146], [97, -139], [88, -135], [82, -145]], respawnTimer: 0 },
+      { type: "ruinStalker", position: [67, -160], patrol: [[67, -160], [74, -166], [80, -158], [72, -151]], respawnTimer: 0 },
+      { type: "archiveWisp", position: [60, -140], patrol: [[60, -140], [66, -145], [61, -152], [54, -147]], respawnTimer: 0 },
+      { type: "stoneGuardian", position: [103, -158], patrol: [[103, -158], [108, -164], [99, -169], [95, -160]], respawnTimer: 0 },
+      { type: "skyWyrm", position: [64, 166], patrol: [[64, 166], [72, 172], [79, 164], [70, 158]], respawnTimer: 0 },
+      { type: "astralHunter", position: [89, 160], patrol: [[89, 160], [98, 165], [94, 174], [84, 170]], respawnTimer: 0 },
+      { type: "crystalDrake", position: [99, 144], patrol: [[99, 144], [107, 148], [103, 156], [94, 152]], respawnTimer: 0 },
+      { type: "celestialWatcher", position: [75, 136], patrol: [[75, 136], [82, 141], [77, 148], [68, 143]], respawnTimer: 0 },
+      { type: "reefStalker", position: [-151, -137], patrol: [[-151, -137], [-158, -134], [-155, -127], [-145, -131]], respawnTimer: 0 },
+      { type: "tideDrake", position: [-144, -170], patrol: [[-144, -170], [-152, -174], [-161, -167], [-150, -160]], respawnTimer: 0 },
+      { type: "cliffTalon", position: [-170, -128], patrol: [[-170, -128], [-176, -134], [-171, -142], [-162, -137]], respawnTimer: 0 },
+      { type: "saltbackBeast", position: [-166, -156], patrol: [[-166, -156], [-174, -162], [-166, -170], [-157, -163]], respawnTimer: 0 },
+      { type: "deepwaterWisp", position: [-136, -154], patrol: [[-136, -154], [-144, -158], [-138, -165], [-130, -160]], respawnTimer: 0 },
+      { type: "rootStalker", position: [-54, -151], patrol: [[-54, -151], [-61, -157], [-55, -165], [-47, -158]], respawnTimer: 0 },
+      { type: "wildhorn", position: [-24, -140], patrol: [[-24, -140], [-16, -146], [-18, -135], [-30, -132]], respawnTimer: 0 },
+      { type: "mossDrake", position: [-64, -130], patrol: [[-64, -130], [-70, -136], [-62, -143], [-55, -134]], respawnTimer: 0 },
+      { type: "groveGuardian", position: [-45, -122], patrol: [[-45, -122], [-53, -126], [-48, -134], [-38, -130]], respawnTimer: 0 },
+      { type: "mistFox", position: [-72, -154], patrol: [[-72, -154], [-77, -160], [-69, -166], [-64, -157]], respawnTimer: 0 },
+    ];
+    this.enemies = this.slots.map((slot) => this.spawnEnemy(slot));
+    this.healthBars = new Map();
+    this.defeatListeners = [];
+  }
+
+  spawnEnemy(slot) {
+    return new Enemy(slot.type, this.scene, this.world, slot.position, slot.patrol);
+  }
+
+  onEnemyDefeated(callback) {
+    this.defeatListeners.push(callback);
+  }
+
+  update(deltaSeconds, player, camera) {
+    this.enemies.forEach((enemy, index) => {
+      enemy.update(deltaSeconds, player);
+      if (enemy.removed) {
+        const slot = this.slots[index];
+        slot.respawnTimer -= deltaSeconds;
+        if (slot.respawnTimer <= 0) {
+          this.hideHealthBar(enemy);
+          this.enemies[index] = this.spawnEnemy(slot);
+        }
+      }
+    });
+    this.updateHealthBars(camera);
+  }
+
+  handleArrowHit(arrow) {
+    const enemy = arrow.hitObjectRef?.userData.enemy;
+    if (!enemy || !enemy.active) {
+      return;
+    }
+
+    const hitDirection = arrow.velocity.clone().normalize();
+    const shotPower = arrow.shotPower ?? 0.5;
+    const damage = SETTINGS.enemies.arrowDamage * (arrow.damageMultiplier ?? 1);
+    const defeated = enemy.takeDamage(damage, hitDirection, shotPower);
+    enemy.applyArrowEffect?.(arrow.arrowType, shotPower);
+    this.ensureHealthBar(enemy);
+    this.feedback?.spawnImpact(arrow.hitPoint ?? enemy.group.position, defeated ? 0xe6b75d : (shotPower > 0.72 ? 0xffb15f : 0xcf7c4e), defeated ? 2.05 : 1.05 + shotPower * 0.7);
+    this.feedback?.shake(defeated ? 0.22 : 0.055 + shotPower * 0.08);
+    this.showCombatText(enemy, defeated ? "DEFEATED" : `${Math.round(damage)}`, defeated ? "xp" : (shotPower > 0.72 ? "damage strong" : "damage"));
+    if (defeated) {
+      const slot = this.slots[this.enemies.indexOf(enemy)];
+      slot.respawnTimer = 5.5;
+      this.feedback?.spawnImpact(enemy.group.position.clone().add(new THREE.Vector3(0, 0.8, 0)), 0xffd27a, 2.2);
+      this.feedback?.playSound("enemyDefeat", 1.08);
+      this.defeatListeners.forEach((callback) => callback({ enemy, type: enemy.type }));
+    }
+  }
+
+  handleAreaArrowEffect(arrow) {
+    if (arrow.arrowType?.id !== "explosive" || !arrow.hitPoint) {
+      return;
+    }
+
+    const radius = arrow.arrowType.radius ?? 4;
+    this.enemies.forEach((enemy) => {
+      if (!enemy.active) {
+        return;
+      }
+      const distance = enemy.group.position.distanceTo(arrow.hitPoint);
+      if (distance > radius) {
+        return;
+      }
+      const falloff = 1 - distance / radius;
+      const direction = enemy.group.position.clone().sub(arrow.hitPoint).normalize();
+      const damage = SETTINGS.enemies.arrowDamage * 0.72 * falloff * (arrow.damageMultiplier ?? 1);
+      const defeated = enemy.takeDamage(damage, direction, arrow.shotPower ?? 0.7);
+      this.ensureHealthBar(enemy);
+      this.feedback?.spawnImpact(enemy.group.position.clone().add(new THREE.Vector3(0, 0.6, 0)), 0xffcf5f, 1.1 + falloff);
+      this.showCombatText(enemy, defeated ? "DEFEATED" : `${Math.round(damage)}`, defeated ? "xp" : "damage strong");
+      if (defeated) {
+        const slot = this.slots[this.enemies.indexOf(enemy)];
+        if (slot) slot.respawnTimer = 5.5;
+        this.defeatListeners.forEach((callback) => callback({ enemy, type: enemy.type }));
+      }
+    });
+  }
+
+  showCombatText(enemy, text, kind) {
+    if (!this.lastCamera) {
+      return;
+    }
+
+    const position = enemy.getHealthBarPosition().project(this.lastCamera);
+    if (position.z < -1 || position.z > 1) {
+      return;
+    }
+
+    window.dispatchEvent(new CustomEvent("echo-archer:combat-text", {
+      detail: {
+        text,
+        kind,
+        x: (position.x * 0.5 + 0.5) * window.innerWidth,
+        y: (-position.y * 0.5 + 0.5) * window.innerHeight,
+      },
+    }));
+  }
+
+  updateHealthBars(camera) {
+    this.lastCamera = camera;
+    this.enemies.forEach((enemy) => {
+      const bar = this.ensureHealthBar(enemy);
+      const visible = enemy.active && this.shouldShowHealth(enemy, camera);
+      bar.classList.toggle("visible", visible);
+
+      if (!visible) {
+        return;
+      }
+
+      const projected = enemy.getHealthBarPosition().project(camera);
+      bar.style.left = `${(projected.x * 0.5 + 0.5) * window.innerWidth}px`;
+      bar.style.top = `${(-projected.y * 0.5 + 0.5) * window.innerHeight}px`;
+      bar.style.setProperty("--health", enemy.getHealthRatio().toFixed(3));
+    });
+  }
+
+  shouldShowHealth(enemy, camera) {
+    const cameraDirection = new THREE.Vector3();
+    const toEnemy = enemy.getHealthBarPosition().sub(camera.position);
+    const distance = toEnemy.length();
+    if (distance > SETTINGS.enemies.healthBarDistance) {
+      return false;
+    }
+
+    camera.getWorldDirection(cameraDirection);
+    const aimDot = cameraDirection.dot(toEnemy.normalize());
+    return aimDot > SETTINGS.enemies.healthBarAimDot || enemy.hitReactTimer > 0;
+  }
+
+  ensureHealthBar(enemy) {
+    if (this.healthBars.has(enemy)) {
+      return this.healthBars.get(enemy);
+    }
+
+    const bar = document.createElement("span");
+    bar.className = "enemy-health";
+    const fill = document.createElement("span");
+    fill.className = "enemy-health-fill";
+    bar.appendChild(fill);
+    this.ui.bars.appendChild(bar);
+    this.healthBars.set(enemy, bar);
+    return bar;
+  }
+
+  hideHealthBar(enemy) {
+    const bar = this.healthBars.get(enemy);
+    if (bar) {
+      bar.classList.remove("visible");
+    }
+  }
+}
