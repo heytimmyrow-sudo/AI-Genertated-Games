@@ -398,14 +398,6 @@ const economy = new EconomyGuildSystem(scene, world, player, {
 }, {
   inventory,
 });
-const livingWorldEvents = new LivingWorldEventsSystem(scene, world, player, {
-  toast: questToast,
-}, {
-  economy,
-  progression,
-  masterTrials,
-  lodge: archerLodge,
-});
 const mounts = new MountSystem(world, inventory, scene, player, { toast: questToast });
 const rpg = new RPGProgressionSystem({
   skills: skillTreeMenu,
@@ -451,6 +443,14 @@ const masterTrials = new MasterArcherTrialsSystem(world, player, {
   objective: questObjective,
   toast: questToast,
   ceremony: masterCeremony,
+});
+const livingWorldEvents = new LivingWorldEventsSystem(scene, world, player, {
+  toast: questToast,
+}, {
+  economy,
+  progression,
+  masterTrials,
+  lodge: archerLodge,
 });
 const frontierExpedition = new FrontierExpeditionSystem({
   title: questTitle,
