@@ -37,7 +37,12 @@ import { WorldMapSystem } from "./systems/WorldMapSystem.js";
 import { PhotoModeSystem } from "./systems/PhotoModeSystem.js";
 import { MasterArcherTrialsSystem } from "./systems/MasterArcherTrialsSystem.js";
 import { FeedbackSystem } from "./systems/FeedbackSystem.js";
+import { GraphicsSettingsSystem } from "./systems/GraphicsSettingsSystem.js";
+import { PerformanceDebugSystem } from "./systems/PerformanceDebugSystem.js";
 import { AudioManager } from "./systems/AudioManager.js";
+import { SaveSystem } from "./systems/SaveSystem.js";
+import { ArcherLodgeSystem } from "./systems/ArcherLodgeSystem.js";
+import { LivingWorldEventsSystem } from "./systems/LivingWorldEventsSystem.js";
 import { World } from "./world/World.js";
 import { PlayerController } from "./entities/PlayerController.js";
 
@@ -66,6 +71,10 @@ const bossName = document.querySelector("#boss-name");
 const bossHealthFill = document.querySelector("#boss-health-fill");
 const playerHealthText = document.querySelector("#player-health-text");
 const playerHealthFill = document.querySelector("#player-health-fill");
+const playerStaminaText = document.querySelector("#player-stamina-text");
+const playerStaminaFill = document.querySelector("#player-stamina-fill");
+const saveGameButton = document.querySelector("#save-game-button");
+const saveState = document.querySelector("#save-state");
 const questTitle = document.querySelector("#quest-title");
 const questObjective = document.querySelector("#quest-objective");
 const findLandmarkButton = document.querySelector("#find-landmark-button");
@@ -101,17 +110,65 @@ const worldMapMenu = document.querySelector("#world-map-menu");
 const worldMapCanvas = document.querySelector("#world-map-canvas");
 const worldMapDetails = document.querySelector("#world-map-details");
 const worldMapClose = document.querySelector("#world-map-close");
+const worldMapZoomIn = document.querySelector("#world-map-zoom-in");
+const worldMapZoomOut = document.querySelector("#world-map-zoom-out");
+const worldMapReset = document.querySelector("#world-map-reset");
 const journalMenu = document.querySelector("#journal-menu");
 const journalBody = document.querySelector("#journal-body");
 const photoModeOverlay = document.querySelector("#photo-mode-overlay");
 const masterCeremony = document.querySelector("#master-ceremony");
 const muteToggle = document.querySelector("#mute-toggle");
 const volumeSlider = document.querySelector("#volume-slider");
+const graphicsToggle = document.querySelector("#graphics-toggle");
+const performanceToggle = document.querySelector("#performance-toggle");
+const graphicsQualityState = document.querySelector("#graphics-quality-state");
+const graphicsMenu = document.querySelector("#graphics-menu");
+const graphicsButtons = document.querySelectorAll("#graphics-menu [data-quality]");
+const performanceDebug = document.querySelector("#performance-debug");
+const performanceDebugBody = document.querySelector("#performance-debug-body");
+const loadingScreen = document.querySelector("#loading-screen");
+const loadingMessage = document.querySelector("#loading-message");
+const loadingFill = document.querySelector("#loading-fill");
 
-const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: "high-performance" });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+function setLoading(message, progress) {
+  if (loadingMessage) {
+    loadingMessage.textContent = message;
+  }
+  if (loadingFill) {
+    loadingFill.style.setProperty("--loading-progress", `${Math.round(progress * 100)}%`);
+  }
+}
+
+function hideLoadingScreen() {
+  loadingScreen?.classList.add("hidden");
+}
+
+window.setTimeout(() => {
+  hideLoadingScreen();
+}, 4200);
+
+function prefersPerformanceDetail() {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("detail") === "full") {
+      return false;
+    }
+    if (params.get("detail") === "performance") {
+      return true;
+    }
+    return localStorage.getItem("echo-archer-detail") !== "full";
+  } catch {
+    return true;
+  }
+}
+
+const performanceDetail = prefersPerformanceDetail();
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: !performanceDetail, powerPreference: "high-performance" });
+const pixelRatioCap = performanceDetail ? 1 : ((navigator.hardwareConcurrency ?? 8) <= 4 ? 1.15 : 1.35);
+const lowGpuMode = (navigator.hardwareConcurrency ?? 8) <= 4 || (navigator.deviceMemory ?? 8) <= 4;
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, pixelRatioCap));
 renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.shadowMap.enabled = true;
+renderer.shadowMap.enabled = !lowGpuMode;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -123,13 +180,17 @@ camera.position.set(0, 4, -8);
 
 const input = new InputController(canvas);
 const cameraRig = new CameraRig(camera);
+setLoading("Building world...", 0.18);
 const world = new World(scene);
+const archerLodge = new ArcherLodgeSystem(world);
+setLoading("Preparing archer...", 0.34);
 const player = new PlayerController(scene, world);
 const audio = new AudioManager({
   mute: muteToggle,
   volume: volumeSlider,
 });
 const feedback = new FeedbackSystem(scene, cameraRig);
+setLoading("Loading quests and creatures...", 0.48);
 const quests = new QuestSystem(scene, world, player, {
   title: questTitle,
   objective: questObjective,
@@ -141,6 +202,7 @@ const quests = new QuestSystem(scene, world, player, {
   toast: questToast,
 });
 const enemies = new EnemySystem(scene, world, { bars: enemyBars }, feedback);
+setLoading("Waking bosses...", 0.58);
 const miniBoss = new MiniBossSystem(scene, world, {
   bar: bossHealth,
   name: bossName,
@@ -206,6 +268,22 @@ const ancientGrovekeeperBoss = new AncientGrovekeeperBossSystem(scene, world, {
   name: bossName,
   fill: bossHealthFill,
 }, feedback);
+const bossSystems = [
+  miniBoss,
+  frostBoss,
+  stormBoss,
+  rootBoss,
+  mirejawBoss,
+  stonehornBoss,
+  infernoBoss,
+  astralBoss,
+  ironhornBoss,
+  firstSentinelBoss,
+  skyboundWardenBoss,
+  tideboundWardenBoss,
+  ancientGrovekeeperBoss,
+];
+applyBossCombatPolish(bossSystems, feedback);
 const targetPractice = new TargetPracticeSystem(world, {
   challenge: challengeState,
   accuracy: accuracyState,
@@ -254,6 +332,28 @@ try {
 } catch (error) {
   console.warn("Weather system disabled:", error);
 }
+const graphics = new GraphicsSettingsSystem(renderer, {
+  world,
+  feedback,
+  weather,
+  archery,
+  cameraRig,
+}, {
+  panel: graphicsMenu,
+  toggle: graphicsToggle,
+  label: graphicsQualityState,
+  buttons: Array.from(graphicsButtons),
+});
+const performanceDebugSystem = new PerformanceDebugSystem(renderer, scene, {
+  enemies,
+  archery,
+  bosses: bossSystems,
+  regionState,
+}, {
+  panel: performanceDebug,
+  body: performanceDebugBody,
+  toggle: performanceToggle,
+});
 const progression = new ProgressionSystem({
   level: levelState,
   xp: xpState,
@@ -298,6 +398,14 @@ const economy = new EconomyGuildSystem(scene, world, player, {
 }, {
   inventory,
 });
+const livingWorldEvents = new LivingWorldEventsSystem(scene, world, player, {
+  toast: questToast,
+}, {
+  economy,
+  progression,
+  masterTrials,
+  lodge: archerLodge,
+});
 const mounts = new MountSystem(world, inventory, scene, player, { toast: questToast });
 const rpg = new RPGProgressionSystem({
   skills: skillTreeMenu,
@@ -324,6 +432,9 @@ const worldMap = new WorldMapSystem(world, player, {
   canvas: worldMapCanvas,
   details: worldMapDetails,
   close: worldMapClose,
+  zoomIn: worldMapZoomIn,
+  zoomOut: worldMapZoomOut,
+  reset: worldMapReset,
   toast: questToast,
   fade: document.createElement("div"),
 }, {
@@ -367,18 +478,50 @@ const veiledWildsQuest = new VeiledWildsQuestSystem({
   toast: questToast,
 });
 let wildlife = { update() {} };
-try {
-  wildlife = new WildlifeSystem(scene, world);
-} catch (error) {
-  console.warn("Wildlife system disabled:", error);
+if (!world.performanceMode) {
+  try {
+    wildlife = new WildlifeSystem(scene, world);
+  } catch (error) {
+    console.warn("Wildlife system disabled:", error);
+  }
 }
+const saves = new SaveSystem({
+  button: saveGameButton,
+  label: saveState,
+}, {
+  player,
+  world,
+  progression,
+  inventory,
+  quests,
+  economy,
+  rpg,
+  journal,
+  worldMap,
+  masterTrials,
+  frontierExpedition,
+  lostKingdomQuest,
+  celestialExpanseQuest,
+  shatteredCoastQuest,
+  veiledWildsQuest,
+});
+setLoading(saves.loaded ? "Progress restored." : "Starting fresh adventure.", 0.92);
 let caveAudioActive = false;
 let currentRegionId = null;
+let firstFrameRendered = false;
+window.setTimeout(() => {
+  if (!firstFrameRendered) {
+    hideLoadingScreen();
+  }
+}, 5200);
 
 targetPractice.onTargetHit(({ target, score, challengeComplete }) => {
   quests.handleTargetHit(target);
   masterTrials.handleTargetHit(target, score);
   economy.awardTarget(score);
+  window.dispatchEvent(new CustomEvent("echo-archer:target-hit", {
+    detail: { targetId: target.id, score },
+  }));
   if (target.switchId === "whisper-cave-gate") {
     world.openWhisperCaveGate();
   }
@@ -597,6 +740,10 @@ function updateHud() {
   const health = THREE.MathUtils.clamp(player.stats.health ?? healthMax, 0, healthMax);
   playerHealthText.textContent = `${Math.ceil(health)} / ${Math.ceil(healthMax)}`;
   playerHealthFill.style.setProperty("--player-health", (health / healthMax).toFixed(3));
+  const staminaMax = Math.max(1, player.stats.staminaMax ?? 100);
+  const stamina = THREE.MathUtils.clamp(player.stats.stamina ?? staminaMax, 0, staminaMax);
+  playerStaminaText.textContent = `${Math.ceil(stamina)} / ${Math.ceil(staminaMax)}`;
+  playerStaminaFill.style.setProperty("--player-stamina", (stamina / staminaMax).toFixed(3));
   reticle.classList.toggle("first-person", cameraRig.mode === "first");
   reticle.classList.toggle("third-person", cameraRig.mode === "third");
   reticle.classList.toggle("is-drawing", archery.isDrawing);
@@ -627,12 +774,74 @@ function updateRegionHud() {
 function isCombatActive() {
   const playerPosition = player.group.position;
   const nearbyEnemy = enemies.enemies?.some((enemy) => (
-    enemy.active && !enemy.removed && enemy.group.position.distanceTo(playerPosition) < 18 && enemy.state !== "patrol"
+    enemy?.active && !enemy.removed && enemy.group.position.distanceTo(playerPosition) < 18 && enemy.state !== "patrol"
   ));
   const activeBoss = [miniBoss, frostBoss, stormBoss, rootBoss, mirejawBoss, stonehornBoss, infernoBoss, astralBoss, ironhornBoss, firstSentinelBoss, skyboundWardenBoss, tideboundWardenBoss, ancientGrovekeeperBoss].some((system) => (
     system.boss?.noticed && !system.boss?.defeated
   ));
   return Boolean(nearbyEnemy || activeBoss);
+}
+
+function applyBossCombatPolish(systems, feedbackSystem) {
+  const telegraphMethods = [
+    "startCharge",
+    "startPounce",
+    "startDive",
+    "startSlam",
+    "startRootCharge",
+    "startSurge",
+    "startRockSlam",
+    "startStomp",
+    "startMudSplash",
+    "startLavaBurst",
+    "startPulse",
+    "startWave",
+    "startBeam",
+    "startGust",
+    "startVinePulse",
+    "startStarVolley",
+  ];
+
+  systems.forEach((system) => {
+    telegraphMethods.forEach((methodName) => {
+      if (typeof system[methodName] !== "function" || system[methodName].__echoPolished) {
+        return;
+      }
+
+      const original = system[methodName].bind(system);
+      const wrapped = function wrappedBossTelegraph(boss, ...args) {
+        if (boss?.group && !boss.defeated) {
+          const impactPoint = boss.group.position.clone().add(new THREE.Vector3(0, 1.15, 0));
+          const isAreaAttack = /Slam|Stomp|Splash|Burst|Pulse|Wave|Beam|Gust|Volley/i.test(methodName);
+          feedbackSystem?.spawnImpact?.(impactPoint, isAreaAttack ? 0xffcf5f : 0xff8a3d, isAreaAttack ? 2.15 : 1.55);
+          feedbackSystem?.shake?.(isAreaAttack ? 0.08 : 0.055);
+          feedbackSystem?.playSound?.("bossCharge", isAreaAttack ? 0.74 : 0.92);
+          boss.telegraphTimer = Math.max(boss.telegraphTimer ?? 0, isAreaAttack ? 0.48 : 0.34);
+        }
+        return original(boss, ...args);
+      };
+      wrapped.__echoPolished = true;
+      system[methodName] = wrapped;
+    });
+  });
+}
+
+function updateBossWhenRelevant(system, deltaSeconds) {
+  const boss = system.boss;
+  if (!boss?.group || boss.defeated) {
+    system.update(deltaSeconds, player, camera);
+    return;
+  }
+  const distance = boss.group.position.distanceTo(player.group.position);
+  if (boss.noticed || distance <= (world.performanceMode ? 72 : 120)) {
+    const previousPhase = boss.phase;
+    system.update(deltaSeconds, player, camera);
+    if (boss.phase && previousPhase && boss.phase !== previousPhase) {
+      feedback.spawnImpact(boss.group.position.clone().add(new THREE.Vector3(0, 1.35, 0)), 0xfff1a6, 2.65);
+      feedback.playSound("bossNotice", 0.78);
+      feedback.shake(0.12);
+    }
+  }
 }
 
 function update(deltaSeconds) {
@@ -642,7 +851,10 @@ function update(deltaSeconds) {
   rpg.update(input);
   journal.update(input);
   worldMap.update(input);
+  graphics.update(input);
+  performanceDebugSystem.update(deltaSeconds, input);
   photoMode.update(input, deltaSeconds);
+  saves.update(deltaSeconds);
 
   const inventoryOpen = inventory.open;
   const shopOpen = economy.shopOpen;
@@ -650,12 +862,13 @@ function update(deltaSeconds) {
   const rpgOpen = Boolean(rpg.openScreen);
   const journalOpen = journal.open;
   const mapOpen = worldMap.open;
+  const graphicsOpen = graphics.open;
   const photoOpen = photoMode.open;
-  const menuOpen = progression.menuOpen || inventoryOpen || shopOpen || questBoardOpen || rpgOpen || journalOpen || mapOpen || photoOpen;
+  const menuOpen = progression.menuOpen || inventoryOpen || shopOpen || questBoardOpen || rpgOpen || journalOpen || mapOpen || graphicsOpen || photoOpen;
   input.setGameplayBlocked(menuOpen);
   audio.setGameplayPaused(menuOpen);
 
-  if (inventoryOpen || shopOpen || questBoardOpen || rpgOpen || journalOpen || mapOpen || photoOpen) {
+  if (inventoryOpen || shopOpen || questBoardOpen || rpgOpen || journalOpen || mapOpen || graphicsOpen || photoOpen) {
     archery.cancelDraw?.();
     cameraRig.setAimState(false, 0);
     updateHud();
@@ -673,6 +886,7 @@ function update(deltaSeconds) {
 
   player.update(deltaSeconds, input, cameraRig);
   world.updateDayNight(deltaSeconds, timeState);
+  world.updateDistanceDetail?.(player.group.position, deltaSeconds);
   const nextCaveAudioActive = world.isInsideWhisperCave?.(player.group.position) ?? false;
   if (nextCaveAudioActive !== caveAudioActive) {
     caveAudioActive = nextCaveAudioActive;
@@ -687,24 +901,14 @@ function update(deltaSeconds) {
   celestialExpanseQuest.update(deltaSeconds);
   shatteredCoastQuest.update(deltaSeconds);
   veiledWildsQuest.update(deltaSeconds);
+  livingWorldEvents.update(deltaSeconds);
   specialArrows.update(input);
   archery.update(deltaSeconds, input, player, cameraRig, world);
   cameraRig.setAimState(archery.isDrawing, archery.drawAmount);
   cameraRig.update(player, world.terrain, deltaSeconds);
   enemies.update(deltaSeconds, player, camera);
-  miniBoss.update(deltaSeconds, player, camera);
-  frostBoss.update(deltaSeconds, player, camera);
-  stormBoss.update(deltaSeconds, player, camera);
-  rootBoss.update(deltaSeconds, player, camera);
-  mirejawBoss.update(deltaSeconds, player, camera);
-  stonehornBoss.update(deltaSeconds, player, camera);
-  infernoBoss.update(deltaSeconds, player, camera);
-  astralBoss.update(deltaSeconds, player, camera);
-  ironhornBoss.update(deltaSeconds, player, camera);
-  firstSentinelBoss.update(deltaSeconds, player, camera);
-  skyboundWardenBoss.update(deltaSeconds, player, camera);
-  tideboundWardenBoss.update(deltaSeconds, player, camera);
-  ancientGrovekeeperBoss.update(deltaSeconds, player, camera);
+  bossSystems.forEach((system) => updateBossWhenRelevant(system, deltaSeconds));
+  player.updateSafeRecovery(deltaSeconds, !isCombatActive());
   weather.update(deltaSeconds, player);
   wind.update(deltaSeconds, player);
   wildlife.update(deltaSeconds, player);
@@ -714,6 +918,10 @@ function update(deltaSeconds) {
   updateRegionHud();
   updateHud();
   renderer.render(scene, camera);
+  if (!firstFrameRendered) {
+    firstFrameRendered = true;
+    window.setTimeout(hideLoadingScreen, 450);
+  }
   input.endFrame();
 }
 

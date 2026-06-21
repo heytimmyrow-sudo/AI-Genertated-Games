@@ -35,6 +35,8 @@ export class PlayerController {
     this.groundContactGrace = 0;
     this.heatWarningCooldown = 0;
     this.damageCooldown = 0;
+    this.safeRecoveryTimer = 0;
+    this.isSprinting = false;
     this.defeated = false;
     this.visualGroundOffset = -SETTINGS.player.height / 2;
 
@@ -59,6 +61,18 @@ export class PlayerController {
     torso.scale.set(0.86, 1.08, 0.72);
     torso.castShadow = true;
     body.add(torso);
+
+    const chestPlate = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.38, 0.055), trimMaterial);
+    chestPlate.position.set(0, 1.08, 0.25);
+    chestPlate.rotation.x = -0.08;
+    chestPlate.castShadow = true;
+    body.add(chestPlate);
+
+    const chestArrow = new THREE.Mesh(new THREE.ConeGeometry(0.045, 0.34, 4), trimMaterial);
+    chestArrow.position.set(0, 1.08, 0.295);
+    chestArrow.rotation.x = Math.PI / 2;
+    chestArrow.castShadow = true;
+    body.add(chestArrow);
 
     const cloakSkirt = new THREE.Mesh(new THREE.ConeGeometry(0.42, 0.54, 7), cloakDarkMaterial);
     cloakSkirt.position.y = 0.7;
@@ -127,6 +141,13 @@ export class PlayerController {
       shoulder.scale.set(1.15, 0.72, 0.84);
       shoulder.castShadow = true;
       body.add(shoulder);
+
+      const pauldron = new THREE.Mesh(new THREE.ConeGeometry(0.16, 0.28, 5), trimMaterial);
+      pauldron.position.set(side * 0.37, 1.25, 0.02);
+      pauldron.rotation.set(0.15, 0, side * -0.82);
+      pauldron.scale.set(1.05, 0.48, 0.82);
+      pauldron.castShadow = true;
+      body.add(pauldron);
 
       const arm = new THREE.Mesh(new THREE.CapsuleGeometry(0.055, 0.48, 5, 8), leatherMaterial);
       arm.position.set(side * 0.42, 0.92, 0.02);
@@ -200,7 +221,8 @@ export class PlayerController {
     }
     this.readMovementInput(input, cameraRig);
     this.applyHeatEffects(deltaSeconds);
-    this.applyHorizontalMotion(deltaSeconds, input.isDown("ShiftLeft") || input.isDown("ShiftRight"));
+    const wantsSprint = input.isDown("ShiftLeft") || input.isDown("ShiftRight");
+    this.applyHorizontalMotion(deltaSeconds, wantsSprint);
     this.applyVerticalMotion(deltaSeconds, input);
     this.integrate(deltaSeconds);
     this.animateBody(deltaSeconds, input);
@@ -222,9 +244,15 @@ export class PlayerController {
     }
   }
 
-  applyHorizontalMotion(deltaSeconds, sprinting) {
+  applyHorizontalMotion(deltaSeconds, wantsSprint) {
     const bogMultiplier = this.world.getBogSlowMultiplierAt?.(this.group.position) ?? 1;
     const heatMultiplier = this.world.getHeatMovementMultiplierAt?.(this.group.position, this.stats.environmentalResistance ?? 0) ?? 1;
+    const moving = this.moveDirection.lengthSq() > 0.001;
+    const minimumSprintStamina = SETTINGS.player.staminaSprintMinimum ?? 8;
+    const canSprint = wantsSprint && moving && !this.mounted && (this.stats.stamina ?? 0) > minimumSprintStamina;
+    this.isSprinting = Boolean(canSprint || (this.mounted && wantsSprint && moving));
+    this.updateStamina(deltaSeconds, canSprint, moving);
+    const sprinting = this.isSprinting;
     const speed = this.getMoveSpeed(sprinting) * bogMultiplier * heatMultiplier;
     const targetX = this.moveDirection.x * speed;
     const targetZ = this.moveDirection.z * speed;
@@ -248,6 +276,24 @@ export class PlayerController {
     }
 
     this.velocity.y -= SETTINGS.player.gravity * deltaSeconds;
+  }
+
+  updateStamina(deltaSeconds, sprinting, moving) {
+    const staminaMax = Math.max(1, this.stats.staminaMax ?? SETTINGS.player.stamina);
+    const current = THREE.MathUtils.clamp(this.stats.stamina ?? staminaMax, 0, staminaMax);
+
+    if (sprinting) {
+      this.stats.stamina = Math.max(0, current - (SETTINGS.player.sprintStaminaDrain ?? 24) * deltaSeconds);
+      if (this.stats.stamina <= 0) {
+        this.isSprinting = false;
+      }
+      return;
+    }
+
+    const recoveryMultiplier = this.stats.staminaRecoveryMultiplier ?? 1;
+    const movementPenalty = moving ? 0.58 : 1;
+    const recovery = (SETTINGS.player.staminaRecovery ?? 18) * recoveryMultiplier * movementPenalty;
+    this.stats.stamina = Math.min(staminaMax, current + recovery * deltaSeconds);
   }
 
   integrate(deltaSeconds) {
@@ -384,7 +430,7 @@ export class PlayerController {
   animateBody(deltaSeconds, input) {
     const horizontalSpeed = Math.hypot(this.velocity.x, this.velocity.z);
     const moving = horizontalSpeed > 0.2;
-    const sprinting = moving && (input.isDown("ShiftLeft") || input.isDown("ShiftRight"));
+    const sprinting = moving && this.isSprinting;
     const gait = this.visualTime * (sprinting ? 13 : 8.5);
     const bob = moving ? Math.sin(gait) * (sprinting ? 0.035 : 0.022) : Math.sin(this.visualTime * 2.2) * 0.008;
     const sway = moving ? Math.sin(gait * 0.5) * 0.035 : Math.sin(this.visualTime * 1.6) * 0.012;
@@ -493,6 +539,31 @@ export class PlayerController {
     if (this.stats.health > 0) {
       this.defeated = false;
     }
+  }
+
+  updateSafeRecovery(deltaSeconds, safe) {
+    if (this.defeated || !safe || this.damageCooldown > 0) {
+      this.safeRecoveryTimer = 0;
+      return;
+    }
+
+    const healthMax = Math.max(1, this.stats.healthMax ?? 100);
+    const health = THREE.MathUtils.clamp(this.stats.health ?? healthMax, 0, healthMax);
+    if (health >= healthMax) {
+      this.safeRecoveryTimer = 0;
+      return;
+    }
+
+    this.safeRecoveryTimer += deltaSeconds;
+    if (this.safeRecoveryTimer < (SETTINGS.player.safeHealthRegenDelay ?? 4.2)) {
+      return;
+    }
+
+    const recoveryMultiplier = this.stats.recoveryMultiplier ?? 1;
+    this.stats.health = Math.min(
+      healthMax,
+      health + (SETTINGS.player.safeHealthRegen ?? 4) * recoveryMultiplier * deltaSeconds,
+    );
   }
 
   getMoveSpeed(sprinting) {

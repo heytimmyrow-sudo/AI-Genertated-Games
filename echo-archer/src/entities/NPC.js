@@ -7,6 +7,8 @@ export class NPC {
     this.name = options.name;
     this.role = options.role ?? "";
     this.appearance = options.appearance ?? {};
+    this.idleStyle = options.idleStyle ?? "calm";
+    this.gestureSeed = (this.name?.length ?? 3) * 0.37 + (this.role?.length ?? 5) * 0.19;
     this.position = new THREE.Vector3(options.position[0], 0, options.position[1]);
     this.interactRadius = options.interactRadius ?? 4;
     this.group = this.createMesh();
@@ -113,7 +115,7 @@ export class NPC {
       group.add(badge);
     }
 
-    group.userData = { body, cloak, longCape, staffGem };
+    group.userData = { body, cloak, longCape, staff, staffGem, marker };
     return group;
   }
 
@@ -125,13 +127,32 @@ export class NPC {
       this.group.rotation.y = THREE.MathUtils.lerp(this.group.rotation.y, yaw, 0.08);
     }
 
-    const time = performance.now() * 0.001;
-    const { longCape, staffGem } = this.group.userData;
+    const time = performance.now() * 0.001 + this.gestureSeed;
+    const nearPlayer = toPlayer.lengthSq() <= this.interactRadius * this.interactRadius;
+    const { body, longCape, staff, staffGem, marker } = this.group.userData;
     if (longCape) {
       longCape.rotation.x = -0.16 + Math.sin(time * 1.4) * 0.025;
     }
     if (staffGem) {
       staffGem.scale.setScalar(1 + Math.sin(time * 2.2) * 0.08);
+    }
+    if (body) {
+      const breathe = 1 + Math.sin(time * 1.1) * 0.018;
+      body.scale.y = 1.03 * breathe;
+    }
+    if (staff) {
+      const gestureAmount = nearPlayer ? 0.1 : 0.025;
+      staff.rotation.z = 0.12 + Math.sin(time * 1.8) * gestureAmount;
+    }
+    if (marker) {
+      const pulse = nearPlayer ? 1 + Math.sin(time * 4) * 0.1 : 1;
+      marker.scale.setScalar(pulse);
+    }
+    if (!nearPlayer) {
+      const idleSway = this.idleStyle === "restless" ? 0.035 : this.idleStyle === "watchful" ? 0.018 : 0.01;
+      this.group.rotation.z = Math.sin(time * 0.8) * idleSway;
+    } else {
+      this.group.rotation.z = THREE.MathUtils.lerp(this.group.rotation.z, 0, 0.12);
     }
   }
 

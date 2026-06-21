@@ -33,7 +33,7 @@ export class InputController {
   }
 
   handleKeyDown(event) {
-    if (["KeyW", "KeyA", "KeyS", "KeyD", "Space", "ShiftLeft", "ShiftRight", "KeyC", "KeyE", "KeyU", "KeyI", "KeyJ", "KeyK", "KeyM", "KeyN", "KeyO", "KeyP", "KeyR", "Escape", "Digit1", "Digit2", "Digit3", "Digit4", "BracketLeft", "BracketRight"].includes(event.code)) {
+    if (["KeyW", "KeyA", "KeyS", "KeyD", "Space", "ShiftLeft", "ShiftRight", "KeyC", "KeyE", "KeyU", "KeyI", "KeyJ", "KeyK", "KeyM", "KeyN", "KeyO", "KeyP", "KeyR", "Escape", "F2", "F3", "Digit1", "Digit2", "Digit3", "Digit4", "BracketLeft", "BracketRight"].includes(event.code)) {
       event.preventDefault();
     }
 
@@ -94,6 +94,10 @@ export class InputController {
   isGameplayPointerEvent(event) {
     const interactive = event.target.closest?.("[data-ui-interactive='true'], button, input, select, textarea, a");
     if (interactive) {
+      return false;
+    }
+
+    if (this.gameplayBlocked) {
       return false;
     }
 

@@ -17,6 +17,11 @@ export class CameraRig {
     this.scenicTarget = null;
     this.scenicTimer = 0;
     this.scenicDuration = 0;
+    this.thirdPersonSmoothing = 0.18;
+  }
+
+  setQuality(preset = null) {
+    this.thirdPersonSmoothing = preset?.cameraSmoothing ?? 0.18;
   }
 
   toggleMode() {
@@ -35,9 +40,9 @@ export class CameraRig {
 
   setAimState(isDrawing, drawAmount) {
     const target = isDrawing ? THREE.MathUtils.clamp(0.35 + drawAmount * 0.65, 0, 1) : 0;
-    this.aimAmount = THREE.MathUtils.lerp(this.aimAmount, target, 0.23);
+    this.aimAmount = THREE.MathUtils.lerp(this.aimAmount, target, isDrawing ? 0.28 : 0.18);
     const aimFov = this.mode === "first" ? SETTINGS.camera.firstPersonAimFov : SETTINGS.camera.thirdPersonAimFov;
-    this.camera.fov = THREE.MathUtils.lerp(this.camera.fov, THREE.MathUtils.lerp(this.baseFov, aimFov, this.aimAmount), 0.18);
+    this.camera.fov = THREE.MathUtils.lerp(this.camera.fov, THREE.MathUtils.lerp(this.baseFov, aimFov, this.aimAmount), isDrawing ? 0.22 : 0.16);
     this.camera.updateProjectionMatrix();
   }
 
@@ -109,7 +114,7 @@ export class CameraRig {
     const floor = terrain.getHeightAt(desired.x, desired.z) + 0.7;
     desired.y = Math.max(desired.y, floor);
 
-    this.camera.position.lerp(desired, 0.18);
+    this.camera.position.lerp(desired, this.thirdPersonSmoothing);
     this.camera.lookAt(focus);
   }
 

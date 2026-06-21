@@ -7,10 +7,16 @@ export class World {
   constructor(scene) {
     this.scene = scene;
     this.size = SETTINGS.world.size;
+    this.performanceMode = this.getPerformanceMode();
     this.colliders = [];
     this.collisionVolumes = [];
     this.targets = [];
     this.interactables = [];
+    this.detailObjects = [];
+    this.detailTimer = 0;
+    this.detailWorldPosition = new THREE.Vector3();
+    this.optimizationStats = { detailObjects: 0, shadowCastersReduced: 0 };
+    this.graphicsQuality = null;
     this.timeOfDay = SETTINGS.world.dayNight.startTime;
     this.dayNightState = { phase: "Morning", nightFactor: 0 };
     this.terrain = new Terrain(scene);
@@ -19,6 +25,23 @@ export class World {
     this.addSky();
     this.addLighting();
     this.addTrainingClearing();
+  }
+
+  getPerformanceMode() {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("detail") === "full") {
+        localStorage.setItem("echo-archer-detail", "full");
+        return false;
+      }
+      if (params.get("detail") === "performance") {
+        localStorage.setItem("echo-archer-detail", "performance");
+        return true;
+      }
+      return localStorage.getItem("echo-archer-detail") !== "full";
+    } catch {
+      return true;
+    }
   }
 
   createSharedAssets() {
@@ -130,6 +153,11 @@ export class World {
       vistaGold: new THREE.MeshStandardMaterial({ color: 0xffd166, roughness: 0.48, metalness: 0.08, emissive: 0x3a1d00, emissiveIntensity: 0.2 }),
       marketAwningRed: new THREE.MeshStandardMaterial({ color: 0xb8553f, roughness: 0.74, emissive: 0x210600, emissiveIntensity: 0.06 }),
       marketAwningBlue: new THREE.MeshStandardMaterial({ color: 0x315d69, roughness: 0.74, emissive: 0x06141f, emissiveIntensity: 0.06 }),
+      lodgeWall: new THREE.MeshStandardMaterial({ color: 0x9a7047, roughness: 0.82, emissive: 0x160b03, emissiveIntensity: 0.04 }),
+      lodgeRoof: new THREE.MeshStandardMaterial({ color: 0x4a2d20, roughness: 0.88, emissive: 0x120704, emissiveIntensity: 0.03 }),
+      lodgeStone: new THREE.MeshStandardMaterial({ color: 0x756f5d, roughness: 0.9, metalness: 0.02 }),
+      trophyBronze: new THREE.MeshStandardMaterial({ color: 0xb88745, roughness: 0.46, metalness: 0.18, emissive: 0x241000, emissiveIntensity: 0.08 }),
+      trophyInactive: new THREE.MeshStandardMaterial({ color: 0x4d473c, roughness: 0.92, metalness: 0.02, transparent: true, opacity: 0.56 }),
     };
 
     this.geometries = {
@@ -226,6 +254,32 @@ export class World {
         group.add(sideWindow);
       }
     });
+  }
+
+  createGuildSymbol(scale = 1, options = {}) {
+    const group = new THREE.Group();
+    const gold = options.gold ?? this.materials.targetGold;
+    const dark = options.dark ?? this.materials.banner;
+
+    const arrow = new THREE.Mesh(new THREE.CylinderGeometry(0.018 * scale, 0.022 * scale, 0.92 * scale, 6), gold);
+    arrow.rotation.z = Math.PI / 2;
+    const arrowHead = new THREE.Mesh(new THREE.ConeGeometry(0.08 * scale, 0.22 * scale, 5), gold);
+    arrowHead.position.x = 0.54 * scale;
+    arrowHead.rotation.z = -Math.PI / 2;
+    const leftWing = new THREE.Mesh(new THREE.ConeGeometry(0.18 * scale, 0.52 * scale, 4), dark);
+    leftWing.position.set(-0.08 * scale, 0.15 * scale, 0);
+    leftWing.rotation.z = -0.92;
+    leftWing.scale.set(1.1, 0.62, 0.28);
+    const rightWing = leftWing.clone();
+    rightWing.position.y = -0.15 * scale;
+    rightWing.rotation.z = 0.92;
+    const body = new THREE.Mesh(new THREE.CapsuleGeometry(0.06 * scale, 0.22 * scale, 5, 8), gold);
+    body.rotation.z = Math.PI / 2;
+    body.position.x = -0.08 * scale;
+
+    group.add(arrow, arrowHead, leftWing, rightWing, body);
+    group.userData.guildSymbol = true;
+    return group;
   }
 
   addSky() {
@@ -331,7 +385,7 @@ export class World {
     const sun = new THREE.DirectionalLight(0xffc978, 3.45);
     sun.position.set(-31, 31, 20);
     sun.castShadow = true;
-    sun.shadow.mapSize.set(4096, 4096);
+    sun.shadow.mapSize.set(this.performanceMode ? 1024 : 2048, this.performanceMode ? 1024 : 2048);
     sun.shadow.radius = 5;
     sun.shadow.bias = -0.00012;
     sun.shadow.normalBias = 0.018;
@@ -378,6 +432,7 @@ export class World {
     this.registerLandmarks();
     this.registerRegions();
     this.registerCollisionVolumes();
+    this.optimizeStaticScene();
   }
 
   addCollisionCylinder(x, z, radius, height = 2.2, yOffset = 0) {
@@ -561,6 +616,12 @@ export class World {
     }
 
     this.scene.fog.density = (this.baseFogDensity ?? this.scene.fog.density) + profile.fogBoost;
+    const weatherTint = new THREE.Color(profile.skyTint ?? 0xffffff);
+    this.scene.fog.color.lerp(weatherTint, 0.06 + profile.lightDim * 0.08);
+    if (this.skyMaterial) {
+      this.skyMaterial.uniforms.horizonColor.value.lerp(weatherTint, 0.04 + profile.lightDim * 0.08);
+      this.skyMaterial.uniforms.topColor.value.lerp(weatherTint, 0.025);
+    }
     if (this.baseLighting && this.lighting) {
       const dim = 1 - profile.lightDim;
       this.lighting.ambient.intensity = this.baseLighting.ambient * (0.9 + dim * 0.1);
@@ -572,11 +633,109 @@ export class World {
     }
   }
 
+  applyGraphicsQuality(preset = null) {
+    this.graphicsQuality = preset;
+    if (!preset) {
+      return;
+    }
+
+    if (this.lighting?.sun) {
+      const mapSize = preset.shadows ? preset.shadowMapSize : 512;
+      this.lighting.sun.castShadow = preset.shadows;
+      this.lighting.sun.shadow.mapSize.set(mapSize, mapSize);
+      this.lighting.sun.shadow.needsUpdate = true;
+      this.lighting.sun.shadow.camera.left = preset.id === "high" ? -62 : -48;
+      this.lighting.sun.shadow.camera.right = preset.id === "high" ? 62 : 48;
+      this.lighting.sun.shadow.camera.top = preset.id === "high" ? 62 : 48;
+      this.lighting.sun.shadow.camera.bottom = preset.id === "high" ? -62 : -48;
+      this.lighting.sun.shadow.camera.updateProjectionMatrix();
+    }
+
+    const waterQuality = preset.waterQuality ?? 0.75;
+    ["water", "seaWater", "frontierWater", "swampWater", "starWater"].forEach((key) => {
+      const material = this.materials?.[key];
+      if (!material) return;
+      material.roughness = THREE.MathUtils.lerp(0.32, 0.1, waterQuality);
+      material.opacity = THREE.MathUtils.lerp(0.58, 0.76, waterQuality);
+      material.envMapIntensity = THREE.MathUtils.lerp(0.45, 1.15, waterQuality);
+      material.needsUpdate = true;
+    });
+
+    if (this.scene.fog) {
+      this.scene.fog.density = THREE.MathUtils.clamp(this.scene.fog.density, 0.01, preset.id === "low" ? 0.024 : 0.03);
+    }
+  }
+
+  optimizeStaticScene() {
+    this.detailObjects = [];
+    let shadowCastersReduced = 0;
+
+    this.scene.traverse((object) => {
+      if (!object.isMesh || !object.geometry) {
+        return;
+      }
+
+      object.frustumCulled = true;
+      object.geometry.computeBoundingSphere();
+      const radius = object.geometry.boundingSphere?.radius ?? 1;
+      const scale = Math.max(object.scale.x, object.scale.y, object.scale.z);
+      const worldRadius = radius * scale;
+      const transparent = Boolean(object.material?.transparent);
+      const isGround = object.userData?.terrain || object.name?.toLowerCase().includes("terrain");
+      const isImportant = object.userData?.important || object.userData?.target || object.userData?.landmark || isGround;
+
+      if ((transparent || worldRadius < (this.performanceMode ? 0.95 : 0.55)) && object.castShadow) {
+        object.castShadow = false;
+        shadowCastersReduced += 1;
+      }
+
+      if (!isImportant && worldRadius > 0.05 && worldRadius < 1.15) {
+        object.userData.detailObject = true;
+        this.detailObjects.push(object);
+      }
+    });
+
+    this.optimizationStats = {
+      detailObjects: this.detailObjects.length,
+      shadowCastersReduced,
+    };
+  }
+
+  updateDistanceDetail(playerPosition, deltaSeconds = 0) {
+    if (!this.detailObjects.length) {
+      return;
+    }
+
+    this.detailTimer -= deltaSeconds;
+    if (this.detailTimer > 0) {
+      return;
+    }
+    this.detailTimer = this.graphicsQuality?.id === "low" ? 0.85 : 0.55;
+
+    const detailDistance = this.graphicsQuality?.detailDistance ?? (this.performanceMode ? 38 : 70);
+    const detailDistanceSq = detailDistance * detailDistance;
+    const fadeDistanceSq = (detailDistance + 14) * (detailDistance + 14);
+
+    this.detailObjects.forEach((object) => {
+      if (!object.parent) {
+        return;
+      }
+      object.getWorldPosition(this.detailWorldPosition);
+      const dx = this.detailWorldPosition.x - playerPosition.x;
+      const dz = this.detailWorldPosition.z - playerPosition.z;
+      const distanceSq = dx * dx + dz * dz;
+      object.visible = distanceSq <= fadeDistanceSq || (!this.performanceMode && distanceSq <= detailDistanceSq);
+    });
+  }
+
   getCreatureAlertMultiplier() {
     return THREE.MathUtils.lerp(1, SETTINGS.world.dayNight.nightAlertMultiplier, this.dayNightState.nightFactor);
   }
 
   addWorldArtDirectionPass() {
+    if (this.performanceMode) {
+      return;
+    }
     this.addRegionVistaFrames();
     this.addLandmarkAccentLighting();
     this.addVillageVisualPolish();
@@ -2927,6 +3086,8 @@ export class World {
       { id: "guild-village", name: "Guild Village", position: new THREE.Vector3(this.archersGuild.x, 0, this.archersGuild.z + 3), radius: 20 },
       { id: "guild-quest-board", name: "Guild Quest Board", position: new THREE.Vector3(this.guildVillageServices.questBoard.x, 0, this.guildVillageServices.questBoard.z), radius: 5 },
       { id: "hall-of-arrows", name: "Hall of Arrows", position: new THREE.Vector3(this.hallOfArrows.x, 0, this.hallOfArrows.z), radius: 14 },
+      { id: "mountain-fortress", name: "Mountain Fortress", position: new THREE.Vector3(this.mountainFortress.x, 0, this.mountainFortress.z), radius: 18 },
+      { id: "archers-lodge", name: "Archer's Lodge", position: new THREE.Vector3(this.archersLodge.x, 0, this.archersLodge.z), radius: 12 },
       { id: "frostpeak-mountains", name: "Frostpeak Mountains", position: new THREE.Vector3(this.frostpeak.x, 0, this.frostpeak.z), radius: 20 },
       { id: "frozen-watchtower", name: "Frozen Watchtower", position: new THREE.Vector3(this.frozenWatchtower.x, 0, this.frozenWatchtower.z), radius: 8 },
       { id: "icefall-cavern", name: "Icefall Cavern", position: new THREE.Vector3(this.icefallCavern.x, 0, this.icefallCavern.z), radius: 8 },
@@ -3022,6 +3183,8 @@ export class World {
       { id: "archers-guild", name: "Archer's Guild", center: new THREE.Vector3(this.archersGuild.x, 0, this.archersGuild.z), radius: 18 },
       { id: "guild-village", name: "Guild Village", center: new THREE.Vector3(this.archersGuild.x, 0, this.archersGuild.z + 3), radius: 28 },
       { id: "hall-of-arrows", name: "Hall of Arrows", center: new THREE.Vector3(this.hallOfArrows.x, 0, this.hallOfArrows.z), radius: 18 },
+      { id: "mountain-fortress", name: "Mountain Fortress", center: new THREE.Vector3(this.mountainFortress.x, 0, this.mountainFortress.z), radius: 24 },
+      { id: "archers-lodge", name: "Archer's Lodge", center: new THREE.Vector3(this.archersLodge.x, 0, this.archersLodge.z), radius: 16 },
       { id: "frostpeak-mountains", name: "Frostpeak Mountains", center: new THREE.Vector3(this.frostpeak.x, 0, this.frostpeak.z), radius: 42 },
       { id: "frozen-watchtower", name: "Frozen Watchtower", center: new THREE.Vector3(this.frozenWatchtower.x, 0, this.frozenWatchtower.z), radius: 11 },
       { id: "icefall-cavern", name: "Icefall Cavern", center: new THREE.Vector3(this.icefallCavern.x, 0, this.icefallCavern.z), radius: 11 },
@@ -3322,6 +3485,8 @@ export class World {
     this.addSecretTemples();
     this.addArchersGuild();
     this.addHallOfArrows();
+    this.addMountainFortressMasterpiece();
+    this.addArchersLodge();
     this.addProgressionDiscoveries();
     this.addStablePlaceholder();
     this.addFrostpeakMountains();
@@ -3429,6 +3594,90 @@ export class World {
 
   addFrontierOutpost(origin) {
     const y = this.terrain.getHeightAt(origin.x, origin.z);
+    const service = (localX, localZ) => {
+      const point = this.getSettlementPoint(origin, localX, localZ);
+      return new THREE.Vector3(point.x, 0, point.z);
+    };
+    this.frontierTownServices = {
+      square: service(0, 0.2),
+      inn: service(-5.8, 3.8),
+      blacksmith: service(-6.8, -2.8),
+      bowyer: service(5.6, -2.4),
+      stable: service(7.2, 3.9),
+      market: service(1.0, 4.0),
+      watchtower: service(0.5, -5.8),
+      storage: service(-1.6, -4.1),
+      mapStation: service(0.2, -1.9),
+      homes: [service(-10.3, 1.6), service(-9.2, 6.8), service(9.7, 0.8), service(10.2, 6.4)],
+    };
+    this.settlementHooks = this.settlementHooks ?? [];
+    this.settlementHooks.push({
+      id: "frontier-town",
+      name: "Frontier Town",
+      services: this.frontierTownServices,
+      futureUses: ["frontier shops", "Arc 2 scouts", "settlement upgrades", "job board"],
+    });
+
+    this.addSettlementRoad(origin, 0, 0.8, 20, 2.2, 0, this.materials.frontierRoad);
+    this.addSettlementRoad(origin, -2.2, 3.3, 2.0, 11.5, 0.08, this.materials.frontierRoad);
+    this.addSettlementRoad(origin, 4.2, 2.6, 1.7, 10.0, -0.08, this.materials.frontierRoad);
+    this.addSettlementRoad(origin, 0.5, -4.6, 12.5, 1.55, 0.03, this.materials.frontierRoad);
+
+    this.addSettlementBuilding(origin, "frontier-inn", "Frontier Inn", -5.8, 3.8, 4.6, 3.2, 2.05, -0.1, {
+      material: this.materials.agedWood,
+      roof: this.materials.barkDark,
+      sign: 0xffc579,
+      porch: true,
+      chimney: true,
+    });
+    this.addSettlementBuilding(origin, "frontier-smithy", "Frontier Smith", -6.8, -2.8, 4.2, 3.0, 1.95, 0.12, {
+      material: this.materials.darkStone,
+      roof: this.materials.barkDark,
+      sign: 0xff8a3d,
+      chimney: true,
+      toolRack: true,
+    });
+    this.addSettlementBuilding(origin, "frontier-bowyer", "Frontier Bowyer", 5.6, -2.4, 4.0, 2.8, 1.9, -0.08, {
+      material: this.materials.wood,
+      roof: this.materials.pineDark,
+      sign: 0xe6b75d,
+      bowRack: true,
+    });
+    this.addSettlementBuilding(origin, "frontier-storage", "Storehouse", -1.6, -4.1, 3.4, 2.5, 1.75, 0.18, {
+      material: this.materials.canvas,
+      roof: this.materials.weatheredDock,
+      sign: 0xd7bd83,
+    });
+    this.addSettlementBuilding(origin, "frontier-stable", "Stable", 7.2, 3.9, 4.4, 2.7, 1.65, 0.06, {
+      material: this.materials.agedWood,
+      roof: this.materials.barkDark,
+      sign: 0xbfd27a,
+      openFront: true,
+    });
+    [
+      [-10.3, 1.6, 3.25, 2.35, 1.6, 0.1],
+      [-9.2, 6.8, 3.1, 2.4, 1.58, -0.16],
+      [9.7, 0.8, 3.2, 2.35, 1.62, 0.16],
+      [10.2, 6.4, 3.0, 2.25, 1.55, -0.08],
+    ].forEach(([localX, localZ, width, depth, height, yawOffset], index) => {
+      this.addSettlementBuilding(origin, `frontier-home-${index + 1}`, "Home", localX, localZ, width, depth, height, yawOffset, {
+        material: index % 2 ? this.materials.wood : this.materials.agedWood,
+        roof: index % 2 ? this.materials.barkDark : this.materials.weatheredDock,
+        sign: 0xe8bc66,
+      });
+    });
+
+    this.addFrontierTownWatchtower(origin, 0.5, -5.8);
+    this.addSettlementMarket(origin, 1.0, 4.0, "frontier");
+    this.addSettlementAtmosphere(origin, [
+      [-8.0, 0.1, "firewood"],
+      [-6.0, 6.2, "laundry"],
+      [4.0, 4.8, "barrels"],
+      [8.6, 5.8, "animalPen"],
+      [-0.2, 2.2, "garden"],
+      [3.8, -4.5, "sign"],
+    ]);
+
     [[-1.8, 0.5, 1.4], [2.2, 0.2, 1.1]].forEach(([dx, dz, scale], index) => {
       const tent = new THREE.Mesh(new THREE.ConeGeometry(1.1 * scale, 1.25 * scale, 4), index % 2 ? this.materials.canvas : this.materials.parchment);
       tent.position.set(origin.x + dx, y + 0.62 * scale, origin.z + dz);
@@ -3458,6 +3707,202 @@ export class World {
     crate.castShadow = true;
     this.scene.add(crate);
     this.addCollisionBox(x, z, 0.88, 0.78, 0.62, yaw);
+  }
+
+  getSettlementPoint(origin, localX, localZ) {
+    const scale = origin.scale ?? 1;
+    const yaw = origin.yaw ?? 0;
+    return {
+      x: origin.x + (Math.sin(yaw + Math.PI / 2) * localX + Math.sin(yaw) * localZ) * scale,
+      z: origin.z + (Math.cos(yaw + Math.PI / 2) * localX + Math.cos(yaw) * localZ) * scale,
+    };
+  }
+
+  addSettlementRoad(origin, localX, localZ, width, depth, yawOffset = 0, material = this.materials.cutWood) {
+    const point = this.getSettlementPoint(origin, localX, localZ);
+    const road = new THREE.Mesh(new THREE.PlaneGeometry(width, depth, 3, 4), material);
+    road.position.set(point.x, this.terrain.getHeightAt(point.x, point.z) + 0.04, point.z);
+    road.rotation.set(-Math.PI / 2, 0, (origin.yaw ?? 0) + yawOffset);
+    road.receiveShadow = true;
+    this.scene.add(road);
+  }
+
+  addSettlementBuilding(origin, id, label, localX, localZ, width, depth, height, yawOffset = 0, options = {}) {
+    const point = this.getSettlementPoint(origin, localX, localZ);
+    const y = this.terrain.getHeightAt(point.x, point.z);
+    const yaw = (origin.yaw ?? 0) + yawOffset;
+    const group = new THREE.Group();
+    group.position.set(point.x, y, point.z);
+    group.rotation.y = yaw;
+
+    const foundation = new THREE.Mesh(new THREE.BoxGeometry(width + 0.42, 0.2, depth + 0.36), this.materials.darkStone);
+    foundation.position.y = 0.1;
+    const body = new THREE.Mesh(new THREE.BoxGeometry(width, height, depth), options.material ?? this.materials.agedWood);
+    body.position.y = 0.2 + height * 0.5;
+    body.scale.x = 0.98 + Math.sin(localX * 0.73) * 0.025;
+    body.scale.z = 0.98 + Math.cos(localZ * 0.61) * 0.02;
+    const roof = this.createLayeredGableRoof(width, depth, height + 0.68, options.roof ?? this.materials.barkDark, {
+      pitch: 0.38 + Math.abs(yawOffset) * 0.18,
+      overhang: 0.46,
+      asymmetry: Math.sin(localX - localZ) * 0.09,
+    });
+    const door = new THREE.Mesh(new THREE.BoxGeometry(0.68, 1.15, 0.1), this.materials.warmTrim);
+    door.position.set(0, 0.78, -depth * 0.515);
+    const sign = new THREE.Mesh(new THREE.BoxGeometry(1.05, 0.24, 0.08), new THREE.MeshStandardMaterial({ color: options.sign ?? 0xe6b75d, roughness: 0.66, emissive: options.sign ?? 0xe6b75d, emissiveIntensity: 0.07 }));
+    sign.position.set(0, height + 0.12, -depth * 0.56);
+    group.add(foundation, body, roof, door, sign);
+    this.addBuildingCraftDetails(group, width, depth, height, {
+      trim: new THREE.MeshStandardMaterial({ color: options.sign ?? 0xe6b75d, roughness: 0.7, emissive: options.sign ?? 0xe6b75d, emissiveIntensity: 0.04 }),
+    });
+
+    if (options.porch) {
+      const porch = new THREE.Mesh(new THREE.BoxGeometry(width * 0.72, 0.16, 0.78), this.materials.cutWood);
+      porch.position.set(0, 0.18, -depth * 0.5 - 0.42);
+      group.add(porch);
+    }
+    if (options.chimney) {
+      const chimney = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.22, 1.12, 7), this.materials.darkStone);
+      chimney.position.set(width * 0.28, height + 1.04, depth * 0.16);
+      chimney.rotation.z = -0.06;
+      group.add(chimney);
+    }
+    if (options.toolRack) {
+      this.addToolRackToGroup(group, width * 0.5 + 0.08, 0.72, 0.35);
+    }
+    if (options.bowRack) {
+      [-0.48, 0, 0.48].forEach((offset) => {
+        const bow = new THREE.Mesh(new THREE.TorusGeometry(0.34, 0.014, 7, 24, Math.PI * 1.35), this.materials.cutWood);
+        bow.position.set(width * 0.5 + 0.08, 0.94, offset);
+        bow.rotation.set(0, Math.PI / 2, Math.PI / 2);
+        group.add(bow);
+      });
+    }
+    if (options.openFront) {
+      door.visible = false;
+      const hay = new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.42, 0.9, 9), this.materials.grassLight);
+      hay.position.set(-width * 0.28, 0.3, depth * 0.08);
+      hay.rotation.z = Math.PI / 2;
+      group.add(hay);
+    }
+
+    group.traverse((child) => {
+      if (child.isMesh) {
+        child.castShadow = true;
+        child.receiveShadow = true;
+      }
+    });
+    this.scene.add(group);
+    this.addCollisionBox(point.x, point.z, width + 0.22, depth + 0.22, height + 0.82, yaw);
+    this.settlementBuildings = this.settlementBuildings ?? [];
+    this.settlementBuildings.push({ id, label, position: new THREE.Vector3(point.x, y, point.z), yaw, width, depth });
+  }
+
+  addToolRackToGroup(group, x, y, z) {
+    const rail = new THREE.Mesh(new THREE.BoxGeometry(0.12, 1.0, 0.08), this.materials.barkDark);
+    rail.position.set(x, y, z);
+    group.add(rail);
+    [-0.26, 0.22].forEach((offset) => {
+      const handle = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.035, 0.74, 6), this.materials.cutWood);
+      handle.position.set(x + 0.08, y + 0.08, z + offset);
+      handle.rotation.z = 0.22;
+      group.add(handle);
+    });
+  }
+
+  addFrontierTownWatchtower(origin, localX, localZ) {
+    const point = this.getSettlementPoint(origin, localX, localZ);
+    const y = this.terrain.getHeightAt(point.x, point.z);
+    const yaw = (origin.yaw ?? 0) - 0.08;
+    const group = new THREE.Group();
+    group.position.set(point.x, y, point.z);
+    group.rotation.y = yaw;
+    [-1, 1].forEach((side) => {
+      const post = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.18, 3.2, 7), this.materials.agedWood);
+      post.position.set(side * 0.78, 1.6, -0.42);
+      const back = post.clone();
+      back.position.z = 0.72;
+      group.add(post, back);
+    });
+    const deck = new THREE.Mesh(new THREE.BoxGeometry(2.35, 0.22, 1.75), this.materials.cutWood);
+    deck.position.y = 2.28;
+    const roof = this.createLayeredGableRoof(2.4, 1.8, 3.0, this.materials.barkDark, { pitch: 0.36, overhang: 0.26, asymmetry: 0.05 });
+    group.add(deck, roof);
+    this.scene.add(group);
+    this.addCollisionBox(point.x, point.z, 1.9, 1.45, 3.2, yaw);
+  }
+
+  addSettlementMarket(origin, localX, localZ, style = "frontier") {
+    const colors = style === "coastal" ? [0x315d69, 0xd9b978, 0x5fd8ff] : [0x8b6844, 0x2f5545, 0xb8553f];
+    [[-1.5, 0.1], [1.3, -0.3], [0.15, 1.65]].forEach(([offsetX, offsetZ], index) => {
+      const point = this.getSettlementPoint(origin, localX + offsetX, localZ + offsetZ);
+      const y = this.terrain.getHeightAt(point.x, point.z);
+      const yaw = (origin.yaw ?? 0) + (index - 1) * 0.18;
+      const group = new THREE.Group();
+      group.position.set(point.x, y, point.z);
+      group.rotation.y = yaw;
+      const counter = new THREE.Mesh(new THREE.BoxGeometry(1.48, 0.5, 0.7), this.materials.cutWood);
+      counter.position.y = 0.25;
+      const clothMaterial = new THREE.MeshStandardMaterial({ color: colors[index], roughness: 0.82 });
+      const awningLeft = new THREE.Mesh(new THREE.BoxGeometry(0.98, 0.08, 1.08), clothMaterial);
+      awningLeft.position.set(-0.38, 1.12, 0);
+      awningLeft.rotation.z = -0.16;
+      const awningRight = awningLeft.clone();
+      awningRight.position.x = 0.38;
+      awningRight.rotation.z = 0.16;
+      const goods = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.22, 0.26, 8), index % 2 ? this.materials.rope : this.materials.frontierFlower);
+      goods.position.set(0.46, 0.42, 0.3);
+      group.add(counter, awningLeft, awningRight, goods);
+      this.scene.add(group);
+    });
+  }
+
+  addSettlementAtmosphere(origin, details) {
+    details.forEach(([localX, localZ, type], index) => {
+      const point = this.getSettlementPoint(origin, localX, localZ);
+      const y = this.terrain.getHeightAt(point.x, point.z);
+      const yaw = (origin.yaw ?? 0) + Math.sin(index) * 0.2;
+      if (type === "firewood") {
+        [-0.2, 0.05, 0.3].forEach((offset) => {
+          const log = new THREE.Mesh(this.geometries.log, this.materials.bark);
+          log.position.set(point.x + offset, y + 0.18, point.z + offset * 0.4);
+          log.rotation.set(Math.PI / 2, yaw + offset, 0);
+          this.scene.add(log);
+        });
+      } else if (type === "laundry") {
+        const postA = new THREE.Mesh(this.geometries.fencePost, this.materials.barkDark);
+        const postB = postA.clone();
+        postA.position.set(point.x - 0.85, y + 0.68, point.z);
+        postB.position.set(point.x + 0.85, y + 0.68, point.z + 0.12);
+        const cloth = new THREE.Mesh(new THREE.BoxGeometry(0.56, 0.36, 0.035), this.materials.parchment);
+        cloth.position.set(point.x, y + 1.12, point.z + 0.06);
+        this.scene.add(postA, postB, cloth);
+      } else if (type === "animalPen") {
+        [-1, 1].forEach((side) => {
+          const rail = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.12, 0.12), this.materials.barkDark);
+          rail.position.set(point.x, y + 0.58, point.z + side * 0.82);
+          rail.rotation.y = yaw;
+          this.scene.add(rail);
+        });
+      } else if (type === "garden") {
+        for (let i = 0; i < 5; i += 1) {
+          this.addFrontierFlowerPatch(point.x + Math.sin(i) * 0.7, point.z + Math.cos(i * 1.2) * 0.55, 3);
+        }
+      } else if (type === "sign") {
+        this.addSettlementSign(point.x, point.z, yaw);
+      } else {
+        this.addFrontierCrate(point.x, point.z, yaw);
+      }
+    });
+  }
+
+  addSettlementSign(x, z, yaw) {
+    const y = this.terrain.getHeightAt(x, z);
+    const post = new THREE.Mesh(this.geometries.fencePost, this.materials.barkDark);
+    post.position.set(x, y + 0.68, z);
+    const board = new THREE.Mesh(new THREE.BoxGeometry(1.3, 0.38, 0.08), this.materials.cutWood);
+    board.position.set(x, y + 1.25, z);
+    board.rotation.y = yaw;
+    this.scene.add(post, board);
   }
 
   addFrontierWatch(origin) {
@@ -3540,9 +3985,38 @@ export class World {
 
   addForgottenCamp(origin) {
     const y = this.terrain.getHeightAt(origin.x, origin.z);
+    const service = (localX, localZ) => {
+      const point = this.getSettlementPoint(origin, localX, localZ);
+      return new THREE.Vector3(point.x, 0, point.z);
+    };
+    this.expeditionCampServices = {
+      fire: service(0, 0),
+      mapTent: service(-2.6, -1.7),
+      supply: service(2.3, 1.4),
+      scoutPost: service(3.6, -2.2),
+      travelerRest: service(-2.8, 2.5),
+    };
     const fire = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.5, 0.1, 12), this.materials.darkStone);
     fire.position.set(origin.x, y + 0.05, origin.z);
     this.scene.add(fire);
+    const ember = new THREE.Mesh(new THREE.SphereGeometry(0.18, 10, 8), this.materials.warmWindow);
+    ember.position.set(origin.x, y + 0.22, origin.z);
+    this.scene.add(ember);
+    [[-2.6, -1.7, 1.0, 0.12], [2.9, -1.9, 0.78, -0.16]].forEach(([localX, localZ, scale, yawOffset], index) => {
+      const point = this.getSettlementPoint(origin, localX, localZ);
+      const tent = new THREE.Mesh(new THREE.ConeGeometry(0.95 * scale, 1.05 * scale, 4), index % 2 ? this.materials.canvas : this.materials.parchment);
+      tent.position.set(point.x, this.terrain.getHeightAt(point.x, point.z) + 0.52 * scale, point.z);
+      tent.rotation.y = origin.yaw + Math.PI / 4 + yawOffset;
+      tent.castShadow = true;
+      this.scene.add(tent);
+      this.addCollisionCylinder(point.x, point.z, 0.72 * scale, 1.1 * scale);
+    });
+    this.addSettlementAtmosphere(origin, [
+      [2.3, 1.4, "barrels"],
+      [-2.8, 2.5, "firewood"],
+      [3.6, -2.2, "sign"],
+      [-0.9, 2.0, "laundry"],
+    ]);
     [[-1.6, 1.1, 0.2], [1.4, 1.3, -0.4], [0.2, -1.8, 0.8]].forEach(([dx, dz, yaw]) => this.addFrontierCrate(origin.x + dx, origin.z + dz, origin.yaw + yaw));
     this.interactables.push({
       id: "frontier-forgotten-camp-journal",
@@ -4222,6 +4696,144 @@ export class World {
     const glow = new THREE.PointLight(0xffd166, 1.0, 16, 2.1);
     glow.position.set(origin.x, y + 3.2, origin.z - 1.8);
     this.scene.add(glow);
+
+    this.addHallOfArrowsMasterpieceDetails(origin, y);
+  }
+
+  addHallOfArrowsMasterpieceDetails(origin, groundY) {
+    const hallDetails = new THREE.Group();
+    hallDetails.position.set(origin.x, groundY, origin.z);
+    hallDetails.rotation.y = origin.yaw;
+
+    const rearBeam = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.2, 8.8, 8), this.materials.barkDark);
+    rearBeam.position.set(0, 3.1, 2.85);
+    rearBeam.rotation.x = Math.PI / 2;
+    rearBeam.castShadow = true;
+    hallDetails.add(rearBeam);
+
+    [-1, 1].forEach((side) => {
+      const stair = new THREE.Mesh(new THREE.BoxGeometry(1.95, 0.18, 2.6), this.materials.masterMarble);
+      stair.position.set(side * 2.25, 0.88, 1.55);
+      stair.rotation.z = side * 0.08;
+      stair.castShadow = true;
+      stair.receiveShadow = true;
+      hallDetails.add(stair);
+
+      const balcony = new THREE.Mesh(new THREE.BoxGeometry(2.8, 0.2, 0.78), this.materials.warmTrim);
+      balcony.position.set(side * 2.8, 2.35, 1.95);
+      balcony.rotation.z = side * -0.02;
+      balcony.castShadow = true;
+      balcony.receiveShadow = true;
+      hallDetails.add(balcony);
+
+      const statue = this.createMasterArcherStatue(0.9);
+      statue.position.set(side * 4.15, 0.72, 1.2);
+      statue.rotation.y = side * -0.32;
+      hallDetails.add(statue);
+
+      const tallBanner = new THREE.Mesh(new THREE.BoxGeometry(0.58, 2.05, 0.08), this.materials.banner);
+      tallBanner.position.set(side * 4.55, 2.7, -0.85);
+      tallBanner.castShadow = true;
+      const symbol = this.createGuildSymbol(0.48);
+      symbol.position.set(side * 4.56, 2.84, -0.91);
+      symbol.rotation.y = Math.PI / 2;
+      symbol.scale.x = side;
+      hallDetails.add(tallBanner, symbol);
+    });
+
+    const hearth = new THREE.Group();
+    hearth.position.set(0, 0.82, 2.85);
+    const basin = new THREE.Mesh(new THREE.CylinderGeometry(0.72, 0.9, 0.32, 12), this.materials.masterBronze);
+    const flame = new THREE.Mesh(new THREE.ConeGeometry(0.34, 0.92, 7), this.materials.warmWindow);
+    flame.position.y = 0.52;
+    hearth.add(basin, flame);
+    hallDetails.add(hearth);
+
+    const hallLight = new THREE.PointLight(0xffb65d, 0.82, 12, 2);
+    hallLight.position.set(origin.x, groundY + 1.7, origin.z + 2.3);
+    this.scene.add(hallLight);
+
+    this.scene.add(hallDetails);
+    this.addLegendaryBowDisplays(origin, groundY);
+  }
+
+  createMasterArcherStatue(scale = 1) {
+    const statue = new THREE.Group();
+    const stone = this.materials.masterMarble;
+    const bronze = this.materials.masterBronze;
+    const base = new THREE.Mesh(new THREE.CylinderGeometry(0.45 * scale, 0.56 * scale, 0.28 * scale, 9), stone);
+    base.position.y = 0.14 * scale;
+    const body = new THREE.Mesh(new THREE.CapsuleGeometry(0.18 * scale, 0.76 * scale, 7, 12), stone);
+    body.position.y = 0.76 * scale;
+    const hood = new THREE.Mesh(new THREE.SphereGeometry(0.21 * scale, 12, 8), stone);
+    hood.position.y = 1.3 * scale;
+    const bow = new THREE.Mesh(new THREE.TorusGeometry(0.42 * scale, 0.018 * scale, 7, 28, Math.PI * 1.35), bronze);
+    bow.position.set(0.34 * scale, 0.92 * scale, 0.02);
+    bow.rotation.set(0, Math.PI / 2, Math.PI / 2);
+    const arrow = new THREE.Mesh(new THREE.CylinderGeometry(0.012 * scale, 0.012 * scale, 0.9 * scale, 6), bronze);
+    arrow.position.set(0.2 * scale, 0.96 * scale, 0.02);
+    arrow.rotation.z = Math.PI / 2;
+    statue.add(base, body, hood, bow, arrow);
+    statue.traverse((child) => {
+      if (child.isMesh) {
+        child.castShadow = true;
+        child.receiveShadow = true;
+      }
+    });
+    return statue;
+  }
+
+  addLegendaryBowDisplays(origin, groundY) {
+    const displays = [
+      { name: "Stormcaller", color: 0x9fdcff, local: [-4.2, -3.3], yaw: 0.18 },
+      { name: "Whisperbranch", color: 0x9af6b9, local: [-2.55, -3.75], yaw: 0.08 },
+      { name: "Windrunner", color: 0xffd166, local: [-0.85, -3.95], yaw: 0.02 },
+      { name: "Kingmaker", color: 0xd9ad57, local: [0.85, -3.95], yaw: -0.02 },
+      { name: "Voidstar", color: 0x8c6dff, local: [2.55, -3.75], yaw: -0.08 },
+      { name: "Starpiercer", color: 0xcdb7ff, local: [4.2, -3.3], yaw: -0.18 },
+    ];
+
+    displays.forEach((display, index) => {
+      const point = this.localToWorldPoint(origin, display.local[0], display.local[1]);
+      const y = this.terrain.getHeightAt(point.x, point.z);
+      const group = new THREE.Group();
+      group.position.set(point.x, y + 0.18, point.z);
+      group.rotation.y = origin.yaw + display.yaw;
+      const displayMaterial = new THREE.MeshStandardMaterial({
+        color: display.color,
+        roughness: 0.38,
+        metalness: 0.08,
+        emissive: display.color,
+        emissiveIntensity: 0.18,
+      });
+      const plinth = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.54, 0.36, 9), this.materials.masterMarble);
+      plinth.position.y = 0.18;
+      const bow = new THREE.Mesh(new THREE.TorusGeometry(0.42, 0.018, 7, 32, Math.PI * 1.42), displayMaterial);
+      bow.position.y = 0.96;
+      bow.rotation.set(0, Math.PI / 2, Math.PI / 2 + (index % 2 ? 0.08 : -0.08));
+      const string = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.72, 5), this.materials.rope);
+      string.position.set(0.0, 0.96, -0.03);
+      string.rotation.z = Math.PI / 2;
+      const namePlate = new THREE.Mesh(new THREE.BoxGeometry(0.76, 0.14, 0.06), this.materials.targetGold);
+      namePlate.position.set(0, 0.46, -0.43);
+      group.add(plinth, bow, string, namePlate);
+      group.traverse((child) => {
+        if (child.isMesh) {
+          child.castShadow = true;
+          child.receiveShadow = true;
+        }
+      });
+      this.scene.add(group);
+      this.interactables.push({
+        id: `legendary-display-${display.name.toLowerCase()}`,
+        type: "lore-note",
+        name: `${display.name} Display`,
+        prompt: "E Inspect display",
+        position: new THREE.Vector3(point.x, y + 1.0, point.z),
+        radius: 2.0,
+        text: `${display.name} has a place in the Hall of Arrows. Earned legendary bows should feel like permanent history here.`,
+      });
+    });
   }
 
   addMasterTrialTargets() {
@@ -4294,6 +4906,471 @@ export class World {
     this.addRareLootCache(origin.x - 5.2, origin.z + 4.8, "Master Trial Seal", "epic", "A prestige seal used by the Hall of Arrows to record champion attempts.");
   }
 
+  addMountainFortressMasterpiece() {
+    this.mountainFortress = { x: -92, z: 74, yaw: -0.28, scale: 1 };
+    const origin = this.mountainFortress;
+    const y = this.terrain.getHeightAt(origin.x, origin.z);
+    const group = new THREE.Group();
+    group.position.set(origin.x, y, origin.z);
+    group.rotation.y = origin.yaw;
+
+    const cliff = new THREE.Group();
+    const cliffShapes = [
+      [0, 2.8, 0, 10.8, 8.4, 4.2, 0.02],
+      [-4.6, 2.15, 1.0, 4.8, 6.2, 3.8, -0.08],
+      [4.7, 2.35, 0.8, 5.3, 6.8, 3.4, 0.1],
+      [-1.6, 4.6, -1.4, 7.2, 4.2, 2.2, 0.04],
+    ];
+    cliffShapes.forEach(([x, pieceY, z, width, height, depth, roll], index) => {
+      const stone = new THREE.Mesh(new THREE.DodecahedronGeometry(1, 1), index % 2 ? this.materials.darkStone : this.materials.ancientStone);
+      stone.position.set(x, pieceY, z);
+      stone.scale.set(width * 0.5, height * 0.5, depth * 0.5);
+      stone.rotation.set(0.08 + index * 0.04, index * 0.36, roll);
+      stone.castShadow = true;
+      stone.receiveShadow = true;
+      cliff.add(stone);
+    });
+    group.add(cliff);
+
+    const keep = new THREE.Group();
+    keep.position.set(0, 4.2, -1.35);
+    const base = new THREE.Mesh(new THREE.BoxGeometry(6.7, 2.4, 2.7), this.materials.ancientStone);
+    base.position.y = 0.95;
+    const upper = new THREE.Mesh(new THREE.BoxGeometry(5.15, 1.65, 2.2), this.materials.darkStone);
+    upper.position.set(-0.25, 2.55, -0.08);
+    const roof = this.createLayeredGableRoof(5.8, 2.35, 3.62, this.materials.barkDark, {
+      pitch: 0.46,
+      overhang: 0.5,
+      thickness: 0.24,
+      asymmetry: -0.12,
+    });
+    keep.add(base, upper, roof);
+    this.addBuildingCraftDetails(keep, 5.2, 2.2, 2.0, { trim: this.materials.warmTrim, beam: this.materials.barkDark });
+    group.add(keep);
+
+    const towerSpecs = [
+      [-4.05, 4.3, -0.9, 0.82, 3.9],
+      [3.8, 4.05, -0.75, 0.9, 4.6],
+      [-1.0, 5.9, -1.85, 0.68, 3.4],
+      [1.9, 5.55, -1.95, 0.62, 3.1],
+    ];
+    towerSpecs.forEach(([x, towerY, z, radius, height], index) => {
+      const tower = new THREE.Group();
+      tower.position.set(x, towerY, z);
+      const shaft = new THREE.Mesh(new THREE.CylinderGeometry(radius * 0.72, radius, height, 9), index % 2 ? this.materials.ancientStone : this.materials.darkStone);
+      shaft.position.y = height * 0.5;
+      const balcony = new THREE.Mesh(new THREE.CylinderGeometry(radius * 1.08, radius * 1.18, 0.22, 9), this.materials.warmTrim);
+      balcony.position.y = height * 0.82;
+      const roofTower = this.createLayeredGableRoof(radius * 2.2, radius * 1.7, height + 0.28, this.materials.barkDark, {
+        pitch: 0.5,
+        overhang: 0.22,
+        asymmetry: index % 2 ? 0.08 : -0.05,
+      });
+      roofTower.rotation.y = index * 0.7;
+      const banner = new THREE.Mesh(new THREE.BoxGeometry(0.1, 1.15, 0.44), this.materials.banner);
+      banner.position.set(radius * 0.82, height * 0.58, -radius * 0.72);
+      const symbol = this.createGuildSymbol(0.38);
+      symbol.position.set(radius * 0.86, height * 0.58, -radius * 0.78);
+      symbol.rotation.y = Math.PI / 2;
+      symbol.scale.setScalar(0.7);
+      tower.add(shaft, balcony, roofTower, banner, symbol);
+      tower.traverse((child) => {
+        if (child.isMesh) {
+          child.castShadow = true;
+          child.receiveShadow = true;
+        }
+      });
+      group.add(tower);
+    });
+
+    const terraces = [
+      [0, 3.25, 1.25, 7.8, 0.34, 1.55],
+      [-3.2, 2.3, 2.25, 3.9, 0.26, 1.2],
+      [3.0, 2.55, 2.05, 4.2, 0.26, 1.18],
+    ];
+    terraces.forEach(([x, terraceY, z, width, height, depth]) => {
+      const terrace = new THREE.Mesh(new THREE.BoxGeometry(width, height, depth), this.materials.warmTrim);
+      terrace.position.set(x, terraceY, z);
+      terrace.castShadow = true;
+      terrace.receiveShadow = true;
+      group.add(terrace);
+      [-0.42, 0, 0.42].forEach((offset) => {
+        const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.1, 2.7, 7), this.materials.barkDark);
+        beam.position.set(x + offset * width, terraceY - 1.0, z + depth * 0.44);
+        beam.rotation.x = 0.18;
+        beam.castShadow = true;
+        group.add(beam);
+      });
+    });
+
+    const bridge = new THREE.Mesh(new THREE.BoxGeometry(12.5, 0.18, 0.74), this.materials.cutWood);
+    bridge.position.set(7.2, 2.92, 1.85);
+    bridge.rotation.y = -0.16;
+    bridge.castShadow = true;
+    bridge.receiveShadow = true;
+    group.add(bridge);
+    [-1, 1].forEach((side) => {
+      const rail = bridge.clone();
+      rail.geometry = new THREE.BoxGeometry(12.3, 0.08, 0.08);
+      rail.position.z += side * 0.46;
+      rail.position.y += 0.34;
+      rail.material = this.materials.barkDark;
+      group.add(rail);
+    });
+
+    const entrance = new THREE.Group();
+    entrance.position.set(0, 0.28, 5.3);
+    const platform = new THREE.Mesh(new THREE.CylinderGeometry(2.45, 2.85, 0.38, 18), this.materials.masterMarble);
+    platform.position.y = 0.19;
+    const activationRing = new THREE.Mesh(new THREE.TorusGeometry(1.22, 0.05, 10, 48), this.materials.targetGold);
+    activationRing.position.y = 0.46;
+    activationRing.rotation.x = Math.PI / 2;
+    const symbol = this.createGuildSymbol(1.25);
+    symbol.position.y = 0.51;
+    symbol.rotation.x = -Math.PI / 2;
+    const archLeft = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.24, 2.65, 8), this.materials.ancientStone);
+    archLeft.position.set(-1.55, 1.38, -0.72);
+    const archRight = archLeft.clone();
+    archRight.position.x = 1.55;
+    const archTop = new THREE.Mesh(new THREE.TorusGeometry(1.55, 0.17, 8, 30, Math.PI), this.materials.ancientStone);
+    archTop.position.set(0, 2.7, -0.72);
+    archTop.rotation.z = Math.PI;
+    entrance.add(platform, activationRing, symbol, archLeft, archRight, archTop);
+    entrance.traverse((child) => {
+      if (child.isMesh) {
+        child.castShadow = true;
+        child.receiveShadow = true;
+      }
+    });
+    group.add(entrance);
+
+    this.scene.add(group);
+
+    const worldEntrance = this.localToWorldPoint(origin, 0, 5.3);
+    const entranceY = this.terrain.getHeightAt(worldEntrance.x, worldEntrance.z);
+    this.interactables.push({
+      id: "mountain-fortress-entrance",
+      type: "lore-note",
+      name: "Mountain Fortress Gate",
+      prompt: "E Inspect gate",
+      position: new THREE.Vector3(worldEntrance.x, entranceY + 0.85, worldEntrance.z),
+      radius: 4.4,
+      text: "The eagle-and-arrow mechanism hums beneath your hand. The fortress feels impossibly large beyond the sealed doors.",
+    });
+
+    const vistaPoint = this.localToWorldPoint(origin, -5.9, 2.8);
+    this.interactables.push({
+      id: "mountain-fortress-vista",
+      type: "lookout",
+      name: "Fortress Vista",
+      prompt: "E Look at fortress",
+      position: new THREE.Vector3(vistaPoint.x, this.terrain.getHeightAt(vistaPoint.x, vistaPoint.z) + 0.9, vistaPoint.z),
+      radius: 4,
+      focus: new THREE.Vector3(origin.x, y + 7.4, origin.z),
+      text: "The Archer Guild did not build the mountain fortress all at once. Every bridge and tower marks another generation.",
+    });
+
+    this.addCollisionBox(origin.x, origin.z, 12.0, 7.2, 8.6, origin.yaw);
+    this.addCollisionCylinder(worldEntrance.x, worldEntrance.z, 2.5, 0.6);
+  }
+
+  addArchersLodge() {
+    this.archersLodge = { x: -73, z: 62, yaw: -0.54, scale: 1 };
+    const origin = this.archersLodge;
+    const y = this.terrain.getHeightAt(origin.x, origin.z);
+    const group = new THREE.Group();
+    group.position.set(origin.x, y, origin.z);
+    group.rotation.y = origin.yaw;
+
+    const foundation = new THREE.Mesh(new THREE.BoxGeometry(8.8, 0.42, 6.2), this.materials.lodgeStone);
+    foundation.position.y = 0.21;
+    foundation.castShadow = true;
+    foundation.receiveShadow = true;
+    group.add(foundation);
+
+    const mainHall = new THREE.Mesh(new THREE.BoxGeometry(6.2, 2.45, 4.35), this.materials.lodgeWall);
+    mainHall.position.set(-0.85, 1.55, 0);
+    mainHall.castShadow = true;
+    mainHall.receiveShadow = true;
+    group.add(mainHall);
+
+    const trophyWing = new THREE.Mesh(new THREE.BoxGeometry(3.65, 2.05, 3.55), this.materials.agedWood);
+    trophyWing.position.set(3.0, 1.34, 0.6);
+    trophyWing.rotation.y = 0.04;
+    trophyWing.castShadow = true;
+    trophyWing.receiveShadow = true;
+    group.add(trophyWing);
+
+    const roof = this.createLayeredGableRoof(7.2, 5.0, 3.12, this.materials.lodgeRoof, {
+      pitch: 0.52,
+      overhang: 0.62,
+      thickness: 0.28,
+      asymmetry: -0.08,
+    });
+    roof.position.set(-0.45, 0, 0);
+    group.add(roof);
+
+    const wingRoof = this.createLayeredGableRoof(4.1, 3.9, 2.72, this.materials.barkDark, {
+      pitch: 0.46,
+      overhang: 0.48,
+      thickness: 0.22,
+      asymmetry: 0.1,
+    });
+    wingRoof.position.set(3.0, 0, 0.6);
+    wingRoof.rotation.y = 0.04;
+    group.add(wingRoof);
+
+    this.addBuildingCraftDetails(group, 6.2, 4.35, 2.45, {
+      trim: this.materials.warmTrim,
+      beam: this.materials.barkDark,
+      window: this.materials.warmWindow,
+    });
+
+    const porch = new THREE.Mesh(new THREE.BoxGeometry(5.8, 0.24, 1.35), this.materials.cutWood);
+    porch.position.set(-0.85, 0.62, -3.18);
+    porch.castShadow = true;
+    porch.receiveShadow = true;
+    group.add(porch);
+    [-3.3, -1.1, 1.1, 3.3].forEach((x) => {
+      const post = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.1, 1.62, 7), this.materials.barkDark);
+      post.position.set(x, 1.32, -3.62);
+      post.castShadow = true;
+      group.add(post);
+    });
+
+    const chimney = new THREE.Mesh(new THREE.BoxGeometry(0.55, 1.75, 0.55), this.materials.darkStone);
+    chimney.position.set(-3.0, 3.55, 1.34);
+    chimney.rotation.z = -0.04;
+    chimney.castShadow = true;
+    group.add(chimney);
+    const smoke = new THREE.Mesh(new THREE.SphereGeometry(0.34, 10, 8), this.materials.smoke);
+    smoke.position.set(-3.0, 4.64, 1.34);
+    smoke.scale.set(1.0, 0.55, 0.75);
+    group.add(smoke);
+
+    this.addLodgeInterior(group);
+    this.addLodgeExteriorDetails(group);
+    this.addLodgeTrophyDisplays(group);
+
+    group.traverse((child) => {
+      if (child.isMesh) {
+        child.castShadow = child.castShadow ?? true;
+        child.receiveShadow = child.receiveShadow ?? true;
+      }
+    });
+    this.scene.add(group);
+
+    this.addCollisionBox(origin.x, origin.z, 8.8, 6.2, 3.7, origin.yaw);
+    const porchPoint = this.localToWorldPoint(origin, -0.85, -3.18);
+    this.addCollisionBox(porchPoint.x, porchPoint.z, 5.8, 1.35, 0.9, origin.yaw);
+
+    this.interactables.push({
+      id: "archers-lodge-entry",
+      type: "lore-note",
+      name: "Archer's Lodge",
+      prompt: "E Enter lodge",
+      position: new THREE.Vector3(porchPoint.x, this.terrain.getHeightAt(porchPoint.x, porchPoint.z) + 0.85, porchPoint.z),
+      radius: 4.2,
+      text: "Warm firelight, trophy plaques, and field maps make this feel like your place between adventures.",
+    });
+
+    const mapPoint = this.localToWorldPoint(origin, -1.0, -1.05);
+    this.interactables.push({
+      id: "archers-lodge-map-table",
+      type: "lore-note",
+      name: "Lodge Map Table",
+      prompt: "E Study map table",
+      position: new THREE.Vector3(mapPoint.x, this.terrain.getHeightAt(mapPoint.x, mapPoint.z) + 0.95, mapPoint.z),
+      radius: 3.4,
+      text: "Pins mark discovered regions, frontier routes, and places worth returning to. Future lodge upgrades can deepen this into a full home map room.",
+    });
+
+    const recordsPoint = this.localToWorldPoint(origin, 2.7, 1.7);
+    this.interactables.push({
+      id: "archers-lodge-records",
+      type: "lore-note",
+      name: "Expedition Records",
+      prompt: "E Read records",
+      position: new THREE.Vector3(recordsPoint.x, this.terrain.getHeightAt(recordsPoint.x, recordsPoint.z) + 1.0, recordsPoint.z),
+      radius: 3.2,
+      text: "Neat shelves hold region notes, lore copies, and sketches of legendary bows. The collection grows with your discoveries.",
+    });
+  }
+
+  addLodgeInterior(group) {
+    const floor = new THREE.Mesh(new THREE.BoxGeometry(7.4, 0.08, 5.2), this.materials.wood);
+    floor.position.set(-0.2, 0.52, 0);
+    group.add(floor);
+
+    const fireplace = new THREE.Mesh(new THREE.BoxGeometry(1.35, 1.18, 0.48), this.materials.darkStone);
+    fireplace.position.set(-3.7, 1.12, 1.35);
+    group.add(fireplace);
+    const fire = new THREE.Mesh(new THREE.ConeGeometry(0.28, 0.72, 7), this.materials.lavaGlow);
+    fire.position.set(-3.7, 1.28, 0.96);
+    fire.rotation.y = 0.28;
+    group.add(fire);
+
+    const mapTable = new THREE.Mesh(new THREE.BoxGeometry(2.05, 0.16, 1.35), this.materials.parchment);
+    mapTable.position.set(-1.0, 1.04, -1.05);
+    mapTable.rotation.y = 0.08;
+    group.add(mapTable);
+    const tableBase = new THREE.Mesh(new THREE.BoxGeometry(1.65, 0.72, 0.85), this.materials.barkDark);
+    tableBase.position.set(-1.0, 0.73, -1.05);
+    tableBase.rotation.y = 0.08;
+    group.add(tableBase);
+
+    [[1.55, -1.35], [2.25, -1.25], [2.95, -1.1]].forEach(([x, z], index) => {
+      const shelf = new THREE.Mesh(new THREE.BoxGeometry(0.54, 1.3, 0.22), this.materials.barkDark);
+      shelf.position.set(x, 1.28, z);
+      shelf.rotation.y = -0.05;
+      group.add(shelf);
+      const book = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.48, 0.16), index % 2 ? this.materials.banner : this.materials.targetRed);
+      book.position.set(x + 0.03, 1.35, z - 0.16);
+      book.rotation.y = -0.05;
+      group.add(book);
+    });
+
+    [[-2.75, -1.85, 0.72], [-2.15, -1.9, 0.62], [0.95, 1.95, 0.7]].forEach(([x, z, width]) => {
+      const chest = new THREE.Mesh(new THREE.BoxGeometry(width, 0.46, 0.5), this.materials.hideLeather);
+      chest.position.set(x, 0.82, z);
+      group.add(chest);
+    });
+
+    const chair = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.6, 0.5), this.materials.cutWood);
+    chair.position.set(-2.45, 0.88, 1.58);
+    chair.rotation.y = 0.35;
+    group.add(chair);
+  }
+
+  addLodgeExteriorDetails(group) {
+    const symbol = this.createGuildSymbol(0.82);
+    symbol.position.set(-0.85, 2.1, -2.23);
+    symbol.rotation.set(0, 0, 0);
+    group.add(symbol);
+
+    [[-4.2, -2.4], [4.0, -2.15], [4.9, 2.4]].forEach(([x, z], index) => {
+      const lantern = new THREE.Mesh(new THREE.SphereGeometry(0.18, 10, 8), this.materials.warmWindow);
+      lantern.position.set(x, 1.35, z);
+      group.add(lantern);
+      const light = new THREE.PointLight(0xffb56a, 0.45, 7);
+      light.position.set(x, 1.35, z);
+      group.add(light);
+      if (index < 2) {
+        const bracket = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.05, 0.05), this.materials.barkDark);
+        bracket.position.set(x * 0.98, 1.38, z + 0.12);
+        bracket.rotation.y = index ? -0.35 : 0.35;
+        group.add(bracket);
+      }
+    });
+
+    [[-4.8, 3.0, 0.8], [5.1, 3.2, 0.68], [-5.1, -1.5, 0.62]].forEach(([x, z, scale], index) => {
+      const rock = new THREE.Mesh(this.geometries.pebble, index % 2 ? this.materials.darkStone : this.materials.lodgeStone);
+      rock.position.set(x, 0.55, z);
+      rock.scale.set(scale * 1.25, scale * 0.55, scale);
+      rock.rotation.set(0.14, index * 0.7, -0.08);
+      group.add(rock);
+    });
+
+    [[-5.8, -2.8], [5.6, -2.6], [5.7, 3.1], [-5.6, 3.3]].forEach(([x, z]) => {
+      const marker = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.11, 1.1, 7), this.materials.barkDark);
+      marker.position.set(x, 0.95, z);
+      group.add(marker);
+    });
+  }
+
+  addLodgeTrophyDisplays(group) {
+    this.lodgeTrophyDisplays = {
+      bosses: [],
+      quests: [],
+      loot: [],
+      master: [],
+    };
+
+    const bossNames = ["Barkhide", "Icefang", "Stonehorn", "Mirejaw", "Warden"];
+    bossNames.forEach((name, index) => {
+      const display = this.createLodgePlaque(name, "bosses", index);
+      display.position.set(-3.35 + index * 0.82, 1.85, 2.22);
+      display.rotation.y = Math.PI;
+      group.add(display);
+    });
+
+    ["Guild Deeds", "World Notes", "Rare Finds"].forEach((name, index) => {
+      const display = this.createLodgePlaque(name, index === 2 ? "loot" : "quests", index);
+      display.position.set(1.75 + index * 0.86, 1.58, 2.18);
+      display.rotation.y = Math.PI;
+      group.add(display);
+    });
+
+    const bowWall = new THREE.Group();
+    bowWall.position.set(3.35, 1.78, -1.12);
+    bowWall.rotation.y = -Math.PI / 2;
+    ["Frostbite", "Stormcaller", "Sunpiercer", "Voidstar"].forEach((name, index) => {
+      const bow = new THREE.Mesh(new THREE.TorusGeometry(0.28, 0.018, 8, 24, Math.PI * 1.25), this.materials.trophyInactive);
+      bow.position.set(0, index * -0.24 + 0.32, 0);
+      bow.rotation.z = Math.PI / 2;
+      bow.userData.lodgeCategory = "loot";
+      bow.userData.lodgeLabel = name;
+      this.lodgeTrophyDisplays.loot.push(bow);
+      bowWall.add(bow);
+    });
+    group.add(bowWall);
+
+    const masterBanner = new THREE.Mesh(new THREE.BoxGeometry(1.15, 1.55, 0.08), this.materials.banner);
+    masterBanner.position.set(0.35, 2.03, 2.24);
+    masterBanner.rotation.y = Math.PI;
+    masterBanner.visible = false;
+    masterBanner.userData.lodgeCategory = "master";
+    this.lodgeTrophyDisplays.master.push(masterBanner);
+    group.add(masterBanner);
+  }
+
+  createLodgePlaque(label, category, index) {
+    const group = new THREE.Group();
+    const back = new THREE.Mesh(new THREE.BoxGeometry(0.56, 0.42, 0.08), this.materials.barkDark);
+    const token = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.13, 0.04, 12), this.materials.trophyInactive);
+    token.position.z = -0.06;
+    token.rotation.x = Math.PI / 2;
+    const marker = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.045, 0.035), this.materials.trophyBronze);
+    marker.position.set(0, -0.19, -0.075);
+    marker.scale.x = 0.72 + index * 0.08;
+    group.add(back, token, marker);
+    group.userData.lodgeCategory = category;
+    group.userData.lodgeLabel = label;
+    this.lodgeTrophyDisplays[category]?.push(group);
+    return group;
+  }
+
+  setLodgeTrophyState(state = {}) {
+    if (!this.lodgeTrophyDisplays) return;
+    const counts = {
+      bosses: state.bossesDefeated ?? 0,
+      quests: state.questsCompleted ?? 0,
+      loot: state.rareLootFound ?? 0,
+    };
+
+    Object.entries(this.lodgeTrophyDisplays).forEach(([category, displays]) => {
+      displays.forEach((display, index) => {
+        const unlocked = category === "master"
+          ? Boolean(state.masterArcher)
+          : index < Math.max(0, counts[category] ?? 0);
+        display.visible = category !== "master" || unlocked;
+        display.traverse?.((child) => {
+          if (!child.isMesh || !child.material) return;
+          if (child.userData.lodgeCategory || child.geometry?.type === "CylinderGeometry" || child.geometry?.type === "TorusGeometry") {
+            child.material = unlocked ? this.materials.trophyBronze : this.materials.trophyInactive;
+          }
+        });
+      });
+    });
+  }
+
+  localToWorldPoint(origin, localX, localZ) {
+    return {
+      x: origin.x + (Math.sin(origin.yaw + Math.PI / 2) * localX + Math.sin(origin.yaw) * localZ) * (origin.scale ?? 1),
+      z: origin.z + (Math.cos(origin.yaw + Math.PI / 2) * localX + Math.cos(origin.yaw) * localZ) * (origin.scale ?? 1),
+    };
+  }
+
   addMistwood() {
     this.mistwood = { x: 92, z: 84, yaw: 0.35, scale: 1 };
     this.elderTree = { x: 101, z: 82, yaw: -0.22 };
@@ -4346,6 +5423,9 @@ export class World {
   }
 
   addMistwoodForestMass() {
+    if (this.performanceMode) {
+      return;
+    }
     const canopy = [
       [78, 70, 5.2], [88, 72, 5.8], [99, 72, 6.2], [111, 78, 5.5], [123, 84, 5.2],
       [69, 88, 5.7], [80, 94, 5.3], [96, 96, 6.1], [110, 96, 5.8], [124, 101, 5.2],
@@ -4649,6 +5729,9 @@ export class World {
   }
 
   addBlackwaterLowlands() {
+    if (this.performanceMode) {
+      return;
+    }
     const waterPatches = [
       [-95, -82, 18, 12, 0.28], [-108, -101, 14, 9, -0.2], [-81, -98, 12, 8, 0.55],
       [-119, -72, 13, 8, -0.36], [-93, -60, 16, 7, 0.2], [-77, -82, 10, 7, -0.48],
@@ -4987,6 +6070,9 @@ export class World {
   }
 
   addRedCanyonMass() {
+    if (this.performanceMode) {
+      return;
+    }
     const walls = [
       [-38, 105, 8, 26, 8.8, -0.2], [39, 110, 8, 30, 9.2, 0.18], [-42, 134, 9, 26, 10.4, 0.28],
       [42, 140, 9, 28, 10.8, -0.24], [-18, 151, 12, 8, 8.8, 0.1], [20, 153, 12, 8, 9.6, -0.08],
@@ -5201,6 +6287,9 @@ export class World {
   }
 
   addAshenHighlandMass() {
+    if (this.performanceMode) {
+      return;
+    }
     const ridges = [
       [-170, 112, 9, 22, 9.4, -0.4], [-166, 150, 10, 23, 10.8, 0.2], [-126, 164, 12, 9, 8.6, -0.1],
       [-94, 158, 9, 21, 8.8, 0.34], [-88, 118, 8, 22, 8.4, -0.28], [-145, 96, 14, 8, 7.8, 0.08],
@@ -5451,6 +6540,9 @@ export class World {
   }
 
   addStarfallValleyMass() {
+    if (this.performanceMode) {
+      return;
+    }
     [
       [112, 31, 5.4, 2.6, 0.1], [118, 58, 4.8, 3.1, -0.28], [145, 27, 6.0, 2.9, 0.4],
       [170, 42, 5.8, 3.2, -0.1], [158, 80, 6.2, 3.0, 0.22], [131, 74, 5.2, 2.8, -0.35],
@@ -5760,6 +6852,9 @@ export class World {
   }
 
   addCoastalCliffFields() {
+    if (this.performanceMode) {
+      return;
+    }
     const sandPatches = [
       [102, -86, 18, 11, -0.32], [116, -105, 18, 12, 0.28], [92, -113, 14, 9, -0.06],
       [84, -79, 14, 8, -0.6], [124, -118, 12, 8, 0.42],
@@ -5955,6 +7050,9 @@ export class World {
   }
 
   addFrostpeakSnowFields() {
+    if (this.performanceMode) {
+      return;
+    }
     const patches = [
       [-82, 76, 13, 8, -0.28], [-96, 90, 18, 10, 0.18], [-112, 108, 20, 12, -0.42],
       [-74, 100, 15, 8, 0.32], [-108, 72, 16, 7, 0.1],
@@ -6120,7 +7218,10 @@ export class World {
     const crest = new THREE.Mesh(new THREE.TorusGeometry(0.48, 0.025, 10, 32), this.materials.targetGold);
     crest.position.set(0, 2.42, -2.36);
     crest.rotation.x = Math.PI / 2;
-    hall.add(foundation, body, roof, entry, crest);
+    const guildSymbol = this.createGuildSymbol(0.62);
+    guildSymbol.position.set(0, 2.42, -2.43);
+    guildSymbol.rotation.y = Math.PI / 2;
+    hall.add(foundation, body, roof, entry, crest, guildSymbol);
     this.addBuildingCraftDetails(hall, 6.8, 4.35, 2.25, { trim: this.materials.targetGold });
 
     [-2.7, 2.7].forEach((x) => {
@@ -6721,6 +7822,9 @@ export class World {
   }
 
   addOuterRegionalForest() {
+    if (this.performanceMode) {
+      return;
+    }
     const trees = [
       [39, 18, 4.8], [46, 20, 4.4], [59, 19, 5.1], [65, 7, 4.7], [62, -8, 4.9], [43, -11, 4.6],
       [-18, 46, 4.8], [-10, 54, 5.2], [7, 54, 4.5], [14, 63, 4.9], [-18, 70, 4.4],
@@ -7009,10 +8113,12 @@ export class World {
     this.kingsSeaGate = { x: -136, z: -154, yaw: 0.52 };
     this.wreckersPoint = { x: -168, z: -119, yaw: 0.82 };
     this.drownedCitadel = { x: -168, z: -162, yaw: -0.34 };
+    this.coastalHarbor = { x: -128, z: -134, yaw: -0.54, scale: 1 };
     this.tidalPathObjects = [];
 
     this.addShatteredCoastMass();
     this.addShatteredCoastRoutes();
+    this.addCoastalHarborSettlement(this.coastalHarbor);
     this.addStormwatchFortress(this.stormwatchFortress);
     this.addBrokenBeacon(this.brokenBeacon);
     this.addTidefallCaverns(this.tidefallCaverns);
@@ -7024,6 +8130,9 @@ export class World {
   }
 
   addShatteredCoastMass() {
+    if (this.performanceMode) {
+      return;
+    }
     const ocean = new THREE.Mesh(new THREE.PlaneGeometry(72, 92, 2, 2), this.materials.seaWater);
     ocean.position.set(-184, this.terrain.getHeightAt(-174, -154) - 0.58, -150);
     ocean.rotation.x = -Math.PI / 2;
@@ -7060,6 +8169,133 @@ export class World {
       path.rotation.set(-Math.PI / 2, 0, yaw + Math.sin(index) * 0.05);
       path.receiveShadow = true;
       this.scene.add(path);
+    });
+  }
+
+  addCoastalHarborSettlement(origin) {
+    const service = (localX, localZ) => {
+      const point = this.getSettlementPoint(origin, localX, localZ);
+      return new THREE.Vector3(point.x, 0, point.z);
+    };
+    this.coastalHarborServices = {
+      square: service(0.8, 0.4),
+      docks: service(-5.9, -0.9),
+      tavern: service(2.4, 4.2),
+      market: service(0.1, 1.7),
+      warehouse: service(-3.0, 3.3),
+      bowyer: service(4.9, -1.4),
+      lighthouseKeeper: service(6.5, 3.7),
+      homes: [service(7.0, 6.7), service(-5.9, 6.0), service(8.4, 1.3)],
+    };
+    this.settlementHooks = this.settlementHooks ?? [];
+    this.settlementHooks.push({
+      id: "coastal-harbor",
+      name: "Coastal Harbor",
+      services: this.coastalHarborServices,
+      futureUses: ["boat travel", "coastal contracts", "fish market", "lighthouse quests"],
+    });
+
+    this.addSettlementRoad(origin, 0.1, 2.2, 15, 2.0, -0.05, this.materials.sand);
+    this.addSettlementRoad(origin, -4.3, 0.0, 2.0, 8.5, 0.12, this.materials.sand);
+    this.addSettlementRoad(origin, 5.3, 2.2, 1.8, 8.0, -0.1, this.materials.sand);
+    this.addHarborDock(origin, -6.2, -1.0, 5.8, 1.7, -0.08);
+    this.addHarborDock(origin, -4.7, -3.4, 4.8, 1.35, 0.12);
+
+    this.addSettlementBuilding(origin, "coastal-tavern", "Harbor Tavern", 2.4, 4.2, 4.8, 3.25, 2.05, -0.08, {
+      material: this.materials.weatheredDock,
+      roof: this.materials.lighthouseRed,
+      sign: 0xffc579,
+      porch: true,
+      chimney: true,
+    });
+    this.addSettlementBuilding(origin, "coastal-warehouse", "Warehouse", -3.0, 3.3, 4.7, 3.3, 1.85, 0.08, {
+      material: this.materials.agedWood,
+      roof: this.materials.barkDark,
+      sign: 0xd7bd83,
+    });
+    this.addSettlementBuilding(origin, "coastal-bowyer", "Coast Bowyer", 4.9, -1.4, 3.8, 2.7, 1.8, 0.12, {
+      material: this.materials.wood,
+      roof: this.materials.pineDark,
+      sign: 0x82c8ff,
+      bowRack: true,
+    });
+    this.addSettlementBuilding(origin, "lighthouse-keeper-hut", "Keeper", 6.5, 3.7, 3.4, 2.45, 1.7, -0.18, {
+      material: this.materials.lighthouseWhite,
+      roof: this.materials.lighthouseRed,
+      sign: 0xffd166,
+    });
+    [
+      [7.0, 6.7, 3.0, 2.2, 1.55, 0.12],
+      [-5.9, 6.0, 3.2, 2.4, 1.6, -0.16],
+      [8.4, 1.3, 2.9, 2.25, 1.52, 0.08],
+    ].forEach(([localX, localZ, width, depth, height, yawOffset], index) => {
+      this.addSettlementBuilding(origin, `coastal-home-${index + 1}`, "Harbor Home", localX, localZ, width, depth, height, yawOffset, {
+        material: index % 2 ? this.materials.weatheredDock : this.materials.agedWood,
+        roof: index % 2 ? this.materials.barkDark : this.materials.lighthouseRed,
+        sign: 0xd9b978,
+      });
+    });
+    this.addSettlementMarket(origin, 0.1, 1.7, "coastal");
+    this.addHarborBoats(origin);
+    this.addSettlementAtmosphere(origin, [
+      [-5.2, 2.3, "barrels"],
+      [-1.4, 4.8, "laundry"],
+      [3.8, 1.1, "sign"],
+      [7.7, 5.7, "garden"],
+      [-7.0, -0.2, "firewood"],
+    ]);
+    this.interactables.push({
+      id: "coastal-harbor-rumor-board",
+      type: "lore-note",
+      name: "Harbor Rumor Board",
+      prompt: "E Read harbor rumors",
+      position: new THREE.Vector3(origin.x + 0.5, this.terrain.getHeightAt(origin.x, origin.z) + 0.85, origin.z + 1.6),
+      radius: 3.6,
+      text: "Fisherfolk trade stories of vanished records, storm-lit fortresses, and a sea route older than the kingdom.",
+    });
+  }
+
+  addHarborDock(origin, localX, localZ, length, width, yawOffset = 0) {
+    const point = this.getSettlementPoint(origin, localX, localZ);
+    const y = this.terrain.getHeightAt(point.x, point.z);
+    const yaw = (origin.yaw ?? 0) + yawOffset;
+    const deck = new THREE.Mesh(new THREE.BoxGeometry(length, 0.18, width), this.materials.weatheredDock);
+    deck.position.set(point.x, y + 0.12, point.z);
+    deck.rotation.y = yaw;
+    deck.castShadow = true;
+    deck.receiveShadow = true;
+    this.scene.add(deck);
+    for (let index = 0; index < 4; index += 1) {
+      const offset = -length * 0.38 + index * (length * 0.25);
+      [-1, 1].forEach((side) => {
+        const post = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.11, 1.1, 7), this.materials.barkDark);
+        const x = point.x + Math.cos(yaw) * offset - Math.sin(yaw) * side * width * 0.42;
+        const z = point.z + Math.sin(yaw) * offset + Math.cos(yaw) * side * width * 0.42;
+        post.position.set(x, this.terrain.getHeightAt(x, z) + 0.55, z);
+        this.scene.add(post);
+      });
+    }
+    this.addCollisionBox(point.x, point.z, length, width, 0.5, yaw);
+  }
+
+  addHarborBoats(origin) {
+    [[-8.1, -2.9, 1.0], [-5.6, -4.9, -0.2], [-9.2, 0.1, 0.3]].forEach(([localX, localZ, yawOffset], index) => {
+      const point = this.getSettlementPoint(origin, localX, localZ);
+      const y = this.terrain.getHeightAt(point.x, point.z);
+      const yaw = (origin.yaw ?? 0) + yawOffset;
+      const boat = new THREE.Group();
+      boat.position.set(point.x, y + 0.18, point.z);
+      boat.rotation.y = yaw;
+      const hull = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.54, 2.2, 8), index % 2 ? this.materials.weatheredDock : this.materials.agedWood);
+      hull.scale.z = 0.48;
+      hull.rotation.z = Math.PI / 2;
+      const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.055, 1.45, 6), this.materials.barkDark);
+      mast.position.y = 0.76;
+      const sail = new THREE.Mesh(new THREE.ConeGeometry(0.48, 0.92, 3), this.materials.parchment);
+      sail.position.set(0.18, 0.9, 0);
+      sail.rotation.z = -Math.PI / 2;
+      boat.add(hull, mast, sail);
+      this.scene.add(boat);
     });
   }
 
@@ -7279,6 +8515,9 @@ export class World {
   }
 
   addVeiledWildsCanopy() {
+    if (this.performanceMode) {
+      return;
+    }
     const trees = [
       [-56, -154, 7.2], [-48, -168, 8.4], [-34, -161, 6.7], [-66, -139, 6.5],
       [-23, -134, 5.8], [-70, -164, 6.9], [-40, -122, 5.9], [-16, -151, 6.4],

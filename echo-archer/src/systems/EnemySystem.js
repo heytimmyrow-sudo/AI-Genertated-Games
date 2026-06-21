@@ -74,13 +74,13 @@ export class EnemySystem {
       { type: "groveGuardian", position: [-45, -122], patrol: [[-45, -122], [-53, -126], [-48, -134], [-38, -130]], respawnTimer: 0 },
       { type: "mistFox", position: [-72, -154], patrol: [[-72, -154], [-77, -160], [-69, -166], [-64, -157]], respawnTimer: 0 },
     ];
-    this.enemies = this.slots.map((slot) => this.spawnEnemy(slot));
+    this.enemies = this.slots.map((slot) => (this.world.performanceMode ? null : this.spawnEnemy(slot)));
     this.healthBars = new Map();
     this.defeatListeners = [];
   }
 
   spawnEnemy(slot) {
-    return new Enemy(slot.type, this.scene, this.world, slot.position, slot.patrol);
+    return new Enemy(slot.type, this.scene, this.world, slot.position, slot.patrol, this.feedback);
   }
 
   onEnemyDefeated(callback) {
@@ -89,6 +89,16 @@ export class EnemySystem {
 
   update(deltaSeconds, player, camera) {
     this.enemies.forEach((enemy, index) => {
+      if (!enemy) {
+        if (this.isSlotNearPlayer(this.slots[index], player, this.world.performanceMode ? 58 : 96)) {
+          this.enemies[index] = this.spawnEnemy(this.slots[index]);
+        }
+        return;
+      }
+      if (!this.shouldUpdateEnemy(enemy, player)) {
+        this.hideHealthBar(enemy);
+        return;
+      }
       enemy.update(deltaSeconds, player);
       if (enemy.removed) {
         const slot = this.slots[index];
@@ -100,6 +110,20 @@ export class EnemySystem {
       }
     });
     this.updateHealthBars(camera);
+  }
+
+  isSlotNearPlayer(slot, player, radius) {
+    const dx = slot.position[0] - player.group.position.x;
+    const dz = slot.position[1] - player.group.position.z;
+    return dx * dx + dz * dz <= radius * radius;
+  }
+
+  shouldUpdateEnemy(enemy, player) {
+    if (!enemy?.group || enemy.hitReactTimer > 0 || enemy.state !== "patrol") {
+      return true;
+    }
+    const distance = enemy.group.position.distanceTo(player.group.position);
+    return distance <= (this.world.performanceMode ? 52 : 86);
   }
 
   handleArrowHit(arrow) {
@@ -116,7 +140,13 @@ export class EnemySystem {
     this.ensureHealthBar(enemy);
     this.feedback?.spawnImpact(arrow.hitPoint ?? enemy.group.position, defeated ? 0xe6b75d : (shotPower > 0.72 ? 0xffb15f : 0xcf7c4e), defeated ? 2.05 : 1.05 + shotPower * 0.7);
     this.feedback?.shake(defeated ? 0.22 : 0.055 + shotPower * 0.08);
-    this.showCombatText(enemy, defeated ? "DEFEATED" : `${Math.round(damage)}`, defeated ? "xp" : (shotPower > 0.72 ? "damage strong" : "damage"));
+    const damageText = arrow.critical ? `CRIT ${Math.round(damage)}` : `${Math.round(damage)}`;
+    this.showCombatText(enemy, defeated ? "DEFEATED" : damageText, defeated ? "xp" : (shotPower > 0.72 || arrow.critical ? "damage strong" : "damage"));
+    if (arrow.arrowType?.id === "ice") {
+      this.showCombatText(enemy, "SLOWED", "damage");
+    } else if (arrow.arrowType?.id === "fire") {
+      this.showCombatText(enemy, "BURNING", "damage strong");
+    }
     if (defeated) {
       const slot = this.slots[this.enemies.indexOf(enemy)];
       slot.respawnTimer = 5.5;
@@ -133,6 +163,9 @@ export class EnemySystem {
 
     const radius = arrow.arrowType.radius ?? 4;
     this.enemies.forEach((enemy) => {
+      if (!enemy) {
+        return;
+      }
       if (!enemy.active) {
         return;
       }
@@ -178,8 +211,15 @@ export class EnemySystem {
   updateHealthBars(camera) {
     this.lastCamera = camera;
     this.enemies.forEach((enemy) => {
-      const bar = this.ensureHealthBar(enemy);
+      if (!enemy) {
+        return;
+      }
       const visible = enemy.active && this.shouldShowHealth(enemy, camera);
+      const existingBar = this.healthBars.get(enemy);
+      if (!visible && !existingBar) {
+        return;
+      }
+      const bar = existingBar ?? this.ensureHealthBar(enemy);
       bar.classList.toggle("visible", visible);
 
       if (!visible) {

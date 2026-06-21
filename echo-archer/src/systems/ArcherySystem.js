@@ -2,6 +2,7 @@ import { SETTINGS } from "../config/settings.js";
 import { ArrowProjectile } from "../entities/ArrowProjectile.js";
 
 const { THREE } = window;
+const aimRaycaster = new THREE.Raycaster();
 
 export class ArcherySystem {
   constructor(scene, practice = null, enemySystem = null, feedback = null, bossSystem = null) {
@@ -33,6 +34,7 @@ export class ArcherySystem {
     };
     this.bow = this.createBow();
     this.bowPulse = 0;
+    this.trailMultiplier = 1;
     this.lastDrawSoundStep = 0;
     this.arrowTypeSystem = null;
     this.windSystem = null;
@@ -45,6 +47,10 @@ export class ArcherySystem {
 
   setWindSystem(system) {
     this.windSystem = system;
+  }
+
+  setQuality(preset = null) {
+    this.trailMultiplier = preset?.effectsQuality ?? 1;
   }
 
   createBow() {
@@ -99,7 +105,7 @@ export class ArcherySystem {
   }
 
   update(deltaSeconds, input, player, cameraRig, world) {
-    this.updateDraw(deltaSeconds, input, player, cameraRig);
+    this.updateDraw(deltaSeconds, input, player, cameraRig, world);
     this.updateBow(player, cameraRig);
     this.updateArrows(deltaSeconds, world);
   }
@@ -110,7 +116,7 @@ export class ArcherySystem {
     this.lastDrawSoundStep = 0;
   }
 
-  updateDraw(deltaSeconds, input, player, cameraRig) {
+  updateDraw(deltaSeconds, input, player, cameraRig, world) {
     if (!this.isDrawing && input.isMouseDown(0) && input.pointerLocked) {
       this.isDrawing = true;
       this.drawAmount = Math.max(this.drawAmount, 0.05);
@@ -128,7 +134,7 @@ export class ArcherySystem {
     }
 
     if (this.isDrawing && input.wasMouseReleased(0)) {
-      this.shoot(player, cameraRig);
+      this.shoot(player, cameraRig, world);
       this.isDrawing = false;
       this.drawAmount = 0;
     }
@@ -139,29 +145,33 @@ export class ArcherySystem {
     }
   }
 
-  shoot(player, cameraRig) {
+  shoot(player, cameraRig, world) {
     if (this.drawAmount < 0.08) {
       return;
     }
 
     const origin = this.getArrowOrigin(player, cameraRig);
-    const direction = cameraRig.getAimDirection(origin);
+    const direction = this.getShotDirection(origin, cameraRig, world);
     this.applyAimSteadiness(direction);
     const power = THREE.MathUtils.smoothstep(this.drawAmount, 0, 1);
+    const releasePower = 0.82 + power * 0.28;
     const arrowType = this.arrowTypeSystem?.getCurrentArrowType?.() ?? { id: "standard", name: "Standard Arrow", damageMultiplier: 1, rangeMultiplier: 1 };
     const typeRange = arrowType.rangeMultiplier ?? 1;
-    const speed = THREE.MathUtils.lerp(SETTINGS.archery.minSpeed, SETTINGS.archery.maxSpeed * this.gearStats.rangeMultiplier * this.rpgStats.rangeMultiplier * typeRange, power);
+    const speed = THREE.MathUtils.lerp(SETTINGS.archery.minSpeed, SETTINGS.archery.maxSpeed * this.gearStats.rangeMultiplier * this.rpgStats.rangeMultiplier * typeRange, power) * releasePower;
     origin.add(direction.clone().multiplyScalar(0.7));
     const inheritedVelocity = player.velocity.clone().multiplyScalar(0.35);
     const windDrift = this.windSystem?.getArrowDrift?.(origin, power) ?? new THREE.Vector3();
     const velocity = direction.clone().multiplyScalar(speed).add(inheritedVelocity).add(windDrift);
-    const arrow = new ArrowProjectile(this.scene, origin, velocity, this.feedback, power, arrowType);
+    const arrow = new ArrowProjectile(this.scene, origin, velocity, this.feedback, power, arrowType, this.trailMultiplier);
     const critical = Math.random() < Math.min(0.5, this.rpgStats.critChance + power * 0.04);
     arrow.critical = critical;
     arrow.damageMultiplier = this.stats.damageMultiplier * this.gearStats.damageMultiplier * this.rpgStats.damageMultiplier * (arrowType.damageMultiplier ?? 1) * (critical ? 1.75 : 1);
     this.arrows.push(arrow);
     this.bowPulse = 1.15 + power * 0.35;
-    this.feedback?.playSound("bowRelease", 0.65 + power * 0.78);
+    this.feedback?.playSound("bowRelease", 0.72 + power * 0.9);
+    if (power > 0.45) {
+      window.setTimeout(() => this.feedback?.playSound("arrowFlyby", 0.35 + power * 0.65), 45);
+    }
     this.feedback?.spawnImpact(origin.clone(), power > 0.7 ? 0xffe0a0 : 0xe6b75d, 0.45 + power * 0.6);
     this.feedback?.shake(0.025 + power * 0.045);
     if (power > 0.72) {
@@ -249,6 +259,40 @@ export class ArcherySystem {
 
   getArrowOrigin(player, cameraRig) {
     return this.getBowOrigin(player, cameraRig);
+  }
+
+  getShotDirection(origin, cameraRig, world) {
+    const cameraDirection = cameraRig.getAimDirection();
+    const targetPoint = this.getAimTarget(cameraRig, world, cameraDirection);
+    if (targetPoint) {
+      return targetPoint.sub(origin).normalize();
+    }
+    return cameraDirection;
+  }
+
+  getAimTarget(cameraRig, world, cameraDirection) {
+    if (!world) {
+      return null;
+    }
+
+    const rayOrigin = cameraRig.camera.position.clone();
+    aimRaycaster.set(rayOrigin, cameraDirection.clone().normalize());
+    aimRaycaster.far = 110;
+    const hits = aimRaycaster.intersectObjects(world.colliders ?? [], false);
+    if (hits.length > 0) {
+      return hits[0].point.clone();
+    }
+
+    for (let distance = 8; distance <= 105; distance += 4) {
+      const point = rayOrigin.clone().add(cameraDirection.clone().multiplyScalar(distance));
+      const terrainY = world.terrain.getHeightAt(point.x, point.z);
+      if (point.y <= terrainY + 0.12) {
+        point.y = terrainY + 0.12;
+        return point;
+      }
+    }
+
+    return rayOrigin.add(cameraDirection.clone().multiplyScalar(105));
   }
 
   updateString(bow, drawAmount) {

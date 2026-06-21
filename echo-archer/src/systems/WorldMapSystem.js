@@ -1,7 +1,9 @@
+import { SETTINGS } from "../config/settings.js";
+
 const STORAGE_KEY = "echo-archer-world-map-v1";
 
 const REGION_GROUPS = [
-  { id: "forest", name: "Forest Heartland", match: /forest|watchtower|hidden-pond|ancient-ruins|hunters-cabin|cliff-overlook|whisper-cave|river-crossing|mountain-path|forgotten-grove|archers-guild|guild-village|hall-of-arrows/ },
+  { id: "forest", name: "Forest Heartland", match: /forest|watchtower|hidden-pond|ancient-ruins|hunters-cabin|cliff-overlook|whisper-cave|river-crossing|mountain-path|forgotten-grove|archers-guild|guild-village|hall-of-arrows|mountain-fortress|archers-lodge/ },
   { id: "frostpeak", name: "Frostpeak Mountains", match: /frost|icefall|summit/ },
   { id: "coastal", name: "Coastal Cliffs", match: /coastal|lighthouse|sea-cave|shipwreck|windspire/ },
   { id: "mistwood", name: "Mistwood", match: /mistwood|elder-tree|moonlit|forgotten-shrine|rootfall|echo-grove/ },
@@ -17,7 +19,7 @@ const REGION_GROUPS = [
 ];
 
 const REGION_STYLES = [
-  { id: "forest", color: "rgba(91, 137, 77, 0.38)", match: /forest|watchtower|hidden-pond|ancient-ruins|hunters-cabin|cliff-overlook|whisper-cave|river-crossing|mountain-path|forgotten-grove|archers-guild|guild-village|hall-of-arrows/ },
+  { id: "forest", color: "rgba(91, 137, 77, 0.38)", match: /forest|watchtower|hidden-pond|ancient-ruins|hunters-cabin|cliff-overlook|whisper-cave|river-crossing|mountain-path|forgotten-grove|archers-guild|guild-village|hall-of-arrows|mountain-fortress|archers-lodge/ },
   { id: "frostpeak", color: "rgba(166, 218, 238, 0.44)", match: /frost|icefall|summit/ },
   { id: "coastal", color: "rgba(93, 172, 190, 0.38)", match: /coastal|lighthouse|sea-cave|shipwreck|windspire|shattered|stormwatch|beacon|tidefall|sea-gate|wreckers|drowned-citadel/ },
   { id: "mistwood", color: "rgba(98, 132, 103, 0.42)", match: /mistwood|elder-tree|moonlit|forgotten-shrine|rootfall|echo-grove|veiled|worldroot|hidden-lake|greenheart|sleeping-arch|mistveil|forgotten-circle-wilds/ },
@@ -45,6 +47,10 @@ export class WorldMapSystem {
     this.defeatedBosses = new Set();
     this.collectedBows = new Set();
     this.completedQuests = new Set();
+    this.zoom = 1;
+    this.pan = { x: 0, y: 0 };
+    this.dragState = null;
+    this.mapLayer = null;
     this.load();
     this.bindEvents();
     this.bindUi();
@@ -52,6 +58,30 @@ export class WorldMapSystem {
 
   bindUi() {
     this.ui.close?.addEventListener("click", () => this.close());
+    this.ui.zoomIn?.addEventListener("click", () => this.setZoom(this.zoom + 0.18));
+    this.ui.zoomOut?.addEventListener("click", () => this.setZoom(this.zoom - 0.18));
+    this.ui.reset?.addEventListener("click", () => this.centerOnPlayer());
+    this.ui.canvas?.addEventListener("wheel", (event) => {
+      if (!this.open) return;
+      event.preventDefault();
+      this.setZoom(this.zoom + (event.deltaY < 0 ? 0.12 : -0.12), true);
+    }, { passive: false });
+    this.ui.canvas?.addEventListener("pointerdown", (event) => {
+      if (!this.open || event.target.closest?.(".map-icon")) return;
+      this.dragState = { x: event.clientX, y: event.clientY, panX: this.pan.x, panY: this.pan.y };
+      this.ui.canvas.setPointerCapture?.(event.pointerId);
+      this.ui.canvas.classList.add("dragging");
+    });
+    this.ui.canvas?.addEventListener("pointermove", (event) => {
+      if (!this.dragState) return;
+      this.pan.x = this.dragState.panX + event.clientX - this.dragState.x;
+      this.pan.y = this.dragState.panY + event.clientY - this.dragState.y;
+      this.applyMapTransform();
+    });
+    window.addEventListener("pointerup", () => {
+      this.dragState = null;
+      this.ui.canvas?.classList.remove("dragging");
+    });
   }
 
   bindEvents() {
@@ -117,6 +147,7 @@ export class WorldMapSystem {
     if (document.pointerLockElement) {
       document.exitPointerLock();
     }
+    this.centerOnPlayer(false);
     this.render();
     this.playUiClick();
   }
@@ -128,6 +159,7 @@ export class WorldMapSystem {
     this.open = false;
     this.ui.menu.classList.remove("visible");
     document.body.classList.remove("map-open");
+    this.dragState = null;
     this.playUiClick();
   }
 
@@ -166,13 +198,54 @@ export class WorldMapSystem {
       return;
     }
     this.ui.canvas.innerHTML = "";
+    this.mapLayer = document.createElement("div");
+    this.mapLayer.className = "map-layer";
+    this.ui.canvas.appendChild(this.mapLayer);
+    this.addParchmentDetails();
+    this.addUndiscoveredRegionGhosts();
     this.addRegionWashes();
     this.addRoutes();
     this.addDiscoveredRegions();
     this.addDiscoveredLandmarks();
     this.addPlayerMarker();
     this.addFogNote();
+    this.applyMapTransform();
     this.renderDetails();
+  }
+
+  addToMap(element) {
+    (this.mapLayer ?? this.ui.canvas).appendChild(element);
+  }
+
+  addParchmentDetails() {
+    const compass = document.createElement("span");
+    compass.className = "map-compass";
+    compass.innerHTML = "<b>N</b><i></i>";
+    const guildMark = document.createElement("span");
+    guildMark.className = "map-guild-mark";
+    guildMark.innerHTML = "<i></i><b></b><em></em>";
+    const annotation = document.createElement("span");
+    annotation.className = "map-annotation";
+    annotation.textContent = "Guild survey ink - routes verified by field archers";
+    this.addToMap(compass);
+    this.addToMap(guildMark);
+    this.addToMap(annotation);
+  }
+
+  addUndiscoveredRegionGhosts() {
+    this.world.regions?.forEach((region, index) => {
+      if (this.discoveredRegions.has(region.id)) return;
+      if (index % 4 !== 0) return;
+      const coords = this.worldToMap(region.center);
+      const area = document.createElement("span");
+      area.className = "map-region-ghost";
+      area.style.left = `${coords.x}%`;
+      area.style.top = `${coords.y}%`;
+      area.style.width = `${Math.max(5, Math.min(14, (region.radius ?? 12) * 0.42))}%`;
+      area.style.height = `${Math.max(4, Math.min(10, (region.radius ?? 12) * 0.28))}%`;
+      area.style.setProperty("--region-tilt", `${(index % 7) * 6 - 18}deg`);
+      this.addToMap(area);
+    });
   }
 
   addRoutes() {
@@ -193,7 +266,7 @@ export class WorldMapSystem {
     route.style.top = `${a.y}%`;
     route.style.width = `${Math.hypot(dx, dy)}%`;
     route.style.transform = `rotate(${Math.atan2(dy, dx)}rad)`;
-    this.ui.canvas.appendChild(route);
+    this.addToMap(route);
   }
 
   addRegionWashes() {
@@ -214,7 +287,7 @@ export class WorldMapSystem {
       area.style.height = `${radius}%`;
       area.style.setProperty("--region-color", style.color);
       area.style.setProperty("--region-tilt", `${(index % 5) * 7 - 14}deg`);
-      this.ui.canvas.appendChild(area);
+      this.addToMap(area);
     });
   }
 
@@ -230,7 +303,7 @@ export class WorldMapSystem {
         position: region.center,
         type: "region",
         style,
-        glyph: "•",
+        glyph: ".",
       });
     });
   }
@@ -243,14 +316,15 @@ export class WorldMapSystem {
       const shrine = /shrine|temple/i.test(landmark.name);
       const bossDefeated = this.isBossLandmarkDefeated(landmark.id);
       const questTarget = this.getQuestDestination()?.id === landmark.id;
+      const illustration = this.getLandmarkIllustration(landmark, shrine);
       this.addIcon({
         id: landmark.id,
         name: landmark.name,
         position: landmark.position,
         type: shrine ? "shrine" : "landmark",
         glyph: this.getGlyphForLandmark(landmark, shrine, bossDefeated),
-        classes: [bossDefeated ? "boss-defeated" : "", questTarget ? "quest" : ""].filter(Boolean),
-        fastTravel: true,
+        illustration,
+        classes: [illustration, bossDefeated ? "boss-defeated" : "", questTarget ? "quest" : "", this.isFastTravelPoint(landmark) ? "travel-post" : ""].filter(Boolean),
       });
     });
   }
@@ -261,11 +335,11 @@ export class WorldMapSystem {
       name: "You",
       position: this.player.group.position,
       type: "player",
-      glyph: "▲",
+      glyph: "^",
     });
   }
 
-  addIcon({ id, name, position, type, glyph, classes = [], fastTravel = false, style = null }) {
+  addIcon({ id, name, position, type, glyph, classes = [], style = null, illustration = "" }) {
     const coords = this.worldToMap(position);
     const button = document.createElement("button");
     button.type = "button";
@@ -275,21 +349,21 @@ export class WorldMapSystem {
     if (style?.color) {
       button.style.setProperty("--region-color", style.color);
     }
-    button.textContent = glyph;
+    button.innerHTML = illustration
+      ? `<span class="map-illustration-mark" aria-hidden="true"></span><span class="map-icon-code">${glyph}</span>`
+      : `<span class="map-icon-code">${glyph}</span>`;
     button.title = name;
     button.addEventListener("click", () => {
       this.selectedDestinationId = id;
       this.renderDetails();
-      if (fastTravel) {
-        this.fastTravelTo(id);
-      }
     });
     const label = document.createElement("span");
     label.className = "map-label";
     label.style.left = `${coords.x}%`;
     label.style.top = `${coords.y}%`;
     label.textContent = name;
-    this.ui.canvas.append(button, label);
+    this.addToMap(button);
+    this.addToMap(label);
   }
 
   addFogNote() {
@@ -303,19 +377,22 @@ export class WorldMapSystem {
   }
 
   renderDetails() {
-    const destination = this.getDestinationById(this.selectedDestinationId) ?? this.getFastTravelDestinations()[0];
+    const destination = this.getDestinationById(this.selectedDestinationId) ?? this.getMapDestinations()[0];
     const questDestination = this.getQuestDestination();
     const progress = this.getRegionProgress();
+    const progressItems = progress
+      .map((item) => `<li>${item.name}: ${item.landmarks} landmarks - ${item.shrines} temples - ${item.bosses} bosses</li>`)
+      .join("");
     this.ui.details.innerHTML = `
       <h3>${destination?.name ?? "World Map"}</h3>
       <p>${this.getDestinationDescription(destination)}</p>
-      <button class="map-fast-travel" type="button" ${this.canFastTravel(destination) ? "" : "disabled"}>Fast Travel</button>
+      <button class="map-fast-travel" type="button" ${this.canFastTravel(destination) ? "" : "disabled"}>${this.canFastTravel(destination) ? "Travel from guild post" : "No travel post"}</button>
       <h3>Current Objective</h3>
       <p>${this.getQuestSummary()}${questDestination ? ` Destination: ${questDestination.name}.` : ""}</p>
       <h3>Region Progress</h3>
-      <ul>${progress.map((item) => `<li>${item.name}: ${item.landmarks} landmarks • ${item.shrines} shrines • ${item.bosses} bosses</li>`).join("")}</ul>
+      <ul>${progressItems}</ul>
       <h3>Journal Summary</h3>
-      <p>${this.completedQuests.size} quests • ${this.defeatedBosses.size} bosses • ${this.collectedBows.size} legendary bows</p>
+      <p>${this.completedQuests.size} quests - ${this.defeatedBosses.size} bosses - ${this.collectedBows.size} legendary bows</p>
     `;
     this.ui.details.querySelector(".map-fast-travel")?.addEventListener("click", () => this.fastTravelTo(destination?.id));
   }
@@ -324,8 +401,8 @@ export class WorldMapSystem {
     if (!destination) return "Open the map as you explore to reveal more routes.";
     if (destination.id === "player-location") return "Your current location.";
     return this.canFastTravel(destination)
-      ? "Discovered destination. Fast travel is available when safe."
-      : "Fast travel unlocks after discovery and only while out of combat.";
+      ? "A guild-approved travel post. Fast travel is available when safe."
+      : "Marked in your explorer's notes. Reach it by traveling the roads, trails, and wild routes.";
   }
 
   getQuestSummary() {
@@ -339,6 +416,10 @@ export class WorldMapSystem {
   }
 
   getFastTravelDestinations() {
+    return this.getMapDestinations().filter((destination) => this.isFastTravelPoint(destination));
+  }
+
+  getMapDestinations() {
     return (this.world.landmarks ?? [])
       .filter((landmark) => this.discoveredLandmarks.has(landmark.id))
       .concat((this.world.regions ?? [])
@@ -347,17 +428,18 @@ export class WorldMapSystem {
   }
 
   isRegionHub(region) {
-    return /forest-meadow|guild-village|hall-of-arrows|frostpeak-mountains|coastal-cliffs|mistwood|blackwater-marsh|red-canyon|ashen-highlands|starfall-vale|frontier-plains|frontier-outpost|lost-kingdom|kings-gate|celestial-expanse|observatory-prime|shattered-coast|stormwatch-fortress|veiled-wilds|worldroot-grove|river-crossing|mountain-path|forgotten-grove/.test(region.id);
+    return /forest-meadow|guild-village|archers-guild|hall-of-arrows|mountain-fortress|archers-lodge|frontier-outpost|frontier-plains|river-crossing|mountain-path|forgotten-grove/.test(region.id);
   }
 
   getDestinationById(id) {
-    return this.getFastTravelDestinations().find((item) => item.id === id);
+    return this.getMapDestinations().find((item) => item.id === id);
   }
 
   canFastTravel(destination) {
     if (!destination || destination.id === "player-location") return false;
     if (this.player.defeated || this.player.stats?.health <= 0) return false;
     if (this.systems.isCombatActive?.()) return false;
+    if (!this.isFastTravelPoint(destination)) return false;
     return this.discoveredLandmarks.has(destination.id) || this.discoveredRegions.has(destination.id);
   }
 
@@ -374,9 +456,15 @@ export class WorldMapSystem {
       const offset = destination.radius ? Math.min(3.5, destination.radius * 0.35) : 2.4;
       landing.x += offset;
       landing.z += offset * 0.35;
-      landing.y = this.world.terrain.getHeightAt(landing.x, landing.z);
+      const groundY = Math.max(
+        this.world.terrain.getHeightAt(landing.x, landing.z),
+        this.world.getPlatformHeightAt?.(landing.x, landing.z) ?? -Infinity,
+      );
+      landing.y = groundY + SETTINGS.player.height / 2;
       this.player.group.position.copy(landing);
       this.player.velocity?.set?.(0, 0, 0);
+      this.player.onGround = true;
+      this.player.lastGroundY = groundY;
       this.showToast(`Fast traveled to ${destination.name}`);
       window.dispatchEvent(new CustomEvent("echo-archer:sound", { detail: { name: "questComplete", intensity: 0.44 } }));
       window.setTimeout(() => this.ui.fade?.classList.remove("visible"), 220);
@@ -407,14 +495,34 @@ export class WorldMapSystem {
     return this.defeatedBosses.has(bossByLandmark[id]);
   }
 
+  isFastTravelPoint(destination = {}) {
+    const id = destination.id ?? "";
+    const name = destination.name ?? "";
+    return /camp|guild|village|town|outpost|settlement|hall-of-arrows|mountain-fortress|archers-lodge|hunters-cabin|frontier-outpost/i.test(`${id} ${name}`);
+  }
+
   getGlyphForLandmark(landmark, shrine, bossDefeated) {
-    if (bossDefeated) return "✓";
-    if (landmark.id === "guild-village" || landmark.id === "archers-guild") return "⌂";
-    if (landmark.id === "hall-of-arrows") return "⇧";
-    if (shrine) return "✦";
-    if (/tower|watch/i.test(landmark.name)) return "♜";
-    if (/cave|cavern/i.test(landmark.name)) return "◆";
-    return "●";
+    if (bossDefeated) return "OK";
+    if (landmark.id === "mountain-fortress") return "FORT";
+    if (landmark.id === "guild-village" || landmark.id === "archers-guild") return "H";
+    if (landmark.id === "hall-of-arrows") return "T";
+    if (shrine) return "*";
+    if (/tower|watch/i.test(landmark.name)) return "W";
+    if (/cave|cavern/i.test(landmark.name)) return "C";
+    return ".";
+  }
+
+  getLandmarkIllustration(landmark, shrine) {
+    const text = `${landmark.id} ${landmark.name}`.toLowerCase();
+    if (text.includes("mountain-fortress")) return "illustration-fortress";
+    if (/guild|village|town|outpost|camp|cabin|lodge|hall-of-arrows/.test(text)) return "illustration-town";
+    if (/observatory|starfall|celestial|skyfall|starforge|first-sky|astral/.test(text)) return "illustration-observatory";
+    if (/harbor|coast|cove|shipwreck|lighthouse|beacon|sea|drowned|tide|wreckers/.test(text)) return "illustration-harbor";
+    if (shrine) return "illustration-shrine";
+    if (/ruin|king|temple|archive|citadel|gate|plaza|sentinel|circle|arch/.test(text)) return "illustration-ruin";
+    if (/tower|watch|spire/.test(text)) return "illustration-tower";
+    if (/cave|cavern|hollow/.test(text)) return "illustration-cave";
+    return "illustration-landmark";
   }
 
   getRegionProgress() {
@@ -452,6 +560,30 @@ export class WorldMapSystem {
     };
   }
 
+  setZoom(nextZoom, silent = false) {
+    this.zoom = THREE.MathUtils.clamp(nextZoom, 0.82, 2.25);
+    this.applyMapTransform();
+    if (!silent) this.playUiClick();
+  }
+
+  centerOnPlayer(resetZoom = true) {
+    if (resetZoom) this.zoom = 1;
+    const coords = this.worldToMap(this.player.group.position);
+    const rect = this.ui.canvas?.getBoundingClientRect?.();
+    if (rect) {
+      this.pan.x = (50 - coords.x) * rect.width * 0.01 * this.zoom;
+      this.pan.y = (50 - coords.y) * rect.height * 0.01 * this.zoom;
+    } else {
+      this.pan = { x: 0, y: 0 };
+    }
+    this.applyMapTransform();
+  }
+
+  applyMapTransform() {
+    if (!this.mapLayer) return;
+    this.mapLayer.style.transform = `translate(${this.pan.x}px, ${this.pan.y}px) scale(${this.zoom})`;
+  }
+
   showToast(text) {
     if (!this.ui.toast) return;
     this.ui.toast.textContent = text;
@@ -481,13 +613,17 @@ export class WorldMapSystem {
   }
 
   save() {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({
-      discoveredLandmarks: [...this.discoveredLandmarks],
-      discoveredRegions: [...this.discoveredRegions],
-      completedShrines: [...this.completedShrines],
-      defeatedBosses: [...this.defeatedBosses],
-      collectedBows: [...this.collectedBows],
-      completedQuests: [...this.completedQuests],
-    }));
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({
+        discoveredLandmarks: [...this.discoveredLandmarks],
+        discoveredRegions: [...this.discoveredRegions],
+        completedShrines: [...this.completedShrines],
+        defeatedBosses: [...this.defeatedBosses],
+        collectedBows: [...this.collectedBows],
+        completedQuests: [...this.completedQuests],
+      }));
+    } catch (error) {
+      console.warn("World map save failed:", error);
+    }
   }
 }

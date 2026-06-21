@@ -159,6 +159,8 @@ export class Terrain {
     });
 
     const mesh = new THREE.Mesh(geometry, material);
+    mesh.userData.terrain = true;
+    mesh.userData.important = true;
     mesh.receiveShadow = true;
     return mesh;
   }

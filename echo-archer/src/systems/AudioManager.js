@@ -152,7 +152,9 @@ export class AudioManager {
       bullseyeHit: () => this.playBullseyeHit(intensity),
       caveArrowHit: () => this.playCaveArrowHit(intensity),
       enemyHit: () => this.playEnemyHit(intensity),
+      weakpointHit: () => this.playWeakpointHit(intensity),
       enemyDefeat: () => this.playEnemyDefeat(intensity),
+      arrowFlyby: () => this.playArrowFlyby(intensity),
       bossNotice: () => this.playBossNotice(intensity),
       bossCharge: () => this.playBossCharge(intensity),
       bossDefeat: () => this.playBossDefeat(intensity),
@@ -338,6 +340,17 @@ export class AudioManager {
   playEnemyHit(intensity) {
     this.tone({ frequency: 165, endFrequency: 82, type: "sawtooth", duration: 0.17, gain: 0.082 * intensity, destination: this.sfxGain });
     this.noise({ duration: 0.08, gain: 0.028 * intensity, filter: 520 });
+  }
+
+  playWeakpointHit(intensity) {
+    this.playEnemyHit(intensity * 0.75);
+    this.tone({ frequency: 660, endFrequency: 990, type: "sine", duration: 0.12, gain: 0.05 * intensity, destination: this.sfxGain });
+    window.setTimeout(() => this.tone({ frequency: 990, endFrequency: 1320, type: "triangle", duration: 0.1, gain: 0.034 * intensity, destination: this.sfxGain }), 55);
+  }
+
+  playArrowFlyby(intensity) {
+    this.noise({ duration: 0.16, gain: 0.032 * intensity, filter: 2600 });
+    this.tone({ frequency: 720, endFrequency: 210, type: "triangle", duration: 0.13, gain: 0.035 * intensity, destination: this.sfxGain });
   }
 
   playEnemyDefeat(intensity) {

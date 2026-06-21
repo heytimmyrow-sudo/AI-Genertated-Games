@@ -31,6 +31,10 @@ export class WeatherSystem {
     this.target = "clear";
     this.blend = 1;
     this.timer = SETTINGS.weather.changeInterval * 0.55;
+    this.particleOpacityMultiplier = 1;
+    this.activeParticleCount = 180;
+    this.regionCheckTimer = 0;
+    this.cachedRegion = null;
     this.rain = this.createRain();
     this.frostTypes = ["snowfall", "icy-fog", "mountain-wind"];
     this.mistTypes = ["mistwood-mist", "fog", "cloudy"];
@@ -59,6 +63,12 @@ export class WeatherSystem {
     const points = new THREE.Points(geometry, material);
     this.scene.add(points);
     return points;
+  }
+
+  setQuality(preset = null) {
+    this.activeParticleCount = Math.max(45, Math.min(180, preset?.weatherParticles ?? 180));
+    this.particleOpacityMultiplier = preset?.particleMultiplier ?? 1;
+    this.rain?.geometry?.setDrawRange(0, this.activeParticleCount);
   }
 
   update(deltaSeconds, player) {
@@ -109,7 +119,12 @@ export class WeatherSystem {
   }
 
   updateRain(deltaSeconds, player, amount) {
-    const region = this.world.getRegionAt?.(player.group.position);
+    this.regionCheckTimer -= deltaSeconds;
+    if (this.regionCheckTimer <= 0) {
+      this.cachedRegion = this.world.getRegionAt?.(player.group.position);
+      this.regionCheckTimer = 0.45;
+    }
+    const region = this.cachedRegion;
     const nowFrostpeak = region?.id?.includes("frost") || region?.id === "summit-overlook" || region?.id === "icefall-cavern";
     const nowMistwood = region?.id?.includes("mistwood") || ["elder-tree", "moonlit-clearing", "forgotten-shrine", "rootfall-hollow", "echo-grove"].includes(region?.id);
     const nowBlackwater = region?.id?.includes("blackwater") || ["sunken-shrine", "mosswatch-tower", "crooked-boardwalk", "drowned-ruins", "witchlight-grove"].includes(region?.id);
@@ -194,7 +209,7 @@ export class WeatherSystem {
     const profile = WEATHER_PROFILES[this.target] ?? WEATHER_PROFILES.clear;
     const snowAmount = profile.snow ?? 0;
     const ashAmount = profile.ash ?? 0;
-    this.rain.material.opacity = Math.max(amount * 0.42, snowAmount * 0.5, ashAmount * 0.34);
+    this.rain.material.opacity = Math.max(amount * 0.42, snowAmount * 0.5, ashAmount * 0.34) * this.particleOpacityMultiplier;
     this.rain.material.color.setHex(ashAmount > 0.1 ? 0x6a5c55 : snowAmount > 0.1 ? 0xf2fbff : 0xb9d8ff);
     this.rain.material.size = ashAmount > 0.1 ? 0.105 : snowAmount > 0.1 ? 0.13 : 0.08;
     if (amount <= 0.01 && snowAmount <= 0.01 && ashAmount <= 0.01) {
@@ -202,7 +217,8 @@ export class WeatherSystem {
     }
     this.rain.position.set(player.group.position.x, 0, player.group.position.z);
     const position = this.rain.geometry.attributes.position;
-    for (let index = 0; index < position.count; index += 1) {
+    const activeCount = Math.min(this.activeParticleCount, position.count);
+    for (let index = 0; index < activeCount; index += 1) {
       let x = position.getX(index) + (profile.wind ?? 0) * deltaSeconds * 7;
       let y = position.getY(index) - deltaSeconds * (ashAmount > 0.1 ? 3.8 : snowAmount > 0.1 ? 5.5 : 18);
       if (y < 2) y = 38;

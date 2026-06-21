@@ -4,11 +4,20 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Echo Archer</title>
-  <link rel="stylesheet" href="styles/main.css">
+  <link rel="stylesheet" href="styles/main.css?v=lodge-events-stamina-map-v1">
 </head>
 <body>
   <main id="game-shell" aria-label="Echo Archer game">
     <canvas id="game-canvas"></canvas>
+    <section id="loading-screen" aria-live="polite">
+      <div class="loading-card">
+        <span class="loading-mark"></span>
+        <h1>Echo Archer</h1>
+        <p id="loading-message">Loading the world...</p>
+        <div class="loading-track"><span id="loading-fill"></span></div>
+        <small>Building forests, settlements, NPCs, and saved progress.</small>
+      </div>
+    </section>
     <section id="hud" aria-live="polite">
       <div class="brand">
         <span class="brand-mark"></span>
@@ -28,6 +37,13 @@
         <span class="player-health-track">
           <span id="player-health-fill"></span>
         </span>
+        <span class="player-stamina-row">
+          <span>Stamina</span>
+          <strong id="player-stamina-text">100 / 100</strong>
+        </span>
+        <span class="player-stamina-track">
+          <span id="player-stamina-fill"></span>
+        </span>
       </section>
       <div class="status-bar">
         <span id="lock-state">Click to enter mouse look</span>
@@ -42,6 +58,8 @@
         <span>M World Map</span>
         <span>J Journal</span>
         <span>K Skill Tree</span>
+        <span>F2 Graphics</span>
+        <span>F3 Performance</span>
         <span>R Mount</span>
         <span>P Photo / Stats</span>
         <span id="time-state" class="hud-secondary">Day</span>
@@ -68,6 +86,10 @@
     </div>
     <div id="score-popups" aria-hidden="true"></div>
     <div id="enemy-bars" aria-hidden="true"></div>
+    <section id="save-controls" data-ui-interactive="true" aria-live="polite">
+      <button id="save-game-button" type="button">Save Progress</button>
+      <span id="save-state">Autosave ready</span>
+    </section>
     <section id="boss-health" aria-live="polite">
       <span id="boss-name">Barkhide Stalker</span>
       <span class="boss-health-track">
@@ -94,6 +116,30 @@
         <span>Vol</span>
         <input id="volume-slider" type="range" min="0" max="1" step="0.05" value="0.55">
       </label>
+    </section>
+    <section id="graphics-controls" data-ui-interactive="true" aria-label="Graphics controls">
+      <button id="graphics-toggle" type="button">Graphics</button>
+      <button id="performance-toggle" type="button">Perf</button>
+      <span id="graphics-quality-state">Medium Graphics</span>
+    </section>
+    <section id="graphics-menu" data-ui-interactive="true" aria-live="polite">
+      <header>
+        <span>Graphics Quality</span>
+        <strong>F2</strong>
+      </header>
+      <div class="graphics-options">
+        <button type="button" data-quality="low" aria-pressed="false">Low</button>
+        <button type="button" data-quality="medium" aria-pressed="false">Medium</button>
+        <button type="button" data-quality="high" aria-pressed="false">High</button>
+      </div>
+      <p>Lower settings reduce shadows, particles, grass detail, and far object updates.</p>
+    </section>
+    <section id="performance-debug" aria-live="polite" hidden>
+      <header>
+        <span>Performance</span>
+        <strong>F3</strong>
+      </header>
+      <div id="performance-debug-body"></div>
     </section>
     <section id="upgrade-menu" data-ui-interactive="true" aria-live="polite">
       <header>
@@ -165,8 +211,13 @@
     <section id="world-map-menu" data-ui-interactive="true" aria-live="polite">
       <header>
         <div>
-          <span>World Map</span>
-          <p id="world-map-subtitle">Discovered routes, landmarks, quests, and fast travel.</p>
+          <span>Guild Explorer's Map</span>
+          <p id="world-map-subtitle">Hand-marked routes, discovered regions, fortress bearings, and guild travel posts.</p>
+        </div>
+        <div id="world-map-controls" aria-label="Map controls">
+          <button id="world-map-zoom-out" type="button" aria-label="Zoom out">-</button>
+          <button id="world-map-reset" type="button">Center</button>
+          <button id="world-map-zoom-in" type="button" aria-label="Zoom in">+</button>
         </div>
         <button id="world-map-close" type="button">Close</button>
       </header>
@@ -175,7 +226,7 @@
         <aside id="world-map-details"></aside>
       </div>
       <footer>
-        <span>M Close • Click discovered icons to fast travel • Secrets stay hidden until found</span>
+        <span>M Close - Drag to pan - Wheel or buttons to zoom - Fast travel only from towns, camps, settlements, and guild posts</span>
       </footer>
     </section>
     <section id="journal-menu" class="rpg-panel" data-ui-interactive="true" aria-live="polite">
@@ -189,6 +240,6 @@
   </main>
 
   <script src="vendor/three.min.js"></script>
-  <script type="module" src="src/main.js"></script>
+  <script type="module" src="src/main.js?v=lodge-events-stamina-map-v1"></script>
 </body>
 </html>

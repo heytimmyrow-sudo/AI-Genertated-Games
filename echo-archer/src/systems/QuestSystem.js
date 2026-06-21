@@ -2,6 +2,7 @@ import { NPC } from "../entities/NPC.js";
 import { SETTINGS } from "../config/settings.js";
 
 const { THREE } = window;
+const STORAGE_KEY = "echo-archer-quests-v1";
 
 const TRAINING_LANDMARK_IDS = new Set([
   "starting-camp",
@@ -42,6 +43,7 @@ export class QuestSystem {
     this.finderActive = false;
     this.finderTarget = null;
     this.finderArrow = this.createFinderArrow();
+    this.load();
     this.bindFinderButton();
     this.updateTracker();
   }
@@ -133,6 +135,7 @@ export class QuestSystem {
     if (quest.progress >= quest.goal) {
       this.completeQuest(quest);
     }
+    this.save();
     this.updateTracker();
   }
 
@@ -154,6 +157,7 @@ export class QuestSystem {
     } else {
       this.showDialogue("Good work. The woods remember careful feet.");
     }
+    this.save();
   }
 
   getActiveQuest() {
@@ -255,6 +259,9 @@ export class QuestSystem {
 
     const quest = this.getActiveQuest();
     if (quest?.id !== "rowan-landmarks") {
+      if (changed) {
+        this.save();
+      }
       return;
     }
 
@@ -262,6 +269,7 @@ export class QuestSystem {
     const foundTrainingLandmarks = this.getTrainingLandmarks().filter((landmark) => this.discoveredLandmarks.has(landmark.id)).length;
     quest.progress = Math.min(quest.goal, foundTrainingLandmarks);
     if (changed || quest.progress !== previousProgress) {
+      this.save();
       this.updateTracker();
     }
     if (!quest.complete && quest.progress >= quest.goal) {
@@ -437,6 +445,7 @@ export class QuestSystem {
     window.dispatchEvent(new CustomEvent("echo-archer:sound", {
       detail: { name: "questComplete", intensity: 0.55 },
     }));
+    this.save();
   }
 
   collectGear(interactable) {
@@ -453,6 +462,7 @@ export class QuestSystem {
     window.dispatchEvent(new CustomEvent("echo-archer:sound", {
       detail: { name: "questComplete", intensity: 0.62 },
     }));
+    this.save();
   }
 
   collectRareLoot(interactable) {
@@ -471,6 +481,7 @@ export class QuestSystem {
     window.dispatchEvent(new CustomEvent("echo-archer:sound", {
       detail: { name: "questComplete", intensity: 0.72 },
     }));
+    this.save();
   }
 
   activateDiscoveryTrail(interactable) {
@@ -513,5 +524,40 @@ export class QuestSystem {
     window.dispatchEvent(new CustomEvent("echo-archer:sound", {
       detail: { name: "questComplete", intensity: 0.9 },
     }));
+  }
+
+  load() {
+    try {
+      const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "{}");
+      this.activeQuestIndex = THREE.MathUtils.clamp(Number(saved.activeQuestIndex) || 0, 0, this.quests.length - 1);
+      this.discoveredLandmarks = new Set(Array.isArray(saved.discoveredLandmarks) ? saved.discoveredLandmarks : []);
+      (saved.quests ?? []).forEach((savedQuest) => {
+        const quest = this.quests.find((item) => item.id === savedQuest.id);
+        if (!quest) {
+          return;
+        }
+        quest.progress = THREE.MathUtils.clamp(Number(savedQuest.progress) || 0, 0, quest.goal);
+        quest.complete = Boolean(savedQuest.complete);
+      });
+      this.finderActive = false;
+      this.finderTarget = null;
+      if (this.finderArrow) {
+        this.finderArrow.visible = false;
+      }
+    } catch (error) {
+      console.warn("Quest save ignored:", error);
+    }
+  }
+
+  save() {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({
+        activeQuestIndex: this.activeQuestIndex,
+        discoveredLandmarks: [...this.discoveredLandmarks],
+        quests: this.quests.map(({ id, progress, complete }) => ({ id, progress, complete })),
+      }));
+    } catch (error) {
+      console.warn("Quest save failed:", error);
+    }
   }
 }

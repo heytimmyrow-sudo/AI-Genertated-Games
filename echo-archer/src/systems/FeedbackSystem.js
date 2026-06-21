@@ -5,6 +5,7 @@ export class FeedbackSystem {
     this.scene = scene;
     this.cameraRig = cameraRig;
     this.effects = [];
+    this.quality = { particleMultiplier: 1, effectsQuality: 1 };
     this.soundHooks = {
       bowDraw: "sfx/bow-draw-placeholder",
       bowRelease: "sfx/bow-release-placeholder",
@@ -12,7 +13,9 @@ export class FeedbackSystem {
       bullseyeHit: "sfx/bullseye-hit-placeholder",
       caveArrowHit: "sfx/cave-arrow-hit-placeholder",
       enemyHit: "sfx/enemy-hit-placeholder",
+      weakpointHit: "sfx/weakpoint-hit-placeholder",
       enemyDefeat: "sfx/enemy-defeat-placeholder",
+      arrowFlyby: "sfx/arrow-flyby-placeholder",
       bossNotice: "sfx/boss-notice-placeholder",
       bossCharge: "sfx/boss-charge-placeholder",
       bossDefeat: "sfx/boss-defeat-placeholder",
@@ -20,6 +23,13 @@ export class FeedbackSystem {
       questComplete: "sfx/quest-complete-placeholder",
       uiClick: "sfx/ui-click-placeholder",
       caveGateOpen: "sfx/cave-gate-open-placeholder",
+    };
+  }
+
+  setQuality(preset = null) {
+    this.quality = {
+      particleMultiplier: preset?.particleMultiplier ?? 1,
+      effectsQuality: preset?.effectsQuality ?? 1,
     };
   }
 
@@ -34,7 +44,7 @@ export class FeedbackSystem {
   }
 
   spawnImpact(point, color = 0xe0b75f, strength = 1) {
-    const particleCount = Math.round(10 + strength * 13);
+    const particleCount = Math.max(4, Math.round((10 + strength * 13) * this.quality.particleMultiplier));
     const geometry = new THREE.BufferGeometry();
     const positions = [];
     const velocities = [];
@@ -66,14 +76,17 @@ export class FeedbackSystem {
       const position = effect.geometry.attributes.position;
 
       for (let index = 0; index < position.count; index += 1) {
-        const velocity = effect.velocities.slice(index * 3, index * 3 + 3);
+        const velocityIndex = index * 3;
+        const velocityX = effect.velocities[velocityIndex];
+        const velocityY = effect.velocities[velocityIndex + 1];
+        const velocityZ = effect.velocities[velocityIndex + 2];
         position.setXYZ(
           index,
-          position.getX(index) + velocity[0] * deltaSeconds,
-          position.getY(index) + velocity[1] * deltaSeconds,
-          position.getZ(index) + velocity[2] * deltaSeconds
+          position.getX(index) + velocityX * deltaSeconds,
+          position.getY(index) + velocityY * deltaSeconds,
+          position.getZ(index) + velocityZ * deltaSeconds
         );
-        effect.velocities[index * 3 + 1] -= 5.2 * deltaSeconds;
+        effect.velocities[velocityIndex + 1] = velocityY - 5.2 * deltaSeconds;
       }
 
       position.needsUpdate = true;
