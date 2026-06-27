@@ -33,7 +33,7 @@ export class InputController {
   }
 
   handleKeyDown(event) {
-    if (["KeyW", "KeyA", "KeyS", "KeyD", "Space", "ShiftLeft", "ShiftRight", "KeyC", "KeyE", "KeyU", "KeyI", "KeyJ", "KeyK", "KeyM", "KeyN", "KeyO", "KeyP", "KeyR", "Escape", "F2", "F3", "Digit1", "Digit2", "Digit3", "Digit4", "BracketLeft", "BracketRight"].includes(event.code)) {
+    if (["KeyW", "KeyA", "KeyS", "KeyD", "Space", "ShiftLeft", "ShiftRight", "KeyC", "KeyE", "KeyQ", "KeyU", "KeyI", "KeyJ", "KeyK", "KeyM", "KeyN", "KeyO", "KeyP", "KeyR", "Escape", "F2", "F3", "Digit1", "Digit2", "Digit3", "Digit4", "BracketLeft", "BracketRight"].includes(event.code)) {
       event.preventDefault();
     }
 

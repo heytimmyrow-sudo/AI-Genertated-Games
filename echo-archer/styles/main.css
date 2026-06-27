@@ -161,7 +161,8 @@ body.photo-open #performance-debug {
 .brand,
 .status-bar,
 #quest-tracker,
-#player-health {
+#player-health,
+#quest-sidebar-button {
   width: fit-content;
   max-width: min(1120px, calc(100vw - 44px));
   background: var(--panel);
@@ -183,9 +184,85 @@ body.photo-open #performance-debug {
   position: absolute;
   top: 22px;
   right: 22px;
-  width: min(300px, calc(100vw - 44px));
+  width: min(340px, calc(100vw - 44px));
   padding: 12px 14px;
   pointer-events: auto;
+}
+
+.quest-tracker-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.quest-tracker-header span,
+#tracked-side-quest span {
+  color: var(--gold);
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+#quest-menu-button,
+#quest-sidebar-button,
+#quest-menu-close,
+.quest-track-button {
+  border: 1px solid rgba(255, 209, 102, 0.32);
+  border-radius: 999px;
+  color: #fff3cc;
+  background: linear-gradient(135deg, rgba(88, 62, 23, 0.82), rgba(38, 63, 54, 0.72));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 8px 24px rgba(0, 0, 0, 0.18);
+  font-weight: 900;
+  cursor: pointer;
+}
+
+#quest-menu-button {
+  padding: 6px 10px;
+  font-size: 12px;
+}
+
+#quest-sidebar-button {
+  position: absolute;
+  top: 50%;
+  right: 22px;
+  z-index: 17;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 11px 14px;
+  pointer-events: auto;
+  transform: translateY(-50%);
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+}
+
+#quest-menu-button:hover,
+#quest-sidebar-button:hover,
+#quest-menu-close:hover,
+.quest-track-button:hover:not(:disabled) {
+  border-color: rgba(255, 209, 102, 0.72);
+  filter: brightness(1.12);
+}
+
+#quest-menu-badge,
+#quest-sidebar-badge {
+  display: inline-grid;
+  min-width: 18px;
+  height: 18px;
+  margin-left: 4px;
+  place-items: center;
+  border-radius: 999px;
+  color: #263014;
+  background: #ffd166;
+  font-size: 11px;
+}
+
+#quest-sidebar-badge {
+  margin: 6px 0 0;
+  writing-mode: horizontal-tb;
 }
 
 #player-health {
@@ -294,6 +371,26 @@ body.photo-open #performance-debug {
   color: #ffe5a3;
   font-size: 14px;
   line-height: 1.25;
+}
+
+#tracked-side-quest {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255, 225, 170, 0.16);
+}
+
+#tracked-side-quest strong {
+  display: block;
+  margin-top: 4px;
+  color: #f7f0dc;
+  font-size: 13px;
+}
+
+#tracked-side-quest small {
+  display: block;
+  margin-top: 3px;
+  color: rgba(245, 238, 220, 0.72);
+  line-height: 1.3;
 }
 
 #find-landmark-button {
@@ -662,6 +759,69 @@ p {
   background: linear-gradient(135deg, rgba(116, 81, 35, 0.92), rgba(54, 101, 67, 0.82));
 }
 
+#death-screen {
+  position: absolute;
+  inset: 0;
+  z-index: 35;
+  display: grid;
+  place-items: center;
+  color: var(--ink);
+  background:
+    radial-gradient(circle at 50% 42%, rgba(111, 24, 20, 0.38), transparent 34%),
+    linear-gradient(180deg, rgba(5, 8, 9, 0.68), rgba(4, 6, 8, 0.88));
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 180ms ease;
+}
+
+#death-screen.visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.death-card {
+  width: min(420px, calc(100vw - 40px));
+  display: grid;
+  place-items: center;
+  gap: 10px;
+  padding: 30px 28px;
+  border: 1px solid rgba(255, 225, 170, 0.28);
+  border-radius: 24px;
+  text-align: center;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(230, 183, 93, 0.18), transparent 42%),
+    linear-gradient(135deg, rgba(18, 28, 23, 0.94), rgba(42, 25, 17, 0.94));
+  box-shadow: 0 34px 110px rgba(0, 0, 0, 0.56), inset 0 1px 0 rgba(255, 238, 204, 0.12);
+  backdrop-filter: blur(16px);
+}
+
+.death-mark {
+  width: 52px;
+  height: 52px;
+  border: 3px solid rgba(255, 209, 102, 0.72);
+  border-radius: 50%;
+  box-shadow: 0 0 26px rgba(230, 183, 93, 0.28);
+}
+
+.death-card h2 {
+  margin: 0;
+  color: #ffdca1;
+  font-size: 28px;
+  letter-spacing: 0.04em;
+}
+
+.death-card p {
+  margin: 0;
+  color: rgba(255, 241, 205, 0.76);
+}
+
+.death-card strong {
+  margin-top: 8px;
+  color: #fff2c5;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
 #save-state {
   color: #dff0c8;
   font-size: 12px;
@@ -921,6 +1081,52 @@ p {
   animation: quest-toast 2200ms ease-out forwards;
 }
 
+#side-quest-notifications {
+  position: absolute;
+  right: 24px;
+  top: 172px;
+  z-index: 68;
+  display: grid;
+  gap: 8px;
+  width: min(360px, calc(100vw - 48px));
+  pointer-events: none;
+}
+
+.side-quest-notification {
+  padding: 12px 14px;
+  border: 1px solid rgba(255, 209, 102, 0.4);
+  border-radius: 16px 10px 16px 10px;
+  color: #fff4d4;
+  background:
+    radial-gradient(circle at 12% 20%, rgba(255, 209, 102, 0.16), transparent 34%),
+    linear-gradient(135deg, rgba(31, 42, 29, 0.88), rgba(66, 43, 18, 0.78));
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.32), inset 0 1px 0 rgba(255, 238, 204, 0.1);
+  backdrop-filter: blur(12px);
+  animation: side-quest-available 4200ms ease forwards;
+}
+
+.side-quest-notification span {
+  display: block;
+  color: #ffd166;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.side-quest-notification strong {
+  display: block;
+  margin-top: 4px;
+  font-size: 15px;
+}
+
+.side-quest-notification small {
+  display: block;
+  margin-top: 4px;
+  color: rgba(245, 238, 220, 0.74);
+  line-height: 1.32;
+}
+
 #upgrade-menu {
   position: absolute;
   right: 22px;
@@ -1149,7 +1355,8 @@ p {
 }
 
 #shop-menu,
-#quest-board-menu {
+#quest-board-menu,
+#quest-menu {
   position: absolute;
   left: 50%;
   top: 50%;
@@ -1175,16 +1382,95 @@ p {
 }
 
 #shop-menu.visible,
-#quest-board-menu.visible {
+#quest-board-menu.visible,
+#quest-menu.visible {
   opacity: 1;
   pointer-events: auto;
   transform: translate(-50%, -50%) scale(1);
 }
 
+#quest-menu {
+  left: auto;
+  right: 22px;
+  width: min(520px, calc(100vw - 44px));
+  transform: translate(14px, -50%) scale(0.98);
+}
+
+#quest-menu.visible {
+  transform: translate(0, -50%) scale(1);
+}
+
+#quest-menu-content {
+  display: grid;
+  gap: 12px;
+  overflow: auto;
+  padding-right: 4px;
+}
+
+.quest-ledger-section {
+  padding: 12px;
+  border: 1px solid rgba(255, 225, 170, 0.14);
+  border-radius: 16px;
+  background: rgba(255, 238, 204, 0.045);
+}
+
+.quest-ledger-section h3 {
+  margin: 0 0 10px;
+  color: #ffd166;
+  font-size: 13px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.quest-ledger-item {
+  display: grid;
+  gap: 5px;
+  padding: 10px 0;
+  border-top: 1px solid rgba(255, 225, 170, 0.11);
+  background: transparent;
+  cursor: default;
+}
+
+.quest-ledger-item:first-of-type {
+  border-top: 0;
+}
+
+.quest-ledger-item strong {
+  color: #fff4d4;
+}
+
+.quest-ledger-item p {
+  margin: 0;
+  color: rgba(245, 238, 220, 0.76);
+  font-size: 13px;
+  line-height: 1.36;
+}
+
+.quest-ledger-meta {
+  color: rgba(255, 209, 102, 0.78);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.quest-track-button {
+  width: fit-content;
+  padding: 7px 11px;
+  font-size: 12px;
+}
+
+.quest-track-button:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
 #shop-menu header,
 #shop-menu footer,
 #quest-board-menu header,
-#quest-board-menu footer {
+#quest-board-menu footer,
+#quest-menu header,
+#quest-menu footer {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1192,7 +1478,8 @@ p {
 }
 
 #shop-title,
-#quest-board-menu header span {
+#quest-board-menu header span,
+#quest-menu header span {
   display: block;
   color: #ffe8ad;
   font-size: 24px;
@@ -1200,13 +1487,15 @@ p {
 }
 
 #shop-description,
-#quest-board-menu header p {
+#quest-board-menu header p,
+#quest-menu header p {
   max-width: 520px;
 }
 
 #shop-close,
 #shop-sell,
 #quest-board-close,
+#quest-menu-close,
 .shop-item,
 .quest-board-item {
   border: 1px solid rgba(255, 225, 170, 0.2);
@@ -1218,7 +1507,8 @@ p {
 
 #shop-close,
 #shop-sell,
-#quest-board-close {
+#quest-board-close,
+#quest-menu-close {
   border-radius: 999px;
   padding: 9px 13px;
   color: #fff0bd;
@@ -2234,6 +2524,24 @@ body.map-open #audio-controls {
   100% {
     opacity: 0;
     transform: translate(-50%, -22px) scale(0.98);
+  }
+}
+
+@keyframes side-quest-available {
+  0% {
+    opacity: 0;
+    transform: translateX(18px) scale(0.96);
+  }
+
+  12%,
+  76% {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+
+  100% {
+    opacity: 0;
+    transform: translateX(12px) scale(0.98);
   }
 }
 

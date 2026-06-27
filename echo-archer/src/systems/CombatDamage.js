@@ -69,7 +69,7 @@ export function tryDamagePlayer({
   feedback = null,
   hitKind = "contact",
 }) {
-  if (!attacker || !player?.takeDamage || player.defeated || (attacker.attackCooldown ?? 0) > 0) {
+  if (!attacker || !player?.takeDamage || player.defeated || player.inSafeZone || (attacker.attackCooldown ?? 0) > 0) {
     return false;
   }
 

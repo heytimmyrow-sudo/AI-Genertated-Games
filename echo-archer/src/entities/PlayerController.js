@@ -9,6 +9,7 @@ export class PlayerController {
     this.group = new THREE.Group();
     this.velocity = new THREE.Vector3();
     this.moveDirection = new THREE.Vector3();
+    this.smoothedMoveDirection = new THREE.Vector3();
     this.onGround = false;
     this.stats = {
       staminaMax: SETTINGS.player.stamina,
@@ -38,6 +39,10 @@ export class PlayerController {
     this.safeRecoveryTimer = 0;
     this.isSprinting = false;
     this.defeated = false;
+    this.visualMoveAmount = 0;
+    this.airTime = 0;
+    this.landingTimer = 0;
+    this.wasGroundedLastFrame = false;
     this.visualGroundOffset = -SETTINGS.player.height / 2;
 
     this.body = this.createBody();
@@ -179,9 +184,9 @@ export class PlayerController {
       limbs.push({ mesh: lowerLeg, side, baseZ: side * -0.06, type: "lowerLeg" });
 
       const foot = new THREE.Mesh(new THREE.CapsuleGeometry(0.045, 0.18, 5, 8), leatherMaterial);
-      foot.position.set(side * 0.17, 0.045, 0.14);
+      foot.position.set(side * 0.17, 0.026, 0.16);
       foot.rotation.set(Math.PI / 2, 0, side * 0.035);
-      foot.scale.set(0.82, 1, 0.72);
+      foot.scale.set(0.95, 1.16, 0.72);
       foot.castShadow = true;
       body.add(foot);
       limbs.push({ mesh: foot, side, baseZ: side * 0.035, type: "foot" });
@@ -226,7 +231,7 @@ export class PlayerController {
     this.applyVerticalMotion(deltaSeconds, input);
     this.integrate(deltaSeconds);
     this.animateBody(deltaSeconds, input);
-    this.alignBody(cameraRig);
+    this.alignBody(cameraRig, deltaSeconds);
   }
 
   readMovementInput(input, cameraRig) {
@@ -253,9 +258,16 @@ export class PlayerController {
     this.isSprinting = Boolean(canSprint || (this.mounted && wantsSprint && moving));
     this.updateStamina(deltaSeconds, canSprint, moving);
     const sprinting = this.isSprinting;
-    const speed = this.getMoveSpeed(sprinting) * bogMultiplier * heatMultiplier;
-    const targetX = this.moveDirection.x * speed;
-    const targetZ = this.moveDirection.z * speed;
+    const aiming = Boolean(window.echoArcherCombatState?.isDrawing);
+    const aimMultiplier = aiming && !this.mounted ? (SETTINGS.player.aimMoveMultiplier ?? 0.68) : 1;
+    const speed = this.getMoveSpeed(sprinting) * bogMultiplier * heatMultiplier * aimMultiplier;
+    const directionBlend = 1 - Math.exp((moving ? -14 : -18) * deltaSeconds);
+    this.smoothedMoveDirection.lerp(this.moveDirection, directionBlend);
+    if (!moving && this.smoothedMoveDirection.lengthSq() < 0.0004) {
+      this.smoothedMoveDirection.set(0, 0, 0);
+    }
+    const targetX = this.smoothedMoveDirection.x * speed;
+    const targetZ = this.smoothedMoveDirection.z * speed;
     const acceleration = this.onGround ? SETTINGS.player.acceleration : SETTINGS.player.airAcceleration;
     const blend = 1 - Math.exp(-acceleration * deltaSeconds);
 
@@ -297,6 +309,7 @@ export class PlayerController {
   }
 
   integrate(deltaSeconds) {
+    this.wasGroundedLastFrame = this.onGround;
     this.group.position.addScaledVector(this.velocity, deltaSeconds);
     this.resolveWorldCollisions();
 
@@ -306,14 +319,14 @@ export class PlayerController {
     const distanceToGround = this.group.position.y - groundY;
     const movingHorizontally = Math.hypot(this.velocity.x, this.velocity.z) > 0.08;
     const walkingOnGround = this.onGround && this.velocity.y <= 0.35;
-    const snapDistance = movingHorizontally ? Math.max(SETTINGS.player.groundSnap, 0.56) : SETTINGS.player.groundSnap;
-    const closeEnoughToSnap = distanceToGround <= snapDistance && this.velocity.y <= 0;
+    const snapDistance = movingHorizontally ? Math.max(SETTINGS.player.groundSnap, 0.72) : SETTINGS.player.groundSnap;
+    const closeEnoughToSnap = Math.abs(distanceToGround) <= snapDistance && this.velocity.y <= 0.15;
     const walkableStep = Math.abs(groundSurfaceY - this.lastGroundY) <= SETTINGS.player.maxGroundStep;
     const fallingIntoGround = this.group.position.y < groundY;
     const shouldStickToSlope = walkingOnGround && walkableStep && distanceToGround < 0.72;
 
     if (shouldStickToSlope || closeEnoughToSnap || fallingIntoGround) {
-      const snapImmediately = fallingIntoGround || Math.abs(distanceToGround) > 0.28;
+      const snapImmediately = fallingIntoGround || Math.abs(distanceToGround) > 0.2;
       this.group.position.y = !snapImmediately
         ? THREE.MathUtils.lerp(this.group.position.y, groundY, 1 - Math.exp(-SETTINGS.player.groundFollow * deltaSeconds))
         : groundY;
@@ -321,10 +334,16 @@ export class PlayerController {
       this.onGround = true;
       this.groundContactGrace = 0.12;
       this.lastGroundY = groundSurfaceY;
+      if (!this.wasGroundedLastFrame && this.airTime > 0.08) {
+        this.landingTimer = SETTINGS.player.landingSettleTime ?? 0.18;
+      }
+      this.airTime = 0;
     } else {
+      this.airTime += deltaSeconds;
       this.groundContactGrace = Math.max(0, this.groundContactGrace - deltaSeconds);
       this.onGround = this.groundContactGrace > 0 && this.velocity.y <= 0;
     }
+    this.landingTimer = Math.max(0, this.landingTimer - deltaSeconds);
   }
 
   getWalkableGroundHeight(x, z) {
@@ -340,9 +359,9 @@ export class PlayerController {
     const back = this.terrain.getHeightAt(x, z - radius);
     const left = this.terrain.getHeightAt(x - radius, z);
     const right = this.terrain.getHeightAt(x + radius, z);
-    const average = (center * 2 + front + back + left + right) / 6;
+    const average = (center * 2.8 + front + back + left + right) / 6.8;
     const highest = Math.max(center, front, back, left, right);
-    return THREE.MathUtils.lerp(average, highest, 0.28);
+    return THREE.MathUtils.lerp(average, highest, 0.12);
   }
 
   resolveWorldCollisions() {
@@ -420,49 +439,65 @@ export class PlayerController {
     }
   }
 
-  alignBody(cameraRig) {
-    const moving = this.moveDirection.lengthSq() > 0.001;
-    const desiredYaw = moving ? Math.atan2(this.moveDirection.x, this.moveDirection.z) : cameraRig.yaw;
+  alignBody(cameraRig, deltaSeconds = 1 / 60) {
+    const moving = this.smoothedMoveDirection.lengthSq() > 0.001;
+    const desiredYaw = moving ? Math.atan2(this.smoothedMoveDirection.x, this.smoothedMoveDirection.z) : cameraRig.yaw;
     const currentYaw = this.group.rotation.y;
-    this.group.rotation.y = THREE.MathUtils.lerp(currentYaw, desiredYaw, moving ? 0.18 : 0.08);
+    const turnBlend = 1 - Math.exp(-(SETTINGS.player.turnSpeed ?? 11) * Math.min(deltaSeconds, 0.05));
+    this.group.rotation.y = this.lerpAngle(currentYaw, desiredYaw, moving ? turnBlend : turnBlend * 0.45);
+  }
+
+  lerpAngle(from, to, amount) {
+    const delta = Math.atan2(Math.sin(to - from), Math.cos(to - from));
+    return from + delta * THREE.MathUtils.clamp(amount, 0, 1);
   }
 
   animateBody(deltaSeconds, input) {
     const horizontalSpeed = Math.hypot(this.velocity.x, this.velocity.z);
     const moving = horizontalSpeed > 0.2;
     const sprinting = moving && this.isSprinting;
-    const gait = this.visualTime * (sprinting ? 13 : 8.5);
-    const bob = moving ? Math.sin(gait) * (sprinting ? 0.035 : 0.022) : Math.sin(this.visualTime * 2.2) * 0.008;
-    const sway = moving ? Math.sin(gait * 0.5) * 0.035 : Math.sin(this.visualTime * 1.6) * 0.012;
+    const speedRatio = THREE.MathUtils.clamp(horizontalSpeed / Math.max(0.001, this.getMoveSpeed(true)), 0, 1);
+    this.visualMoveAmount = THREE.MathUtils.lerp(this.visualMoveAmount, moving ? speedRatio : 0, 1 - Math.exp(-9 * deltaSeconds));
+    const gait = this.visualTime * THREE.MathUtils.lerp(6.2, sprinting ? 13.8 : 9.4, this.visualMoveAmount);
+    const rawBob = Math.sin(gait) * (sprinting ? 0.018 : 0.012) * this.visualMoveAmount;
+    const landingDip = this.landingTimer > 0 ? Math.sin((this.landingTimer / (SETTINGS.player.landingSettleTime ?? 0.18)) * Math.PI) * -0.035 : 0;
+    const airborneLift = this.onGround ? 0 : -0.025;
+    const bob = Math.min(rawBob, 0.004) + landingDip + airborneLift;
+    const sway = moving ? Math.sin(gait * 0.5) * 0.03 * this.visualMoveAmount : Math.sin(this.visualTime * 1.6) * 0.008;
 
-    this.body.position.y = THREE.MathUtils.lerp(this.body.position.y, this.visualGroundOffset + bob, 1 - Math.exp(-10 * deltaSeconds));
-    this.body.rotation.z = THREE.MathUtils.lerp(this.body.rotation.z, sway, 1 - Math.exp(-8 * deltaSeconds));
+    this.body.position.y = THREE.MathUtils.lerp(this.body.position.y, this.visualGroundOffset + bob, 1 - Math.exp(-14 * deltaSeconds));
+    this.body.rotation.z = THREE.MathUtils.lerp(this.body.rotation.z, sway, 1 - Math.exp(-9 * deltaSeconds));
 
     const { limbs = [], torso, shoulderCape, backCape } = this.body.userData;
     limbs.forEach(({ mesh, side, baseZ, type }) => {
       const stride = moving ? Math.sin(gait + (side > 0 ? Math.PI : 0)) : 0;
       if (type === "upperLeg") {
-        mesh.rotation.x = THREE.MathUtils.lerp(mesh.rotation.x, stride * 0.34, 1 - Math.exp(-12 * deltaSeconds));
-        mesh.rotation.z = THREE.MathUtils.lerp(mesh.rotation.z, baseZ + stride * 0.08, 1 - Math.exp(-12 * deltaSeconds));
+        mesh.rotation.x = THREE.MathUtils.lerp(mesh.rotation.x, stride * (sprinting ? 0.52 : 0.38), 1 - Math.exp(-14 * deltaSeconds));
+        mesh.rotation.z = THREE.MathUtils.lerp(mesh.rotation.z, baseZ + stride * 0.075, 1 - Math.exp(-14 * deltaSeconds));
         return;
       }
       if (type === "lowerLeg") {
-        mesh.rotation.x = THREE.MathUtils.lerp(mesh.rotation.x, -stride * 0.18 + Math.max(0, -stride) * 0.14, 1 - Math.exp(-12 * deltaSeconds));
-        mesh.rotation.z = THREE.MathUtils.lerp(mesh.rotation.z, baseZ + stride * 0.06, 1 - Math.exp(-12 * deltaSeconds));
+        const kneeBend = Math.max(0, -stride) * (sprinting ? 0.34 : 0.22);
+        mesh.rotation.x = THREE.MathUtils.lerp(mesh.rotation.x, -stride * 0.16 + kneeBend, 1 - Math.exp(-14 * deltaSeconds));
+        mesh.rotation.z = THREE.MathUtils.lerp(mesh.rotation.z, baseZ + stride * 0.05, 1 - Math.exp(-14 * deltaSeconds));
         return;
       }
       if (type === "foot") {
-        mesh.rotation.x = THREE.MathUtils.lerp(mesh.rotation.x, Math.PI / 2 + (moving ? Math.max(0, stride) * 0.12 : 0), 1 - Math.exp(-12 * deltaSeconds));
-        mesh.rotation.z = THREE.MathUtils.lerp(mesh.rotation.z, baseZ, 1 - Math.exp(-12 * deltaSeconds));
+        const footPlant = moving ? Math.max(0, stride) * 0.16 - Math.max(0, -stride) * 0.08 : 0;
+        mesh.rotation.x = THREE.MathUtils.lerp(mesh.rotation.x, Math.PI / 2 + footPlant, 1 - Math.exp(-16 * deltaSeconds));
+        mesh.rotation.z = THREE.MathUtils.lerp(mesh.rotation.z, baseZ + stride * 0.025, 1 - Math.exp(-16 * deltaSeconds));
         return;
       }
 
-      const target = baseZ + stride * 0.18;
+      const aim = Boolean(window.echoArcherCombatState?.isDrawing || (input?.isMouseDown?.(0) && input?.pointerLocked));
+      const target = baseZ + stride * 0.16 + (aim ? -side * 0.12 : 0);
       mesh.rotation.z = THREE.MathUtils.lerp(mesh.rotation.z, target, 1 - Math.exp(-12 * deltaSeconds));
+      mesh.rotation.x = THREE.MathUtils.lerp(mesh.rotation.x, aim ? -0.16 : 0, 1 - Math.exp(-10 * deltaSeconds));
     });
 
     if (torso) {
-      torso.rotation.x = THREE.MathUtils.lerp(torso.rotation.x, moving ? -0.04 : 0.02, 1 - Math.exp(-6 * deltaSeconds));
+      const aim = Boolean(window.echoArcherCombatState?.isDrawing || (input?.isMouseDown?.(0) && input?.pointerLocked));
+      torso.rotation.x = THREE.MathUtils.lerp(torso.rotation.x, aim ? -0.08 : moving ? -0.045 : 0.018, 1 - Math.exp(-7 * deltaSeconds));
     }
     if (shoulderCape) {
       shoulderCape.rotation.z = Math.sin(this.visualTime * 2.8) * 0.018;

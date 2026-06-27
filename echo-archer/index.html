@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Echo Archer</title>
-  <link rel="stylesheet" href="styles/main.css?v=runtime-startup-fix-v1">
+  <link rel="stylesheet" href="styles/main.css?v=safety-death-flow-v1">
 </head>
 <body>
   <main id="game-shell" aria-label="Echo Archer game">
@@ -27,8 +27,19 @@
         </div>
       </div>
       <aside id="quest-tracker">
-        <span id="quest-title">Training Grounds</span>
-        <strong id="quest-objective">Speak with the trainer</strong>
+        <div class="quest-tracker-header">
+          <span>Main Quest</span>
+          <button id="quest-menu-button" type="button" data-ui-interactive="true" aria-label="Open quest menu">
+            Quests <strong id="quest-menu-badge" hidden>0</strong>
+          </button>
+        </div>
+        <strong id="quest-title">The Path of the Master Archer</strong>
+        <small id="quest-objective">Speak with Rowan at the training clearing.</small>
+        <div id="tracked-side-quest" hidden>
+          <span>Tracked Side Quest</span>
+          <strong id="tracked-side-title">None</strong>
+          <small id="tracked-side-objective"></small>
+        </div>
         <button id="find-landmark-button" type="button" hidden>Find Landmark</button>
       </aside>
       <section id="player-health" aria-live="polite">
@@ -45,6 +56,9 @@
           <span id="player-stamina-fill"></span>
         </span>
       </section>
+      <button id="quest-sidebar-button" type="button" data-ui-interactive="true" aria-label="Open quest menu">
+        Quests <strong id="quest-sidebar-badge" hidden>0</strong>
+      </button>
       <div class="status-bar">
         <span id="lock-state">Click to enter mouse look</span>
         <span id="controls-state">Shortcuts</span>
@@ -96,12 +110,34 @@
         <span id="boss-health-fill"></span>
       </span>
     </section>
+    <section id="death-screen" data-ui-interactive="true" aria-live="assertive">
+      <div class="death-card">
+        <span class="death-mark"></span>
+        <h2>The Archer Falls</h2>
+        <p>The adventure is not over.</p>
+        <strong>Press E to continue</strong>
+      </div>
+    </section>
     <div id="interaction-prompt" aria-hidden="true">E Talk</div>
     <section id="dialogue-box" aria-live="polite">
       <span id="dialogue-speaker">Trainer</span>
       <p id="dialogue-text"></p>
     </section>
     <div id="quest-toast" aria-live="polite"></div>
+    <div id="side-quest-notifications" aria-live="polite"></div>
+    <section id="quest-menu" data-ui-interactive="true" aria-live="polite">
+      <header>
+        <div>
+          <span>Quest Ledger</span>
+          <p>The Archer Guild's current paths, errands, and completed records.</p>
+        </div>
+        <button id="quest-menu-close" type="button">Close</button>
+      </header>
+      <div id="quest-menu-content"></div>
+      <footer>
+        <span>Q Close - Track one side quest - Main quest continues into future arcs</span>
+      </footer>
+    </section>
     <section id="photo-mode-overlay" aria-live="polite">
       <strong>Photo Mode</strong>
       <span>WASD move camera • Space / Shift height • Mouse look • P or Esc exit</span>
@@ -240,6 +276,6 @@
   </main>
 
   <script src="vendor/three.min.js"></script>
-  <script type="module" src="src/main.js?v=runtime-startup-fix-v1"></script>
+  <script type="module" src="src/main.js?v=safety-death-flow-v1"></script>
 </body>
 </html>

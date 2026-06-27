@@ -69,6 +69,7 @@ const enemyBars = document.querySelector("#enemy-bars");
 const bossHealth = document.querySelector("#boss-health");
 const bossName = document.querySelector("#boss-name");
 const bossHealthFill = document.querySelector("#boss-health-fill");
+const deathScreen = document.querySelector("#death-screen");
 const playerHealthText = document.querySelector("#player-health-text");
 const playerHealthFill = document.querySelector("#player-health-fill");
 const playerStaminaText = document.querySelector("#player-stamina-text");
@@ -77,7 +78,18 @@ const saveGameButton = document.querySelector("#save-game-button");
 const saveState = document.querySelector("#save-state");
 const questTitle = document.querySelector("#quest-title");
 const questObjective = document.querySelector("#quest-objective");
+const trackedSideQuest = document.querySelector("#tracked-side-quest");
+const trackedSideTitle = document.querySelector("#tracked-side-title");
+const trackedSideObjective = document.querySelector("#tracked-side-objective");
 const findLandmarkButton = document.querySelector("#find-landmark-button");
+const questMenuButton = document.querySelector("#quest-menu-button");
+const questMenuBadge = document.querySelector("#quest-menu-badge");
+const questSidebarButton = document.querySelector("#quest-sidebar-button");
+const questSidebarBadge = document.querySelector("#quest-sidebar-badge");
+const questMenu = document.querySelector("#quest-menu");
+const questMenuContent = document.querySelector("#quest-menu-content");
+const questMenuClose = document.querySelector("#quest-menu-close");
+const sideQuestNotifications = document.querySelector("#side-quest-notifications");
 const interactionPrompt = document.querySelector("#interaction-prompt");
 const dialogueBox = document.querySelector("#dialogue-box");
 const dialogueSpeaker = document.querySelector("#dialogue-speaker");
@@ -194,7 +206,18 @@ setLoading("Loading quests and creatures...", 0.48);
 const quests = new QuestSystem(scene, world, player, {
   title: questTitle,
   objective: questObjective,
+  trackedSide: trackedSideQuest,
+  trackedSideTitle,
+  trackedSideObjective,
   findButton: findLandmarkButton,
+  questButton: questMenuButton,
+  questBadge: questMenuBadge,
+  questSideButton: questSidebarButton,
+  questSideBadge: questSidebarBadge,
+  questMenu,
+  questContent: questMenuContent,
+  questClose: questMenuClose,
+  sideNotifications: sideQuestNotifications,
   prompt: interactionPrompt,
   dialogue: dialogueBox,
   speaker: dialogueSpeaker,
@@ -772,6 +795,9 @@ function updateRegionHud() {
 }
 
 function isCombatActive() {
+  if (player.inSafeZone || world.isSafeZone?.(player.group.position)) {
+    return false;
+  }
   const playerPosition = player.group.position;
   const nearbyEnemy = enemies.enemies?.some((enemy) => (
     enemy?.active && !enemy.removed && enemy.group.position.distanceTo(playerPosition) < 18 && enemy.state !== "patrol"
@@ -780,6 +806,43 @@ function isCombatActive() {
     system.boss?.noticed && !system.boss?.defeated
   ));
   return Boolean(nearbyEnemy || activeBoss);
+}
+
+function setDeathScreenVisible(visible) {
+  deathScreen?.classList.toggle("visible", visible);
+  document.body.classList.toggle("player-defeated", visible);
+}
+
+function continueFromDeath() {
+  saves.continueFromLastSave();
+  player.inSafeZone = world.isSafeZone?.(player.group.position) ?? false;
+  enemies.forceReturnAll?.({ resetHealth: true });
+  calmBossesForSafety();
+  archery.cancelDraw?.();
+  cameraRig.setAimState(false, 0);
+  setDeathScreenVisible(false);
+  window.dispatchEvent(new CustomEvent("echo-archer:combat-text", {
+    detail: { text: "Adventure continued", kind: "xp", x: window.innerWidth / 2, y: window.innerHeight * 0.34 },
+  }));
+}
+
+function calmBossesForSafety() {
+  let bossWasActive = false;
+  bossSystems.forEach((system) => {
+    const boss = system.boss;
+    if (!boss || boss.defeated || !boss.noticed) {
+      return;
+    }
+    bossWasActive = true;
+    boss.noticed = false;
+    boss.attackCooldown = 0;
+    if (boss.state && boss.state !== "defeated") {
+      boss.state = "patrol";
+    }
+  });
+  if (bossWasActive) {
+    window.dispatchEvent(new CustomEvent("echo-archer:music-state", { detail: { boss: false } }));
+  }
 }
 
 function applyBossCombatPolish(systems, feedbackSystem) {
@@ -803,6 +866,34 @@ function applyBossCombatPolish(systems, feedbackSystem) {
   ];
 
   systems.forEach((system) => {
+    if (typeof system.moveToward === "function" && !system.moveToward.__echoMovementPolished) {
+      const originalMoveToward = system.moveToward.bind(system);
+      const wrappedMoveToward = function wrappedBossMoveToward(boss, target, speed, deltaSeconds, ...args) {
+        if (!boss?.group || !target || boss.defeated) {
+          return originalMoveToward(boss, target, speed, deltaSeconds, ...args);
+        }
+        boss.polishedVelocity ??= new THREE.Vector3();
+        const before = boss.group.position.clone();
+        originalMoveToward(boss, target, speed, deltaSeconds, ...args);
+        const after = boss.group.position.clone();
+        const step = after.sub(before);
+        if (step.lengthSq() <= 0.000001) {
+          return;
+        }
+        const desiredVelocity = step.divideScalar(Math.max(deltaSeconds, 0.001));
+        boss.polishedVelocity.lerp(desiredVelocity, 1 - Math.exp(-6.4 * deltaSeconds));
+        boss.group.position.copy(before).addScaledVector(boss.polishedVelocity, deltaSeconds);
+        const planar = boss.polishedVelocity.clone();
+        planar.y = 0;
+        if (planar.lengthSq() > 0.0001) {
+          const yaw = Math.atan2(planar.x, planar.z);
+          boss.group.rotation.y = THREE.MathUtils.lerp(boss.group.rotation.y, yaw, 0.1);
+        }
+      };
+      wrappedMoveToward.__echoMovementPolished = true;
+      system.moveToward = wrappedMoveToward;
+    }
+
     telegraphMethods.forEach((methodName) => {
       if (typeof system[methodName] !== "function" || system[methodName].__echoPolished) {
         return;
@@ -864,11 +955,34 @@ function update(deltaSeconds) {
   const mapOpen = worldMap.open;
   const graphicsOpen = graphics.open;
   const photoOpen = photoMode.open;
-  const menuOpen = progression.menuOpen || inventoryOpen || shopOpen || questBoardOpen || rpgOpen || journalOpen || mapOpen || graphicsOpen || photoOpen;
+  const questMenuOpen = quests.menuOpen;
+  const defeatedOpen = player.defeated;
+
+  if (questMenuOpen && (input.wasPressed("KeyQ") || input.wasPressed("Escape"))) {
+    quests.setQuestMenuOpen(false);
+  }
+
+  const menuOpen = progression.menuOpen || inventoryOpen || shopOpen || questBoardOpen || rpgOpen || journalOpen || mapOpen || graphicsOpen || photoOpen || questMenuOpen || defeatedOpen;
   input.setGameplayBlocked(menuOpen);
   audio.setGameplayPaused(menuOpen);
 
-  if (inventoryOpen || shopOpen || questBoardOpen || rpgOpen || journalOpen || mapOpen || graphicsOpen || photoOpen) {
+  if (defeatedOpen) {
+    setDeathScreenVisible(true);
+    archery.cancelDraw?.();
+    cameraRig.setAimState(false, 0);
+    enemies.forceReturnAll?.({ resetHealth: true });
+    if (input.wasPressed("KeyE")) {
+      continueFromDeath();
+    }
+    updateHud();
+    renderer.render(scene, camera);
+    input.endFrame();
+    return;
+  }
+
+  setDeathScreenVisible(false);
+
+  if (inventoryOpen || shopOpen || questBoardOpen || rpgOpen || journalOpen || mapOpen || graphicsOpen || photoOpen || questMenuOpen) {
     archery.cancelDraw?.();
     cameraRig.setAimState(false, 0);
     updateHud();
@@ -885,6 +999,11 @@ function update(deltaSeconds) {
   }
 
   player.update(deltaSeconds, input, cameraRig);
+  player.inSafeZone = world.isSafeZone?.(player.group.position) ?? false;
+  if (player.inSafeZone) {
+    enemies.forceReturnAll?.({ resetHealth: false });
+    calmBossesForSafety();
+  }
   world.updateDayNight(deltaSeconds, timeState);
   world.updateDistanceDetail?.(player.group.position, deltaSeconds);
   const nextCaveAudioActive = world.isInsideWhisperCave?.(player.group.position) ?? false;
@@ -901,6 +1020,7 @@ function update(deltaSeconds) {
   celestialExpanseQuest.update(deltaSeconds);
   shatteredCoastQuest.update(deltaSeconds);
   veiledWildsQuest.update(deltaSeconds);
+  quests.refreshHud();
   livingWorldEvents.update(deltaSeconds);
   specialArrows.update(input);
   archery.update(deltaSeconds, input, player, cameraRig, world);
@@ -908,7 +1028,7 @@ function update(deltaSeconds) {
   cameraRig.update(player, world.terrain, deltaSeconds);
   enemies.update(deltaSeconds, player, camera);
   bossSystems.forEach((system) => updateBossWhenRelevant(system, deltaSeconds));
-  player.updateSafeRecovery(deltaSeconds, !isCombatActive());
+  player.updateSafeRecovery(deltaSeconds, player.inSafeZone && !isCombatActive());
   weather.update(deltaSeconds, player);
   wind.update(deltaSeconds, player);
   wildlife.update(deltaSeconds, player);

@@ -10,6 +10,8 @@ export class NPC {
     this.idleStyle = options.idleStyle ?? "calm";
     this.gestureSeed = (this.name?.length ?? 3) * 0.37 + (this.role?.length ?? 5) * 0.19;
     this.position = new THREE.Vector3(options.position[0], 0, options.position[1]);
+    this.walkSpeed = options.walkSpeed ?? 1.35;
+    this.motionAmount = 0;
     this.interactRadius = options.interactRadius ?? 4;
     this.group = this.createMesh();
     this.group.position.copy(this.position);
@@ -150,10 +152,12 @@ export class NPC {
     }
     if (!nearPlayer) {
       const idleSway = this.idleStyle === "restless" ? 0.035 : this.idleStyle === "watchful" ? 0.018 : 0.01;
-      this.group.rotation.z = Math.sin(time * 0.8) * idleSway;
+      const walkSway = Math.sin(time * 5.8) * 0.035 * this.motionAmount;
+      this.group.rotation.z = Math.sin(time * 0.8) * idleSway + walkSway;
     } else {
       this.group.rotation.z = THREE.MathUtils.lerp(this.group.rotation.z, 0, 0.12);
     }
+    this.motionAmount = THREE.MathUtils.lerp(this.motionAmount, 0, 0.08);
   }
 
   isPlayerNear(player) {
@@ -161,13 +165,26 @@ export class NPC {
   }
 
   moveTo(x, z, blend = 1) {
-    const y = this.world.terrain.getHeightAt(x, z);
-    this.position.set(x, y, z);
+    const target = new THREE.Vector3(x, this.world.terrain.getHeightAt(x, z), z);
+    const toTarget = target.clone().sub(this.group.position);
+    toTarget.y = 0;
+    const distance = toTarget.length();
+    this.position.copy(target);
     if (blend >= 1) {
       this.group.position.copy(this.position);
+      this.motionAmount = 0;
       return;
     }
-    this.group.position.lerp(this.position, blend);
-    this.group.position.y = y;
+
+    if (distance > 0.04) {
+      const step = Math.min(distance, this.walkSpeed * Math.max(0.016, blend));
+      toTarget.normalize();
+      this.group.position.addScaledVector(toTarget, step);
+      const yaw = Math.atan2(toTarget.x, toTarget.z);
+      this.group.rotation.y = THREE.MathUtils.lerp(this.group.rotation.y, yaw, 0.12);
+      this.motionAmount = THREE.MathUtils.lerp(this.motionAmount, 1, 0.18);
+    }
+    const y = this.world.terrain.getHeightAt(this.group.position.x, this.group.position.z);
+    this.group.position.y = THREE.MathUtils.lerp(this.group.position.y, y, 0.45);
   }
 }

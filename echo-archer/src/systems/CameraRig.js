@@ -18,6 +18,8 @@ export class CameraRig {
     this.scenicTimer = 0;
     this.scenicDuration = 0;
     this.thirdPersonSmoothing = 0.18;
+    this.focusTarget = new THREE.Vector3();
+    this.hasFocusTarget = false;
   }
 
   setQuality(preset = null) {
@@ -26,6 +28,7 @@ export class CameraRig {
 
   toggleMode() {
     this.mode = this.mode === "third" ? "first" : "third";
+    this.hasFocusTarget = false;
     return this.mode;
   }
 
@@ -114,8 +117,19 @@ export class CameraRig {
     const floor = terrain.getHeightAt(desired.x, desired.z) + 0.7;
     desired.y = Math.max(desired.y, floor);
 
-    this.camera.position.lerp(desired, this.thirdPersonSmoothing);
-    this.camera.lookAt(focus);
+    const movingFast = Math.hypot(player.velocity?.x ?? 0, player.velocity?.z ?? 0) > SETTINGS.player.walkSpeed;
+    const smoothing = THREE.MathUtils.clamp(
+      this.thirdPersonSmoothing + this.aimAmount * 0.05 + (movingFast ? 0.035 : 0),
+      0.12,
+      0.32,
+    );
+    this.camera.position.lerp(desired, smoothing);
+    if (!this.hasFocusTarget) {
+      this.focusTarget.copy(focus);
+      this.hasFocusTarget = true;
+    }
+    this.focusTarget.lerp(focus, THREE.MathUtils.clamp(0.16 + this.aimAmount * 0.12, 0.16, 0.36));
+    this.camera.lookAt(this.focusTarget);
   }
 
   getLookDirection() {

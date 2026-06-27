@@ -49,6 +49,9 @@ export class SaveSystem {
   }
 
   update(deltaSeconds) {
+    if (this.systems.player?.defeated) {
+      return;
+    }
     this.trackMovementProgress();
     if (this.dirty) {
       this.dirtyTimer -= deltaSeconds;
@@ -109,6 +112,31 @@ export class SaveSystem {
     }
   }
 
+  continueFromLastSave() {
+    try {
+      const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "null");
+      if (saved) {
+        this.restoreSnapshot(saved);
+        this.ensureContinuedPlayerHealth(saved.player);
+        this.lastSavedAt = saved.savedAt ?? this.lastSavedAt;
+        this.updateLabel("Continued from save", "saved");
+        window.dispatchEvent(new CustomEvent("echo-archer:save-continue", {
+          detail: { savedAt: this.lastSavedAt, fallback: false },
+        }));
+        return true;
+      }
+    } catch (error) {
+      console.warn("Echo Archer continue ignored bad save:", error);
+    }
+
+    this.respawnAtSafeStart();
+    this.updateLabel("Continued at camp", "saved");
+    window.dispatchEvent(new CustomEvent("echo-archer:save-continue", {
+      detail: { fallback: true },
+    }));
+    return false;
+  }
+
   createSnapshot() {
     const { player, progression, inventory, quests, world } = this.systems;
     return {
@@ -128,13 +156,15 @@ export class SaveSystem {
         activeCategory: inventory.activeCategory,
       },
       quests: {
-        activeQuestIndex: quests.activeQuestIndex,
-        discoveredLandmarks: [...quests.discoveredLandmarks],
-        quests: quests.quests.map((quest) => ({
-          id: quest.id,
-          progress: quest.progress,
-          complete: quest.complete,
-        })),
+        ...(quests.getSaveData?.() ?? {
+          activeQuestIndex: quests.activeQuestIndex,
+          discoveredLandmarks: [...quests.discoveredLandmarks],
+          quests: quests.quests.map((quest) => ({
+            id: quest.id,
+            progress: quest.progress,
+            complete: quest.complete,
+          })),
+        }),
       },
       world: {
         timeOfDay: world.timeOfDay,
@@ -226,6 +256,32 @@ export class SaveSystem {
     }
   }
 
+  ensureContinuedPlayerHealth(savedPlayer = {}) {
+    const { player } = this.systems;
+    const maxHealth = Math.max(1, player.stats.healthMax ?? savedPlayer.healthMax ?? 100);
+    const savedHealth = Number(savedPlayer.health);
+    player.stats.health = Number.isFinite(savedHealth) && savedHealth > 0
+      ? THREE.MathUtils.clamp(savedHealth, Math.max(1, maxHealth * 0.25), maxHealth)
+      : Math.max(35, maxHealth * 0.45);
+    player.stats.stamina = Math.max(player.stats.stamina ?? 0, player.stats.staminaMax ?? SETTINGS.player.stamina);
+    player.defeated = false;
+    player.damageCooldown = 0;
+  }
+
+  respawnAtSafeStart() {
+    const { player, world } = this.systems;
+    const start = { x: -15, z: -6 };
+    const groundY = this.getGroundY(world, start.x, start.z);
+    player.group.position.set(start.x, groundY + SETTINGS.player.height / 2, start.z);
+    player.velocity?.set?.(0, 0, 0);
+    player.onGround = true;
+    player.lastGroundY = groundY;
+    player.stats.health = Math.max(50, (player.stats.healthMax ?? 100) * 0.5);
+    player.stats.stamina = player.stats.staminaMax ?? SETTINGS.player.stamina;
+    player.defeated = false;
+    player.damageCooldown = 0;
+  }
+
   getGroundY(world, x, z) {
     const terrainY = world.terrain.getHeightAt(x, z);
     const platformY = world.getPlatformHeightAt?.(x, z) ?? -Infinity;
@@ -272,20 +328,26 @@ export class SaveSystem {
     if (!savedQuests) {
       return;
     }
-    quests.activeQuestIndex = THREE.MathUtils.clamp(Number(savedQuests.activeQuestIndex) || 0, 0, quests.quests.length - 1);
-    quests.discoveredLandmarks = new Set(savedQuests.discoveredLandmarks ?? []);
-    (savedQuests.quests ?? []).forEach((savedQuest) => {
-      const quest = quests.quests.find((item) => item.id === savedQuest.id);
-      if (!quest) {
-        return;
-      }
-      quest.progress = THREE.MathUtils.clamp(Number(savedQuest.progress) || 0, 0, quest.goal);
-      quest.complete = Boolean(savedQuest.complete);
-    });
+    if (typeof quests.restoreSaveData === "function") {
+      quests.restoreSaveData(savedQuests);
+      quests.syncQuestState?.();
+    } else {
+      quests.activeQuestIndex = THREE.MathUtils.clamp(Number(savedQuests.activeQuestIndex) || 0, 0, quests.quests.length - 1);
+      quests.discoveredLandmarks = new Set(savedQuests.discoveredLandmarks ?? []);
+      (savedQuests.quests ?? []).forEach((savedQuest) => {
+        const quest = quests.quests.find((item) => item.id === savedQuest.id);
+        if (!quest) {
+          return;
+        }
+        quest.progress = THREE.MathUtils.clamp(Number(savedQuest.progress) || 0, 0, quest.goal);
+        quest.complete = Boolean(savedQuest.complete);
+      });
+    }
     quests.finderActive = false;
     quests.finderTarget = null;
     quests.finderArrow.visible = false;
     quests.updateTracker();
+    quests.renderQuestMenu?.();
     quests.save?.();
   }
 

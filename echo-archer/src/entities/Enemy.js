@@ -10,7 +10,7 @@ const { THREE } = window;
 const scratchDirection = new THREE.Vector3();
 
 export class Enemy {
-  constructor(type, scene, world, position, patrolPoints, feedback = null) {
+  constructor(type, scene, world, position, patrolPoints, feedback = null, options = {}) {
     this.type = type;
     this.scene = scene;
     this.world = world;
@@ -23,8 +23,19 @@ export class Enemy {
     this.patrolIndex = 0;
     this.patrolPoints = patrolPoints.map((point) => new THREE.Vector3(point[0], 0, point[1]));
     this.homePosition = new THREE.Vector3(position[0], 0, position[1]);
+    this.territory = {
+      id: options.territory?.id ?? `${type}-territory`,
+      center: new THREE.Vector3(
+        options.territory?.center?.[0] ?? position[0],
+        0,
+        options.territory?.center?.[1] ?? position[1],
+      ),
+      radius: options.territory?.radius ?? this.config.leashRadius,
+      resetHealthOnReturn: options.territory?.resetHealthOnReturn ?? true,
+    };
     this.hitReactTimer = 0;
     this.hitDirection = new THREE.Vector3();
+    this.moveVelocity = new THREE.Vector3();
     this.statusEffects = { burn: 0, slow: 0, burnTick: 0 };
     this.attackCooldown = 0;
     this.tacticTimer = 0;
@@ -507,6 +518,7 @@ export class Enemy {
     }
     group.userData.primaryBody = body;
     group.userData.shell = shell;
+    group.userData.crawler = true;
     group.scale.setScalar(style.scale ?? 1);
     return group;
   }
@@ -600,6 +612,7 @@ export class Enemy {
 
     group.userData.primaryBody = body;
     group.userData.tail = tail;
+    group.userData.canine = true;
     group.userData.avian = true;
     group.scale.setScalar(style.scale ?? 1);
     return group;
@@ -682,6 +695,7 @@ export class Enemy {
     group.userData.primaryBody = body;
     group.userData.tail = tail;
     group.userData.mane = mane;
+    group.userData.canine = true;
     if (style.antlers) {
       [-1, 1].forEach((side) => {
         const antler = new THREE.Mesh(new THREE.ConeGeometry(0.045, 0.72, 5), eyeMaterial);
@@ -716,13 +730,20 @@ export class Enemy {
     updateAttackCooldown(this, deltaSeconds);
     this.updateStatusEffects(deltaSeconds);
     const playerPosition = player.group.position;
+    const playerSafe = this.world.isSafeZone?.(playerPosition) ?? false;
+    const enemySafe = this.world.isSafeZone?.(this.group.position) ?? false;
     const horizontalToPlayer = Math.hypot(playerPosition.x - this.group.position.x, playerPosition.z - this.group.position.z);
     const verticalToPlayer = getPlayerVerticalDelta(this.group.position, player);
-    const distanceToPlayer3D = this.group.position.distanceTo(playerPosition);
     const distanceFromHome = Math.hypot(this.group.position.x - this.homePosition.x, this.group.position.z - this.homePosition.z);
+    const playerInTerritory = this.isPointInTerritory(playerPosition, 1);
+    const enemyInTerritory = this.isPointInTerritory(this.group.position, 1.12);
     const alertMultiplier = this.world.getCreatureAlertMultiplier?.() ?? 1;
     const canReachPlayer = verticalToPlayer <= (SETTINGS.enemies.verticalHitReach ?? SETTINGS.enemies.verticalReach);
-    const canNoticePlayer = horizontalToPlayer <= this.config.noticeDistance * alertMultiplier
+    const canNoticePlayer = !playerSafe
+      && !enemySafe
+      && playerInTerritory
+      && enemyInTerritory
+      && horizontalToPlayer <= this.config.noticeDistance * alertMultiplier
       && verticalToPlayer <= (SETTINGS.enemies.combatNoticeVerticalRange ?? 6.5)
       && distanceFromHome <= this.config.leashRadius * 0.96;
 
@@ -730,11 +751,13 @@ export class Enemy {
       this.aggroed = true;
     }
 
-    if (this.aggroed && distanceFromHome > this.config.leashRadius) {
+    if (this.aggroed && (playerSafe || enemySafe || !playerInTerritory || !enemyInTerritory || distanceFromHome > this.config.leashRadius)) {
       this.aggroed = false;
+      this.tactic = "direct";
+      this.tacticTimer = 0;
     }
 
-    if (!this.aggroed && distanceFromHome > this.config.leashRadius * 0.85) {
+    if (!this.aggroed && (!enemyInTerritory || enemySafe || distanceFromHome > this.config.leashRadius * 0.85)) {
       this.state = "return";
     } else {
       this.state = this.aggroed ? (canReachPlayer ? this.selectCombatState(deltaSeconds, horizontalToPlayer) : "guard") : "patrol";
@@ -757,15 +780,40 @@ export class Enemy {
       this.moveToward(this.homePosition, this.getEffectiveSpeed(this.config.chaseSpeed * 0.8), deltaSeconds);
       if (this.group.position.distanceTo(this.homePosition) < 1) {
         this.state = "patrol";
+        this.health = this.territory.resetHealthOnReturn ? this.maxHealth : Math.max(this.health, this.maxHealth * 0.5);
+        this.statusEffects = { burn: 0, slow: 0, burnTick: 0 };
       }
     } else {
       this.patrol(deltaSeconds);
     }
 
-    this.tryAttackPlayer(player);
+    if (!playerSafe && this.aggroed) {
+      this.tryAttackPlayer(player);
+    }
     this.resolveCombatStuck(deltaSeconds);
     this.placeOnGround();
     this.animate(deltaSeconds);
+  }
+
+  isPointInTerritory(position, radiusMultiplier = 1) {
+    const radius = Math.max(4, this.territory.radius * radiusMultiplier);
+    const dx = position.x - this.territory.center.x;
+    const dz = position.z - this.territory.center.z;
+    return dx * dx + dz * dz <= radius * radius;
+  }
+
+  forceReturnHome(options = {}) {
+    if (!this.active || this.removed) {
+      return;
+    }
+    this.aggroed = false;
+    this.state = "return";
+    this.tactic = "direct";
+    this.tacticTimer = 0;
+    this.attackCooldown = 0;
+    if (options.resetHealth) {
+      this.health = this.maxHealth;
+    }
   }
 
   selectCombatState(deltaSeconds, horizontalToPlayer) {
@@ -834,9 +882,7 @@ export class Enemy {
     const sideWeight = tactic === "circle" ? 0.72 : 0.42;
     const forwardWeight = tactic === "circle" && distance < (SETTINGS.enemies.flankDistance ?? 4.2) ? 0.08 : 0.72;
     const blended = forward.multiplyScalar(forwardWeight).add(side.multiplyScalar(sideWeight)).normalize();
-    this.group.position.addScaledVector(blended, speed * deltaSeconds);
-    const yaw = Math.atan2(blended.x, blended.z);
-    this.group.rotation.y = THREE.MathUtils.lerp(this.group.rotation.y, yaw, 0.16);
+    this.applyMovement(blended, speed, deltaSeconds, 0.16);
   }
 
   retreatFrom(target, speed, deltaSeconds) {
@@ -849,7 +895,7 @@ export class Enemy {
     const away = scratchDirection.normalize();
     const side = new THREE.Vector3(-away.z, 0, away.x).multiplyScalar(this.strafeSign * 0.45);
     const blended = away.multiplyScalar(0.9).add(side).normalize();
-    this.group.position.addScaledVector(blended, speed * deltaSeconds);
+    this.applyMovement(blended, speed, deltaSeconds, 0.14, false);
     this.faceToward(target);
   }
 
@@ -870,8 +916,8 @@ export class Enemy {
     this.stuckTimer += deltaSeconds;
     if (this.stuckTimer > 0.5) {
       const yaw = this.group.rotation.y + this.strafeSign * Math.PI * 0.5;
-      this.group.position.x += Math.sin(yaw) * 0.045;
-      this.group.position.z += Math.cos(yaw) * 0.045;
+      this.moveVelocity.x += Math.sin(yaw) * 0.45;
+      this.moveVelocity.z += Math.cos(yaw) * 0.45;
       this.stuckTimer = 0.15;
     }
   }
@@ -908,9 +954,22 @@ export class Enemy {
     }
 
     scratchDirection.normalize();
-    this.group.position.addScaledVector(scratchDirection, speed * deltaSeconds);
-    const yaw = Math.atan2(scratchDirection.x, scratchDirection.z);
-    this.group.rotation.y = THREE.MathUtils.lerp(this.group.rotation.y, yaw, 0.12);
+    this.applyMovement(scratchDirection, speed, deltaSeconds, 0.12);
+  }
+
+  applyMovement(direction, speed, deltaSeconds, yawBlend = 0.12, faceDirection = true) {
+    const targetX = direction.x * speed;
+    const targetZ = direction.z * speed;
+    const acceleration = this.aggroed ? 8.5 : 5.4;
+    const blend = 1 - Math.exp(-acceleration * deltaSeconds);
+    this.moveVelocity.x = THREE.MathUtils.lerp(this.moveVelocity.x, targetX, blend);
+    this.moveVelocity.z = THREE.MathUtils.lerp(this.moveVelocity.z, targetZ, blend);
+    this.group.position.x += this.moveVelocity.x * deltaSeconds;
+    this.group.position.z += this.moveVelocity.z * deltaSeconds;
+    if (faceDirection) {
+      const yaw = Math.atan2(direction.x, direction.z);
+      this.group.rotation.y = THREE.MathUtils.lerp(this.group.rotation.y, yaw, yawBlend);
+    }
   }
 
   faceToward(target) {
@@ -939,7 +998,7 @@ export class Enemy {
 
   animate(deltaSeconds) {
     const time = performance.now() * 0.001;
-    const canine = this.type === "wolf" || this.type === "snowWolf" || this.type === "iceStag";
+    const canine = this.group.userData.canine;
     const avian = this.group.userData.avian;
     const wisp = this.group.userData.wisp;
     const speed = this.state === "chase" ? (avian ? 10 : (canine ? 12 : 7)) : (avian ? 5 : (canine ? 6 : 3.6));

@@ -10,17 +10,17 @@ export class EnemySystem {
     this.ui = ui;
     this.feedback = feedback;
     this.slots = [
-      { type: "crawler", position: [-9, -7], patrol: [[-9, -7], [-15, -5], [-16, -11], [-8, -12]], respawnTimer: 0 },
-      { type: "wolf", position: [12, -8], patrol: [[12, -8], [19, -6], [18, -13], [10, -14]], respawnTimer: 0 },
-      { type: "crawler", position: [-31, 16], patrol: [[-31, 16], [-34, 11], [-29, 7], [-25, 13]], respawnTimer: 0 },
-      { type: "wolf", position: [-17, 17], patrol: [[-17, 17], [-21, 21], [-26, 18], [-21, 13]], respawnTimer: 0 },
+      { type: "crawler", position: [-24, -48], patrol: [[-24, -48], [-31, -46], [-32, -54], [-22, -56]], territoryRadius: 16, respawnTimer: 0 },
+      { type: "wolf", position: [28, -47], patrol: [[28, -47], [36, -44], [34, -54], [24, -56]], territoryRadius: 17, respawnTimer: 0 },
+      { type: "crawler", position: [-18, 36], patrol: [[-18, 36], [-23, 32], [-15, 28], [-10, 34]], territoryRadius: 16, respawnTimer: 0 },
+      { type: "wolf", position: [-8, 42], patrol: [[-8, 42], [-13, 47], [-21, 43], [-15, 36]], territoryRadius: 17, respawnTimer: 0 },
       { type: "crawler", position: [30, 25], patrol: [[30, 25], [34, 21], [29, 17], [25, 22]], respawnTimer: 0 },
-      { type: "crawler", position: [-31, 25], patrol: [[-31, 25], [-28, 23], [-26, 26], [-29, 28]], respawnTimer: 0 },
-      { type: "wolf", position: [-27, 29], patrol: [[-27, 29], [-24, 26], [-22, 29], [-25, 32]], respawnTimer: 0 },
-      { type: "crawler", position: [-25, 21], patrol: [[-25, 21], [-22, 23], [-24, 25], [-27, 23]], respawnTimer: 0 },
+      { type: "crawler", position: [-24, 62], patrol: [[-24, 62], [-20, 59], [-16, 64], [-22, 68]], territoryRadius: 15, respawnTimer: 0 },
+      { type: "wolf", position: [-19, 50], patrol: [[-19, 50], [-14, 46], [-10, 52], [-16, 57]], territoryRadius: 16, respawnTimer: 0 },
+      { type: "crawler", position: [-12, 46], patrol: [[-12, 46], [-7, 48], [-10, 53], [-16, 51]], territoryRadius: 15, respawnTimer: 0 },
       { type: "snowWolf", position: [-68, 78], patrol: [[-68, 78], [-73, 82], [-69, 87], [-63, 83]], respawnTimer: 0 },
       { type: "iceStag", position: [-88, 95], patrol: [[-88, 95], [-94, 98], [-91, 105], [-84, 102]], respawnTimer: 0 },
-      { type: "frostCrawler", position: [-101, 70], patrol: [[-101, 70], [-106, 74], [-102, 79], [-96, 75]], respawnTimer: 0 },
+      { type: "frostCrawler", position: [-112, 65], patrol: [[-112, 65], [-118, 69], [-114, 76], [-106, 72]], territoryRadius: 16, respawnTimer: 0 },
       { type: "snowWolf", position: [-116, 108], patrol: [[-116, 108], [-121, 112], [-115, 118], [-109, 113]], respawnTimer: 0 },
       { type: "cliffRaptor", position: [108, -86], patrol: [[108, -86], [114, -90], [111, -98], [102, -94]], respawnTimer: 0 },
       { type: "tideCrawler", position: [118, -111], patrol: [[118, -111], [124, -114], [121, -120], [114, -118]], respawnTimer: 0 },
@@ -47,12 +47,12 @@ export class EnemySystem {
       { type: "starboundHunter", position: [157, 53], patrol: [[157, 53], [164, 57], [159, 65], [151, 61]], respawnTimer: 0 },
       { type: "celestialWisp", position: [137, 68], patrol: [[137, 68], [144, 72], [139, 78], [130, 73]], respawnTimer: 0 },
       { type: "moonclawBeast", position: [165, 34], patrol: [[165, 34], [171, 39], [166, 47], [158, 42]], respawnTimer: 0 },
-      { type: "wolf", position: [-69, 58], patrol: [[-69, 58], [-74, 60], [-78, 55], [-72, 51]], respawnTimer: 0 },
-      { type: "crawler", position: [-86, 44], patrol: [[-86, 44], [-91, 48], [-88, 54], [-82, 50]], respawnTimer: 0 },
-      { type: "dustRaptor", position: [-62, 42], patrol: [[-62, 42], [-58, 49], [-64, 54], [-70, 48]], respawnTimer: 0 },
+      { type: "wolf", position: [-44, 72], patrol: [[-44, 72], [-49, 76], [-54, 71], [-48, 66]], territoryRadius: 15, respawnTimer: 0 },
+      { type: "crawler", position: [-108, 51], patrol: [[-108, 51], [-114, 55], [-110, 61], [-102, 57]], territoryRadius: 16, respawnTimer: 0 },
+      { type: "dustRaptor", position: [-58, 70], patrol: [[-58, 70], [-53, 76], [-62, 80], [-67, 73]], territoryRadius: 17, respawnTimer: 0 },
       { type: "plainsStag", position: [130, -160], patrol: [[130, -160], [139, -166], [148, -158], [138, -151]], respawnTimer: 0 },
       { type: "riverfang", position: [160, -137], patrol: [[160, -137], [168, -133], [164, -126], [154, -130]], respawnTimer: 0 },
-      { type: "skyHawk", position: [116, -124], patrol: [[116, -124], [126, -128], [122, -138], [112, -134]], respawnTimer: 0 },
+      { type: "skyHawk", position: [108, -116], patrol: [[108, -116], [118, -120], [114, -130], [104, -126]], territoryRadius: 18, respawnTimer: 0 },
       { type: "frontierWolf", position: [145, -118], patrol: [[145, -118], [153, -121], [151, -130], [140, -128]], respawnTimer: 0 },
       { type: "stonehideGrazer", position: [151, -154], patrol: [[151, -154], [160, -160], [168, -152], [158, -144]], respawnTimer: 0 },
       { type: "kingdomSentinel", position: [91, -146], patrol: [[91, -146], [97, -139], [88, -135], [82, -145]], respawnTimer: 0 },
@@ -74,13 +74,42 @@ export class EnemySystem {
       { type: "groveGuardian", position: [-45, -122], patrol: [[-45, -122], [-53, -126], [-48, -134], [-38, -130]], respawnTimer: 0 },
       { type: "mistFox", position: [-72, -154], patrol: [[-72, -154], [-77, -160], [-69, -166], [-64, -157]], respawnTimer: 0 },
     ];
-    this.enemies = this.slots.map((slot) => (this.world.performanceMode ? null : this.spawnEnemy(slot)));
+    this.prepareTerritories();
+    this.enemies = this.slots.map((slot) => (this.world.performanceMode || this.isSlotInSafeZone(slot) ? null : this.spawnEnemy(slot)));
     this.healthBars = new Map();
     this.defeatListeners = [];
   }
 
   spawnEnemy(slot) {
-    return new Enemy(slot.type, this.scene, this.world, slot.position, slot.patrol, this.feedback);
+    return new Enemy(slot.type, this.scene, this.world, slot.position, slot.patrol, this.feedback, {
+      territory: slot.territory,
+    });
+  }
+
+  prepareTerritories() {
+    this.slots.forEach((slot, index) => {
+      const points = [slot.position, ...(slot.patrol ?? [])];
+      const center = points.reduce((sum, point) => {
+        sum[0] += point[0];
+        sum[1] += point[1];
+        return sum;
+      }, [0, 0]).map((value) => value / Math.max(1, points.length));
+      const configRadius = SETTINGS.enemies[slot.type]?.leashRadius ?? 16;
+      slot.territory = {
+        id: slot.territoryId ?? `${slot.type}-${index}`,
+        center,
+        radius: slot.territoryRadius ?? Math.max(configRadius, this.getPatrolRadius(slot, center) + 7),
+        resetHealthOnReturn: slot.resetHealthOnReturn ?? true,
+      };
+    });
+  }
+
+  getPatrolRadius(slot, center) {
+    return [slot.position, ...(slot.patrol ?? [])].reduce((max, point) => {
+      const dx = point[0] - center[0];
+      const dz = point[1] - center[1];
+      return Math.max(max, Math.hypot(dx, dz));
+    }, 0);
   }
 
   onEnemyDefeated(callback) {
@@ -90,10 +119,14 @@ export class EnemySystem {
   update(deltaSeconds, player, camera) {
     this.enemies.forEach((enemy, index) => {
       if (!enemy) {
-        if (this.isSlotNearPlayer(this.slots[index], player, this.world.performanceMode ? 58 : 96)) {
+        if (!this.isSlotInSafeZone(this.slots[index]) && this.isSlotNearPlayer(this.slots[index], player, this.world.performanceMode ? 58 : 96)) {
           this.enemies[index] = this.spawnEnemy(this.slots[index]);
         }
         return;
+      }
+      if (this.world.isSafeZone?.(player.group.position) || this.world.isSafeZone?.(enemy.group.position)) {
+        enemy.forceReturnHome?.({ resetHealth: true });
+        this.hideHealthBar(enemy);
       }
       if (!this.shouldUpdateEnemy(enemy, player)) {
         this.hideHealthBar(enemy);
@@ -112,10 +145,24 @@ export class EnemySystem {
     this.updateHealthBars(camera);
   }
 
+  forceReturnAll(options = {}) {
+    this.enemies.forEach((enemy) => {
+      if (!enemy?.active) {
+        return;
+      }
+      enemy.forceReturnHome?.(options);
+      this.hideHealthBar(enemy);
+    });
+  }
+
   isSlotNearPlayer(slot, player, radius) {
     const dx = slot.position[0] - player.group.position.x;
     const dz = slot.position[1] - player.group.position.z;
     return dx * dx + dz * dz <= radius * radius;
+  }
+
+  isSlotInSafeZone(slot) {
+    return Boolean(this.world.isSafeZone?.({ x: slot.position[0], z: slot.position[1] }));
   }
 
   shouldUpdateEnemy(enemy, player) {

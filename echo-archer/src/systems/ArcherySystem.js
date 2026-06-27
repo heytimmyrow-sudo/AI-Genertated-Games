@@ -34,6 +34,8 @@ export class ArcherySystem {
     };
     this.bow = this.createBow();
     this.bowPulse = 0;
+    this.releaseKick = 0;
+    this.bowSettle = new THREE.Vector3();
     this.trailMultiplier = 1;
     this.lastDrawSoundStep = 0;
     this.arrowTypeSystem = null;
@@ -106,8 +108,14 @@ export class ArcherySystem {
 
   update(deltaSeconds, input, player, cameraRig, world) {
     this.updateDraw(deltaSeconds, input, player, cameraRig, world);
+    window.echoArcherCombatState = {
+      isDrawing: this.isDrawing,
+      drawAmount: this.drawAmount,
+      releaseKick: this.releaseKick,
+    };
     this.updateBow(player, cameraRig);
     this.updateArrows(deltaSeconds, world);
+    this.releaseKick = Math.max(0, this.releaseKick - deltaSeconds * 7.5);
   }
 
   cancelDraw() {
@@ -168,6 +176,7 @@ export class ArcherySystem {
     arrow.damageMultiplier = this.stats.damageMultiplier * this.gearStats.damageMultiplier * this.rpgStats.damageMultiplier * (arrowType.damageMultiplier ?? 1) * (critical ? 1.75 : 1);
     this.arrows.push(arrow);
     this.bowPulse = 1.15 + power * 0.35;
+    this.releaseKick = 1 + power * 0.75;
     this.feedback?.playSound("bowRelease", 0.72 + power * 0.9);
     if (power > 0.45) {
       window.setTimeout(() => this.feedback?.playSound("arrowFlyby", 0.35 + power * 0.65), 45);
@@ -198,12 +207,17 @@ export class ArcherySystem {
     this.bow.visible = cameraRig.mode === "first" || this.isDrawing;
     this.bow.position.copy(origin);
     this.bow.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), direction);
-    this.bow.rotateZ((cameraRig.mode === "first" ? -0.06 : -0.28) - this.drawAmount * 0.12);
+    this.bow.rotateZ((cameraRig.mode === "first" ? -0.06 : -0.28) - this.drawAmount * 0.18 + this.releaseKick * 0.05);
     const drawSettle = Math.sin(performance.now() * 0.018) * this.drawAmount * 0.012;
-    this.bow.position.add(cameraRig.getPlanarSide().clone().multiplyScalar((cameraRig.mode === "first" ? -0.11 : -0.04) * this.drawAmount + drawSettle));
+    const pullBack = direction.clone().multiplyScalar(-this.drawAmount * (cameraRig.mode === "first" ? 0.08 : 0.12));
+    const releaseForward = direction.clone().multiplyScalar(this.releaseKick * 0.08);
+    this.bow.position
+      .add(cameraRig.getPlanarSide().clone().multiplyScalar((cameraRig.mode === "first" ? -0.11 : -0.04) * this.drawAmount + drawSettle))
+      .add(pullBack)
+      .add(releaseForward);
     const modeScale = cameraRig.mode === "first" ? 1.12 : 0.54;
     const tensionPulse = Math.sin(performance.now() * 0.028) * this.drawAmount * 0.015;
-    this.bow.scale.setScalar(modeScale + this.bowPulse * 0.055 + this.drawAmount * 0.04 + tensionPulse);
+    this.bow.scale.setScalar(modeScale + this.bowPulse * 0.055 + this.drawAmount * 0.055 + this.releaseKick * 0.025 + tensionPulse);
     this.bowPulse *= 0.74;
     const nockGlow = this.bow.userData.nockGlow;
     if (nockGlow) {

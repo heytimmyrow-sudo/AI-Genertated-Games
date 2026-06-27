@@ -10,6 +10,8 @@ export class MountSystem {
     this.equipmentSlot = null;
     this.spawnPoint = world.mountStable?.spawnPoint ?? null;
     this.riding = false;
+    this.visualSpeed = 0;
+    this.visualTime = 0;
     this.mountStats = {
       horse: { name: "Horse", speedMultiplier: 1.52, color: 0x7a4f32 },
       "forest-elk": { name: "Forest Elk", speedMultiplier: 1.42, color: 0x6f5d3d },
@@ -72,11 +74,13 @@ export class MountSystem {
     saddle.position.set(-0.08, 1.27, 0);
     saddle.castShadow = true;
     group.add(body, neck, head, saddle);
+    group.userData.legs = [];
     [-0.55, -0.1, 0.32, 0.72].forEach((x, index) => {
       const leg = new THREE.Mesh(new THREE.CapsuleGeometry(0.055, 0.72, 5, 8), maneMaterial);
       leg.position.set(x, 0.43, index % 2 === 0 ? -0.24 : 0.24);
       leg.castShadow = true;
       group.add(leg);
+      group.userData.legs.push({ mesh: leg, baseX: x, side: index % 2 === 0 ? -1 : 1, phase: index * Math.PI * 0.5 });
     });
     if (this.mountSlot === "forest-elk" || this.mountSlot === "arrowcrest-stag") {
       [-1, 1].forEach((side) => {
@@ -96,6 +100,8 @@ export class MountSystem {
     group.position.copy(this.spawnPoint);
     group.position.y = this.world.terrain.getHeightAt(group.position.x, group.position.z);
     group.userData.mountBob = 0;
+    group.userData.neck = neck;
+    group.userData.head = head;
     this.scene.add(group);
     this.activeMount = group;
   }
@@ -105,14 +111,44 @@ export class MountSystem {
       return;
     }
     const { THREE } = window;
+    this.visualTime += 1 / 60;
     if (this.riding && player) {
       const target = player.group.position.clone();
       target.y = this.world.terrain.getHeightAt(target.x, target.z);
-      this.activeMount.position.lerp(target, 0.42);
-      this.activeMount.rotation.y = player.group.rotation.y;
+      const previous = this.activeMount.position.clone();
+      this.activeMount.position.lerp(target, 0.32);
+      const moved = previous.distanceTo(this.activeMount.position);
+      this.visualSpeed = THREE.MathUtils.lerp(this.visualSpeed, Math.min(1, moved * 14), 0.16);
+      const yawDelta = Math.atan2(
+        Math.sin(player.group.rotation.y - this.activeMount.rotation.y),
+        Math.cos(player.group.rotation.y - this.activeMount.rotation.y),
+      );
+      this.activeMount.rotation.y += yawDelta * 0.18;
     } else {
       const y = this.world.terrain.getHeightAt(this.activeMount.position.x, this.activeMount.position.z);
       this.activeMount.position.y = THREE.MathUtils.lerp(this.activeMount.position.y, y + Math.sin(performance.now() * 0.002) * 0.025, 0.12);
+      this.visualSpeed = THREE.MathUtils.lerp(this.visualSpeed, 0, 0.08);
+    }
+    this.animateMount();
+  }
+
+  animateMount() {
+    if (!this.activeMount) {
+      return;
+    }
+    const { THREE } = window;
+    const time = performance.now() * 0.001;
+    const gait = time * (5.5 + this.visualSpeed * 6.5);
+    this.activeMount.userData.legs?.forEach(({ mesh, phase, side }) => {
+      const stride = Math.sin(gait + phase) * this.visualSpeed;
+      mesh.rotation.x = THREE.MathUtils.lerp(mesh.rotation.x, stride * 0.42, 0.18);
+      mesh.rotation.z = THREE.MathUtils.lerp(mesh.rotation.z, side * 0.03 + stride * 0.08, 0.18);
+    });
+    if (this.activeMount.userData.neck) {
+      this.activeMount.userData.neck.rotation.z = -0.45 + Math.sin(gait * 0.5) * 0.035 * this.visualSpeed;
+    }
+    if (this.activeMount.userData.head) {
+      this.activeMount.userData.head.position.y = 1.42 + Math.sin(gait * 0.5 + 0.4) * 0.025 * this.visualSpeed;
     }
   }
 

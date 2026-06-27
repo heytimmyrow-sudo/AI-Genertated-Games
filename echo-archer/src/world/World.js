@@ -190,6 +190,22 @@ export class World {
     right.position.set(width * 0.26 - asymmetry * 0.35, y + asymmetry * 0.02, 0.02);
     right.rotation.z = -pitch * 0.94;
 
+    const shingleRows = options.shingleRows ?? (this.performanceMode ? 2 : 4);
+    for (let row = 0; row < shingleRows; row += 1) {
+      [-1, 1].forEach((side) => {
+        const shingle = new THREE.Mesh(new THREE.BoxGeometry(panelLength * (0.82 - row * 0.035), 0.035, panelDepth * 0.96), this.materials.bark);
+        shingle.position.set(
+          side * (width * 0.22 + row * width * 0.052) - asymmetry * 0.45,
+          y - 0.14 + row * 0.135,
+          Math.sin(row * 1.7 + side) * 0.018,
+        );
+        shingle.rotation.z = side < 0 ? pitch * 0.98 : -pitch * 0.94;
+        shingle.castShadow = true;
+        shingle.receiveShadow = true;
+        roof.add(shingle);
+      });
+    }
+
     const ridge = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.1, panelDepth + 0.12, 8), this.materials.cutWood);
     ridge.position.set(-asymmetry * 0.7, ridgeY, 0);
     ridge.rotation.x = Math.PI / 2;
@@ -208,6 +224,17 @@ export class World {
       fascia.rotation.z = side > 0 ? -0.03 : 0.04;
       roof.add(fascia);
     });
+
+    const rafterCount = this.performanceMode ? 3 : Math.max(3, Math.min(7, Math.round(panelDepth / 0.9)));
+    for (let index = 0; index < rafterCount; index += 1) {
+      const z = -panelDepth * 0.42 + (panelDepth * 0.84 * index) / Math.max(1, rafterCount - 1);
+      [-1, 1].forEach((side) => {
+        const rafter = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.1, 0.32), this.materials.cutWood);
+        rafter.position.set(side * (width * 0.52 + overhang * 0.1), y - 0.28, z);
+        rafter.rotation.z = side < 0 ? pitch * 0.9 : -pitch * 0.9;
+        roof.add(rafter);
+      });
+    }
 
     [left, right, ridge].forEach((piece) => {
       piece.castShadow = true;
@@ -241,12 +268,28 @@ export class World {
       group.add(frontTrim, backTrim);
     });
 
+    [-1, 1].forEach((side) => {
+      const sideTrim = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.08, depth * 0.92), beamMaterial);
+      sideTrim.position.set(side * (width * 0.515), height * 0.52 + 0.08, 0);
+      sideTrim.rotation.y = Math.PI / 2;
+      group.add(sideTrim);
+
+      const brace = new THREE.Mesh(new THREE.BoxGeometry(0.1, height * 0.62, 0.08), trimMaterial);
+      brace.position.set(side * (width * 0.36), height * 0.58, frontZ - 0.065);
+      brace.rotation.z = side * 0.52;
+      group.add(brace);
+    });
+
     [-0.28, 0.32].forEach((offset, index) => {
       const window = new THREE.Mesh(new THREE.BoxGeometry(0.56, 0.44, 0.055), windowMaterial);
       window.position.set(width * offset, height * 0.58 + 0.18, frontZ - 0.07);
       const sill = new THREE.Mesh(new THREE.BoxGeometry(0.72, 0.08, 0.08), trimMaterial);
       sill.position.set(window.position.x, window.position.y - 0.28, frontZ - 0.08);
-      group.add(window, sill);
+      const leftShutter = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.52, 0.07), beamMaterial);
+      leftShutter.position.set(window.position.x - 0.42, window.position.y, frontZ - 0.082);
+      const rightShutter = leftShutter.clone();
+      rightShutter.position.x = window.position.x + 0.42;
+      group.add(window, sill, leftShutter, rightShutter);
       if (index === 0 && width > 3.7) {
         const sideWindow = window.clone();
         sideWindow.position.set(width * 0.515, height * 0.6, depth * 0.12);
@@ -254,6 +297,16 @@ export class World {
         group.add(sideWindow);
       }
     });
+
+    const stoneCount = Math.max(3, Math.round(width / 1.2));
+    for (let index = 0; index < stoneCount; index += 1) {
+      const t = stoneCount === 1 ? 0.5 : index / (stoneCount - 1);
+      const stone = new THREE.Mesh(this.geometries.pebble, index % 2 ? this.materials.darkStone : this.materials.stone);
+      stone.position.set((t - 0.5) * width * 0.88, 0.14, frontZ - 0.12);
+      stone.scale.set(0.22 + (index % 2) * 0.05, 0.08, 0.16);
+      stone.rotation.set(0.1, index * 0.6, -0.06);
+      group.add(stone);
+    }
   }
 
   createGuildSymbol(scale = 1, options = {}) {
@@ -431,6 +484,7 @@ export class World {
     this.addWorldArtDirectionPass();
     this.registerLandmarks();
     this.registerRegions();
+    this.registerSafeZones();
     this.registerCollisionVolumes();
     this.optimizeStaticScene();
   }
@@ -962,6 +1016,16 @@ export class World {
     branch.castShadow = true;
     treeGroup.add(lower, middle, upper, branch);
 
+    const branchCount = this.performanceMode ? 1 : 3;
+    for (let branchIndex = 0; branchIndex < branchCount; branchIndex += 1) {
+      const angle = branchIndex * 2.25 + Math.sin(x * 0.5 + z) * 0.4;
+      const limb = new THREE.Mesh(new THREE.CapsuleGeometry(0.035, height * (0.22 + branchIndex * 0.035), 4, 6), this.materials.barkDark);
+      limb.position.set(Math.sin(angle) * 0.24, height * (0.58 + branchIndex * 0.08), Math.cos(angle) * 0.24);
+      limb.rotation.set(Math.PI / 2 + 0.4, 0, -angle);
+      limb.castShadow = true;
+      treeGroup.add(limb);
+    }
+
     this.scene.add(treeGroup);
     this.colliders.push(trunk, lower, middle, upper, branch);
     if (height >= 3.8) {
@@ -1264,7 +1328,7 @@ export class World {
   addOrganicRockCluster(x, z, scale = 1, index = 0, material = null) {
     const group = new THREE.Group();
     group.position.set(x, this.terrain.getHeightAt(x, z), z);
-    const count = scale > 1.1 ? 3 : 2;
+    const count = scale > 1.1 ? 4 : 3;
     for (let piece = 0; piece < count; piece += 1) {
       const angle = index * 0.73 + piece * 2.05;
       const rock = new THREE.Mesh(this.geometries.pebble, material ?? (piece % 2 ? this.materials.darkStone : this.materials.stone));
@@ -1276,6 +1340,17 @@ export class World {
       rock.receiveShadow = true;
       group.add(rock);
       this.colliders.push(rock);
+    }
+    const strataCount = scale > 1.25 && !this.performanceMode ? 3 : 1;
+    for (let layer = 0; layer < strataCount; layer += 1) {
+      const angle = index * 0.41 + layer * 0.55;
+      const shelf = new THREE.Mesh(new THREE.DodecahedronGeometry(0.45, 0), material ?? (layer % 2 ? this.materials.darkStone : this.materials.stone));
+      shelf.position.set(Math.sin(angle) * scale * 0.18, 0.12 + layer * scale * 0.13, Math.cos(angle) * scale * 0.14);
+      shelf.scale.set(scale * (1.25 - layer * 0.18), scale * 0.13, scale * (0.72 - layer * 0.06));
+      shelf.rotation.set(0.12, angle, -0.08 + layer * 0.04);
+      shelf.castShadow = true;
+      shelf.receiveShadow = true;
+      group.add(shelf);
     }
     this.scene.add(group);
     return group;
@@ -2188,6 +2263,7 @@ export class World {
 
     const body = new THREE.Mesh(new THREE.BoxGeometry(4.7, 2.25, 3.7), this.materials.wood);
     body.position.y = 1.15;
+    body.scale.set(1.0, 1.0, 0.96);
     body.castShadow = true;
     body.receiveShadow = true;
     cabin.add(body);
@@ -2229,6 +2305,25 @@ export class World {
     ridge.castShadow = true;
     cabin.add(ridge);
 
+    const sideLeanTo = this.createLayeredGableRoof(2.4, 2.2, 1.86, this.materials.lodgeRoof ?? this.materials.barkDark, {
+      pitch: 0.28,
+      overhang: 0.28,
+      thickness: 0.16,
+      asymmetry: 0.04,
+      shingleRows: 2,
+    });
+    sideLeanTo.position.set(2.72, 0, 0.82);
+    sideLeanTo.rotation.y = Math.PI / 2;
+    cabin.add(sideLeanTo);
+
+    [-2.18, 2.18].forEach((xOffset) => {
+      const cornerPost = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.11, 2.44, 7), this.materials.barkDark);
+      cornerPost.position.set(xOffset, 1.28, -1.96);
+      cornerPost.rotation.z = xOffset > 0 ? -0.04 : 0.04;
+      cornerPost.castShadow = true;
+      cabin.add(cornerPost);
+    });
+
     const door = new THREE.Mesh(new THREE.BoxGeometry(0.95, 1.42, 0.08), this.materials.barkDark);
     door.position.set(-0.62, 0.8, -1.91);
     door.castShadow = true;
@@ -2254,6 +2349,12 @@ export class World {
     chimneyCap.position.set(1.18, 3.68, 0.72);
     chimneyCap.castShadow = true;
     cabin.add(chimneyCap);
+
+    const loftWindow = new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.38, 0.065), this.materials.warmWindow);
+    loftWindow.position.set(0.08, 2.18, -2.02);
+    const loftTrim = new THREE.Mesh(new THREE.BoxGeometry(0.82, 0.08, 0.08), this.materials.cutWood);
+    loftTrim.position.set(0.08, 1.92, -2.04);
+    cabin.add(loftWindow, loftTrim);
 
     this.scene.add(cabin);
     this.colliders.push(body, roofLeft, roofRight, chimney);
@@ -3265,6 +3366,43 @@ export class World {
     ];
   }
 
+  registerSafeZones() {
+    const safeZoneSpecs = [
+      { id: "starting-camp", name: "Starting Camp", x: -15, z: -6, radius: 17 },
+      { id: "training-grounds", name: "Training Grounds", x: -2, z: -18, radius: 22 },
+      { id: "archers-guild", name: "Archer's Guild", x: this.archersGuild?.x ?? -42, z: this.archersGuild?.z ?? -39, radius: 30 },
+      { id: "guild-village", name: "Guild Village", x: this.archersGuild?.x ?? -42, z: (this.archersGuild?.z ?? -39) + 3, radius: 34 },
+      { id: "hall-of-arrows", name: "Hall of Arrows", x: this.hallOfArrows?.x ?? -76, z: this.hallOfArrows?.z ?? 47, radius: 12 },
+      { id: "mountain-fortress", name: "Mountain Fortress", x: this.mountainFortress?.x ?? -92, z: this.mountainFortress?.z ?? 74, radius: 16 },
+      { id: "archers-lodge", name: "Archer's Lodge", x: this.archersLodge?.x ?? -73, z: this.archersLodge?.z ?? 62, radius: 14 },
+      { id: "hunters-cabin", name: "Hunter's Cabin", x: this.huntersCabin?.x ?? -38, z: this.huntersCabin?.z ?? 9, radius: 18 },
+      { id: "frontier-outpost", name: "Frontier Outpost", x: this.frontierOutpost?.x ?? 136, z: this.frontierOutpost?.z ?? -142, radius: 20 },
+      { id: "coastal-harbor", name: "Coastal Harbor", x: -144, z: -148, radius: 19 },
+    ];
+
+    this.safeZones = safeZoneSpecs
+      .filter((zone) => Number.isFinite(zone.x) && Number.isFinite(zone.z))
+      .map((zone) => ({
+        ...zone,
+        position: new THREE.Vector3(zone.x, 0, zone.z),
+      }));
+  }
+
+  getSafeZoneAt(position) {
+    if (!position || !this.safeZones?.length) {
+      return null;
+    }
+    return this.safeZones.find((zone) => {
+      const dx = position.x - zone.position.x;
+      const dz = position.z - zone.position.z;
+      return dx * dx + dz * dz <= zone.radius * zone.radius;
+    }) ?? null;
+  }
+
+  isSafeZone(position) {
+    return Boolean(this.getSafeZoneAt(position));
+  }
+
   getRegionAt(position) {
     if (!this.regions?.length) {
       return null;
@@ -3567,13 +3705,24 @@ export class World {
     const y = this.terrain.getHeightAt(x, z);
     const group = new THREE.Group();
     group.position.set(x, y, z);
-    const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.34, height, 8), this.materials.bark);
+    const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.38, height, 9), this.materials.bark);
     trunk.position.y = height * 0.5;
     trunk.rotation.z = Math.sin(index) * 0.08;
-    const crown = new THREE.Mesh(new THREE.SphereGeometry(1.05, 12, 8), index % 2 ? this.materials.frontierGrassDark : this.materials.frontierGrass);
-    crown.position.set(0.18, height + 0.1, 0);
-    crown.scale.set(1.28, 0.58, 1.1);
-    group.add(trunk, crown);
+    group.add(trunk);
+    for (let tier = 0; tier < 3; tier += 1) {
+      const crown = new THREE.Mesh(new THREE.DodecahedronGeometry(0.92 - tier * 0.08, 1), (tier + index) % 2 ? this.materials.frontierGrassDark : this.materials.frontierGrass);
+      crown.position.set(Math.sin(index + tier) * 0.22, height * (0.78 + tier * 0.12), Math.cos(index * 0.6 + tier) * 0.18);
+      crown.scale.set(1.42 - tier * 0.12, 0.54, 1.08 - tier * 0.08);
+      crown.rotation.y = index * 0.27 + tier * 0.4;
+      group.add(crown);
+    }
+    for (let rootIndex = 0; rootIndex < 3; rootIndex += 1) {
+      const angle = index * 0.7 + rootIndex * 2.1;
+      const root = new THREE.Mesh(new THREE.CapsuleGeometry(0.045, 0.72, 4, 6), this.materials.barkDark);
+      root.position.set(Math.sin(angle) * 0.36, 0.12, Math.cos(angle) * 0.36);
+      root.rotation.set(Math.PI / 2, 0, -angle);
+      group.add(root);
+    }
     this.scene.add(group);
     this.addCollisionCylinder(x, z, 0.42, height);
   }
@@ -3759,12 +3908,21 @@ export class World {
       const porch = new THREE.Mesh(new THREE.BoxGeometry(width * 0.72, 0.16, 0.78), this.materials.cutWood);
       porch.position.set(0, 0.18, -depth * 0.5 - 0.42);
       group.add(porch);
+      [-0.38, 0.38].forEach((side) => {
+        const porchPost = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.075, 1.18, 7), this.materials.barkDark);
+        porchPost.position.set(side * width * 0.55, 0.76, -depth * 0.5 - 0.72);
+        group.add(porchPost);
+      });
     }
     if (options.chimney) {
       const chimney = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.22, 1.12, 7), this.materials.darkStone);
       chimney.position.set(width * 0.28, height + 1.04, depth * 0.16);
       chimney.rotation.z = -0.06;
       group.add(chimney);
+      const chimneyCap = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.12, 0.46), this.materials.ancientStone);
+      chimneyCap.position.set(width * 0.28, height + 1.64, depth * 0.16);
+      chimneyCap.rotation.y = 0.15;
+      group.add(chimneyCap);
     }
     if (options.toolRack) {
       this.addToolRackToGroup(group, width * 0.5 + 0.08, 0.72, 0.35);
@@ -3783,6 +3941,14 @@ export class World {
       hay.position.set(-width * 0.28, 0.3, depth * 0.08);
       hay.rotation.z = Math.PI / 2;
       group.add(hay);
+    }
+
+    if (!options.openFront && width > 3.2) {
+      const rearLeanTo = new THREE.Mesh(new THREE.BoxGeometry(width * 0.46, 0.13, depth * 0.56), options.roof ?? this.materials.barkDark);
+      rearLeanTo.position.set(-width * 0.28, height * 0.84, depth * 0.62);
+      rearLeanTo.rotation.z = -0.18;
+      rearLeanTo.rotation.y = 0.02;
+      group.add(rearLeanTo);
     }
 
     group.traverse((child) => {
@@ -3849,6 +4015,12 @@ export class World {
       const awningRight = awningLeft.clone();
       awningRight.position.x = 0.38;
       awningRight.rotation.z = 0.16;
+      [-0.52, 0, 0.52].forEach((frillZ) => {
+        const frill = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.045, 0.32, 7), clothMaterial);
+        frill.position.set(0, 1.04, frillZ);
+        frill.rotation.z = Math.PI / 2;
+        group.add(frill);
+      });
       const goods = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.22, 0.26, 8), index % 2 ? this.materials.rope : this.materials.frontierFlower);
       goods.position.set(0.46, 0.42, 0.3);
       group.add(counter, awningLeft, awningRight, goods);
@@ -4753,6 +4925,45 @@ export class World {
     hallLight.position.set(origin.x, groundY + 1.7, origin.z + 2.3);
     this.scene.add(hallLight);
 
+    const ceremonialBeam = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.24, 10.8, 9), this.materials.cutWood);
+    ceremonialBeam.position.set(0, 4.15, 0.1);
+    ceremonialBeam.rotation.x = Math.PI / 2;
+    ceremonialBeam.castShadow = true;
+    hallDetails.add(ceremonialBeam);
+
+    [-1, 1].forEach((side) => {
+      for (let index = 0; index < 4; index += 1) {
+        const pillar = new THREE.Group();
+        pillar.position.set(side * (1.45 + index * 1.08), 1.65, -1.85 + index * 0.92);
+        pillar.rotation.z = side * (0.012 + index * 0.006);
+        const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.3, 3.25, 10), this.materials.masterMarble);
+        shaft.position.y = 1.6;
+        const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.36, 0.42, 0.18, 10), this.materials.masterBronze);
+        cap.position.y = 3.28;
+        const plinth = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.48, 0.18, 10), this.materials.masterBronze);
+        plinth.position.y = -0.06;
+        pillar.add(shaft, cap, plinth);
+        pillar.traverse((child) => {
+          if (child.isMesh) {
+            child.castShadow = true;
+            child.receiveShadow = true;
+          }
+        });
+        hallDetails.add(pillar);
+      }
+
+      const balconyRail = new THREE.Mesh(new THREE.BoxGeometry(4.4, 0.14, 0.14), this.materials.barkDark);
+      balconyRail.position.set(side * 2.75, 2.72, 2.34);
+      balconyRail.rotation.z = side * -0.02;
+      balconyRail.castShadow = true;
+      hallDetails.add(balconyRail);
+    });
+
+    const masterCrest = this.createGuildSymbol(1.85, { gold: this.materials.masterBronze, dark: this.materials.banner });
+    masterCrest.position.set(0, 3.52, -2.82);
+    masterCrest.rotation.y = Math.PI;
+    hallDetails.add(masterCrest);
+
     this.scene.add(hallDetails);
     this.addLegendaryBowDisplays(origin, groundY);
   }
@@ -4945,6 +5156,18 @@ export class World {
       asymmetry: -0.12,
     });
     keep.add(base, upper, roof);
+    [-2.4, -1.2, 0, 1.2, 2.4].forEach((xOffset, index) => {
+      const verticalRib = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.075, 2.28, 7), index % 2 ? this.materials.warmTrim : this.materials.barkDark);
+      verticalRib.position.set(xOffset, 1.38, -1.42);
+      verticalRib.castShadow = true;
+      keep.add(verticalRib);
+    });
+    [-1.75, 1.75].forEach((xOffset) => {
+      const carvedWindow = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.24, 0.08, 10), this.materials.warmWindow);
+      carvedWindow.position.set(xOffset, 2.1, -1.48);
+      carvedWindow.rotation.x = Math.PI / 2;
+      keep.add(carvedWindow);
+    });
     this.addBuildingCraftDetails(keep, 5.2, 2.2, 2.0, { trim: this.materials.warmTrim, beam: this.materials.barkDark });
     group.add(keep);
 
@@ -5018,6 +5241,10 @@ export class World {
       group.add(rail);
     });
 
+    this.addFortressDistantCrown(group);
+    this.addFortressCliffsideAdditions(group);
+    this.addFortressEntryDepth(group);
+
     const entrance = new THREE.Group();
     entrance.position.set(0, 0.28, 5.3);
     const platform = new THREE.Mesh(new THREE.CylinderGeometry(2.45, 2.85, 0.38, 18), this.materials.masterMarble);
@@ -5045,6 +5272,8 @@ export class World {
     group.add(entrance);
 
     this.scene.add(group);
+    this.addFortressLifeDetails(origin, y);
+    this.addFortressServiceInteractables(origin, y);
 
     const worldEntrance = this.localToWorldPoint(origin, 0, 5.3);
     const entranceY = this.terrain.getHeightAt(worldEntrance.x, worldEntrance.z);
@@ -5072,6 +5301,264 @@ export class World {
 
     this.addCollisionBox(origin.x, origin.z, 12.0, 7.2, 8.6, origin.yaw);
     this.addCollisionCylinder(worldEntrance.x, worldEntrance.z, 2.5, 0.6);
+  }
+
+  addFortressDistantCrown(group) {
+    const mountainBack = new THREE.Group();
+    mountainBack.position.set(0, 2.0, -3.8);
+    const ridges = [
+      [-5.6, 4.8, -0.2, 4.8, 8.8, 3.2, -0.16],
+      [0.2, 5.75, -0.65, 6.8, 10.4, 3.7, 0.04],
+      [5.7, 4.95, -0.05, 4.6, 8.4, 3.0, 0.18],
+    ];
+    ridges.forEach(([x, y, z, width, height, depth, roll], index) => {
+      const ridge = new THREE.Mesh(new THREE.DodecahedronGeometry(1, 1), index === 1 ? this.materials.darkStone : this.materials.ancientStone);
+      ridge.position.set(x, y, z);
+      ridge.scale.set(width * 0.5, height * 0.5, depth * 0.5);
+      ridge.rotation.set(0.12, index * 0.38, roll);
+      ridge.castShadow = true;
+      ridge.receiveShadow = true;
+      mountainBack.add(ridge);
+    });
+
+    const centralSpire = new THREE.Group();
+    centralSpire.position.set(0.35, 8.4, -1.2);
+    const base = new THREE.Mesh(new THREE.CylinderGeometry(1.0, 1.35, 3.7, 10), this.materials.darkStone);
+    base.position.y = 1.85;
+    const crownWalk = new THREE.Mesh(new THREE.CylinderGeometry(1.48, 1.62, 0.28, 10), this.materials.warmTrim);
+    crownWalk.position.y = 3.32;
+    const roof = this.createLayeredGableRoof(2.7, 2.1, 3.65, this.materials.barkDark, {
+      pitch: 0.55,
+      overhang: 0.26,
+      thickness: 0.2,
+      asymmetry: 0.08,
+    });
+    roof.rotation.y = Math.PI / 4;
+    const beacon = new THREE.Mesh(new THREE.SphereGeometry(0.28, 12, 8), this.materials.warmWindow);
+    beacon.position.y = 4.72;
+    centralSpire.add(base, crownWalk, roof, beacon);
+
+    const beaconLight = new THREE.PointLight(0xffbf6f, 0.62, 20, 2.2);
+    beaconLight.position.set(0.35, 13.2, -5.0);
+    group.add(beaconLight);
+
+    [-1, 1].forEach((side) => {
+      const shoulderTower = new THREE.Group();
+      shoulderTower.position.set(side * 5.7, 6.55, -1.35);
+      const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.72, 0.96, 3.2, 9), this.materials.ancientStone);
+      shaft.position.y = 1.6;
+      const cap = new THREE.Mesh(new THREE.CylinderGeometry(1.08, 1.2, 0.25, 9), this.materials.warmTrim);
+      cap.position.y = 2.96;
+      const pennantPole = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.045, 1.55, 6), this.materials.barkDark);
+      pennantPole.position.set(side * 0.28, 3.78, 0);
+      const pennant = new THREE.Mesh(new THREE.ConeGeometry(0.2, 0.62, 3), side > 0 ? this.materials.banner : this.materials.targetGold);
+      pennant.position.set(side * 0.55, 3.95, 0.03);
+      pennant.rotation.z = side > 0 ? -Math.PI / 2 : Math.PI / 2;
+      shoulderTower.add(shaft, cap, pennantPole, pennant);
+      shoulderTower.traverse((child) => {
+        if (child.isMesh) {
+          child.castShadow = true;
+          child.receiveShadow = true;
+        }
+      });
+      mountainBack.add(shoulderTower);
+    });
+
+    centralSpire.traverse((child) => {
+      if (child.isMesh) {
+        child.castShadow = true;
+        child.receiveShadow = true;
+      }
+    });
+    mountainBack.add(centralSpire);
+    group.add(mountainBack);
+  }
+
+  addFortressCliffsideAdditions(group) {
+    const walkways = [
+      [-5.2, 5.1, 0.95, 3.3, 0.22, 1.0, -0.18],
+      [5.4, 5.4, 0.65, 3.6, 0.22, 0.95, 0.16],
+      [0.1, 6.25, -0.65, 5.4, 0.2, 0.82, 0.02],
+    ];
+    walkways.forEach(([x, y, z, width, height, depth, rotation]) => {
+      const terrace = new THREE.Mesh(new THREE.BoxGeometry(width, height, depth), this.materials.cutWood);
+      terrace.position.set(x, y, z);
+      terrace.rotation.y = rotation;
+      terrace.castShadow = true;
+      terrace.receiveShadow = true;
+      group.add(terrace);
+
+      [-0.42, 0, 0.42].forEach((offset) => {
+        const support = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.11, 3.2, 7), this.materials.barkDark);
+        support.position.set(x + offset * width, y - 1.45, z + depth * 0.42);
+        support.rotation.z = offset * 0.18;
+        support.castShadow = true;
+        group.add(support);
+      });
+    });
+
+    const windows = [
+      [-2.7, 5.35, 0.14], [-1.2, 5.55, -0.05], [1.15, 5.5, -0.06], [2.75, 5.28, 0.12],
+      [-4.85, 3.95, 1.1], [4.8, 4.1, 0.92],
+    ];
+    windows.forEach(([x, y, z], index) => {
+      const window = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.54, 0.08), index % 2 ? this.materials.warmWindow : this.materials.masterBlue);
+      window.position.set(x, y, z);
+      window.castShadow = false;
+      group.add(window);
+    });
+
+    [-1, 1].forEach((side) => {
+      const hangingBanner = new THREE.Mesh(new THREE.BoxGeometry(0.48, 2.1, 0.08), this.materials.banner);
+      hangingBanner.position.set(side * 3.25, 4.38, 2.58);
+      hangingBanner.rotation.z = side * 0.04;
+      const guildMark = this.createGuildSymbol(0.55);
+      guildMark.position.set(side * 3.25, 4.72, 2.52);
+      guildMark.rotation.y = Math.PI;
+      hangingBanner.castShadow = true;
+      group.add(hangingBanner, guildMark);
+    });
+  }
+
+  addFortressEntryDepth(group) {
+    const innerPortal = new THREE.Group();
+    innerPortal.position.set(0, 1.0, 4.28);
+    const shadowDoor = new THREE.Mesh(new THREE.BoxGeometry(2.65, 2.45, 0.18), this.materials.caveStone);
+    shadowDoor.position.set(0, 1.18, -0.1);
+    const warmHall = new THREE.Mesh(new THREE.BoxGeometry(1.8, 1.65, 0.08), this.materials.warmWindow);
+    warmHall.position.set(0, 1.38, -0.22);
+    warmHall.scale.set(0.8, 1, 1);
+    const leftSconce = new THREE.Mesh(new THREE.SphereGeometry(0.12, 8, 6), this.materials.warmWindow);
+    leftSconce.position.set(-1.12, 1.5, 0.02);
+    const rightSconce = leftSconce.clone();
+    rightSconce.position.x = 1.12;
+    const stairHint = new THREE.Mesh(new THREE.BoxGeometry(2.05, 0.12, 0.48), this.materials.masterMarble);
+    stairHint.position.set(0, 0.38, 0.38);
+    stairHint.rotation.x = -0.18;
+    innerPortal.add(shadowDoor, warmHall, leftSconce, rightSconce, stairHint);
+    innerPortal.traverse((child) => {
+      if (child.isMesh) {
+        child.castShadow = true;
+        child.receiveShadow = true;
+      }
+    });
+    group.add(innerPortal);
+  }
+
+  addFortressLifeDetails(origin, groundY) {
+    const people = [
+      [-4.9, 2.8, 0.65, "trainer"],
+      [-2.1, 5.6, 0.15, "guard"],
+      [2.8, 5.2, -0.3, "worker"],
+      [5.7, 2.2, -0.62, "guard"],
+      [0.8, 6.05, 0.35, "archer"],
+    ];
+    people.forEach(([localX, localZ, yaw, role]) => {
+      const point = this.localToWorldPoint(origin, localX, localZ);
+      const person = this.createFortressGuildMember(role);
+      person.position.set(point.x, this.terrain.getHeightAt(point.x, point.z) + 0.05, point.z);
+      person.rotation.y = origin.yaw + yaw;
+      this.scene.add(person);
+    });
+
+    const trainingPoint = this.localToWorldPoint(origin, -6.8, 6.9);
+    this.addTarget(trainingPoint.x, trainingPoint.z, origin.yaw + 0.82, 0.42, {
+      challengeId: "fortressTraining",
+      challengeLabel: "Fortress Training Mark",
+      yOffset: 1.25,
+    });
+
+    const serviceLight = new THREE.PointLight(0xffb65d, 0.54, 13, 2);
+    serviceLight.position.set(origin.x - 2.3, groundY + 4.3, origin.z + 1.8);
+    this.scene.add(serviceLight);
+  }
+
+  createFortressGuildMember(role = "archer") {
+    const group = new THREE.Group();
+    const cloakMaterial = role === "worker" ? this.materials.cutWood : role === "guard" ? this.materials.banner : this.materials.masterBlue;
+    const body = new THREE.Mesh(new THREE.CapsuleGeometry(0.16, 0.74, 5, 9), cloakMaterial);
+    body.position.y = 0.82;
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.16, 10, 8), this.materials.parchment);
+    head.position.y = 1.36;
+    const hood = new THREE.Mesh(new THREE.ConeGeometry(0.22, 0.34, 8), this.materials.barkDark);
+    hood.position.y = 1.52;
+    const bow = new THREE.Mesh(new THREE.TorusGeometry(0.34, 0.016, 6, 24, Math.PI * 1.36), this.materials.rope);
+    bow.position.set(0.28, 0.96, 0.03);
+    bow.rotation.set(0, Math.PI / 2, Math.PI / 2);
+    const tool = new THREE.Mesh(new THREE.CylinderGeometry(0.014, 0.018, role === "worker" ? 0.6 : 0.78, 5), role === "worker" ? this.materials.cutWood : this.materials.targetGold);
+    tool.position.set(-0.18, 0.88, 0.03);
+    tool.rotation.z = role === "worker" ? 0.3 : Math.PI / 2;
+    group.add(body, head, hood, bow, tool);
+    group.traverse((child) => {
+      if (child.isMesh) {
+        child.castShadow = true;
+        child.receiveShadow = true;
+      }
+    });
+    return group;
+  }
+
+  addFortressServiceInteractables(origin, groundY) {
+    const services = [
+      {
+        id: "fortress-guild-records",
+        name: "Guild Records",
+        local: [-3.8, 5.15],
+        text: "Fortress records track Master Archer titles, legendary bow discoveries, and frontier reports for future guild ranks.",
+      },
+      {
+        id: "fortress-bowyer-alcove",
+        name: "Fortress Bowyer Alcove",
+        local: [3.95, 4.95],
+        text: "Seasoned bowyers tune strings here before trials. Future bow upgrades can plug into this alcove without moving the fortress.",
+      },
+      {
+        id: "fortress-map-balcony",
+        name: "Strategic Map Balcony",
+        local: [0.15, 7.25],
+        text: "A high balcony overlooks the guild routes. It is a natural home for future region maps, hunts, and post-Arc-1 missions.",
+      },
+    ];
+
+    services.forEach((service) => {
+      const point = this.localToWorldPoint(origin, service.local[0], service.local[1]);
+      this.interactables.push({
+        id: service.id,
+        type: "lore-note",
+        name: service.name,
+        prompt: "E Inspect service",
+        position: new THREE.Vector3(point.x, this.terrain.getHeightAt(point.x, point.z) + 1.0, point.z),
+        radius: 3.4,
+        text: service.text,
+      });
+    });
+
+    const plaquePoint = this.localToWorldPoint(origin, 0, 3.95);
+    const plaqueY = this.terrain.getHeightAt(plaquePoint.x, plaquePoint.z);
+    const plaque = new THREE.Group();
+    plaque.position.set(plaquePoint.x, plaqueY + 0.85, plaquePoint.z);
+    plaque.rotation.y = origin.yaw;
+    const back = new THREE.Mesh(new THREE.BoxGeometry(1.05, 0.68, 0.08), this.materials.masterBronze);
+    const mark = this.createGuildSymbol(0.62);
+    mark.position.z = -0.06;
+    plaque.add(back, mark);
+    plaque.traverse((child) => {
+      if (child.isMesh) {
+        child.castShadow = true;
+        child.receiveShadow = true;
+      }
+    });
+    this.scene.add(plaque);
+
+    this.interactables.push({
+      id: "fortress-master-archer-plaque",
+      type: "lore-note",
+      name: "Master Archer Plaque",
+      prompt: "E Inspect plaque",
+      position: new THREE.Vector3(plaquePoint.x, plaqueY + 1.2, plaquePoint.z),
+      radius: 3,
+      text: "A blank bronze plate waits for every archer who earns the title. After the trials, this is where the fortress remembers you.",
+    });
   }
 
   addArchersLodge() {
@@ -7430,6 +7917,29 @@ export class World {
       trim: new THREE.MeshStandardMaterial({ color: options.sign ?? 0xe6b75d, roughness: 0.68, emissive: options.sign ?? 0xe6b75d, emissiveIntensity: 0.04 }),
     });
 
+    if (label === "Inn") {
+      const balcony = new THREE.Mesh(new THREE.BoxGeometry(width * 0.56, 0.14, 0.42), this.materials.cutWood);
+      balcony.position.set(0.42, height * 0.75, -depth * 0.62);
+      const rail = new THREE.Mesh(new THREE.BoxGeometry(width * 0.5, 0.08, 0.08), this.materials.barkDark);
+      rail.position.set(0.42, height * 0.98, -depth * 0.84);
+      group.add(balcony, rail);
+    }
+
+    if (label === "Smith") {
+      const forgeGlow = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.52, 0.08), this.materials.lavaGlow ?? this.materials.warmWindow);
+      forgeGlow.position.set(width * 0.28, 0.72, -depth * 0.565);
+      const hood = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.36, 0.16), this.materials.obsidian ?? this.materials.darkStone);
+      hood.position.set(width * 0.28, 1.12, -depth * 0.58);
+      group.add(forgeGlow, hood);
+    }
+
+    if (label === "Bowyer") {
+      const curvedSign = this.createGuildSymbol(0.38, { color: options.sign ?? 0xe6b75d });
+      curvedSign.position.set(-width * 0.32, height + 0.38, -depth * 0.58);
+      curvedSign.rotation.y = Math.PI;
+      group.add(curvedSign);
+    }
+
     if (options.chimney) {
       const chimney = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.25, 1.25, 7), this.materials.darkStone);
       chimney.position.set(width * 0.28, height + 0.92, depth * 0.16);
@@ -7451,6 +7961,14 @@ export class World {
         bow.rotation.set(0, Math.PI / 2, Math.PI / 2);
         group.add(bow);
       });
+    }
+
+    if (label === "Home") {
+      const sideShed = new THREE.Mesh(new THREE.BoxGeometry(width * 0.42, 0.12, depth * 0.52), options.roof ?? this.materials.barkDark);
+      sideShed.position.set(-width * 0.52, height * 0.72, depth * 0.08);
+      sideShed.rotation.z = 0.2;
+      sideShed.rotation.y = -0.04;
+      group.add(sideShed);
     }
 
     group.traverse((child) => {
@@ -7476,6 +7994,7 @@ export class World {
       pitch: 0.34,
       overhang: 0.38,
       asymmetry: 0.06,
+      shingleRows: 3,
     });
     group.add(roof);
     [-1.8, 0, 1.8].forEach((x) => {
@@ -7490,6 +8009,11 @@ export class World {
     hay.position.set(-1.2, 0.28, 0.4);
     hay.rotation.z = Math.PI / 2;
     group.add(hay);
+    const tackRack = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.92, 1.9), this.materials.barkDark);
+    tackRack.position.set(2.1, 0.76, 0);
+    const waterTrough = new THREE.Mesh(new THREE.BoxGeometry(1.3, 0.28, 0.48), this.materials.cutWood);
+    waterTrough.position.set(0.85, 0.2, 1.15);
+    group.add(tackRack, waterTrough);
     this.scene.add(group);
     this.addCollisionBox(point.x, point.z, 4.9, 0.4, 2.2, yaw);
   }
@@ -7516,6 +8040,12 @@ export class World {
       const awningRight = awningLeft.clone();
       awningRight.position.x = 0.42;
       awningRight.rotation.z = 0.16;
+      [-0.48, 0, 0.48].forEach((frillZ) => {
+        const frill = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.045, 0.32, 7), clothMaterial);
+        frill.position.set(0, 1.16, frillZ);
+        frill.rotation.z = Math.PI / 2;
+        group.add(frill);
+      });
       [-0.72, 0.72].forEach((xOffset) => {
         const post = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.055, 1.18, 6), this.materials.barkDark);
         post.position.set(xOffset, 0.72, -0.42);
@@ -8312,6 +8842,17 @@ export class World {
     const roof = this.createLayeredGableRoof(5.3, 4.4, 3.45, this.materials.weatheredDock, { pitch: 0.38, overhang: 0.52, asymmetry: 0.12 });
     this.addBuildingCraftDetails(fort, 4.9, 4.0, 3.1, { trim: this.materials.kingdomGold, beam: this.materials.kingdomDarkStone });
     fort.add(base, keep, roof);
+
+    [-1.9, 0, 1.9].forEach((xOffset, index) => {
+      const buttress = new THREE.Mesh(new THREE.BoxGeometry(0.34, 2.35 - index * 0.14, 0.5), this.materials.kingdomDarkStone);
+      buttress.position.set(xOffset, 1.45, -2.22);
+      buttress.rotation.z = (index - 1) * 0.035;
+      fort.add(buttress);
+      const window = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.18, 0.08, 9), this.materials.warmWindow);
+      window.position.set(xOffset + 0.48, 2.26, -2.27);
+      window.rotation.x = Math.PI / 2;
+      fort.add(window);
+    });
 
     [[-2.9, -1.8], [2.8, -1.7], [-2.5, 1.9], [2.4, 1.75]].forEach(([x, z], index) => {
       const tower = new THREE.Mesh(new THREE.CylinderGeometry(0.68, 0.86, 3.7 - index * 0.2, 8), this.materials.kingdomDarkStone);

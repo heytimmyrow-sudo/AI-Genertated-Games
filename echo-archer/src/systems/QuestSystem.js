@@ -19,6 +19,164 @@ const TRAINING_LANDMARK_IDS = new Set([
   "guild-village",
 ]);
 
+const MAIN_QUEST_OBJECTIVES = [
+  {
+    id: "rowan-targets",
+    title: "The Path of the Master Archer",
+    objective: "Complete Rowan's target lesson at the training clearing.",
+    location: "Starting Camp",
+  },
+  {
+    id: "rowan-creatures",
+    title: "The Path of the Master Archer",
+    objective: "Defeat creatures near the training grounds without losing distance.",
+    location: "Training Area",
+  },
+  {
+    id: "rowan-landmarks",
+    title: "The Path of the Master Archer",
+    objective: "Discover the key landmarks around the guild grounds.",
+    location: "Forest Meadow",
+    landmark: true,
+  },
+  {
+    id: "master-trials",
+    title: "The Path of the Master Archer",
+    objective: "Seek the Hall of Arrows and complete the Master Archer Trials.",
+    location: "Hall of Arrows",
+    landmark: true,
+  },
+  {
+    id: "frontier-expedition",
+    title: "The Path of the Master Archer",
+    objective: "Begin Arc 2 by establishing the First Expedition beyond the Frontier Gate.",
+    location: "Frontier Outpost",
+    landmark: true,
+  },
+  {
+    id: "lost-kingdom",
+    title: "The Path of the Master Archer",
+    objective: "Investigate the Lost Kingdom records beneath the frontier.",
+    location: "King's Gate",
+    landmark: true,
+  },
+  {
+    id: "celestial-expanse",
+    title: "The Path of the Master Archer",
+    objective: "Follow the First Sky mystery into the Celestial Expanse.",
+    location: "Observatory Prime",
+    landmark: true,
+  },
+  {
+    id: "shattered-coast",
+    title: "The Path of the Master Archer",
+    objective: "Investigate the Sea of Forgotten Kings along the Shattered Coast.",
+    location: "Stormwatch Fortress",
+    landmark: true,
+  },
+  {
+    id: "veiled-wilds",
+    title: "The Path of the Master Archer",
+    objective: "Follow the Hidden Road through the Veiled Wilds.",
+    location: "Worldroot Grove",
+    landmark: true,
+  },
+  {
+    id: "future-frontier",
+    title: "The Path of the Master Archer",
+    objective: "Main Quest Updated: the frontier mystery continues in future Arc 2 and Arc 3 chapters.",
+    location: "Unknown Lands",
+  },
+];
+
+const SIDE_QUEST_DEFINITIONS = [
+  {
+    id: "rowan-targets",
+    title: "Rowan's Mark",
+    type: "training",
+    giver: "Rowan",
+    location: "Training Clearing",
+    objective: "Hit 10 targets.",
+    description: "Rowan watches your rhythm and release.",
+    rewards: "90 XP, 1 upgrade point",
+    unlock: "arc1",
+    tracking: true,
+  },
+  {
+    id: "rowan-creatures",
+    title: "Quiet the Brush",
+    type: "training",
+    giver: "Rowan",
+    location: "Forest Meadow",
+    objective: "Defeat 4 creatures.",
+    description: "Thin nearby threats without letting them crowd you.",
+    rewards: "130 XP, 1 upgrade point",
+    unlock: "after-rowan-targets",
+    tracking: true,
+  },
+  {
+    id: "rowan-landmarks",
+    title: "Know the Grounds",
+    type: "exploration",
+    giver: "Rowan",
+    location: "Guild Grounds",
+    objective: "Discover key landmarks.",
+    description: "Learn the nearby world before following distant rumors.",
+    rewards: "160 XP, 1 upgrade point",
+    unlock: "after-rowan-creatures",
+    tracking: true,
+    landmark: true,
+  },
+  {
+    id: "blacksmith-help",
+    title: "The Blacksmith Needs Help",
+    type: "village",
+    giver: "Guild Blacksmith",
+    location: "Guild Village",
+    objective: "Check the forge notice after becoming Master Archer.",
+    description: "The forge has work fit for a proven archer.",
+    rewards: "Gold, village reputation",
+    unlock: "post-arc1",
+    tracking: true,
+  },
+  {
+    id: "village-deliveries",
+    title: "Village Deliveries",
+    type: "delivery",
+    giver: "Innkeeper",
+    location: "Guild Village",
+    objective: "Ask the innkeeper about errands after Arc 1.",
+    description: "Simple village help that keeps the world alive.",
+    rewards: "Gold, rumors",
+    unlock: "post-arc1",
+    tracking: true,
+  },
+  {
+    id: "hunting-requests",
+    title: "Hunting Requests",
+    type: "hunting",
+    giver: "Quest Board",
+    location: "Guild Village",
+    objective: "Review the quest board for hunting work.",
+    description: "Repeatable contracts open after the guild recognizes your title.",
+    rewards: "XP, gold, guild reputation",
+    unlock: "post-arc1",
+    tracking: true,
+  },
+  {
+    id: "frontier-rumors",
+    title: "Frontier Rumors",
+    type: "exploration",
+    giver: "Explorer",
+    location: "Frontier Outpost",
+    objective: "Speak with explorers about new paths beyond Arc 1.",
+    description: "Rumors point toward future expeditions and hidden routes.",
+    rewards: "Lore, discovery leads",
+    unlock: "post-arc1",
+    tracking: true,
+  },
+];
+
 export class QuestSystem {
   constructor(scene, world, player, ui) {
     this.scene = scene;
@@ -32,10 +190,24 @@ export class QuestSystem {
       interactRadius: 4.2,
     });
     this.quests = [
-      { id: "rowan-targets", title: "Rowan's Mark", objective: "Hit 10 targets", progress: 0, goal: 10, complete: false, reward: SETTINGS.progression.questRewards.rowanTargets },
-      { id: "rowan-creatures", title: "Quiet the Brush", objective: "Defeat 4 creatures", progress: 0, goal: 4, complete: false, reward: SETTINGS.progression.questRewards.rowanCreatures },
-      { id: "rowan-landmarks", title: "Know the Grounds", objective: "Discover key landmarks", progress: 0, goal: this.getTrainingLandmarks().length || 12, complete: false, reward: SETTINGS.progression.questRewards.rowanLandmarks },
+      { id: "rowan-targets", title: "Rowan's Mark", type: "side", status: "active", objective: "Hit 10 targets", progress: 0, goal: 10, complete: false, reward: SETTINGS.progression.questRewards.rowanTargets },
+      { id: "rowan-creatures", title: "Quiet the Brush", type: "side", status: "locked", objective: "Defeat 4 creatures", progress: 0, goal: 4, complete: false, reward: SETTINGS.progression.questRewards.rowanCreatures },
+      { id: "rowan-landmarks", title: "Know the Grounds", type: "side", status: "locked", objective: "Discover key landmarks", progress: 0, goal: this.getTrainingLandmarks().length || 12, complete: false, reward: SETTINGS.progression.questRewards.rowanLandmarks },
     ];
+    this.mainQuest = {
+      id: "path-master-archer",
+      title: "The Path of the Master Archer",
+      objectiveIndex: 0,
+      objectives: MAIN_QUEST_OBJECTIVES.map((objective) => ({ ...objective, complete: false })),
+    };
+    this.sideQuestCatalog = SIDE_QUEST_DEFINITIONS.map((quest) => ({ ...quest }));
+    this.completedQuestHistory = [];
+    this.trackedSideQuestId = "rowan-targets";
+    this.unlockedSideQuestIds = new Set(["rowan-targets"]);
+    this.newSideQuestIds = new Set(["rowan-targets"]);
+    this.notifiedSideQuestIds = new Set();
+    this.notificationQueue = [];
+    this.menuOpen = false;
     this.activeQuestIndex = 0;
     this.discoveredLandmarks = new Set();
     this.dialogueTimer = 0;
@@ -45,10 +217,20 @@ export class QuestSystem {
     this.finderArrow = this.createFinderArrow();
     this.load();
     this.bindFinderButton();
+    this.bindQuestMenu();
+    this.bindQuestEvents();
+    this.syncQuestState();
     this.updateTracker();
+    this.renderQuestMenu();
   }
 
   update(deltaSeconds, input) {
+    if (input.wasPressed("KeyQ")) {
+      this.toggleQuestMenu();
+    }
+    if (this.menuOpen && input.wasPressed("Escape")) {
+      this.setQuestMenuOpen(false);
+    }
     this.trainer.update(this.player);
     this.trackLandmarkDiscovery();
     const nearTrainer = this.trainer.isPlayerNear(this.player);
@@ -107,6 +289,99 @@ export class QuestSystem {
     });
   }
 
+  bindQuestMenu() {
+    this.ui.questButton?.addEventListener("click", () => {
+      this.toggleQuestMenu();
+    });
+    this.ui.questSideButton?.addEventListener("click", () => {
+      this.toggleQuestMenu();
+    });
+    this.ui.questClose?.addEventListener("click", () => {
+      this.setQuestMenuOpen(false);
+    });
+    this.ui.questContent?.addEventListener("click", (event) => {
+      const button = event.target.closest?.("[data-track-quest]");
+      if (!button) {
+        return;
+      }
+      this.trackSideQuest(button.dataset.trackQuest);
+      window.dispatchEvent(new CustomEvent("echo-archer:sound", {
+        detail: { name: "uiClick", intensity: 0.58 },
+      }));
+    });
+  }
+
+  bindQuestEvents() {
+    window.addEventListener("echo-archer:quest-reward", (event) => this.handleQuestReward(event.detail ?? {}));
+    window.addEventListener("echo-archer:master-archer-complete", () => {
+      this.completeMainObjective("master-trials");
+      this.unlockPostArcSideQuests();
+    });
+    window.addEventListener("echo-archer:frontier-expedition-complete", () => this.completeMainObjective("frontier-expedition"));
+    window.addEventListener("echo-archer:lost-kingdom-complete", () => this.completeMainObjective("lost-kingdom"));
+    window.addEventListener("echo-archer:celestial-expanse-complete", () => this.completeMainObjective("celestial-expanse"));
+    window.addEventListener("echo-archer:shattered-coast-complete", () => this.completeMainObjective("shattered-coast"));
+    window.addEventListener("echo-archer:veiled-wilds-complete", () => this.completeMainObjective("veiled-wilds"));
+  }
+
+  toggleQuestMenu() {
+    this.setQuestMenuOpen(!this.menuOpen);
+  }
+
+  setQuestMenuOpen(open) {
+    this.menuOpen = Boolean(open);
+    this.ui.questMenu?.classList.toggle("visible", this.menuOpen);
+    document.body.classList.toggle("quests-open", this.menuOpen);
+    if (this.menuOpen) {
+      this.newSideQuestIds.clear();
+      this.renderQuestMenu();
+      this.updateQuestBadge();
+    }
+    window.dispatchEvent(new CustomEvent("echo-archer:sound", {
+      detail: { name: "uiClick", intensity: 0.55 },
+    }));
+  }
+
+  trackSideQuest(id) {
+    const quest = this.getSideQuestById(id);
+    if (!quest || quest.status === "locked" || quest.status === "completed") {
+      return;
+    }
+    this.trackedSideQuestId = id;
+    this.newSideQuestIds.delete(id);
+    this.updateTracker();
+    this.renderQuestMenu();
+    this.save();
+  }
+
+  showSideQuestAvailable(definition) {
+    if (!this.ui.sideNotifications || this.notifiedSideQuestIds.has(definition.id)) {
+      return;
+    }
+    this.notifiedSideQuestIds.add(definition.id);
+    const activeNotifications = this.ui.sideNotifications.querySelectorAll(".side-quest-notification").length;
+    if (activeNotifications >= 2) {
+      this.notificationQueue.push(definition);
+      return;
+    }
+    const notification = document.createElement("div");
+    notification.className = "side-quest-notification";
+    notification.innerHTML = `
+      <span>Side Quest Available</span>
+      <strong>${definition.title}</strong>
+      <small>${definition.giver} - ${definition.location}. ${definition.description ?? ""}</small>
+    `;
+    this.ui.sideNotifications.appendChild(notification);
+    window.setTimeout(() => {
+      notification.remove();
+      const next = this.notificationQueue.shift();
+      if (next) {
+        this.notifiedSideQuestIds.delete(next.id);
+        this.showSideQuestAvailable(next);
+      }
+    }, 4300);
+  }
+
   handleTargetHit() {
     const quest = this.getActiveQuest();
     if (quest?.id !== "rowan-targets") {
@@ -141,6 +416,14 @@ export class QuestSystem {
 
   completeQuest(quest) {
     quest.complete = true;
+    quest.status = "completed";
+    this.recordCompletedQuest({
+      id: quest.id,
+      title: quest.title,
+      type: "Side Quest",
+      rewards: this.formatReward(quest.reward),
+    });
+    this.completeMainObjective(quest.id);
     this.showToast(`Quest complete: ${quest.title}`);
     window.dispatchEvent(new CustomEvent("echo-archer:quest-reward", {
       detail: {
@@ -153,11 +436,18 @@ export class QuestSystem {
     }));
     if (this.activeQuestIndex < this.quests.length - 1) {
       this.activeQuestIndex += 1;
+      const nextQuest = this.getActiveQuest();
+      if (nextQuest && !nextQuest.complete) {
+        nextQuest.status = "active";
+        this.announceSideQuest(nextQuest.id);
+        this.trackedSideQuestId = nextQuest.id;
+      }
       this.showDialogue(this.getQuestIntro(this.getActiveQuest()));
     } else {
       this.showDialogue("Good work. The woods remember careful feet.");
     }
     this.save();
+    this.renderQuestMenu();
   }
 
   getActiveQuest() {
@@ -165,18 +455,224 @@ export class QuestSystem {
   }
 
   updateTracker() {
-    const quest = this.getActiveQuest();
-    if (!quest) {
-      this.ui.title.textContent = "Training Complete";
-      this.ui.objective.textContent = "Return to the clearing.";
+    const mainObjective = this.getCurrentMainObjective();
+    if (this.ui.title) {
+      this.ui.title.textContent = this.mainQuest.title;
+    }
+    if (this.ui.objective) {
+      this.ui.objective.textContent = this.formatMainObjective(mainObjective);
+    }
+    const tracked = this.getTrackedSideQuest();
+    if (this.ui.trackedSide) {
+      this.ui.trackedSide.hidden = !tracked;
+    }
+    if (tracked) {
+      this.ui.trackedSideTitle.textContent = tracked.title;
+      this.ui.trackedSideObjective.textContent = this.formatSideObjective(tracked);
+    }
+    this.updateQuestBadge();
+    this.updateFinderButton();
+  }
+
+  refreshHud() {
+    this.updateTracker();
+  }
+
+  getCurrentMainObjective() {
+    return this.mainQuest.objectives[this.mainQuest.objectiveIndex] ?? this.mainQuest.objectives[this.mainQuest.objectives.length - 1];
+  }
+
+  formatMainObjective(objective) {
+    if (!objective) {
+      return "Main Quest Updated: the adventure continues.";
+    }
+    return objective.objective;
+  }
+
+  getTrackedSideQuest() {
+    const quest = this.getSideQuestById(this.trackedSideQuestId);
+    if (!quest || quest.status === "locked" || quest.status === "completed") {
+      return null;
+    }
+    return quest;
+  }
+
+  formatSideObjective(sideQuest) {
+    const activeQuest = this.quests.find((quest) => quest.id === sideQuest.id);
+    if (activeQuest) {
+      return `${activeQuest.objective} (${activeQuest.progress}/${activeQuest.goal})`;
+    }
+    return sideQuest.objective;
+  }
+
+  getSideQuestById(id) {
+    const definition = this.sideQuestCatalog.find((quest) => quest.id === id);
+    if (!definition) {
+      return null;
+    }
+    const liveQuest = this.quests.find((quest) => quest.id === id);
+    const status = liveQuest?.status
+      ?? (this.unlockedSideQuestIds.has(id) ? "available" : definition.status)
+      ?? (definition.unlock === "post-arc1" ? "locked" : "available");
+    return {
+      ...definition,
+      status,
+      progress: liveQuest?.progress,
+      goal: liveQuest?.goal,
+      complete: liveQuest?.complete ?? status === "completed",
+      reward: liveQuest?.reward,
+    };
+  }
+
+  syncQuestState() {
+    this.quests.forEach((quest, index) => {
+      if (index <= this.activeQuestIndex || quest.complete) {
+        this.unlockedSideQuestIds.add(quest.id);
+      }
+      if (quest.complete) {
+        quest.status = "completed";
+        this.newSideQuestIds.delete(quest.id);
+        this.completeMainObjective(quest.id, { silent: true });
+        this.recordCompletedQuest({
+          id: quest.id,
+          title: quest.title,
+          type: "Side Quest",
+          rewards: this.formatReward(quest.reward),
+        }, { silent: true });
+        return;
+      }
+      if (index === this.activeQuestIndex) {
+        quest.status = "active";
+      } else if (index < this.activeQuestIndex) {
+        quest.status = "completed";
+      } else {
+        quest.status = "locked";
+      }
+    });
+    if (!this.getTrackedSideQuest()) {
+      this.trackedSideQuestId = this.getActiveQuest()?.id ?? null;
+    }
+    this.syncMainQuestFromExistingSaves();
+    this.updateQuestBadge();
+  }
+
+  syncMainQuestFromExistingSaves() {
+    const savedMilestones = [
+      ["echo-archer-master-trials-v1", "completed", "master-trials"],
+      ["echo-archer-frontier-expedition-v1", "complete", "frontier-expedition"],
+      ["echo-archer-lost-kingdom-v1", "complete", "lost-kingdom"],
+      ["echo-archer-celestial-expanse-v1", "complete", "celestial-expanse"],
+      ["echo-archer-shattered-coast-v1", "complete", "shattered-coast"],
+      ["echo-archer-veiled-wilds-v1", "complete", "veiled-wilds"],
+    ];
+    savedMilestones.forEach(([key, field, objectiveId]) => {
+      try {
+        const saved = JSON.parse(localStorage.getItem(key) ?? "{}");
+        if (saved?.[field]) {
+          this.completeMainObjective(objectiveId, { silent: true });
+        }
+      } catch {
+      }
+    });
+    if (this.mainQuest.objectives.find((objective) => objective.id === "master-trials")?.complete) {
+      SIDE_QUEST_DEFINITIONS
+        .filter((quest) => quest.unlock === "post-arc1")
+        .forEach((quest) => this.unlockedSideQuestIds.add(quest.id));
+    }
+  }
+
+  completeMainObjective(id, options = {}) {
+    const index = this.mainQuest.objectives.findIndex((objective) => objective.id === id);
+    if (index < 0) {
       return;
     }
+    const objective = this.mainQuest.objectives[index];
+    if (!objective.complete) {
+      objective.complete = true;
+      this.recordCompletedQuest({
+        id: `main-${objective.id}`,
+        title: objective.title,
+        type: "Main Milestone",
+        objective: objective.objective,
+        rewards: "Main Quest Updated",
+      }, { silent: true });
+    }
+    const nextIndex = this.mainQuest.objectives.findIndex((item) => !item.complete);
+    this.mainQuest.objectiveIndex = nextIndex >= 0 ? nextIndex : this.mainQuest.objectives.length - 1;
+    if (!options.silent) {
+      this.showToast("Main Quest Updated");
+      this.save();
+      this.renderQuestMenu();
+      this.updateTracker();
+    }
+  }
 
-    this.ui.title.textContent = quest.title;
-    this.ui.objective.textContent = quest.complete
-      ? "Training complete"
-      : `${quest.objective} (${quest.progress}/${quest.goal})`;
-    this.updateFinderButton();
+  handleQuestReward(detail) {
+    const questId = detail.questId;
+    if (!questId) {
+      return;
+    }
+    if (questId.startsWith("master-")) {
+      if (questId === "master-champion") {
+        this.completeMainObjective("master-trials");
+      }
+      return;
+    }
+    if (questId.startsWith("frontier-") && questId === "frontier-ironhorn") {
+      this.completeMainObjective("frontier-expedition");
+      return;
+    }
+    if (questId.startsWith("lost-kingdom-") && questId === "lost-kingdom-sentinel") {
+      this.completeMainObjective("lost-kingdom");
+    }
+  }
+
+  unlockPostArcSideQuests() {
+    SIDE_QUEST_DEFINITIONS
+      .filter((quest) => quest.unlock === "post-arc1")
+      .forEach((quest) => this.announceSideQuest(quest.id));
+    this.save();
+    this.renderQuestMenu();
+  }
+
+  announceSideQuest(id) {
+    const definition = this.sideQuestCatalog.find((quest) => quest.id === id);
+    if (!definition) {
+      return;
+    }
+    this.unlockedSideQuestIds.add(id);
+    this.newSideQuestIds.add(id);
+    this.showSideQuestAvailable(definition);
+    this.updateQuestBadge();
+  }
+
+  recordCompletedQuest(entry, options = {}) {
+    if (!entry?.id || this.completedQuestHistory.some((item) => item.id === entry.id)) {
+      return;
+    }
+    this.completedQuestHistory.push({
+      id: entry.id,
+      title: entry.title,
+      type: entry.type ?? "Quest",
+      objective: entry.objective ?? "",
+      rewards: entry.rewards ?? "",
+      completedAt: Date.now(),
+    });
+    if (!options.silent) {
+      this.renderQuestMenu();
+    }
+  }
+
+  formatReward(reward) {
+    if (!reward) {
+      return "";
+    }
+    const parts = [];
+    if (reward.xp) parts.push(`${reward.xp} XP`);
+    if (reward.upgradePoints) parts.push(`${reward.upgradePoints} upgrade point${reward.upgradePoints === 1 ? "" : "s"}`);
+    if (reward.gold) parts.push(`${reward.gold} gold`);
+    if (reward.reputation) parts.push(`${reward.reputation} reputation`);
+    return parts.join(", ");
   }
 
   updateFinderButton() {
@@ -192,6 +688,89 @@ export class QuestSystem {
       this.finderTarget = null;
       this.finderArrow.visible = false;
     }
+  }
+
+  updateQuestBadge() {
+    if (!this.ui.questBadge && !this.ui.questSideBadge) {
+      return;
+    }
+    const count = this.newSideQuestIds.size;
+    [this.ui.questBadge, this.ui.questSideBadge].forEach((badge) => {
+      if (!badge) {
+        return;
+      }
+      badge.hidden = count <= 0;
+      badge.textContent = String(count);
+    });
+  }
+
+  renderQuestMenu() {
+    if (!this.ui.questContent) {
+      return;
+    }
+    const currentMain = this.getCurrentMainObjective();
+    const availableSideQuests = this.sideQuestCatalog
+      .map((quest) => this.getSideQuestById(quest.id))
+      .filter((quest) => quest && quest.status !== "locked" && quest.status !== "completed");
+    const lockedSideQuests = this.sideQuestCatalog
+      .map((quest) => this.getSideQuestById(quest.id))
+      .filter((quest) => quest?.status === "locked");
+    const completed = [...this.completedQuestHistory].slice(-16).reverse();
+
+    this.ui.questContent.innerHTML = `
+      <section class="quest-ledger-section">
+        <h3>Main Quest</h3>
+        <article class="quest-ledger-item">
+          <span class="quest-ledger-meta">${currentMain?.location ?? "Guild Records"}</span>
+          <strong>${this.mainQuest.title}</strong>
+          <p>${this.formatMainObjective(currentMain)}</p>
+        </article>
+      </section>
+      <section class="quest-ledger-section">
+        <h3>Side Quests</h3>
+        ${availableSideQuests.length ? availableSideQuests.map((quest) => this.renderSideQuestItem(quest)).join("") : "<p>No side quests available right now.</p>"}
+      </section>
+      <section class="quest-ledger-section">
+        <h3>Completed Quests</h3>
+        ${completed.length ? completed.map((quest) => this.renderCompletedQuestItem(quest)).join("") : "<p>No completed quest history yet.</p>"}
+      </section>
+      <section class="quest-ledger-section">
+        <h3>Locked / Future Quests</h3>
+        ${lockedSideQuests.length ? lockedSideQuests.map((quest) => `
+          <article class="quest-ledger-item">
+            <span class="quest-ledger-meta">${quest.type} - ${quest.location}</span>
+            <strong>${quest.title}</strong>
+            <p>${quest.unlock === "post-arc1" ? "Unlocks after Arc 1 / Master Archer recognition." : "Locked until earlier training is complete."}</p>
+          </article>
+        `).join("") : "<p>Future quest slots are ready for Arc 2 and Arc 3.</p>"}
+      </section>
+    `;
+  }
+
+  renderSideQuestItem(quest) {
+    const tracked = quest.id === this.trackedSideQuestId;
+    const fresh = this.newSideQuestIds.has(quest.id);
+    return `
+      <article class="quest-ledger-item">
+        <span class="quest-ledger-meta">${fresh ? "New - " : ""}${quest.type} - ${quest.giver} - ${quest.location}</span>
+        <strong>${quest.title}</strong>
+        <p>${this.formatSideObjective(quest)}</p>
+        <p>${quest.description}</p>
+        <p>Rewards: ${quest.rewards}</p>
+        <button class="quest-track-button" type="button" data-track-quest="${quest.id}" ${tracked ? "disabled" : ""}>${tracked ? "Tracking" : "Track Side Quest"}</button>
+      </article>
+    `;
+  }
+
+  renderCompletedQuestItem(quest) {
+    return `
+      <article class="quest-ledger-item">
+        <span class="quest-ledger-meta">${quest.type}</span>
+        <strong>${quest.title}</strong>
+        <p>${quest.objective || "Completed and recorded in the guild ledger."}</p>
+        ${quest.rewards ? `<p>Rewards: ${quest.rewards}</p>` : ""}
+      </article>
+    `;
   }
 
   getTrainerLine() {
@@ -279,14 +858,31 @@ export class QuestSystem {
   }
 
   getRelevantLandmarkObjective() {
-    const quest = this.getActiveQuest();
-    if (quest?.id !== "rowan-landmarks" || quest.complete || !this.world.landmarks?.length) {
+    if (!this.world.landmarks?.length) {
       return null;
     }
-    const playerPosition = this.player.group.position;
-    return this.getTrainingLandmarks()
-      .filter((landmark) => !this.discoveredLandmarks.has(landmark.id))
-      .sort((a, b) => playerPosition.distanceTo(a.position) - playerPosition.distanceTo(b.position))[0] ?? null;
+    const tracked = this.getTrackedSideQuest();
+    const activeTrainingQuest = this.getActiveQuest();
+    if ((tracked?.id === "rowan-landmarks" || activeTrainingQuest?.id === "rowan-landmarks") && !activeTrainingQuest?.complete) {
+      const playerPosition = this.player.group.position;
+      return this.getTrainingLandmarks()
+        .filter((landmark) => !this.discoveredLandmarks.has(landmark.id))
+        .sort((a, b) => playerPosition.distanceTo(a.position) - playerPosition.distanceTo(b.position))[0] ?? null;
+    }
+
+    const mainObjective = this.getCurrentMainObjective();
+    if (mainObjective?.landmark) {
+      return this.findLandmarkByObjective(mainObjective);
+    }
+    return null;
+  }
+
+  findLandmarkByObjective(objective) {
+    const wanted = `${objective.location ?? ""} ${objective.objective ?? ""}`.toLowerCase();
+    return (this.world.landmarks ?? []).find((landmark) => (
+      wanted.includes(landmark.name.toLowerCase())
+      || wanted.includes(landmark.id.replace(/-/g, " "))
+    )) ?? null;
   }
 
   getTrainingLandmarks() {
@@ -529,21 +1125,7 @@ export class QuestSystem {
   load() {
     try {
       const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "{}");
-      this.activeQuestIndex = THREE.MathUtils.clamp(Number(saved.activeQuestIndex) || 0, 0, this.quests.length - 1);
-      this.discoveredLandmarks = new Set(Array.isArray(saved.discoveredLandmarks) ? saved.discoveredLandmarks : []);
-      (saved.quests ?? []).forEach((savedQuest) => {
-        const quest = this.quests.find((item) => item.id === savedQuest.id);
-        if (!quest) {
-          return;
-        }
-        quest.progress = THREE.MathUtils.clamp(Number(savedQuest.progress) || 0, 0, quest.goal);
-        quest.complete = Boolean(savedQuest.complete);
-      });
-      this.finderActive = false;
-      this.finderTarget = null;
-      if (this.finderArrow) {
-        this.finderArrow.visible = false;
-      }
+      this.restoreSaveData(saved);
     } catch (error) {
       console.warn("Quest save ignored:", error);
     }
@@ -551,13 +1133,64 @@ export class QuestSystem {
 
   save() {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify({
-        activeQuestIndex: this.activeQuestIndex,
-        discoveredLandmarks: [...this.discoveredLandmarks],
-        quests: this.quests.map(({ id, progress, complete }) => ({ id, progress, complete })),
-      }));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(this.getSaveData()));
     } catch (error) {
       console.warn("Quest save failed:", error);
+    }
+  }
+
+  getSaveData() {
+    return {
+      version: 2,
+      activeQuestIndex: this.activeQuestIndex,
+      discoveredLandmarks: [...this.discoveredLandmarks],
+      mainQuest: {
+        objectiveIndex: this.mainQuest.objectiveIndex,
+        objectives: this.mainQuest.objectives.map(({ id, complete }) => ({ id, complete })),
+      },
+      trackedSideQuestId: this.trackedSideQuestId,
+      unlockedSideQuestIds: [...this.unlockedSideQuestIds],
+      newSideQuestIds: [...this.newSideQuestIds],
+      notifiedSideQuestIds: [...this.notifiedSideQuestIds],
+      completedQuestHistory: this.completedQuestHistory,
+      quests: this.quests.map(({ id, progress, complete, status }) => ({ id, progress, complete, status })),
+    };
+  }
+
+  restoreSaveData(saved = {}) {
+    this.activeQuestIndex = THREE.MathUtils.clamp(Number(saved.activeQuestIndex) || 0, 0, this.quests.length - 1);
+    this.discoveredLandmarks = new Set(Array.isArray(saved.discoveredLandmarks) ? saved.discoveredLandmarks : []);
+    this.trackedSideQuestId = saved.trackedSideQuestId ?? this.trackedSideQuestId;
+    this.unlockedSideQuestIds = new Set(Array.isArray(saved.unlockedSideQuestIds) ? saved.unlockedSideQuestIds : [...this.unlockedSideQuestIds]);
+    this.newSideQuestIds = new Set(Array.isArray(saved.newSideQuestIds) ? saved.newSideQuestIds : [...this.newSideQuestIds]);
+    this.notifiedSideQuestIds = new Set(Array.isArray(saved.notifiedSideQuestIds) ? saved.notifiedSideQuestIds : []);
+    this.completedQuestHistory = Array.isArray(saved.completedQuestHistory) ? saved.completedQuestHistory : [];
+    (saved.mainQuest?.objectives ?? []).forEach((savedObjective) => {
+      const objective = this.mainQuest.objectives.find((item) => item.id === savedObjective.id);
+      if (objective) {
+        objective.complete = Boolean(savedObjective.complete);
+      }
+    });
+    const nextMainIndex = this.mainQuest.objectives.findIndex((objective) => !objective.complete);
+    const fallbackMainIndex = nextMainIndex >= 0 ? nextMainIndex : this.mainQuest.objectives.length - 1;
+    this.mainQuest.objectiveIndex = THREE.MathUtils.clamp(
+      Number(saved.mainQuest?.objectiveIndex ?? fallbackMainIndex) || 0,
+      0,
+      this.mainQuest.objectives.length - 1,
+    );
+    (saved.quests ?? []).forEach((savedQuest) => {
+      const quest = this.quests.find((item) => item.id === savedQuest.id);
+      if (!quest) {
+        return;
+      }
+      quest.progress = THREE.MathUtils.clamp(Number(savedQuest.progress) || 0, 0, quest.goal);
+      quest.complete = Boolean(savedQuest.complete);
+      quest.status = savedQuest.status ?? (quest.complete ? "completed" : quest.status);
+    });
+    this.finderActive = false;
+    this.finderTarget = null;
+    if (this.finderArrow) {
+      this.finderArrow.visible = false;
     }
   }
 }
