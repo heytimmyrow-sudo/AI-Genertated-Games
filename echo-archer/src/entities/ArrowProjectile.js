@@ -21,7 +21,7 @@ export class ArrowProjectile {
     this.hitProcessed = false;
     this.lastPosition = origin.clone();
     this.group = this.createMesh();
-    this.trailPointLimit = Math.max(4, Math.round((6 + shotPower * 5) * trailMultiplier));
+    this.trailPointLimit = Math.max(5, Math.round((8 + shotPower * 8) * trailMultiplier));
     this.trail = this.createTrail(origin);
     this.trailPoints = Array.from({ length: this.trailPointLimit }, () => origin.clone());
     this.group.position.copy(origin);
@@ -90,8 +90,9 @@ export class ArrowProjectile {
     const material = new THREE.LineBasicMaterial({
       color: this.arrowType.color ?? 0xffe3a0,
       transparent: true,
-      opacity: this.arrowType.id === "standard" ? 0.72 : 0.88,
+      opacity: this.arrowType.id === "standard" ? 0.78 : 0.94,
       blending: THREE.AdditiveBlending,
+      linewidth: 2,
     });
     return new THREE.Line(geometry, material);
   }
@@ -174,7 +175,8 @@ export class ArrowProjectile {
     this.trailPoints.unshift(point);
     this.trailPoints.length = this.trailPointLimit;
     this.trail.geometry.setFromPoints(this.trailPoints);
-    this.trail.material.opacity = 0.42 + this.shotPower * 0.48;
+    const shimmer = Math.sin((this.age + this.shotPower) * 24) * 0.04;
+    this.trail.material.opacity = Math.min(1, 0.52 + this.shotPower * 0.48 + shimmer);
   }
 
   fadeTrail(deltaSeconds) {
@@ -203,13 +205,20 @@ export class ArrowProjectile {
 
     const creature = this.hitObjectRef?.userData.enemy || this.hitObjectRef?.userData.boss;
     const weakSpot = this.hitObjectRef?.name?.toLowerCase?.().includes("weakspot");
-    const strength = creature ? 1.25 + this.shotPower : 0.7 + this.shotPower * 0.6;
+    const strength = creature ? 1.38 + this.shotPower * 1.08 : 0.78 + this.shotPower * 0.72;
     const impactColor = this.arrowType.id === "standard"
       ? (creature ? (weakSpot ? 0xfff1a6 : (this.shotPower > 0.7 ? 0xffb15f : 0xcf7c4e)) : (this.shotPower > 0.7 ? 0xffdf8a : 0xe0b75f))
       : this.arrowType.color;
-    this.feedback.spawnImpact(this.hitPoint, impactColor, strength + this.shotPower * (weakSpot ? 0.95 : 0.45));
+    this.feedback.spawnImpact(this.hitPoint, impactColor, strength + this.shotPower * (weakSpot ? 1.05 : 0.52));
+    if (creature && this.shotPower > 0.68) {
+      this.feedback.spawnImpact(this.hitPoint, weakSpot ? 0xfff1a6 : 0xffc06a, 0.8 + this.shotPower * 0.55);
+    }
     if (weakSpot) {
       this.feedback.spawnImpact(this.hitPoint, 0xfff1a6, 1.6 + this.shotPower);
+      this.feedback.shake(0.06 + this.shotPower * 0.07);
+    }
+    if (!creature && this.shotPower > 0.75) {
+      this.feedback.shake(0.03 + this.shotPower * 0.03);
     }
     this.feedback.playSound(weakSpot ? "weakpointHit" : (creature ? "enemyHit" : "arrowHit"), strength + this.shotPower * 0.25);
   }

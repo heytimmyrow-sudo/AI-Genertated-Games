@@ -36,12 +36,15 @@ export class PlayerController {
     this.groundContactGrace = 0;
     this.heatWarningCooldown = 0;
     this.damageCooldown = 0;
+    this.recentDamageTimer = 0;
     this.safeRecoveryTimer = 0;
     this.isSprinting = false;
     this.defeated = false;
     this.visualMoveAmount = 0;
     this.airTime = 0;
     this.landingTimer = 0;
+    this.interactionGestureTimer = 0;
+    this.interactionGestureKind = "interact";
     this.wasGroundedLastFrame = false;
     this.visualGroundOffset = -SETTINGS.player.height / 2;
 
@@ -50,6 +53,9 @@ export class PlayerController {
     this.group.add(this.body);
     this.group.position.set(0, this.terrain.getHeightAt(0, 0) + SETTINGS.player.height / 2, 0);
     scene.add(this.group);
+    window.addEventListener("echo-archer:player-interaction", (event) => {
+      this.playInteractionGesture(event.detail?.kind ?? "interact");
+    });
   }
 
   createBody() {
@@ -59,6 +65,8 @@ export class PlayerController {
     const leatherMaterial = new THREE.MeshStandardMaterial({ color: 0x7b4e2f, roughness: 0.82 });
     const trimMaterial = new THREE.MeshStandardMaterial({ color: 0xe6b75d, roughness: 0.5, metalness: 0.22, emissive: 0x2a1700, emissiveIntensity: 0.08 });
     const clothMaterial = new THREE.MeshStandardMaterial({ color: 0x6f8d63, roughness: 0.88 });
+    const bootMaterial = new THREE.MeshStandardMaterial({ color: 0x3d2a1f, roughness: 0.86 });
+    const gloveMaterial = new THREE.MeshStandardMaterial({ color: 0x4b3425, roughness: 0.82 });
     const shadowFaceMaterial = new THREE.MeshStandardMaterial({ color: 0x11120e, roughness: 0.94 });
 
     const torso = new THREE.Mesh(new THREE.CapsuleGeometry(0.3, 0.86, 7, 14), cloakMaterial);
@@ -78,6 +86,12 @@ export class PlayerController {
     chestArrow.rotation.x = Math.PI / 2;
     chestArrow.castShadow = true;
     body.add(chestArrow);
+
+    const layeredTunic = new THREE.Mesh(new THREE.ConeGeometry(0.36, 0.52, 7), clothMaterial);
+    layeredTunic.position.set(0, 0.78, 0.02);
+    layeredTunic.scale.set(0.78, 0.76, 0.58);
+    layeredTunic.castShadow = true;
+    body.add(layeredTunic);
 
     const cloakSkirt = new THREE.Mesh(new THREE.ConeGeometry(0.42, 0.54, 7), cloakDarkMaterial);
     cloakSkirt.position.y = 0.7;
@@ -116,6 +130,14 @@ export class PlayerController {
     faceShadow.position.set(0, 1.49, 0.25);
     faceShadow.scale.set(1, 0.62, 0.34);
     body.add(faceShadow);
+
+    const expressionMaterial = new THREE.MeshStandardMaterial({ color: 0xf0d7a5, roughness: 0.72, emissive: 0x140a02, emissiveIntensity: 0.04 });
+    [-1, 1].forEach((side) => {
+      const eye = new THREE.Mesh(new THREE.SphereGeometry(0.018, 8, 6), expressionMaterial);
+      eye.position.set(side * 0.06, 1.52, 0.315);
+      eye.scale.set(1, 0.62, 0.48);
+      body.add(eye);
+    });
 
     const scarf = new THREE.Mesh(new THREE.TorusGeometry(0.27, 0.035, 8, 26), clothMaterial);
     scarf.position.set(0, 1.26, 0.02);
@@ -161,32 +183,61 @@ export class PlayerController {
       body.add(arm);
       limbs.push({ mesh: arm, side, baseZ: side * 0.18, type: "arm" });
 
+      const sleeve = new THREE.Mesh(new THREE.CapsuleGeometry(0.065, 0.26, 5, 8), cloakDarkMaterial);
+      sleeve.position.set(side * 0.405, 1.03, 0.015);
+      sleeve.rotation.z = side * 0.2;
+      sleeve.scale.set(0.92, 1, 0.86);
+      sleeve.castShadow = true;
+      body.add(sleeve);
+      limbs.push({ mesh: sleeve, side, baseZ: side * 0.2, type: "sleeve" });
+
       const bracer = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.065, 0.16, 8), trimMaterial);
       bracer.position.set(side * 0.46, 0.7, 0.035);
       bracer.rotation.z = side * 0.18;
       bracer.castShadow = true;
       body.add(bracer);
 
-      const upperLeg = new THREE.Mesh(new THREE.CapsuleGeometry(0.06, 0.34, 5, 9), clothMaterial);
-      upperLeg.position.set(side * 0.135, 0.45, 0.035);
-      upperLeg.rotation.z = side * -0.035;
-      upperLeg.scale.set(0.95, 1, 0.82);
+      const hand = new THREE.Mesh(new THREE.SphereGeometry(0.062, 10, 7), gloveMaterial);
+      hand.position.set(side * 0.48, 0.58, 0.06);
+      hand.scale.set(0.86, 0.72, 0.78);
+      hand.castShadow = true;
+      body.add(hand);
+      limbs.push({ mesh: hand, side, baseZ: side * 0.18, type: "hand" });
+
+      const upperLeg = new THREE.Mesh(new THREE.CapsuleGeometry(0.07, 0.38, 6, 10), clothMaterial);
+      upperLeg.position.set(side * 0.145, 0.46, 0.035);
+      upperLeg.rotation.z = side * -0.045;
+      upperLeg.scale.set(0.9, 1.04, 0.82);
       upperLeg.castShadow = true;
       body.add(upperLeg);
       limbs.push({ mesh: upperLeg, side, baseZ: side * -0.035, type: "upperLeg" });
 
-      const lowerLeg = new THREE.Mesh(new THREE.CapsuleGeometry(0.055, 0.34, 5, 9), leatherMaterial);
+      const kneePad = new THREE.Mesh(new THREE.SphereGeometry(0.075, 9, 6), trimMaterial);
+      kneePad.position.set(side * 0.16, 0.34, 0.115);
+      kneePad.scale.set(0.82, 0.48, 0.42);
+      kneePad.castShadow = true;
+      body.add(kneePad);
+      limbs.push({ mesh: kneePad, side, baseZ: side * -0.04, type: "knee" });
+
+      const lowerLeg = new THREE.Mesh(new THREE.CapsuleGeometry(0.06, 0.38, 6, 10), bootMaterial);
       lowerLeg.position.set(side * 0.17, 0.2, 0.055);
       lowerLeg.rotation.z = side * -0.06;
-      lowerLeg.scale.set(0.9, 1, 0.78);
+      lowerLeg.scale.set(0.94, 1.04, 0.8);
       lowerLeg.castShadow = true;
       body.add(lowerLeg);
       limbs.push({ mesh: lowerLeg, side, baseZ: side * -0.06, type: "lowerLeg" });
 
-      const foot = new THREE.Mesh(new THREE.CapsuleGeometry(0.045, 0.18, 5, 8), leatherMaterial);
-      foot.position.set(side * 0.17, 0.026, 0.16);
+      const bootCuff = new THREE.Mesh(new THREE.CylinderGeometry(0.078, 0.068, 0.1, 8), trimMaterial);
+      bootCuff.position.set(side * 0.17, 0.13, 0.055);
+      bootCuff.rotation.z = side * -0.06;
+      bootCuff.castShadow = true;
+      body.add(bootCuff);
+      limbs.push({ mesh: bootCuff, side, baseZ: side * -0.06, type: "bootCuff" });
+
+      const foot = new THREE.Mesh(new THREE.CapsuleGeometry(0.055, 0.22, 6, 9), bootMaterial);
+      foot.position.set(side * 0.17, 0.024, 0.18);
       foot.rotation.set(Math.PI / 2, 0, side * 0.035);
-      foot.scale.set(0.95, 1.16, 0.72);
+      foot.scale.set(0.98, 1.28, 0.76);
       foot.castShadow = true;
       body.add(foot);
       limbs.push({ mesh: foot, side, baseZ: side * 0.035, type: "foot" });
@@ -211,7 +262,7 @@ export class PlayerController {
     stanceMarker.castShadow = true;
     body.add(stanceMarker);
 
-    body.userData = { limbs, torso, shoulderCape, backCape };
+    body.userData = { limbs, torso, layeredTunic, shoulderCape, backCape, scarf };
     return body;
   }
 
@@ -219,6 +270,8 @@ export class PlayerController {
     this.body.visible = cameraRig.mode !== "first";
     this.visualTime += deltaSeconds;
     this.damageCooldown = Math.max(0, this.damageCooldown - deltaSeconds);
+    this.recentDamageTimer = Math.max(0, this.recentDamageTimer - deltaSeconds);
+    this.interactionGestureTimer = Math.max(0, this.interactionGestureTimer - deltaSeconds);
     if (this.defeated) {
       this.velocity.multiplyScalar(0.9);
       this.animateBody(deltaSeconds, input);
@@ -460,26 +513,40 @@ export class PlayerController {
     this.visualMoveAmount = THREE.MathUtils.lerp(this.visualMoveAmount, moving ? speedRatio : 0, 1 - Math.exp(-9 * deltaSeconds));
     const gait = this.visualTime * THREE.MathUtils.lerp(6.2, sprinting ? 13.8 : 9.4, this.visualMoveAmount);
     const rawBob = Math.sin(gait) * (sprinting ? 0.018 : 0.012) * this.visualMoveAmount;
-    const landingDip = this.landingTimer > 0 ? Math.sin((this.landingTimer / (SETTINGS.player.landingSettleTime ?? 0.18)) * Math.PI) * -0.035 : 0;
+    const landingRatio = this.landingTimer > 0 ? this.landingTimer / (SETTINGS.player.landingSettleTime ?? 0.18) : 0;
+    const landingDip = landingRatio > 0 ? Math.sin(landingRatio * Math.PI) * -0.046 : 0;
     const airborneLift = this.onGround ? 0 : -0.025;
+    const idleBreath = moving ? 0 : Math.sin(this.visualTime * 1.2) * 0.008;
+    const idleShift = moving ? 0 : Math.sin(this.visualTime * 0.62) * 0.012;
     const bob = Math.min(rawBob, 0.004) + landingDip + airborneLift;
-    const sway = moving ? Math.sin(gait * 0.5) * 0.03 * this.visualMoveAmount : Math.sin(this.visualTime * 1.6) * 0.008;
+    const sway = moving ? Math.sin(gait * 0.5) * 0.03 * this.visualMoveAmount : Math.sin(this.visualTime * 1.6) * 0.008 + idleShift;
 
-    this.body.position.y = THREE.MathUtils.lerp(this.body.position.y, this.visualGroundOffset + bob, 1 - Math.exp(-14 * deltaSeconds));
+    this.body.position.y = THREE.MathUtils.lerp(this.body.position.y, this.visualGroundOffset + bob + idleBreath, 1 - Math.exp(-14 * deltaSeconds));
     this.body.rotation.z = THREE.MathUtils.lerp(this.body.rotation.z, sway, 1 - Math.exp(-9 * deltaSeconds));
 
-    const { limbs = [], torso, shoulderCape, backCape } = this.body.userData;
+    const { limbs = [], torso, layeredTunic, shoulderCape, backCape, scarf } = this.body.userData;
+    const combatState = window.echoArcherCombatState ?? {};
+    const drawAmount = combatState.drawAmount ?? 0;
+    const releaseKick = combatState.releaseKick ?? 0;
+    const aiming = Boolean(combatState.isDrawing || drawAmount > 0.03 || (input?.isMouseDown?.(0) && input?.pointerLocked));
+    const gesture = this.interactionGestureTimer > 0 ? this.interactionGestureTimer / 0.55 : 0;
     limbs.forEach(({ mesh, side, baseZ, type }) => {
       const stride = moving ? Math.sin(gait + (side > 0 ? Math.PI : 0)) : 0;
       if (type === "upperLeg") {
-        mesh.rotation.x = THREE.MathUtils.lerp(mesh.rotation.x, stride * (sprinting ? 0.52 : 0.38), 1 - Math.exp(-14 * deltaSeconds));
-        mesh.rotation.z = THREE.MathUtils.lerp(mesh.rotation.z, baseZ + stride * 0.075, 1 - Math.exp(-14 * deltaSeconds));
+        const stanceBrace = aiming ? side * 0.04 + drawAmount * 0.035 : 0;
+        mesh.rotation.x = THREE.MathUtils.lerp(mesh.rotation.x, stride * (sprinting ? 0.52 : 0.38) - landingRatio * 0.16, 1 - Math.exp(-14 * deltaSeconds));
+        mesh.rotation.z = THREE.MathUtils.lerp(mesh.rotation.z, baseZ + stride * 0.075 + stanceBrace, 1 - Math.exp(-14 * deltaSeconds));
         return;
       }
       if (type === "lowerLeg") {
         const kneeBend = Math.max(0, -stride) * (sprinting ? 0.34 : 0.22);
-        mesh.rotation.x = THREE.MathUtils.lerp(mesh.rotation.x, -stride * 0.16 + kneeBend, 1 - Math.exp(-14 * deltaSeconds));
+        mesh.rotation.x = THREE.MathUtils.lerp(mesh.rotation.x, -stride * 0.16 + kneeBend + landingRatio * 0.22, 1 - Math.exp(-14 * deltaSeconds));
         mesh.rotation.z = THREE.MathUtils.lerp(mesh.rotation.z, baseZ + stride * 0.05, 1 - Math.exp(-14 * deltaSeconds));
+        return;
+      }
+      if (type === "knee" || type === "bootCuff") {
+        mesh.rotation.x = THREE.MathUtils.lerp(mesh.rotation.x, stride * 0.08, 1 - Math.exp(-14 * deltaSeconds));
+        mesh.rotation.z = THREE.MathUtils.lerp(mesh.rotation.z, baseZ + stride * 0.04, 1 - Math.exp(-14 * deltaSeconds));
         return;
       }
       if (type === "foot") {
@@ -489,22 +556,37 @@ export class PlayerController {
         return;
       }
 
-      const aim = Boolean(window.echoArcherCombatState?.isDrawing || (input?.isMouseDown?.(0) && input?.pointerLocked));
-      const target = baseZ + stride * 0.16 + (aim ? -side * 0.12 : 0);
+      const drawPose = aiming ? drawAmount : 0;
+      const gestureLift = gesture > 0 && side > 0 ? -0.34 * Math.sin(gesture * Math.PI) : 0;
+      const target = baseZ + stride * 0.16 + (aiming ? -side * (0.12 + drawPose * 0.12) : 0) + gestureLift;
       mesh.rotation.z = THREE.MathUtils.lerp(mesh.rotation.z, target, 1 - Math.exp(-12 * deltaSeconds));
-      mesh.rotation.x = THREE.MathUtils.lerp(mesh.rotation.x, aim ? -0.16 : 0, 1 - Math.exp(-10 * deltaSeconds));
+      mesh.rotation.x = THREE.MathUtils.lerp(mesh.rotation.x, aiming ? -0.16 - drawPose * 0.12 + releaseKick * 0.08 : gesture > 0 && side > 0 ? -0.18 * Math.sin(gesture * Math.PI) : 0, 1 - Math.exp(-10 * deltaSeconds));
+      if (type === "hand") {
+        mesh.position.z = THREE.MathUtils.lerp(mesh.position.z, aiming ? 0.12 + drawPose * 0.04 : gesture > 0 && side > 0 ? 0.18 : 0.06, 1 - Math.exp(-11 * deltaSeconds));
+      }
     });
 
     if (torso) {
-      const aim = Boolean(window.echoArcherCombatState?.isDrawing || (input?.isMouseDown?.(0) && input?.pointerLocked));
-      torso.rotation.x = THREE.MathUtils.lerp(torso.rotation.x, aim ? -0.08 : moving ? -0.045 : 0.018, 1 - Math.exp(-7 * deltaSeconds));
+      torso.rotation.x = THREE.MathUtils.lerp(torso.rotation.x, aiming ? -0.08 - drawAmount * 0.045 + releaseKick * 0.035 : moving ? -0.045 : 0.018, 1 - Math.exp(-7 * deltaSeconds));
+      torso.scale.y = THREE.MathUtils.lerp(torso.scale.y, 1.08 + (moving ? 0 : Math.sin(this.visualTime * 1.2) * 0.018), 1 - Math.exp(-6 * deltaSeconds));
+    }
+    if (layeredTunic) {
+      layeredTunic.rotation.z = Math.sin(gait * 0.5) * 0.018 * this.visualMoveAmount + sway * 0.35;
+    }
+    if (scarf) {
+      scarf.rotation.z = Math.sin(this.visualTime * 2.1) * 0.018 + this.visualMoveAmount * 0.035;
     }
     if (shoulderCape) {
       shoulderCape.rotation.z = Math.sin(this.visualTime * 2.8) * 0.018;
     }
     if (backCape) {
-      backCape.rotation.x = -0.18 - Math.min(horizontalSpeed / this.getMoveSpeed(true), 1) * 0.18;
+      backCape.rotation.x = -0.18 - Math.min(horizontalSpeed / this.getMoveSpeed(true), 1) * 0.18 + Math.sin(this.visualTime * 1.4) * 0.018;
     }
+  }
+
+  playInteractionGesture(kind = "interact") {
+    this.interactionGestureKind = kind;
+    this.interactionGestureTimer = kind === "read" ? 0.72 : 0.55;
   }
 
   getEyePosition(height) {
@@ -528,6 +610,7 @@ export class PlayerController {
     const finalDamage = Math.max(1, amount * defenseMultiplier);
     this.stats.health = Math.max(0, (this.stats.health ?? this.stats.healthMax) - finalDamage);
     this.damageCooldown = options.cooldown ?? SETTINGS.enemies.playerDamageCooldown ?? 0.85;
+    this.recentDamageTimer = SETTINGS.player.safeHealthRegenCombatDelay ?? 3;
 
     if (sourcePosition) {
       const knockback = this.group.position.clone().sub(sourcePosition);
@@ -577,7 +660,7 @@ export class PlayerController {
   }
 
   updateSafeRecovery(deltaSeconds, safe) {
-    if (this.defeated || !safe || this.damageCooldown > 0) {
+    if (this.defeated || !safe) {
       this.safeRecoveryTimer = 0;
       return;
     }
@@ -594,10 +677,10 @@ export class PlayerController {
       return;
     }
 
-    const recoveryMultiplier = this.stats.recoveryMultiplier ?? 1;
+    // Safe recovery is intentionally fixed: out of combat = 10 HP per second.
     this.stats.health = Math.min(
       healthMax,
-      health + (SETTINGS.player.safeHealthRegen ?? 4) * recoveryMultiplier * deltaSeconds,
+      health + (SETTINGS.player.safeHealthRegen ?? 10) * deltaSeconds,
     );
   }
 

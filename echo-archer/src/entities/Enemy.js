@@ -8,6 +8,8 @@ import {
 const { THREE } = window;
 
 const scratchDirection = new THREE.Vector3();
+const scratchSide = new THREE.Vector3();
+const aiRaycaster = new THREE.Raycaster();
 
 export class Enemy {
   constructor(type, scene, world, position, patrolPoints, feedback = null, options = {}) {
@@ -21,6 +23,7 @@ export class Enemy {
     this.state = "patrol";
     this.aggroed = false;
     this.patrolIndex = 0;
+    this.patrolWaitTimer = 0.2 + Math.random() * 0.55;
     this.patrolPoints = patrolPoints.map((point) => new THREE.Vector3(point[0], 0, point[1]));
     this.homePosition = new THREE.Vector3(position[0], 0, position[1]);
     this.territory = {
@@ -40,13 +43,25 @@ export class Enemy {
     this.attackCooldown = 0;
     this.tacticTimer = 0;
     this.tactic = "direct";
+    this.lastTactic = "";
+    this.alertTimer = 0;
+    this.awareness = 0;
+    this.lastKnownPlayerPosition = new THREE.Vector3(position[0], 0, position[1]);
+    this.pathingTimer = 0;
+    this.avoidanceDirection = new THREE.Vector3();
+    this.groupPressure = new THREE.Vector3();
+    this.sharedAlertTimer = 0;
     this.strafeSign = Math.random() > 0.5 ? 1 : -1;
+    this.attackPoseTimer = 0;
+    this.animationSeed = Math.random() * Math.PI * 2;
+    this.animationProfile = this.getAnimationProfile(type);
     this.lastCombatPosition = new THREE.Vector3(position[0], 0, position[1]);
     this.stuckTimer = 0;
     this.defeatTimer = 0;
     this.active = true;
     this.removed = false;
     this.group = this.createMeshForType(type);
+    this.baseScale = this.group.scale.x || 1;
     this.group.position.set(position[0], 0, position[1]);
     this.placeOnGround();
     scene.add(this.group);
@@ -720,6 +735,23 @@ export class Enemy {
     });
   }
 
+  getAnimationProfile(type) {
+    const value = String(type).toLowerCase();
+    if (/raptor|hawk|gull|bat|wyrm/.test(value)) {
+      return { gait: "avian", speed: 12.5, bob: 0.09, lean: -0.16, attackLean: -0.34, idleSway: 0.055 };
+    }
+    if (/wisp|watcher/.test(value)) {
+      return { gait: "wisp", speed: 5.2, bob: 0.18, lean: 0, attackLean: -0.08, idleSway: 0.02 };
+    }
+    if (/crawler|viper|drake|guardian|beast|grazer|sentinel/.test(value)) {
+      return { gait: "heavy", speed: 6.4, bob: 0.035, lean: -0.06, attackLean: -0.2, idleSway: 0.018 };
+    }
+    if (/fox|wolf|hound|hunter|stalker|stag|ram|horn/.test(value)) {
+      return { gait: "canine", speed: 11, bob: 0.06, lean: -0.1, attackLean: -0.26, idleSway: 0.032 };
+    }
+    return { gait: "crawler", speed: 7, bob: 0.035, lean: -0.04, attackLean: -0.18, idleSway: 0.024 };
+  }
+
   update(deltaSeconds, player) {
     if (!this.active) {
       this.updateDefeated(deltaSeconds);
@@ -727,6 +759,10 @@ export class Enemy {
     }
 
     this.hitReactTimer = Math.max(0, this.hitReactTimer - deltaSeconds);
+    this.attackPoseTimer = Math.max(0, this.attackPoseTimer - deltaSeconds);
+    this.alertTimer = Math.max(0, this.alertTimer - deltaSeconds);
+    this.sharedAlertTimer = Math.max(0, this.sharedAlertTimer - deltaSeconds);
+    this.pathingTimer = Math.max(0, this.pathingTimer - deltaSeconds);
     updateAttackCooldown(this, deltaSeconds);
     this.updateStatusEffects(deltaSeconds);
     const playerPosition = player.group.position;
@@ -738,37 +774,49 @@ export class Enemy {
     const playerInTerritory = this.isPointInTerritory(playerPosition, 1);
     const enemyInTerritory = this.isPointInTerritory(this.group.position, 1.12);
     const alertMultiplier = this.world.getCreatureAlertMultiplier?.() ?? 1;
+    const playerSpeed = player.velocity?.length?.() ?? 0;
+    const archerIsDrawing = Boolean(window.echoArcherCombatState?.isDrawing);
+    const noisyPlayer = playerSpeed > 4.4 || player.recentDamageTimer > 0 || (archerIsDrawing && horizontalToPlayer < this.config.noticeDistance * 0.72);
+    const memoryActive = this.alertTimer > 0;
     const canReachPlayer = verticalToPlayer <= (SETTINGS.enemies.verticalHitReach ?? SETTINGS.enemies.verticalReach);
+    const noticeDistance = this.config.noticeDistance * alertMultiplier * (noisyPlayer ? 1.18 : 1);
     const canNoticePlayer = !playerSafe
       && !enemySafe
       && playerInTerritory
       && enemyInTerritory
-      && horizontalToPlayer <= this.config.noticeDistance * alertMultiplier
+      && horizontalToPlayer <= noticeDistance
       && verticalToPlayer <= (SETTINGS.enemies.combatNoticeVerticalRange ?? 6.5)
       && distanceFromHome <= this.config.leashRadius * 0.96;
+    this.updateAwareness(deltaSeconds, canNoticePlayer, horizontalToPlayer, playerPosition, noisyPlayer, archerIsDrawing);
 
-    if (!this.aggroed && canNoticePlayer) {
+    if (!this.aggroed && (canNoticePlayer || this.awareness >= 1)) {
       this.aggroed = true;
+      this.alertTimer = 4.5;
     }
 
     if (this.aggroed && (playerSafe || enemySafe || !playerInTerritory || !enemyInTerritory || distanceFromHome > this.config.leashRadius)) {
       this.aggroed = false;
       this.tactic = "direct";
       this.tacticTimer = 0;
+      this.awareness = 0;
+      this.alertTimer = 0;
     }
 
     if (!this.aggroed && (!enemyInTerritory || enemySafe || distanceFromHome > this.config.leashRadius * 0.85)) {
       this.state = "return";
     } else {
-      this.state = this.aggroed ? (canReachPlayer ? this.selectCombatState(deltaSeconds, horizontalToPlayer) : "guard") : "patrol";
+      this.state = (this.aggroed || memoryActive) ? (canReachPlayer ? this.selectCombatState(deltaSeconds, horizontalToPlayer, verticalToPlayer) : "guard") : "patrol";
     }
 
+    const tacticalTarget = this.getTacticalTarget(playerPosition);
     if (this.state === "chase") {
-      this.moveToward(playerPosition, this.getEffectiveSpeed(this.config.chaseSpeed), deltaSeconds);
+      this.moveToward(tacticalTarget, this.getEffectiveSpeed(this.config.chaseSpeed), deltaSeconds);
     } else if (this.state === "flank" || this.state === "circle") {
-      this.moveWithTactic(playerPosition, this.getEffectiveSpeed(this.config.chaseSpeed), deltaSeconds, this.state);
+      this.moveWithTactic(tacticalTarget, this.getEffectiveSpeed(this.config.chaseSpeed), deltaSeconds, this.state);
     } else if (this.state === "retreat") {
-      this.retreatFrom(playerPosition, this.getEffectiveSpeed(this.config.chaseSpeed * 0.72), deltaSeconds);
+      this.retreatFrom(tacticalTarget, this.getEffectiveSpeed(this.config.chaseSpeed * 0.72), deltaSeconds);
+    } else if (this.state === "bait") {
+      this.holdAndThreaten(tacticalTarget, this.getEffectiveSpeed(this.config.chaseSpeed * 0.45), deltaSeconds, horizontalToPlayer);
     } else if (this.state === "guard") {
       const baseTarget = new THREE.Vector3(playerPosition.x, 0, playerPosition.z);
       if (horizontalToPlayer > SETTINGS.enemies.elevatedGuardDistance) {
@@ -802,6 +850,36 @@ export class Enemy {
     return dx * dx + dz * dz <= radius * radius;
   }
 
+  updateAwareness(deltaSeconds, canNoticePlayer, horizontalToPlayer, playerPosition, noisyPlayer, archerIsDrawing = false) {
+    const closeRange = Math.max(2.6, (this.config.bodyRadius ?? 0.5) + 2.2);
+    if (canNoticePlayer) {
+      const proximity = 1 - Math.min(1, horizontalToPlayer / Math.max(1, this.config.noticeDistance));
+      const aimingPressure = archerIsDrawing ? 0.34 : 0;
+      const sharedPressure = this.sharedAlertTimer > 0 ? 0.22 : 0;
+      this.awareness = Math.min(1.35, this.awareness + deltaSeconds * (0.8 + proximity * 1.5 + (noisyPlayer ? 0.55 : 0) + aimingPressure + sharedPressure));
+      this.lastKnownPlayerPosition.copy(playerPosition);
+      this.alertTimer = Math.max(this.alertTimer, 2.4 + proximity * 2);
+      return;
+    }
+
+    if (horizontalToPlayer <= closeRange && noisyPlayer) {
+      this.awareness = Math.min(1, this.awareness + deltaSeconds * 0.55);
+      this.lastKnownPlayerPosition.copy(playerPosition);
+      this.alertTimer = Math.max(this.alertTimer, 1.4);
+      return;
+    }
+
+    this.awareness = Math.max(0, this.awareness - deltaSeconds * (this.aggroed ? 0.12 : 0.28));
+  }
+
+  getTacticalTarget(playerPosition) {
+    if (this.aggroed || this.alertTimer <= 0) {
+      this.lastKnownPlayerPosition.copy(playerPosition);
+      return playerPosition;
+    }
+    return this.lastKnownPlayerPosition;
+  }
+
   forceReturnHome(options = {}) {
     if (!this.active || this.removed) {
       return;
@@ -810,36 +888,58 @@ export class Enemy {
     this.state = "return";
     this.tactic = "direct";
     this.tacticTimer = 0;
+    this.awareness = 0;
+    this.alertTimer = 0;
     this.attackCooldown = 0;
     if (options.resetHealth) {
       this.health = this.maxHealth;
     }
   }
 
-  selectCombatState(deltaSeconds, horizontalToPlayer) {
+  selectCombatState(deltaSeconds, horizontalToPlayer, verticalToPlayer = 0) {
     this.tacticTimer -= deltaSeconds;
     const healthRatio = this.health / this.maxHealth;
     const fastCreature = (this.config.chaseSpeed ?? 0) >= 3 || this.group.userData.avian;
+    const heavyCreature = this.animationProfile.gait === "heavy";
+    const allyPressure = this.groupPressure.length();
+    const playerElevated = verticalToPlayer > (SETTINGS.enemies.verticalHitReach ?? SETTINGS.enemies.verticalReach) * 0.78;
 
     if (healthRatio <= (SETTINGS.enemies.retreatHealthRatio ?? 0.28) && this.tactic !== "retreat" && this.tacticTimer <= 0) {
-      this.tactic = "retreat";
+      this.setTactic("retreat");
       this.tacticTimer = 0.75 + Math.random() * 0.45;
       return this.tactic;
     }
 
     if (this.tacticTimer <= 0) {
-      if (fastCreature && horizontalToPlayer > 2.2) {
-        this.tactic = Math.random() > 0.45 ? "flank" : "circle";
+      const roll = Math.random();
+      if (playerElevated && horizontalToPlayer < 6.5) {
+        this.setTactic(roll > 0.45 ? "circle" : "bait");
+      } else if (allyPressure > 0.22 && horizontalToPlayer < 5.8) {
+        this.setTactic(roll > 0.55 ? "circle" : "flank");
+      } else if (fastCreature && horizontalToPlayer > 2.2) {
+        this.setTactic(roll > 0.62 ? "circle" : roll > 0.18 ? "flank" : "bait");
       } else if (horizontalToPlayer < 2.1 && healthRatio < 0.6) {
-        this.tactic = "retreat";
+        this.setTactic("retreat");
+      } else if (heavyCreature && horizontalToPlayer < 4.8 && roll > 0.52) {
+        this.setTactic("bait");
       } else {
-        this.tactic = Math.random() > 0.68 ? "circle" : "chase";
+        this.setTactic(roll > 0.72 ? "circle" : "chase");
       }
       this.strafeSign *= Math.random() > 0.35 ? 1 : -1;
-      this.tacticTimer = 0.7 + Math.random() * 0.9;
+      this.tacticTimer = 0.62 + Math.random() * 1.05;
     }
 
     return this.tactic === "direct" ? "chase" : this.tactic;
+  }
+
+  setTactic(nextTactic) {
+    if (nextTactic === this.lastTactic && Math.random() > 0.35) {
+      const alternatives = nextTactic === "chase" ? ["flank", "circle"] : nextTactic === "retreat" ? ["bait", "circle"] : ["chase", "flank", "circle"];
+      this.tactic = alternatives[Math.floor(Math.random() * alternatives.length)];
+    } else {
+      this.tactic = nextTactic;
+    }
+    this.lastTactic = this.tactic;
   }
 
   tryAttackPlayer(player) {
@@ -849,7 +949,7 @@ export class Enemy {
 
     const baseRange = (this.config.bodyRadius ?? 0.5) + (SETTINGS.enemies.meleeRange ?? 1.25);
     const verticalRange = SETTINGS.enemies.verticalHitReach ?? SETTINGS.enemies.verticalReach;
-    tryDamagePlayer({
+    const damaged = tryDamagePlayer({
       attacker: this,
       player,
       amount: this.config.damage ?? SETTINGS.enemies.contactDamage ?? 8,
@@ -859,14 +959,40 @@ export class Enemy {
       feedback: this.feedback,
       hitKind: this.state === "guard" ? "area" : "contact",
     });
+    if (damaged) {
+      this.attackPoseTimer = 0.32;
+    }
   }
 
   patrol(deltaSeconds) {
     const target = this.patrolPoints[this.patrolIndex];
     if (this.group.position.distanceTo(target) < 0.8) {
       this.patrolIndex = (this.patrolIndex + 1) % this.patrolPoints.length;
+      this.patrolWaitTimer = 0.45 + Math.random() * 1.1;
+      this.moveVelocity.multiplyScalar(0.35);
+    }
+    if (this.patrolWaitTimer > 0) {
+      this.patrolWaitTimer = Math.max(0, this.patrolWaitTimer - deltaSeconds);
+      this.faceToward(this.patrolPoints[this.patrolIndex]);
+      return;
     }
     this.moveToward(this.patrolPoints[this.patrolIndex], this.getEffectiveSpeed(this.config.patrolSpeed), deltaSeconds);
+  }
+
+  holdAndThreaten(target, speed, deltaSeconds, horizontalToPlayer) {
+    this.faceToward(target);
+    if (horizontalToPlayer > 4.4) {
+      this.moveToward(target, speed, deltaSeconds);
+      return;
+    }
+    scratchDirection.copy(target).sub(this.group.position);
+    scratchDirection.y = 0;
+    if (scratchDirection.lengthSq() < 0.001) {
+      return;
+    }
+    const forward = scratchDirection.normalize();
+    scratchSide.set(-forward.z, 0, forward.x).multiplyScalar(this.strafeSign * 0.45);
+    this.applyMovement(scratchSide, speed * 0.5, deltaSeconds, 0.1, false);
   }
 
   moveWithTactic(target, speed, deltaSeconds, tactic) {
@@ -916,8 +1042,10 @@ export class Enemy {
     this.stuckTimer += deltaSeconds;
     if (this.stuckTimer > 0.5) {
       const yaw = this.group.rotation.y + this.strafeSign * Math.PI * 0.5;
-      this.moveVelocity.x += Math.sin(yaw) * 0.45;
-      this.moveVelocity.z += Math.cos(yaw) * 0.45;
+      this.moveVelocity.x += Math.sin(yaw) * 0.7;
+      this.moveVelocity.z += Math.cos(yaw) * 0.7;
+      this.strafeSign *= -1;
+      this.pathingTimer = 0;
       this.stuckTimer = 0.15;
     }
   }
@@ -958,6 +1086,8 @@ export class Enemy {
   }
 
   applyMovement(direction, speed, deltaSeconds, yawBlend = 0.12, faceDirection = true) {
+    this.applyGroupSpacing(direction);
+    this.applyPathAvoidance(direction);
     const targetX = direction.x * speed;
     const targetZ = direction.z * speed;
     const acceleration = this.aggroed ? 8.5 : 5.4;
@@ -970,6 +1100,47 @@ export class Enemy {
       const yaw = Math.atan2(direction.x, direction.z);
       this.group.rotation.y = THREE.MathUtils.lerp(this.group.rotation.y, yaw, yawBlend);
     }
+  }
+
+  applyGroupSpacing(direction) {
+    if (this.groupPressure.lengthSq() <= 0.0001) {
+      return;
+    }
+    direction.add(this.groupPressure.clone().multiplyScalar(this.aggroed ? 0.62 : 0.4)).normalize();
+  }
+
+  applyPathAvoidance(direction) {
+    if (this.pathingTimer > 0 && this.avoidanceDirection.lengthSq() > 0.0001) {
+      direction.add(this.avoidanceDirection).normalize();
+      return;
+    }
+
+    this.pathingTimer = 0.22 + Math.random() * 0.12;
+    this.avoidanceDirection.set(0, 0, 0);
+    const origin = this.group.position.clone();
+    origin.y += 0.55;
+    const currentGround = this.world.terrain.getHeightAt(this.group.position.x, this.group.position.z);
+    const lookAhead = this.group.position.clone().add(direction.clone().multiplyScalar(1.25 + (this.config.bodyRadius ?? 0.5)));
+    const nextGround = this.world.terrain.getHeightAt(lookAhead.x, lookAhead.z);
+    const slopeDelta = nextGround - currentGround;
+    if (Math.abs(slopeDelta) > (this.aggroed ? 1.35 : 0.9)) {
+      const side = scratchSide.set(-direction.z, 0, direction.x).multiplyScalar((slopeDelta > 0 ? -1 : 1) * this.strafeSign * 0.7);
+      this.avoidanceDirection.copy(side);
+      direction.add(side).normalize();
+      return;
+    }
+
+    aiRaycaster.set(origin, direction.clone().normalize());
+    aiRaycaster.far = 1.35 + (this.config.bodyRadius ?? 0.5);
+    const hits = aiRaycaster.intersectObjects(this.world.colliders ?? [], false)
+      .filter((hit) => hit.object?.userData?.enemy !== this);
+    if (hits.length === 0) {
+      return;
+    }
+
+    const side = scratchSide.set(-direction.z, 0, direction.x).multiplyScalar(this.strafeSign * 0.8);
+    this.avoidanceDirection.copy(side);
+    direction.add(side).normalize();
   }
 
   faceToward(target) {
@@ -997,33 +1168,52 @@ export class Enemy {
   }
 
   animate(deltaSeconds) {
-    const time = performance.now() * 0.001;
+    const time = performance.now() * 0.001 + this.animationSeed;
     const canine = this.group.userData.canine;
     const avian = this.group.userData.avian;
     const wisp = this.group.userData.wisp;
-    const speed = this.state === "chase" ? (avian ? 10 : (canine ? 12 : 7)) : (avian ? 5 : (canine ? 6 : 3.6));
-    const bob = Math.sin(performance.now() * 0.001 * speed) * (wisp ? 0.14 : (avian ? 0.075 : (canine ? 0.055 : 0.025)));
-    const hitKick = this.hitReactTimer > 0 ? this.hitReactTimer / 0.48 : 0;
+    const profile = this.animationProfile;
+    const moving = ["chase", "flank", "circle", "retreat", "return", "patrol"].includes(this.state);
+    const aggression = this.aggroed ? 1 : 0;
+    const speed = moving ? profile.speed * (this.state === "chase" ? 1.16 : 0.78) : profile.speed * 0.32;
+    const bob = Math.sin(time * speed) * profile.bob * (moving ? 1 : 0.34);
+    const hitKick = this.hitReactTimer > 0 ? Math.min(1.35, this.hitReactTimer / 0.58) : 0;
+    const attackPose = this.attackPoseTimer > 0 ? this.attackPoseTimer / 0.32 : 0;
     if (hitKick > 0) {
-      this.group.position.addScaledVector(this.hitDirection, -deltaSeconds * (avian ? 2.2 : (canine ? 1.95 : 1.05)));
+      this.group.position.addScaledVector(this.hitDirection, -deltaSeconds * (avian ? 2.6 : (canine ? 2.25 : 1.28)) * (0.74 + hitKick * 0.26));
     }
-    this.group.position.y += bob + hitKick * 0.16;
-    const chaseStretch = this.state === "chase" ? 0.035 : 0;
-    this.group.scale.set(1 + hitKick * 0.14 + chaseStretch, 1 - hitKick * 0.06, 1 + hitKick * 0.1 - chaseStretch * 0.5);
-    this.group.rotation.x = THREE.MathUtils.lerp(this.group.rotation.x, this.state === "chase" ? (canine ? -0.08 : -0.03) : 0, 0.12);
+    this.group.position.y += bob + hitKick * 0.19;
+    const chaseStretch = this.state === "chase" ? 0.035 + aggression * 0.025 : 0;
+    this.group.scale.set(
+      this.baseScale * (1 + hitKick * 0.17 + chaseStretch + attackPose * 0.08),
+      this.baseScale * (1 - hitKick * 0.075 - attackPose * 0.04),
+      this.baseScale * (1 + hitKick * 0.12 - chaseStretch * 0.5 + attackPose * 0.06),
+    );
+    const alertLean = this.state === "guard" ? -0.12 : this.state === "retreat" ? 0.06 : moving ? profile.lean : 0;
+    this.group.rotation.x = THREE.MathUtils.lerp(this.group.rotation.x, alertLean + attackPose * profile.attackLean + hitKick * 0.2, 0.16);
+    this.group.rotation.z = THREE.MathUtils.lerp(
+      this.group.rotation.z,
+      Math.sin(time * 1.4) * profile.idleSway * (moving ? 0.45 : 1) + hitKick * 0.12 * this.strafeSign,
+      0.11,
+    );
 
     if (this.group.userData.tail) {
-      this.group.userData.tail.rotation.z = Math.PI / 2.8 + Math.sin(time * speed) * (this.state === "chase" ? 0.22 : 0.1);
+      this.group.userData.tail.rotation.z = Math.PI / 2.8 + Math.sin(time * speed) * (this.state === "chase" ? 0.28 : 0.1) + attackPose * 0.18;
     }
     if (this.group.userData.shell) {
-      this.group.userData.shell.rotation.z = Math.sin(time * 3.2) * 0.025 + hitKick * 0.08;
+      this.group.userData.shell.rotation.z = Math.sin(time * 3.2) * 0.025 + hitKick * 0.08 + attackPose * 0.1;
+      this.group.userData.shell.position.y = 0.68 + Math.sin(time * 1.6) * 0.018;
     }
     this.group.userData.legs?.forEach(({ mesh, side, index }) => {
-      mesh.rotation.z = (index === 0 ? -0.08 : 0.12) + Math.sin(time * speed + index * Math.PI + side) * 0.14;
+      const stride = Math.sin(time * speed + index * Math.PI + side);
+      const heavyMultiplier = profile.gait === "heavy" ? 0.72 : 1;
+      mesh.rotation.z = (index === 0 ? -0.08 : 0.12) + stride * 0.14 * heavyMultiplier + attackPose * side * 0.08;
+      mesh.rotation.x = THREE.MathUtils.lerp(mesh.rotation.x, stride * 0.12 * (moving ? 1 : 0.2), 0.16);
     });
     this.group.userData.wings?.forEach(({ mesh, side }) => {
-      mesh.rotation.z = side * (1.12 + Math.sin(time * speed) * (this.state === "chase" ? 0.32 : 0.18));
-      mesh.rotation.y = Math.sin(time * speed + side) * 0.12;
+      const flap = Math.sin(time * speed) * (this.state === "chase" ? 0.42 : 0.2);
+      mesh.rotation.z = side * (1.12 + flap + attackPose * 0.16);
+      mesh.rotation.y = Math.sin(time * speed + side) * 0.12 + attackPose * side * 0.08;
     });
     if (this.group.userData.halo) {
       this.group.userData.halo.rotation.z += deltaSeconds * (this.state === "chase" ? 2.8 : 1.3);
@@ -1038,8 +1228,10 @@ export class Enemy {
 
     this.health = Math.max(0, this.health - amount);
     this.aggroed = true;
-    this.tacticTimer = Math.min(this.tacticTimer, 0.22);
-    this.hitReactTimer = 0.28 + impactPower * 0.32;
+    this.alertTimer = Math.max(this.alertTimer, 5);
+    this.awareness = 1.2;
+    this.tacticTimer = Math.min(this.tacticTimer, 0.14);
+    this.hitReactTimer = 0.34 + impactPower * 0.4;
     if (hitDirection) {
       this.hitDirection.copy(hitDirection);
     }
@@ -1069,15 +1261,32 @@ export class Enemy {
     this.active = false;
     this.defeatTimer = 1.8;
     this.group.userData.defeated = true;
+    this.group.userData.defeatSpin = this.animationProfile.gait === "avian" ? this.strafeSign * 0.18 : this.animationProfile.gait === "heavy" ? this.strafeSign * 0.06 : this.strafeSign * 0.11;
     this.unregisterColliders();
   }
 
   updateDefeated(deltaSeconds) {
     this.defeatTimer -= deltaSeconds;
-    this.group.rotation.z = THREE.MathUtils.lerp(this.group.rotation.z, this.type === "wolf" ? -Math.PI / 2.2 : -Math.PI / 2, 0.08);
-    this.group.rotation.x = THREE.MathUtils.lerp(this.group.rotation.x, this.type === "wolf" ? 0.28 : 0.12, 0.06);
-    this.group.position.y = Math.max(this.world.terrain.getHeightAt(this.group.position.x, this.group.position.z) + 0.05, this.group.position.y - deltaSeconds * 0.3);
-    this.group.scale.multiplyScalar(0.99);
+    const profile = this.animationProfile ?? this.getAnimationProfile(this.type);
+    const heavy = profile.gait === "heavy";
+    const avian = profile.gait === "avian";
+    const wisp = profile.gait === "wisp";
+    const collapseTarget = wisp ? 0 : avian ? -Math.PI / 2.4 : heavy ? -Math.PI / 2.8 : -Math.PI / 2.15;
+    this.group.rotation.z = THREE.MathUtils.lerp(this.group.rotation.z, collapseTarget + (this.group.userData.defeatSpin ?? 0), 0.08);
+    this.group.rotation.x = THREE.MathUtils.lerp(this.group.rotation.x, avian ? 0.48 : heavy ? 0.2 : 0.3, 0.06);
+    const ground = this.world.terrain.getHeightAt(this.group.position.x, this.group.position.z) + (wisp ? 0.45 : 0.05);
+    this.group.position.y = Math.max(ground, this.group.position.y - deltaSeconds * (wisp ? 0.55 : 0.3));
+    const fadeScale = wisp ? 0.982 : heavy ? 0.994 : 0.99;
+    this.group.scale.multiplyScalar(fadeScale);
+    if (this.group.userData.halo) {
+      this.group.userData.halo.rotation.z += deltaSeconds * 4.5;
+      this.group.userData.halo.scale.multiplyScalar(0.985);
+    }
+    if (this.group.userData.wings) {
+      this.group.userData.wings.forEach(({ mesh, side }) => {
+        mesh.rotation.z = THREE.MathUtils.lerp(mesh.rotation.z, side * 0.42, 0.08);
+      });
+    }
     if (this.defeatTimer <= 0 && !this.removed) {
       this.scene.remove(this.group);
       this.removed = true;

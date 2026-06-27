@@ -35,6 +35,7 @@ export class ArcherySystem {
     this.bow = this.createBow();
     this.bowPulse = 0;
     this.releaseKick = 0;
+    this.drawTensionPulse = 0;
     this.bowSettle = new THREE.Vector3();
     this.trailMultiplier = 1;
     this.lastDrawSoundStep = 0;
@@ -60,6 +61,7 @@ export class ArcherySystem {
     const bowMaterial = new THREE.MeshStandardMaterial({ color: 0x8e5b2f, roughness: 0.58, metalness: 0.05 });
     const bowEdgeMaterial = new THREE.LineBasicMaterial({ color: 0xffda7a, transparent: true, opacity: 0.68 });
     const gripMaterial = new THREE.MeshStandardMaterial({ color: 0x2d2118, roughness: 0.84 });
+    const gloveMaterial = new THREE.MeshStandardMaterial({ color: 0x4b3425, roughness: 0.82 });
     const wrapMaterial = new THREE.MeshStandardMaterial({ color: 0xe0b75f, roughness: 0.46, metalness: 0.18, emissive: 0x261400, emissiveIntensity: 0.08 });
     const stringMaterial = new THREE.LineBasicMaterial({ color: 0xffefd0, transparent: true, opacity: 0.78 });
 
@@ -93,15 +95,37 @@ export class ArcherySystem {
     nockGlow.position.set(0, 0, -0.06);
     const sightBead = new THREE.Mesh(new THREE.SphereGeometry(0.026, 8, 6), wrapMaterial);
     sightBead.position.set(0.16, 0.08, 0.14);
+    const bowHand = new THREE.Mesh(new THREE.SphereGeometry(0.055, 10, 7), gloveMaterial);
+    bowHand.position.set(0.02, -0.02, -0.09);
+    bowHand.scale.set(1, 0.72, 0.86);
+    const drawHand = new THREE.Mesh(new THREE.SphereGeometry(0.05, 10, 7), gloveMaterial);
+    drawHand.position.set(0, 0, -0.12);
+    drawHand.scale.set(0.88, 0.68, 0.8);
+    const readyArrow = new THREE.Group();
+    const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.78, 5), wrapMaterial);
+    shaft.rotation.x = Math.PI / 2;
+    const fletch = new THREE.Mesh(new THREE.ConeGeometry(0.035, 0.1, 3), wrapMaterial);
+    fletch.position.z = 0.35;
+    fletch.rotation.x = -Math.PI / 2;
+    const tip = new THREE.Mesh(new THREE.ConeGeometry(0.022, 0.1, 6), gripMaterial);
+    tip.position.z = -0.42;
+    tip.rotation.x = Math.PI / 2;
+    readyArrow.add(shaft, fletch, tip);
+    readyArrow.position.set(0.02, 0, -0.13);
     const string = new THREE.Line(new THREE.BufferGeometry().setFromPoints([
       new THREE.Vector3(-0.02, -0.71, 0),
       new THREE.Vector3(0, 0, -0.08),
       new THREE.Vector3(-0.02, 0.71, 0),
     ]), stringMaterial);
-    group.add(limb, limbEdge, grip, upperWrap, lowerWrap, upperTip, lowerTip, nockGlow, sightBead, string);
+    group.add(limb, limbEdge, grip, upperWrap, lowerWrap, upperTip, lowerTip, nockGlow, sightBead, bowHand, drawHand, readyArrow, string);
+    group.userData.limb = limb;
+    group.userData.limbEdge = limbEdge;
     group.userData.string = string;
     group.userData.nockGlow = nockGlow;
     group.userData.sightBead = sightBead;
+    group.userData.bowHand = bowHand;
+    group.userData.drawHand = drawHand;
+    group.userData.readyArrow = readyArrow;
     this.updateString(group, 0);
     return group;
   }
@@ -121,23 +145,33 @@ export class ArcherySystem {
   cancelDraw() {
     this.isDrawing = false;
     this.drawAmount = 0;
+    this.drawTensionPulse = 0;
     this.lastDrawSoundStep = 0;
   }
 
   updateDraw(deltaSeconds, input, player, cameraRig, world) {
     if (!this.isDrawing && input.isMouseDown(0) && input.pointerLocked) {
       this.isDrawing = true;
-      this.drawAmount = Math.max(this.drawAmount, 0.05);
+      this.drawAmount = Math.max(this.drawAmount, 0.08);
       this.lastDrawSoundStep = 0;
-      this.feedback?.playSound("bowDraw", 0.4);
+      this.bowPulse = Math.max(this.bowPulse, 0.58);
+      this.drawTensionPulse = Math.max(this.drawTensionPulse, 0.16);
+      this.feedback?.playSound("bowDraw", 0.46);
     }
 
     if (this.isDrawing && input.isMouseDown(0) && input.pointerLocked) {
-      this.drawAmount = Math.min(1, this.drawAmount + (deltaSeconds * this.getDrawSpeedMultiplier()) / SETTINGS.archery.drawTime);
-      const soundStep = Math.floor(this.drawAmount * 4);
+      const previousDraw = this.drawAmount;
+      const drawCurveBoost = 0.94 + this.drawAmount * 0.18;
+      this.drawAmount = Math.min(1, this.drawAmount + (deltaSeconds * this.getDrawSpeedMultiplier() * drawCurveBoost) / SETTINGS.archery.drawTime);
+      const soundStep = Math.floor(this.drawAmount * 6);
       if (soundStep > this.lastDrawSoundStep) {
         this.lastDrawSoundStep = soundStep;
-        this.feedback?.playSound("bowDraw", 0.45 + this.drawAmount * 0.35);
+        this.bowPulse = Math.max(this.bowPulse, 0.35 + this.drawAmount * 0.34);
+        this.feedback?.playSound("bowDraw", 0.42 + this.drawAmount * 0.42);
+      }
+      if (previousDraw < 0.92 && this.drawAmount >= 0.92) {
+        this.drawTensionPulse = 1;
+        this.feedback?.playSound("powerfulHit", 0.26);
       }
     }
 
@@ -161,8 +195,8 @@ export class ArcherySystem {
     const origin = this.getArrowOrigin(player, cameraRig);
     const direction = this.getShotDirection(origin, cameraRig, world);
     this.applyAimSteadiness(direction);
-    const power = THREE.MathUtils.smoothstep(this.drawAmount, 0, 1);
-    const releasePower = 0.82 + power * 0.28;
+    const power = THREE.MathUtils.smootherstep(this.drawAmount, 0.02, 1);
+    const releasePower = 0.88 + power * 0.25;
     const arrowType = this.arrowTypeSystem?.getCurrentArrowType?.() ?? { id: "standard", name: "Standard Arrow", damageMultiplier: 1, rangeMultiplier: 1 };
     const typeRange = arrowType.rangeMultiplier ?? 1;
     const speed = THREE.MathUtils.lerp(SETTINGS.archery.minSpeed, SETTINGS.archery.maxSpeed * this.gearStats.rangeMultiplier * this.rpgStats.rangeMultiplier * typeRange, power) * releasePower;
@@ -175,16 +209,17 @@ export class ArcherySystem {
     arrow.critical = critical;
     arrow.damageMultiplier = this.stats.damageMultiplier * this.gearStats.damageMultiplier * this.rpgStats.damageMultiplier * (arrowType.damageMultiplier ?? 1) * (critical ? 1.75 : 1);
     this.arrows.push(arrow);
-    this.bowPulse = 1.15 + power * 0.35;
-    this.releaseKick = 1 + power * 0.75;
-    this.feedback?.playSound("bowRelease", 0.72 + power * 0.9);
+    this.bowPulse = 1.25 + power * 0.42;
+    this.releaseKick = 1.1 + power * 0.86;
+    this.drawTensionPulse = 0;
+    this.feedback?.playSound("bowRelease", 0.78 + power * 0.95);
     if (power > 0.45) {
       window.setTimeout(() => this.feedback?.playSound("arrowFlyby", 0.35 + power * 0.65), 45);
     }
-    this.feedback?.spawnImpact(origin.clone(), power > 0.7 ? 0xffe0a0 : 0xe6b75d, 0.45 + power * 0.6);
-    this.feedback?.shake(0.025 + power * 0.045);
+    this.feedback?.spawnImpact(origin.clone(), power > 0.7 ? 0xffe0a0 : 0xe6b75d, 0.52 + power * 0.7);
+    this.feedback?.shake(0.032 + power * 0.052);
     if (power > 0.72) {
-      this.feedback?.shake(0.13 + power * 0.17);
+      this.feedback?.shake(0.14 + power * 0.18);
       this.feedback?.playSound("powerfulHit", power);
     }
     if (critical) {
@@ -198,6 +233,9 @@ export class ArcherySystem {
         },
       }));
     }
+    window.dispatchEvent(new CustomEvent("echo-archer:archery-release", {
+      detail: { power, critical },
+    }));
     this.practice?.registerShot();
   }
 
@@ -207,22 +245,48 @@ export class ArcherySystem {
     this.bow.visible = cameraRig.mode === "first" || this.isDrawing;
     this.bow.position.copy(origin);
     this.bow.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), direction);
-    this.bow.rotateZ((cameraRig.mode === "first" ? -0.06 : -0.28) - this.drawAmount * 0.18 + this.releaseKick * 0.05);
-    const drawSettle = Math.sin(performance.now() * 0.018) * this.drawAmount * 0.012;
-    const pullBack = direction.clone().multiplyScalar(-this.drawAmount * (cameraRig.mode === "first" ? 0.08 : 0.12));
-    const releaseForward = direction.clone().multiplyScalar(this.releaseKick * 0.08);
+    this.bow.rotateZ((cameraRig.mode === "first" ? -0.05 : -0.27) - this.drawAmount * 0.22 + this.releaseKick * 0.055);
+    const tension = this.drawAmount * this.drawAmount;
+    const drawSettle = Math.sin(performance.now() * (0.018 + tension * 0.018)) * this.drawAmount * (0.01 + tension * 0.018);
+    const pullBack = direction.clone().multiplyScalar(-this.drawAmount * (cameraRig.mode === "first" ? 0.13 : 0.17));
+    const releaseForward = direction.clone().multiplyScalar(this.releaseKick * 0.115);
     this.bow.position
       .add(cameraRig.getPlanarSide().clone().multiplyScalar((cameraRig.mode === "first" ? -0.11 : -0.04) * this.drawAmount + drawSettle))
       .add(pullBack)
       .add(releaseForward);
-    const modeScale = cameraRig.mode === "first" ? 1.12 : 0.54;
-    const tensionPulse = Math.sin(performance.now() * 0.028) * this.drawAmount * 0.015;
-    this.bow.scale.setScalar(modeScale + this.bowPulse * 0.055 + this.drawAmount * 0.055 + this.releaseKick * 0.025 + tensionPulse);
+    const modeScale = cameraRig.mode === "first" ? 1.16 : 0.56;
+    const tensionPulse = Math.sin(performance.now() * 0.034) * tension * 0.03 + this.drawTensionPulse * 0.04;
+    this.bow.scale.setScalar(modeScale + this.bowPulse * 0.06 + this.drawAmount * 0.064 + this.releaseKick * 0.034 + tensionPulse);
     this.bowPulse *= 0.74;
+    this.drawTensionPulse *= 0.82;
+    if (this.bow.userData.limb) {
+      this.bow.userData.limb.scale.set(
+        1 + tension * 0.12 - this.releaseKick * 0.035,
+        1 + this.drawAmount * 0.03,
+        1 - tension * 0.16 + this.releaseKick * 0.052,
+      );
+    }
+    if (this.bow.userData.limbEdge) {
+      this.bow.userData.limbEdge.scale.copy(this.bow.userData.limb.scale);
+    }
+    if (this.bow.userData.bowHand) {
+      this.bow.userData.bowHand.visible = cameraRig.mode === "first" || this.isDrawing;
+      this.bow.userData.bowHand.position.set(0.025, -0.04, -0.11 + this.releaseKick * 0.025);
+    }
+    if (this.bow.userData.drawHand) {
+      this.bow.userData.drawHand.visible = cameraRig.mode === "first" || this.isDrawing;
+      this.bow.userData.drawHand.position.set(Math.sin(performance.now() * 0.016) * tension * 0.017, 0, -0.12 - this.drawAmount * 0.48 + this.releaseKick * 0.12);
+      this.bow.userData.drawHand.scale.setScalar(1 + this.drawAmount * 0.16 + this.drawTensionPulse * 0.1);
+    }
+    if (this.bow.userData.readyArrow) {
+      this.bow.userData.readyArrow.visible = this.isDrawing || this.drawAmount > 0.02;
+      this.bow.userData.readyArrow.position.set(0.025, 0, -0.14 - this.drawAmount * 0.44 + this.releaseKick * 0.12);
+      this.bow.userData.readyArrow.rotation.z = Math.sin(performance.now() * 0.026) * tension * 0.04;
+    }
     const nockGlow = this.bow.userData.nockGlow;
     if (nockGlow) {
       nockGlow.scale.setScalar(1 + this.drawAmount * 1.2 + this.bowPulse * 0.8);
-      nockGlow.material.emissiveIntensity = 0.08 + this.drawAmount * 0.48;
+      nockGlow.material.emissiveIntensity = 0.08 + this.drawAmount * 0.48 + this.drawTensionPulse * 0.22;
     }
     const sightBead = this.bow.userData.sightBead;
     if (sightBead) {
@@ -291,13 +355,13 @@ export class ArcherySystem {
 
     const rayOrigin = cameraRig.camera.position.clone();
     aimRaycaster.set(rayOrigin, cameraDirection.clone().normalize());
-    aimRaycaster.far = 110;
+    aimRaycaster.far = 140;
     const hits = aimRaycaster.intersectObjects(world.colliders ?? [], false);
     if (hits.length > 0) {
       return hits[0].point.clone();
     }
 
-    for (let distance = 8; distance <= 105; distance += 4) {
+    for (let distance = 8; distance <= 135; distance += 4) {
       const point = rayOrigin.clone().add(cameraDirection.clone().multiplyScalar(distance));
       const terrainY = world.terrain.getHeightAt(point.x, point.z);
       if (point.y <= terrainY + 0.12) {
@@ -306,16 +370,17 @@ export class ArcherySystem {
       }
     }
 
-    return rayOrigin.add(cameraDirection.clone().multiplyScalar(105));
+    return rayOrigin.add(cameraDirection.clone().multiplyScalar(135));
   }
 
   updateString(bow, drawAmount) {
-    const pull = -0.08 - drawAmount * 0.42;
-    const tension = Math.sin(performance.now() * 0.045) * drawAmount * 0.018;
+    const drawCurve = drawAmount * drawAmount;
+    const pull = -0.08 - drawAmount * 0.52;
+    const tension = Math.sin(performance.now() * (0.045 + drawCurve * 0.02)) * drawAmount * (0.017 + drawCurve * 0.014);
     const points = [
-      new THREE.Vector3(-0.02, -0.71, 0),
+      new THREE.Vector3(-0.02 - drawCurve * 0.018, -0.71, 0),
       new THREE.Vector3(tension, 0, pull),
-      new THREE.Vector3(-0.02, 0.71, 0),
+      new THREE.Vector3(-0.02 - drawCurve * 0.018, 0.71, 0),
     ];
     bow.userData.string.geometry.setFromPoints(points);
   }

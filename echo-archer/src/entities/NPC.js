@@ -12,6 +12,9 @@ export class NPC {
     this.position = new THREE.Vector3(options.position[0], 0, options.position[1]);
     this.walkSpeed = options.walkSpeed ?? 1.35;
     this.motionAmount = 0;
+    this.gestureTimer = 0;
+    this.gestureKind = "idle";
+    this.gestureDuration = 0.55;
     this.interactRadius = options.interactRadius ?? 4;
     this.group = this.createMesh();
     this.group.position.copy(this.position);
@@ -26,10 +29,13 @@ export class NPC {
     const staffMaterial = new THREE.MeshStandardMaterial({ color: this.appearance.staff ?? 0x9a6d3d, roughness: 0.76 });
     const trimMaterial = new THREE.MeshStandardMaterial({ color: this.appearance.trim ?? 0xe6b75d, roughness: 0.52, metalness: 0.14, emissive: 0x2a1700, emissiveIntensity: 0.08 });
     const featherMaterial = new THREE.MeshStandardMaterial({ color: this.appearance.feather ?? 0xf0c66a, roughness: 0.62, emissive: 0x251500, emissiveIntensity: 0.05 });
+    const role = this.role.toLowerCase();
+    const bodyType = this.getBodyType();
+    const accessoryMeshes = [];
 
     const body = new THREE.Mesh(new THREE.CapsuleGeometry(0.34, 0.92, 6, 12), cloakMaterial);
     body.position.y = 0.9;
-    body.scale.set(0.92, 1.03, 0.78);
+    body.scale.set(bodyType.width, bodyType.height, bodyType.depth);
     body.castShadow = true;
     group.add(body);
 
@@ -56,6 +62,14 @@ export class NPC {
     faceShadow.position.set(0, 1.43, 0.22);
     faceShadow.scale.set(1, 0.55, 0.32);
     group.add(faceShadow);
+
+    const expressionMaterial = new THREE.MeshStandardMaterial({ color: 0xf0d7a5, roughness: 0.7 });
+    [-1, 1].forEach((side) => {
+      const eye = new THREE.Mesh(new THREE.SphereGeometry(0.016, 7, 5), expressionMaterial);
+      eye.position.set(side * 0.055, 1.47, 0.315);
+      eye.scale.set(1, 0.58, 0.45);
+      group.add(eye);
+    });
 
     const sash = new THREE.Mesh(new THREE.TorusGeometry(0.29, 0.018, 8, 22), trimMaterial);
     sash.position.y = 0.88;
@@ -117,47 +131,145 @@ export class NPC {
       group.add(badge);
     }
 
-    group.userData = { body, cloak, longCape, staff, staffGem, marker };
+    if (role.includes("blacksmith") || role.includes("smith")) {
+      const apron = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.54, 0.04), staffMaterial);
+      apron.position.set(0, 0.78, 0.31);
+      apron.rotation.x = -0.08;
+      const hammer = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.32, 0.08), trimMaterial);
+      hammer.position.set(-0.34, 0.78, 0.22);
+      hammer.rotation.z = 0.28;
+      group.add(apron, hammer);
+      accessoryMeshes.push(hammer);
+    } else if (role.includes("merchant") || role.includes("trader") || role.includes("supplier")) {
+      const pack = new THREE.Mesh(new THREE.BoxGeometry(0.36, 0.5, 0.22), staffMaterial);
+      pack.position.set(-0.18, 0.92, -0.38);
+      pack.rotation.y = 0.18;
+      const coin = new THREE.Mesh(new THREE.CylinderGeometry(0.075, 0.075, 0.018, 12), trimMaterial);
+      coin.position.set(0.18, 1.02, 0.31);
+      coin.rotation.x = Math.PI / 2;
+      group.add(pack, coin);
+      accessoryMeshes.push(pack, coin);
+    } else if (role.includes("inn") || role.includes("tavern") || role.includes("cook")) {
+      const apron = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.46, 0.035), new THREE.MeshStandardMaterial({ color: 0xe8d3a0, roughness: 0.82 }));
+      apron.position.set(0, 0.78, 0.32);
+      const cup = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.045, 0.12, 8), trimMaterial);
+      cup.position.set(0.32, 0.86, 0.22);
+      cup.rotation.z = -0.22;
+      group.add(apron, cup);
+      accessoryMeshes.push(cup);
+    } else if (role.includes("farmer") || role.includes("herbalist")) {
+      const hat = new THREE.Mesh(new THREE.ConeGeometry(0.3, 0.2, 12), new THREE.MeshStandardMaterial({ color: 0xd7bd83, roughness: 0.86 }));
+      hat.position.y = 1.72;
+      hat.scale.set(1.2, 0.65, 1.0);
+      const basket = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.16, 0.18, 8), staffMaterial);
+      basket.position.set(-0.34, 0.72, 0.16);
+      group.add(hat, basket);
+      accessoryMeshes.push(hat, basket);
+    } else if (role.includes("guard") || role.includes("watch") || role.includes("warden")) {
+      const shoulderGuard = new THREE.Mesh(new THREE.TorusGeometry(0.32, 0.018, 8, 22, Math.PI), trimMaterial);
+      shoulderGuard.position.set(0, 1.26, 0.02);
+      shoulderGuard.rotation.set(Math.PI / 2, 0, 0);
+      const pennant = new THREE.Mesh(new THREE.ConeGeometry(0.06, 0.28, 3), trimMaterial);
+      pennant.position.set(0.5, 1.42, 0.08);
+      pennant.rotation.z = -0.7;
+      group.add(shoulderGuard, pennant);
+      accessoryMeshes.push(pennant);
+    } else if (role.includes("scout") || role.includes("explorer") || role.includes("cartographer") || role.includes("map")) {
+      const satchel = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.24, 0.12), staffMaterial);
+      satchel.position.set(-0.3, 0.82, 0.28);
+      satchel.rotation.z = 0.08;
+      const mapRoll = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.34, 8), new THREE.MeshStandardMaterial({ color: 0xe8d3a0, roughness: 0.82 }));
+      mapRoll.position.set(0.28, 1.0, 0.26);
+      mapRoll.rotation.z = 0.8;
+      group.add(satchel, mapRoll);
+      accessoryMeshes.push(satchel, mapRoll);
+    }
+
+    accessoryMeshes.forEach((mesh) => {
+      mesh.userData.baseY = mesh.position.y;
+      mesh.userData.baseRotY = mesh.rotation.y;
+    });
+    group.userData = { body, cloak, longCape, staff, staffGem, marker, accessoryMeshes };
     return group;
   }
 
-  update(player) {
+  getBodyType() {
+    const value = `${this.name ?? ""}${this.role ?? ""}`;
+    let hash = 0;
+    for (let index = 0; index < value.length; index += 1) {
+      hash += value.charCodeAt(index) * (index + 1);
+    }
+    const width = 0.86 + (hash % 5) * 0.035;
+    const height = 0.96 + (hash % 7) * 0.018;
+    const depth = 0.72 + (hash % 3) * 0.035;
+    return { width, height, depth };
+  }
+
+  update(player, context = {}) {
+    this.gestureTimer = Math.max(0, this.gestureTimer - (context.deltaSeconds ?? 1 / 60));
     const toPlayer = player.group.position.clone().sub(this.group.position);
     toPlayer.y = 0;
-    if (toPlayer.lengthSq() > 0.001) {
+    const nearPlayer = toPlayer.lengthSq() <= this.interactRadius * this.interactRadius;
+    if (nearPlayer && toPlayer.lengthSq() > 0.001) {
       const yaw = Math.atan2(toPlayer.x, toPlayer.z);
       this.group.rotation.y = THREE.MathUtils.lerp(this.group.rotation.y, yaw, 0.08);
+    } else if (context.lookAt) {
+      const toFocus = new THREE.Vector3(context.lookAt.x, 0, context.lookAt.z).sub(this.group.position);
+      toFocus.y = 0;
+      if (toFocus.lengthSq() > 0.08) {
+        const yaw = Math.atan2(toFocus.x, toFocus.z);
+        this.group.rotation.y = THREE.MathUtils.lerp(this.group.rotation.y, yaw, 0.035);
+      }
     }
 
     const time = performance.now() * 0.001 + this.gestureSeed;
-    const nearPlayer = toPlayer.lengthSq() <= this.interactRadius * this.interactRadius;
-    const { body, longCape, staff, staffGem, marker } = this.group.userData;
+    const { body, longCape, staff, staffGem, marker, accessoryMeshes = [] } = this.group.userData;
+    const sitting = context.activity === "sit" || context.activity === "sleep";
+    const working = context.activity === "work";
+    const sheltering = context.activity === "shelter";
+    const gesturing = this.gestureTimer > 0;
+    const gestureAmount = gesturing ? Math.sin((this.gestureTimer / Math.max(this.gestureDuration, 0.001)) * Math.PI) : 0;
     if (longCape) {
-      longCape.rotation.x = -0.16 + Math.sin(time * 1.4) * 0.025;
+      longCape.rotation.x = -0.16 + Math.sin(time * (sheltering ? 2.6 : 1.4)) * (sheltering ? 0.045 : 0.025);
     }
     if (staffGem) {
       staffGem.scale.setScalar(1 + Math.sin(time * 2.2) * 0.08);
     }
     if (body) {
       const breathe = 1 + Math.sin(time * 1.1) * 0.018;
-      body.scale.y = 1.03 * breathe;
+      body.scale.y = (sitting ? 0.74 : working ? 1.01 : 1.03) * breathe;
+      body.position.y = THREE.MathUtils.lerp(body.position.y, sitting ? 0.72 : 0.9, 0.06);
     }
     if (staff) {
-      const gestureAmount = nearPlayer ? 0.1 : 0.025;
-      staff.rotation.z = 0.12 + Math.sin(time * 1.8) * gestureAmount;
+      const baseGesture = gesturing ? 0.22 : nearPlayer ? 0.1 : working ? 0.07 : sheltering ? 0.045 : 0.025;
+      staff.rotation.z = 0.12 + Math.sin(time * (gesturing ? 4.4 : 1.8)) * baseGesture;
+      staff.rotation.x = THREE.MathUtils.lerp(staff.rotation.x, gesturing ? 0.16 + gestureAmount * 0.16 : 0, 0.12);
+      staff.position.y = 0.9 + gestureAmount * (this.gestureKind === "wave" ? 0.12 : this.gestureKind === "work" ? -0.08 : 0.04);
     }
     if (marker) {
       const pulse = nearPlayer ? 1 + Math.sin(time * 4) * 0.1 : 1;
       marker.scale.setScalar(pulse);
     }
+    accessoryMeshes.forEach((mesh, index) => {
+      mesh.rotation.y = (mesh.userData.baseRotY ?? 0) + Math.sin(time * 1.1 + index) * 0.018;
+      mesh.position.y = (mesh.userData.baseY ?? mesh.position.y) + (working ? Math.sin(time * 2.4 + index) * 0.012 : 0) + (this.gestureKind === "work" ? gestureAmount * 0.035 : 0);
+      mesh.rotation.z += gestureAmount * (this.gestureKind === "point" ? 0.08 : this.gestureKind === "wave" ? 0.05 : 0);
+    });
     if (!nearPlayer) {
-      const idleSway = this.idleStyle === "restless" ? 0.035 : this.idleStyle === "watchful" ? 0.018 : 0.01;
+      const idleSway = sitting ? 0.004 : this.idleStyle === "restless" ? 0.035 : this.idleStyle === "watchful" ? 0.018 : 0.01;
       const walkSway = Math.sin(time * 5.8) * 0.035 * this.motionAmount;
-      this.group.rotation.z = Math.sin(time * 0.8) * idleSway + walkSway;
+      const workSway = working ? Math.sin(time * 2.2) * 0.018 : 0;
+      this.group.rotation.z = Math.sin(time * 0.8) * idleSway + walkSway + workSway;
     } else {
       this.group.rotation.z = THREE.MathUtils.lerp(this.group.rotation.z, 0, 0.12);
     }
     this.motionAmount = THREE.MathUtils.lerp(this.motionAmount, 0, 0.08);
+  }
+
+  playGesture(kind = "talk") {
+    this.gestureKind = kind;
+    this.gestureDuration = kind === "work" ? 0.75 : kind === "wave" ? 0.68 : 0.55;
+    this.gestureTimer = this.gestureDuration;
   }
 
   isPlayerNear(player) {

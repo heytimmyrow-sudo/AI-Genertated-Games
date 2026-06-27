@@ -170,9 +170,111 @@ export class Terrain {
     const smallRoll = Math.sin((x + z) * 0.18) * 0.22;
     const erosionRoll = Math.sin(x * 0.035 + z * 0.052) * Math.cos(z * 0.041 - x * 0.018) * 0.34;
     const softKnolls = Math.sin((x - 16) * 0.025) * Math.sin((z + 9) * 0.03) * 0.28;
+    const valleyCarve = Math.sin(x * 0.021 - z * 0.018) * Math.sin((x + z) * 0.017) * 0.18;
+    const roundedShoulders = Math.cos(x * 0.012 + 0.9) * Math.cos(z * 0.014 - 0.4) * 0.16;
     const clearingEase = Math.max(0, 1 - Math.hypot(x, z + 2) / 24);
-    const naturalHeight = broadRise + smallRoll + erosionRoll + softKnolls - clearingEase * 0.48;
-    return naturalHeight + this.getWorldCohesionRise(x, z) + this.getWatchtowerRise(x, z) + this.getHiddenPondShape(x, z) + this.getAncientRuinsRise(x, z) + this.getHuntersCabinRise(x, z) + this.getCliffOverlookRise(x, z) + this.getWhisperCaveShape(x, z) + this.getRiverCrossingShape(x, z) + this.getMountainPathRise(x, z) + this.getForgottenGroveRise(x, z) + this.getRedCanyonRise(x, z) + this.getAshenHighlandsRise(x, z) + this.getStarfallValeRise(x, z) + this.getFrontierPlainsRise(x, z) + this.getLostKingdomRise(x, z) + this.getCelestialExpanseRise(x, z) + this.getShatteredCoastRise(x, z) + this.getVeiledWildsRise(x, z);
+    const routeMask = this.getRouteMask(x, z);
+    const naturalHeight = broadRise + smallRoll * (1 - routeMask * 0.35) + erosionRoll + softKnolls + valleyCarve + roundedShoulders - clearingEase * 0.48;
+    return naturalHeight + this.getWorldCohesionRise(x, z, routeMask) + this.getTerrainMasterpieceRise(x, z, routeMask) + this.getWatchtowerRise(x, z) + this.getHiddenPondShape(x, z) + this.getAncientRuinsRise(x, z) + this.getHuntersCabinRise(x, z) + this.getCliffOverlookRise(x, z) + this.getWhisperCaveShape(x, z) + this.getRiverCrossingShape(x, z) + this.getMountainPathRise(x, z) + this.getForgottenGroveRise(x, z) + this.getRedCanyonRise(x, z) + this.getAshenHighlandsRise(x, z) + this.getStarfallValeRise(x, z) + this.getFrontierPlainsRise(x, z) + this.getLostKingdomRise(x, z) + this.getCelestialExpanseRise(x, z) + this.getShatteredCoastRise(x, z) + this.getVeiledWildsRise(x, z);
+  }
+
+  getRadialFalloff(x, z, centerX, centerZ, radius, innerRadius = 0) {
+    const distance = Math.hypot(x - centerX, z - centerZ);
+    if (distance <= innerRadius) return 1;
+    return THREE.MathUtils.clamp(1 - (distance - innerRadius) / Math.max(0.001, radius - innerRadius), 0, 1);
+  }
+
+  getTerrainMasterpieceRise(x, z, routeMask = 0) {
+    const routeEase = 1 - routeMask * 0.72;
+    const broadUndulation = (
+      Math.sin(x * 0.018 + z * 0.011) * 0.18
+      + Math.cos(x * 0.013 - z * 0.019) * 0.16
+      + Math.sin((x + z) * 0.009 + 1.7) * 0.12
+    ) * routeEase;
+
+    const routeShoulder = -routeMask * 0.12;
+    const river = this.getRiverbankMasterpieceShape(x, z);
+    const canyon = this.getCanyonTerraceShape(x, z);
+    const coast = this.getCoastlineMasterpieceShape(x, z);
+    const transition = this.getBiomeTransitionShape(x, z, routeMask);
+    const vistas = this.getScenicVistaShape(x, z);
+    const flatBreakup = this.getFlatlandBreakupShape(x, z, routeMask);
+
+    return broadUndulation + routeShoulder + river + canyon + coast + transition + vistas + flatBreakup;
+  }
+
+  getRiverbankMasterpieceShape(x, z) {
+    const riverCenter = Math.sin((x - 30) * 0.09) * 3.2 + 1.6;
+    const distance = Math.abs(z - riverCenter);
+    const channel = THREE.MathUtils.clamp(1 - distance / 2.6, 0, 1);
+    const nearBank = THREE.MathUtils.clamp(1 - Math.abs(distance - 3.35) / 1.35, 0, 1);
+    const farBank = THREE.MathUtils.clamp(1 - Math.abs(distance - 5.25) / 1.8, 0, 1);
+    return -channel * 0.18 + nearBank * 0.16 + farBank * 0.08;
+  }
+
+  getCanyonTerraceShape(x, z) {
+    const distance = Math.hypot(x - RED_CANYON.x, z - RED_CANYON.z);
+    const canyon = THREE.MathUtils.clamp(1 - distance / (RED_CANYON.radius + 8), 0, 1);
+    if (canyon <= 0) return 0;
+    const ledgeA = THREE.MathUtils.clamp(1 - Math.abs(distance - RED_CANYON.radius * 0.42) / 5.4, 0, 1);
+    const ledgeB = THREE.MathUtils.clamp(1 - Math.abs(distance - RED_CANYON.radius * 0.72) / 6.8, 0, 1);
+    const dryWashDistance = this.getDistanceToSegment(x, z, RED_CANYON.x - 24, RED_CANYON.z - 14, RED_CANYON.x + 14, RED_CANYON.z + 26);
+    const dryWash = THREE.MathUtils.clamp(1 - dryWashDistance / 4.2, 0, 1);
+    return ledgeA * 0.34 + ledgeB * 0.48 - dryWash * 0.28;
+  }
+
+  getCoastlineMasterpieceShape(x, z) {
+    const shatteredDistance = Math.hypot(x - SHATTERED_COAST.x, z - SHATTERED_COAST.z);
+    const shattered = THREE.MathUtils.clamp(1 - shatteredDistance / (SHATTERED_COAST.radius + 10), 0, 1);
+    const seaShelf = x < SHATTERED_COAST.x - 16 ? THREE.MathUtils.clamp((SHATTERED_COAST.x - 16 - x) / 18, 0, 1) : 0;
+    const shoreBench = THREE.MathUtils.clamp(1 - Math.abs(shatteredDistance - SHATTERED_COAST.radius * 0.86) / 5.4, 0, 1);
+    const coveCut = Math.max(
+      this.getRadialFalloff(x, z, -172, -143, 10, 2),
+      this.getRadialFalloff(x, z, -143, -171, 12, 2)
+    );
+    return shattered * shoreBench * 0.24 - seaShelf * 0.32 - coveCut * 0.22;
+  }
+
+  getBiomeTransitionShape(x, z, routeMask = 0) {
+    const transitions = [
+      [58, 6, 93, -96, 4.8, -0.14],
+      [-16, 66, -5, 114, 5.6, 0.18],
+      [-80, 128, -31, 144, 5.2, -0.16],
+      [62, 54, 112, 47, 6.4, 0.2],
+      [-102, -120, -144, -139, 5.8, -0.18],
+      [-52, -116, -42, -150, 4.8, 0.16],
+    ];
+    return transitions.reduce((total, [ax, az, bx, bz, width, strength], index) => {
+      const distance = this.getDistanceToSegment(x, z, ax, az, bx, bz);
+      const mask = THREE.MathUtils.clamp(1 - distance / width, 0, 1);
+      const ripple = Math.sin(index + x * 0.04 + z * 0.03) * 0.05;
+      return total + mask * (strength + ripple) * (1 - routeMask * 0.5);
+    }, 0);
+  }
+
+  getScenicVistaShape(x, z) {
+    const vistas = [
+      [-8, 37, 12, 0.28],
+      [-5, 68, 16, 0.38],
+      [-94, 88, 18, 0.42],
+      [0, 142, 18, 0.34],
+      [142, 42, 16, 0.32],
+      [-150, -146, 14, 0.3],
+    ];
+    return vistas.reduce((total, [centerX, centerZ, radius, height], index) => {
+      const falloff = this.getRadialFalloff(x, z, centerX, centerZ, radius, radius * 0.22);
+      return total + falloff * height * (0.82 + Math.sin(index + x * 0.03) * 0.08);
+    }, 0);
+  }
+
+  getFlatlandBreakupShape(x, z, routeMask = 0) {
+    const meadowMask = this.getRadialFalloff(x, z, 0, -4, 58, 12);
+    const frontierMask = this.getRadialFalloff(x, z, FRONTIER_PLAINS.x, FRONTIER_PLAINS.z, FRONTIER_PLAINS.radius + 16, 8);
+    const lowAmplitude = (
+      Math.sin(x * 0.052 + 0.4) * Math.sin(z * 0.047 - 0.8) * 0.08
+      + Math.cos((x - z) * 0.031) * 0.06
+    ) * (1 - routeMask * 0.75);
+    return lowAmplitude * Math.max(meadowMask * 0.5, frontierMask * 0.62);
   }
 
   getWatchtowerRise(x, z) {
@@ -393,11 +495,11 @@ export class Terrain {
       - oldRoad;
   }
 
-  getWorldCohesionRise(x, z) {
-    const trailMask = this.getRouteMask(x, z);
+  getWorldCohesionRise(x, z, trailMask = this.getRouteMask(x, z)) {
     const ridge = Math.sin((x - z) * 0.11) * 0.13 + Math.sin(x * 0.17) * 0.06;
     const shoulder = Math.sin((x + z) * 0.045) * Math.sin(z * 0.033) * 0.16;
-    return ridge + shoulder * (1 - trailMask * 0.65) - trailMask * 0.14;
+    const bankSoftening = Math.sin(x * 0.032) * Math.cos(z * 0.027) * 0.08;
+    return ridge * (1 - trailMask * 0.45) + shoulder * (1 - trailMask * 0.72) + bankSoftening - trailMask * 0.18;
   }
 
   getRouteMask(x, z) {
@@ -510,7 +612,8 @@ export class Terrain {
       veiledRoute,
       worldRoutes
     );
-    const noise = Math.sin(x * 0.41) * Math.sin(z * 0.37) * 0.045;
+    const pathEdge = THREE.MathUtils.clamp(pathMask * (1 - pathMask), 0, 0.25) * 4;
+    const noise = Math.sin(x * 0.41) * Math.sin(z * 0.37) * 0.045 + Math.sin((x - z) * 0.19) * 0.018;
 
     const canyonColor = new THREE.Color(0xb7603b);
     color.lerp(canyonColor, canyonFloor * 0.62);
@@ -526,7 +629,9 @@ export class Terrain {
     const veiledMoss = new THREE.Color(0x7f9460);
     color.lerp(veiledGreen, veiledFloor * 0.58);
     color.lerp(veiledMoss, veiledRoute * 0.48);
-    color.lerp(pathColor, pathMask * 0.32);
+    const warmSoil = new THREE.Color(0x9b7045);
+    color.lerp(warmSoil, pathEdge * 0.16);
+    color.lerp(pathColor, pathMask * 0.34);
     color.offsetHSL(0.015, noise, noise * 0.7);
     return color;
   }

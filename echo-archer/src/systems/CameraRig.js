@@ -43,9 +43,9 @@ export class CameraRig {
 
   setAimState(isDrawing, drawAmount) {
     const target = isDrawing ? THREE.MathUtils.clamp(0.35 + drawAmount * 0.65, 0, 1) : 0;
-    this.aimAmount = THREE.MathUtils.lerp(this.aimAmount, target, isDrawing ? 0.28 : 0.18);
+    this.aimAmount = THREE.MathUtils.lerp(this.aimAmount, target, isDrawing ? 0.34 : 0.2);
     const aimFov = this.mode === "first" ? SETTINGS.camera.firstPersonAimFov : SETTINGS.camera.thirdPersonAimFov;
-    this.camera.fov = THREE.MathUtils.lerp(this.camera.fov, THREE.MathUtils.lerp(this.baseFov, aimFov, this.aimAmount), isDrawing ? 0.22 : 0.16);
+    this.camera.fov = THREE.MathUtils.lerp(this.camera.fov, THREE.MathUtils.lerp(this.baseFov, aimFov, this.aimAmount), isDrawing ? 0.27 : 0.18);
     this.camera.updateProjectionMatrix();
   }
 
@@ -105,7 +105,7 @@ export class CameraRig {
       this.aimAmount
     );
     const sideOffset = this.getPlanarSide().clone().multiplyScalar(shoulder);
-    const focusDistance = SETTINGS.camera.thirdPersonLookAhead + this.aimAmount * 4.2;
+    const focusDistance = SETTINGS.camera.thirdPersonLookAhead + this.aimAmount * 5.2;
     const focus = playerEye.clone().add(lookDirection.clone().multiplyScalar(focusDistance));
     focus.add(sideOffset.clone().multiplyScalar(0.2));
 
@@ -119,7 +119,7 @@ export class CameraRig {
 
     const movingFast = Math.hypot(player.velocity?.x ?? 0, player.velocity?.z ?? 0) > SETTINGS.player.walkSpeed;
     const smoothing = THREE.MathUtils.clamp(
-      this.thirdPersonSmoothing + this.aimAmount * 0.05 + (movingFast ? 0.035 : 0),
+      this.thirdPersonSmoothing + this.aimAmount * 0.075 + (movingFast ? 0.035 : 0),
       0.12,
       0.32,
     );
@@ -128,7 +128,7 @@ export class CameraRig {
       this.focusTarget.copy(focus);
       this.hasFocusTarget = true;
     }
-    this.focusTarget.lerp(focus, THREE.MathUtils.clamp(0.16 + this.aimAmount * 0.12, 0.16, 0.36));
+    this.focusTarget.lerp(focus, THREE.MathUtils.clamp(0.18 + this.aimAmount * 0.18, 0.18, 0.44));
     this.camera.lookAt(this.focusTarget);
   }
 
@@ -161,10 +161,10 @@ export class CameraRig {
     }
 
     const time = performance.now() * 0.032;
-    const side = this.getPlanarSide().clone().multiplyScalar(Math.sin(time * 1.7) * this.shake * 0.06);
-    const vertical = new THREE.Vector3(0, Math.cos(time * 2.1) * this.shake * 0.04, 0);
+    const side = this.getPlanarSide().clone().multiplyScalar(Math.sin(time * 1.7) * this.shake * 0.055);
+    const vertical = new THREE.Vector3(0, Math.cos(time * 2.1) * this.shake * 0.035, 0);
     this.camera.position.add(side).add(vertical);
-    this.shake *= 0.78;
+    this.shake *= 0.74;
   }
 
   applyScenicLook(deltaSeconds) {

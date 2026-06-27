@@ -117,6 +117,7 @@ export class EnemySystem {
   }
 
   update(deltaSeconds, player, camera) {
+    this.updateGroupBehavior(player);
     this.enemies.forEach((enemy, index) => {
       if (!enemy) {
         if (!this.isSlotInSafeZone(this.slots[index]) && this.isSlotNearPlayer(this.slots[index], player, this.world.performanceMode ? 58 : 96)) {
@@ -143,6 +144,56 @@ export class EnemySystem {
       }
     });
     this.updateHealthBars(camera);
+  }
+
+  updateGroupBehavior(player) {
+    const activeEnemies = this.enemies.filter((enemy) => enemy?.active && !enemy.removed);
+    activeEnemies.forEach((enemy) => {
+      enemy.groupPressure?.set?.(0, 0, 0);
+    });
+
+    for (let index = 0; index < activeEnemies.length; index += 1) {
+      const enemy = activeEnemies[index];
+      for (let otherIndex = index + 1; otherIndex < activeEnemies.length; otherIndex += 1) {
+        const other = activeEnemies[otherIndex];
+        if (enemy.territory?.id !== other.territory?.id && enemy.group.position.distanceTo(other.group.position) > 7.5) {
+          continue;
+        }
+        const offset = enemy.group.position.clone().sub(other.group.position);
+        offset.y = 0;
+        const distance = offset.length();
+        if (distance <= 0.001 || distance > 5.4) {
+          continue;
+        }
+        const pressure = offset.normalize().multiplyScalar((5.4 - distance) / 5.4);
+        enemy.groupPressure?.add?.(pressure);
+        other.groupPressure?.add?.(pressure.clone().multiplyScalar(-1));
+      }
+    }
+
+    activeEnemies.forEach((enemy) => {
+      if (!enemy.aggroed || enemy.alertTimer <= 0) {
+        return;
+      }
+      let allyIndex = 0;
+      activeEnemies.forEach((ally) => {
+        if (ally === enemy || ally.aggroed || ally.territory?.id !== enemy.territory?.id) {
+          return;
+        }
+        const distance = ally.group.position.distanceTo(enemy.group.position);
+        if (distance <= 10.5 && ally.isPointInTerritory?.(player.group.position, 1)) {
+          ally.awareness = Math.max(ally.awareness ?? 0, 0.64);
+          ally.alertTimer = Math.max(ally.alertTimer ?? 0, 1.8);
+          ally.sharedAlertTimer = Math.max(ally.sharedAlertTimer ?? 0, 2.2);
+          ally.lastKnownPlayerPosition?.copy?.(player.group.position);
+          if (ally.tacticTimer <= 0.15) {
+            ally.setTactic?.(allyIndex % 2 === 0 ? "flank" : "circle");
+            ally.tacticTimer = 0.55 + allyIndex * 0.18;
+          }
+          allyIndex += 1;
+        }
+      });
+    });
   }
 
   forceReturnAll(options = {}) {
@@ -183,12 +234,23 @@ export class EnemySystem {
     const shotPower = arrow.shotPower ?? 0.5;
     const damage = SETTINGS.enemies.arrowDamage * (arrow.damageMultiplier ?? 1);
     const defeated = enemy.takeDamage(damage, hitDirection, shotPower);
+    this.alertNearbyEnemies(enemy, arrow.hitPoint ?? enemy.group.position);
     enemy.applyArrowEffect?.(arrow.arrowType, shotPower);
+    enemy.hitReactTimer = Math.max(enemy.hitReactTimer ?? 0, (arrow.critical ? 0.68 : 0.42) + shotPower * 0.42);
+    enemy.attackPoseTimer = 0;
     this.ensureHealthBar(enemy);
-    this.feedback?.spawnImpact(arrow.hitPoint ?? enemy.group.position, defeated ? 0xe6b75d : (shotPower > 0.72 ? 0xffb15f : 0xcf7c4e), defeated ? 2.05 : 1.05 + shotPower * 0.7);
-    this.feedback?.shake(defeated ? 0.22 : 0.055 + shotPower * 0.08);
+    this.pulseHealthBar(enemy, defeated || arrow.critical || shotPower > 0.72);
+    const impactStrength = defeated ? 2.55 : 1.24 + shotPower * 0.98 + (arrow.critical ? 0.55 : 0);
+    this.feedback?.spawnImpact(arrow.hitPoint ?? enemy.group.position, defeated ? 0xe6b75d : (shotPower > 0.72 ? 0xffb15f : 0xcf7c4e), impactStrength);
+    this.feedback?.shake(defeated ? 0.26 : 0.052 + shotPower * 0.078 + (arrow.critical ? 0.05 : 0));
+    if (!defeated && (shotPower > 0.82 || arrow.critical)) {
+      this.feedback?.playSound(arrow.critical ? "weakpointHit" : "powerfulHit", 0.32 + shotPower * 0.38);
+    }
     const damageText = arrow.critical ? `CRIT ${Math.round(damage)}` : `${Math.round(damage)}`;
     this.showCombatText(enemy, defeated ? "DEFEATED" : damageText, defeated ? "xp" : (shotPower > 0.72 || arrow.critical ? "damage strong" : "damage"));
+    if (!defeated && shotPower > 0.84) {
+      this.showCombatText(enemy, "STAGGER", "damage strong");
+    }
     if (arrow.arrowType?.id === "ice") {
       this.showCombatText(enemy, "SLOWED", "damage");
     } else if (arrow.arrowType?.id === "fire") {
@@ -196,11 +258,31 @@ export class EnemySystem {
     }
     if (defeated) {
       const slot = this.slots[this.enemies.indexOf(enemy)];
-      slot.respawnTimer = 5.5;
+      if (slot) slot.respawnTimer = 5.5;
       this.feedback?.spawnImpact(enemy.group.position.clone().add(new THREE.Vector3(0, 0.8, 0)), 0xffd27a, 2.2);
       this.feedback?.playSound("enemyDefeat", 1.08);
       this.defeatListeners.forEach((callback) => callback({ enemy, type: enemy.type }));
     }
+  }
+
+  alertNearbyEnemies(sourceEnemy, point) {
+    this.enemies.forEach((enemy) => {
+      if (!enemy?.active || enemy === sourceEnemy || enemy.territory?.id !== sourceEnemy.territory?.id) {
+        return;
+      }
+      const distance = enemy.group.position.distanceTo(point);
+      if (distance > 9) {
+        return;
+      }
+      enemy.awareness = Math.max(enemy.awareness ?? 0, 0.9);
+      enemy.alertTimer = Math.max(enemy.alertTimer ?? 0, 2.5);
+      enemy.sharedAlertTimer = Math.max(enemy.sharedAlertTimer ?? 0, 2.4);
+      enemy.lastKnownPlayerPosition?.copy?.(point);
+      if ((enemy.tacticTimer ?? 0) <= 0.2) {
+        enemy.setTactic?.(distance < 4.5 ? "circle" : "flank");
+        enemy.tacticTimer = 0.55;
+      }
+    });
   }
 
   handleAreaArrowEffect(arrow) {
@@ -225,11 +307,15 @@ export class EnemySystem {
       const damage = SETTINGS.enemies.arrowDamage * 0.72 * falloff * (arrow.damageMultiplier ?? 1);
       const defeated = enemy.takeDamage(damage, direction, arrow.shotPower ?? 0.7);
       this.ensureHealthBar(enemy);
-      this.feedback?.spawnImpact(enemy.group.position.clone().add(new THREE.Vector3(0, 0.6, 0)), 0xffcf5f, 1.1 + falloff);
+      this.pulseHealthBar(enemy, true);
+      enemy.hitReactTimer = Math.max(enemy.hitReactTimer ?? 0, 0.34 + falloff * 0.26);
+      this.feedback?.spawnImpact(enemy.group.position.clone().add(new THREE.Vector3(0, 0.6, 0)), 0xffcf5f, 1.25 + falloff * 0.85);
+      this.feedback?.shake(0.05 + falloff * 0.08);
       this.showCombatText(enemy, defeated ? "DEFEATED" : `${Math.round(damage)}`, defeated ? "xp" : "damage strong");
       if (defeated) {
         const slot = this.slots[this.enemies.indexOf(enemy)];
         if (slot) slot.respawnTimer = 5.5;
+        this.feedback?.playSound("enemyDefeat", 0.92);
         this.defeatListeners.forEach((callback) => callback({ enemy, type: enemy.type }));
       }
     });
@@ -306,6 +392,14 @@ export class EnemySystem {
     this.ui.bars.appendChild(bar);
     this.healthBars.set(enemy, bar);
     return bar;
+  }
+
+  pulseHealthBar(enemy, strong = false) {
+    const bar = this.ensureHealthBar(enemy);
+    bar.classList.toggle("strong-hit", strong);
+    bar.classList.remove("hit");
+    void bar.offsetWidth;
+    bar.classList.add("hit");
   }
 
   hideHealthBar(enemy) {

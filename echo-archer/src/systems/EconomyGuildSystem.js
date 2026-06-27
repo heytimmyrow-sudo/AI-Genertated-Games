@@ -200,6 +200,7 @@ export class EconomyGuildSystem {
     this.regionDiscoveries = new Set();
     this.challengeMemories = new Set();
     this.npcScheduleTimer = 0;
+    this.npcAmbientLifeTimer = 0;
     this.load();
     this.npcs = this.createGuildNpcs();
     this.bindShopUi();
@@ -211,21 +212,30 @@ export class EconomyGuildSystem {
   createGuildNpcs() {
     const origin = this.world.archersGuild ?? { x: -56, z: 28 };
     const services = this.world.guildVillageServices ?? {};
-    const point = (name, fallback) => services[name] ?? new THREE.Vector3(origin.x + fallback[0], 0, origin.z + fallback[1]);
+    const offsetFrom = (base, offset = [0, 0], sourceOrigin = origin) => {
+      const yaw = sourceOrigin.yaw ?? 0;
+      const scale = sourceOrigin.scale ?? 1;
+      return new THREE.Vector3(
+        base.x + (Math.sin(yaw + Math.PI / 2) * offset[0] + Math.sin(yaw) * offset[1]) * scale,
+        0,
+        base.z + (Math.cos(yaw + Math.PI / 2) * offset[0] + Math.cos(yaw) * offset[1]) * scale,
+      );
+    };
+    const point = (name, fallback, offset = [0, 0]) => offsetFrom(services[name] ?? new THREE.Vector3(origin.x + fallback[0], 0, origin.z + fallback[1]), offset);
     const home = (index, fallback) => services.homes?.[index] ?? new THREE.Vector3(origin.x + fallback[0], 0, origin.z + fallback[1]);
     const guildNpcs = [
-      this.makeVillageNpc("guild-master", "dialogue", "Maera", "Guild Master Archer", point("guildHall", [-1.2, -3.6]), home(1, [-4, 12]), { cloak: 0x37543f, hood: 0x24382d, trim: 0xf0c66a, feather: 0xf4dd90, badge: true }, () => this.getGuildMasterLine()),
-      this.makeVillageNpc("bowyer", "shop", "Lysa", "Bowyer Archer", point("bowyer", [8, -1]), home(2, [8, 12]), { cloak: 0x775536, hood: 0x3d5542, staff: 0xb47c42, trim: 0xe8b85b, feather: 0xffd890 }, () => "Strings, arrows, and patience. That is most of archery.", "bowShop"),
-      this.makeVillageNpc("quartermaster", "shop", "Bram", "Quartermaster", point("market", [3, 3]), home(0, [-14, 10]), { cloak: 0x554333, hood: 0x2f3c3f, staff: 0x8f6035, trim: 0xd9a14f, badge: true }, () => "Good equipment does not brag. It holds.", "equipmentShop"),
-      this.makeVillageNpc("explorer", "dialogue", "Tavi", "Explorer", point("questBoard", [-1, 6]), home(1, [-4, 12]), { cloak: 0x52613d, hood: 0x475f52, staff: 0x94704d, trim: 0xbfd27a, feather: 0xdde38a }, () => "Every road bends toward a secret if you stop charging down it."),
-      this.makeVillageNpc("blacksmith", "blacksmith", "Orin", "Blacksmith", point("blacksmith", [-10, -1]), home(0, [-14, 10]), { cloak: 0x5c3b2b, hood: 0x2f2d29, staff: 0x6f4a2a, trim: 0xff8a3d, badge: true }, () => "I can oil, tighten, and prepare your kit. Real forging comes later.", "blacksmithShop"),
-      this.makeVillageNpc("innkeeper", "inn", "Sella", "Innkeeper", point("inn", [-8, 6]), home(1, [-4, 12]), { cloak: 0x8b6844, hood: 0x5a3f2d, staff: 0xa87543, trim: 0xffc579 }, () => "A warm bed clears more mistakes than pride does."),
-      this.makeVillageNpc("stable-master", "dialogue", "Fen", "Stable Master", point("stable", [12, 6]), home(2, [8, 12]), { cloak: 0x5f5134, hood: 0x31483c, staff: 0x8f6035, trim: 0xbfd27a }, () => "Mounts need calm hands. The village stable is ready for future breeds."),
-      this.makeVillageNpc("merchant", "shop", "Nima", "Merchant", point("market", [5, 6]), home(3, [16, 3]), { cloak: 0x6b4a74, hood: 0x2f3c3f, staff: 0xa87543, trim: 0xe6b75d }, () => "Coin moves faster when the roads are safe.", "equipmentShop"),
-      this.makeVillageNpc("hunter", "dialogue", "Corin", "Hunter", point("questBoard", [-1, 6]), home(3, [16, 3]), { cloak: 0x475f32, hood: 0x293d2d, staff: 0x6f4a2a, trim: 0xd0a15d, feather: 0xcfffc2 }, () => "The board has contracts, but the forest has the truth."),
-      this.makeVillageNpc("farmer", "dialogue", "Elsie", "Farmer", point("market", [5, 6]), home(0, [-14, 10]), { cloak: 0x7a6b3f, hood: 0x4d5f35, staff: 0x94704d, trim: 0xe8bc66 }, () => "If the roads stay clear, the gardens feed everyone."),
-      this.makeVillageNpc("traveler", "dialogue", "Padrig", "Traveler", point("inn", [-8, 6]), home(1, [-4, 12]), { cloak: 0x4d5966, hood: 0x2d3644, staff: 0x9a6d3d, trim: 0x82c8ff }, () => "A village like this becomes a compass point."),
-      this.makeVillageNpc("guild-recruit", "dialogue", "Rune", "Guild Recruit Archer", point("guildHall", [0, -2]), home(2, [8, 12]), { cloak: 0x355f42, hood: 0x223f33, staff: 0x9b6838, trim: 0xf0c66a, feather: 0xf0c66a }, () => "I practice until my arms shake. Then I listen to why I missed."),
+      this.makeVillageNpc("guild-master", "dialogue", "Maera", "Guild Master Archer", point("guildHall", [-1.2, -3.6], [0.2, 2.9]), home(1, [-4, 12]), { cloak: 0x37543f, hood: 0x24382d, trim: 0xf0c66a, feather: 0xf4dd90, badge: true }, () => this.getGuildMasterLine()),
+      this.makeVillageNpc("bowyer", "shop", "Lysa", "Bowyer Archer", point("bowyer", [8, -1], [-2.2, 1.8]), home(2, [8, 12]), { cloak: 0x775536, hood: 0x3d5542, staff: 0xb47c42, trim: 0xe8b85b, feather: 0xffd890 }, () => "Strings, arrows, and patience. That is most of archery.", "bowShop"),
+      this.makeVillageNpc("quartermaster", "shop", "Bram", "Quartermaster", point("market", [3, 3], [-1.0, -1.2]), home(0, [-14, 10]), { cloak: 0x554333, hood: 0x2f3c3f, staff: 0x8f6035, trim: 0xd9a14f, badge: true }, () => "Good equipment does not brag. It holds.", "equipmentShop"),
+      this.makeVillageNpc("explorer", "dialogue", "Tavi", "Explorer", point("questBoard", [-1, 6], [1.2, 0.8]), home(1, [-4, 12]), { cloak: 0x52613d, hood: 0x475f52, staff: 0x94704d, trim: 0xbfd27a, feather: 0xdde38a }, () => "Every road bends toward a secret if you stop charging down it."),
+      this.makeVillageNpc("blacksmith", "blacksmith", "Orin", "Blacksmith", point("blacksmith", [-10, -1], [2.8, 1.5]), home(0, [-14, 10]), { cloak: 0x5c3b2b, hood: 0x2f2d29, staff: 0x6f4a2a, trim: 0xff8a3d, badge: true }, () => "I can oil, tighten, and prepare your kit. Real forging comes later.", "blacksmithShop"),
+      this.makeVillageNpc("innkeeper", "inn", "Sella", "Innkeeper", point("inn", [-8, 6], [2.4, -1.4]), home(1, [-4, 12]), { cloak: 0x8b6844, hood: 0x5a3f2d, staff: 0xa87543, trim: 0xffc579 }, () => "A warm bed clears more mistakes than pride does."),
+      this.makeVillageNpc("stable-master", "dialogue", "Fen", "Stable Master", point("stable", [12, 6], [-2.4, 2.5]), home(2, [8, 12]), { cloak: 0x5f5134, hood: 0x31483c, staff: 0x8f6035, trim: 0xbfd27a }, () => "Mounts need calm hands. The village stable is ready for future breeds."),
+      this.makeVillageNpc("merchant", "shop", "Nima", "Merchant", point("market", [5, 6], [1.0, 0.8]), home(3, [16, 3]), { cloak: 0x6b4a74, hood: 0x2f3c3f, staff: 0xa87543, trim: 0xe6b75d }, () => "Coin moves faster when the roads are safe.", "equipmentShop"),
+      this.makeVillageNpc("hunter", "dialogue", "Corin", "Hunter", point("questBoard", [-1, 6], [0.8, -1.1]), home(3, [16, 3]), { cloak: 0x475f32, hood: 0x293d2d, staff: 0x6f4a2a, trim: 0xd0a15d, feather: 0xcfffc2 }, () => "The board has contracts, but the forest has the truth."),
+      this.makeVillageNpc("farmer", "dialogue", "Elsie", "Farmer", point("market", [5, 6], [-1.8, 1.4]), home(0, [-14, 10]), { cloak: 0x7a6b3f, hood: 0x4d5f35, staff: 0x94704d, trim: 0xe8bc66 }, () => "If the roads stay clear, the gardens feed everyone."),
+      this.makeVillageNpc("traveler", "dialogue", "Padrig", "Traveler", point("inn", [-8, 6], [3.1, 0.8]), home(1, [-4, 12]), { cloak: 0x4d5966, hood: 0x2d3644, staff: 0x9a6d3d, trim: 0x82c8ff }, () => "A village like this becomes a compass point."),
+      this.makeVillageNpc("guild-recruit", "dialogue", "Rune", "Guild Recruit Archer", point("guildHall", [0, -2], [1.8, 2.3]), home(2, [8, 12]), { cloak: 0x355f42, hood: 0x223f33, staff: 0x9b6838, trim: 0xf0c66a, feather: 0xf0c66a }, () => "I practice until my arms shake. Then I listen to why I missed."),
     ];
 
     const frontier = this.world.frontierTownServices ?? {};
@@ -432,9 +442,11 @@ export class EconomyGuildSystem {
 
   update(deltaSeconds, input) {
     this.updateNpcSchedules(deltaSeconds);
+    const phase = this.currentVillagePhase ?? this.getVillageDayPhase();
+    this.updateAmbientNpcLife(deltaSeconds, phase);
     this.npcs.forEach(({ npc }) => {
       if (!this.world.performanceMode || npc.group.position.distanceTo(this.player.group.position) <= 38) {
-        npc.update(this.player);
+        npc.update(this.player, this.getNpcActivityContext(npc, phase, deltaSeconds));
       }
     });
     this.trackDiscoveryCredit();
@@ -456,6 +468,10 @@ export class EconomyGuildSystem {
 
     if (input.wasPressed("KeyE")) {
       this.rememberNpcTalk(nearby);
+      nearby.npc.playGesture?.(nearby.kind === "blacksmith" ? "work" : "talk");
+      window.dispatchEvent(new CustomEvent("echo-archer:player-interaction", {
+        detail: { kind: nearby.kind === "inn" ? "rest" : nearby.kind === "shop" ? "trade" : "talk" },
+      }));
       this.showDialogue(nearby.npc.name, this.getNpcDialogue(nearby));
       if (nearby.kind === "shop") {
         this.openShop(nearby.shopId);
@@ -626,9 +642,10 @@ export class EconomyGuildSystem {
       this.npcScheduleTimer = 0.35;
     }
     const phase = this.getVillageDayPhase();
+    this.currentVillagePhase = phase;
     const blend = Math.min(1, (this.world.performanceMode ? 0.35 : deltaSeconds) * 1.8);
     this.npcs.forEach((entry) => {
-      const target = entry.schedule?.[phase];
+      const target = this.getNpcScheduleTarget(entry, phase);
       if (!target) {
         return;
       }
@@ -637,6 +654,77 @@ export class EconomyGuildSystem {
       }
       entry.npc.moveTo(target.x, target.z, blend);
     });
+  }
+
+  getNpcScheduleTarget(entry, phase) {
+    const schedule = entry.schedule ?? {};
+    const weather = this.world.lastWeatherProfile ?? {};
+    const role = entry.npc?.role?.toLowerCase?.() ?? "";
+    const rain = weather.rain ?? 0;
+    const harshWeather = rain > 0.35 || (weather.snow ?? 0) > 0.45 || (weather.ash ?? 0) > 0.35;
+    const guardDuty = /(guard|watch|warden)/i.test(role);
+    const worksOutside = /(guard|watch|scout|courier|traveler|fisher|dock|stable|hunter|farmer)/i.test(role);
+
+    if (phase === "night") {
+      return schedule.night ?? schedule.evening ?? schedule.day;
+    }
+    if (harshWeather && worksOutside && !guardDuty) {
+      return schedule.evening ?? schedule.night ?? schedule.day;
+    }
+    if (harshWeather && !worksOutside) {
+      return schedule.night ?? schedule.evening ?? schedule.day;
+    }
+    if (phase === "evening") {
+      return schedule.evening ?? schedule.night ?? schedule.day;
+    }
+    return schedule[phase] ?? schedule.day;
+  }
+
+  updateAmbientNpcLife(deltaSeconds, phase) {
+    this.npcAmbientLifeTimer -= deltaSeconds;
+    if (this.npcAmbientLifeTimer > 0) {
+      return;
+    }
+    this.npcAmbientLifeTimer = this.world.performanceMode ? 2.8 : 1.7;
+
+    const weather = this.world.lastWeatherProfile ?? {};
+    const harshWeather = (weather.rain ?? 0) > 0.35 || (weather.snow ?? 0) > 0.45 || (weather.ash ?? 0) > 0.35;
+    const activeNpcs = this.npcs.filter(({ npc }) => npc.group.position.distanceTo(this.player.group.position) < 55);
+    activeNpcs.forEach((entry, index) => {
+      const role = entry.npc.role?.toLowerCase?.() ?? "";
+      if (phase === "night" && !/(guard|watch|traveler|inn|tavern)/i.test(role)) {
+        return;
+      }
+      if (harshWeather && index % 3 === 0) {
+        entry.npc.playGesture?.("talk");
+        return;
+      }
+      const neighbor = activeNpcs.find((other) => (
+        other !== entry
+        && other.npc.group.position.distanceTo(entry.npc.group.position) < 5.2
+      ));
+      if (neighbor && Math.random() < (phase === "evening" ? 0.34 : 0.18)) {
+        entry.npc.playGesture?.(phase === "evening" ? "wave" : "talk");
+        neighbor.npc.playGesture?.("talk");
+      } else if (/(smith|bowyer|merchant|farmer|fisher|stable|clerk|supplier)/i.test(role) && Math.random() < 0.22) {
+        entry.npc.playGesture?.("work");
+      }
+    });
+  }
+
+  getNpcActivityContext(npc, phase, deltaSeconds = 1 / 60) {
+    const weather = this.world.lastWeatherProfile ?? {};
+    const rain = weather.rain ?? 0;
+    const harshWeather = rain > 0.35 || (weather.snow ?? 0) > 0.45 || (weather.ash ?? 0) > 0.35;
+    const role = npc.role?.toLowerCase?.() ?? "";
+    const workingRole = /(smith|bowyer|merchant|keeper|farmer|fisher|guard|scout|stable|clerk|supplier|cartographer)/i.test(role);
+    const activity = phase === "night" ? "sleep" : harshWeather && !/(guard|watch|scout|courier|traveler)/i.test(role) ? "shelter" : phase === "evening" ? "sit" : workingRole ? "work" : "wander";
+    const lookAt = harshWeather
+      ? null
+      : phase === "evening" || activity === "sit"
+      ? { x: this.player.group.position.x * 0.15 + npc.group.position.x * 0.85, z: this.player.group.position.z * 0.15 + npc.group.position.z * 0.85 }
+      : null;
+    return { phase, weather, activity, lookAt, deltaSeconds };
   }
 
   getVillageDayPhase() {

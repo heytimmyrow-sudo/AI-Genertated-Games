@@ -44,7 +44,7 @@ export class FeedbackSystem {
   }
 
   spawnImpact(point, color = 0xe0b75f, strength = 1) {
-    const particleCount = Math.max(4, Math.round((10 + strength * 13) * this.quality.particleMultiplier));
+    const particleCount = Math.max(4, Math.round((11 + strength * 13) * this.quality.particleMultiplier));
     const geometry = new THREE.BufferGeometry();
     const positions = [];
     const velocities = [];
@@ -52,22 +52,53 @@ export class FeedbackSystem {
     for (let index = 0; index < particleCount; index += 1) {
       positions.push(point.x, point.y, point.z);
       const angle = (index / particleCount) * Math.PI * 2;
-      const lift = 0.82 + (index % 4) * 0.2 + strength * 0.08;
-      const burst = 0.9 + strength * (index % 3 === 0 ? 1.25 : 0.82);
+      const lift = 0.9 + (index % 4) * 0.2 + strength * 0.09;
+      const burst = 0.98 + strength * (index % 3 === 0 ? 1.32 : 0.88);
       velocities.push(Math.sin(angle) * burst, lift, Math.cos(angle) * burst);
     }
 
     geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
     const material = new THREE.PointsMaterial({
       color,
-      size: 0.075 + strength * 0.032,
+      size: 0.078 + strength * 0.034,
       transparent: true,
       opacity: 0.95,
       depthWrite: false,
     });
     const points = new THREE.Points(geometry, material);
     this.scene.add(points);
-    this.effects.push({ points, geometry, material, velocities, age: 0, life: 0.62 + strength * 0.14 });
+    const ring = strength > 0.88 ? this.createImpactRing(point, color, strength) : null;
+    this.effects.push({
+      points,
+      geometry,
+      material,
+      velocities,
+      ring,
+      ringMaterial: ring?.material ?? null,
+      age: 0,
+      life: 0.62 + strength * 0.14,
+      strength,
+    });
+  }
+
+  createImpactRing(point, color, strength) {
+    const geometry = new THREE.RingGeometry(0.08, 0.1 + strength * 0.035, 20);
+    const material = new THREE.MeshBasicMaterial({
+      color,
+      transparent: true,
+      opacity: 0.58,
+      depthWrite: false,
+      side: THREE.DoubleSide,
+      blending: THREE.AdditiveBlending,
+    });
+    const ring = new THREE.Mesh(geometry, material);
+    ring.position.copy(point);
+    ring.scale.setScalar(0.7);
+    if (this.cameraRig?.camera) {
+      ring.lookAt(this.cameraRig.camera.position);
+    }
+    this.scene.add(ring);
+    return ring;
   }
 
   update(deltaSeconds) {
@@ -91,11 +122,24 @@ export class FeedbackSystem {
 
       position.needsUpdate = true;
       effect.material.opacity = Math.max(0, 1 - effect.age / effect.life);
+      if (effect.ring) {
+        const progress = Math.min(1, effect.age / effect.life);
+        effect.ring.scale.setScalar(0.75 + progress * (1.35 + effect.strength * 0.22));
+        effect.ringMaterial.opacity = Math.max(0, 0.55 * (1 - progress));
+        if (this.cameraRig?.camera) {
+          effect.ring.lookAt(this.cameraRig.camera.position);
+        }
+      }
       if (effect.age < effect.life) {
         return true;
       }
 
       this.scene.remove(effect.points);
+      if (effect.ring) {
+        this.scene.remove(effect.ring);
+        effect.ring.geometry.dispose();
+        effect.ringMaterial.dispose();
+      }
       effect.geometry.dispose();
       effect.material.dispose();
       return false;

@@ -43,7 +43,7 @@ import { AudioManager } from "./systems/AudioManager.js";
 import { SaveSystem } from "./systems/SaveSystem.js";
 import { ArcherLodgeSystem } from "./systems/ArcherLodgeSystem.js";
 import { LivingWorldEventsSystem } from "./systems/LivingWorldEventsSystem.js";
-import { World } from "./world/World.js";
+import { World } from "./world/World.js?v=private-world-visible-v1";
 import { PlayerController } from "./entities/PlayerController.js";
 
 const { THREE } = window;
@@ -86,6 +86,8 @@ const questMenuButton = document.querySelector("#quest-menu-button");
 const questMenuBadge = document.querySelector("#quest-menu-badge");
 const questSidebarButton = document.querySelector("#quest-sidebar-button");
 const questSidebarBadge = document.querySelector("#quest-sidebar-badge");
+const shortcutSidebar = document.querySelector(".status-bar");
+const sidebarToggle = document.querySelector("#sidebar-toggle");
 const questMenu = document.querySelector("#quest-menu");
 const questMenuContent = document.querySelector("#quest-menu-content");
 const questMenuClose = document.querySelector("#quest-menu-close");
@@ -175,7 +177,22 @@ function prefersPerformanceDetail() {
 }
 
 const performanceDetail = prefersPerformanceDetail();
-const renderer = new THREE.WebGLRenderer({ canvas, antialias: !performanceDetail, powerPreference: "high-performance" });
+function createRenderer() {
+  try {
+    return new THREE.WebGLRenderer({ canvas, antialias: !performanceDetail, powerPreference: "high-performance" });
+  } catch (error) {
+    console.warn("High-performance renderer failed, retrying safe WebGL renderer:", error);
+    try {
+      return new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: "default" });
+    } catch (fallbackError) {
+      setLoading("Echo Archer needs WebGL enabled to show the world. Please enable hardware acceleration or try Chrome/Edge.", 1);
+      loadingScreen?.classList.add("startup-error");
+      throw fallbackError;
+    }
+  }
+}
+
+const renderer = createRenderer();
 const pixelRatioCap = performanceDetail ? 1 : ((navigator.hardwareConcurrency ?? 8) <= 4 ? 1.15 : 1.35);
 const lowGpuMode = (navigator.hardwareConcurrency ?? 8) <= 4 || (navigator.deviceMemory ?? 8) <= 4;
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, pixelRatioCap));
@@ -224,6 +241,30 @@ const quests = new QuestSystem(scene, world, player, {
   text: dialogueText,
   toast: questToast,
 });
+
+function setShortcutSidebarCollapsed(collapsed) {
+  shortcutSidebar?.classList.toggle("collapsed", collapsed);
+  if (sidebarToggle) {
+    sidebarToggle.textContent = collapsed ? "Show Shortcuts" : "Hide Shortcuts";
+    sidebarToggle.setAttribute("aria-expanded", String(!collapsed));
+  }
+  try {
+    localStorage.setItem("echo-archer-shortcut-sidebar-collapsed", collapsed ? "true" : "false");
+  } catch {
+    // Ignore storage failures; the toggle still works for the current session.
+  }
+}
+
+try {
+  setShortcutSidebarCollapsed(localStorage.getItem("echo-archer-shortcut-sidebar-collapsed") === "true");
+} catch {
+  setShortcutSidebarCollapsed(false);
+}
+
+sidebarToggle?.addEventListener("click", () => {
+  setShortcutSidebarCollapsed(!shortcutSidebar?.classList.contains("collapsed"));
+});
+
 const enemies = new EnemySystem(scene, world, { bars: enemyBars }, feedback);
 setLoading("Waking bosses...", 0.58);
 const miniBoss = new MiniBossSystem(scene, world, {
@@ -306,6 +347,13 @@ const bossSystems = [
   tideboundWardenBoss,
   ancientGrovekeeperBoss,
 ];
+gateOpenWorldBoss(miniBoss, "echo-archer:barkhide-stalker-ready");
+gateOpenWorldBoss(frostBoss, "echo-archer:icefang-ready");
+gateOpenWorldBoss(stormBoss, "echo-archer:stormtalon-ready");
+gateOpenWorldBoss(rootBoss, "echo-archer:root-guardian-ready");
+gateOpenWorldBoss(mirejawBoss, "echo-archer:mirejaw-ready");
+gateOpenWorldBoss(stonehornBoss, "echo-archer:stonehorn-ready");
+gateOpenWorldBoss(infernoBoss, "echo-archer:inferno-behemoth-ready");
 applyBossCombatPolish(bossSystems, feedback);
 const targetPractice = new TargetPracticeSystem(world, {
   challenge: challengeState,
@@ -770,7 +818,9 @@ function updateHud() {
   reticle.classList.toggle("first-person", cameraRig.mode === "first");
   reticle.classList.toggle("third-person", cameraRig.mode === "third");
   reticle.classList.toggle("is-drawing", archery.isDrawing);
+  reticle.classList.toggle("is-full-draw", archery.drawAmount > 0.9);
   reticle.style.setProperty("--draw-power", archery.drawAmount.toFixed(3));
+  reticle.style.setProperty("--release-kick", archery.releaseKick.toFixed(3));
 }
 
 function updateRegionHud() {
@@ -845,6 +895,55 @@ function calmBossesForSafety() {
   }
 }
 
+function gateOpenWorldBoss(system, readyEventName) {
+  const boss = system?.boss;
+  if (!boss?.group || !readyEventName || system.__legendaryGateApplied) {
+    return;
+  }
+  system.__legendaryGateApplied = true;
+  system.questActive = false;
+  boss.active = false;
+  boss.noticed = false;
+  boss.state = "sealed";
+  boss.group.visible = false;
+  system.ui?.bar?.classList?.remove("visible");
+  if (Array.isArray(boss.colliders)) {
+    world.colliders = world.colliders.filter((collider) => !boss.colliders.includes(collider));
+  }
+
+  const originalUpdate = system.update.bind(system);
+  system.update = function updateLegendaryGatedBoss(deltaSeconds, playerRef, cameraRef) {
+    if (!this.questActive && !boss.defeated) {
+      this.ui?.bar?.classList?.remove("visible");
+      return;
+    }
+    originalUpdate(deltaSeconds, playerRef, cameraRef);
+  };
+
+  window.addEventListener(readyEventName, () => {
+    if (system.questActive || boss.defeated) {
+      return;
+    }
+    system.questActive = true;
+    boss.active = true;
+    boss.noticed = false;
+    boss.state = "patrol";
+    boss.group.visible = true;
+    if (boss.home) {
+      boss.group.position.copy(boss.home);
+      system.placeOnGround?.(boss);
+    }
+    boss.colliders?.forEach((collider) => {
+      if (!world.colliders.includes(collider)) {
+        world.colliders.push(collider);
+      }
+    });
+    world.activateLegendaryStructure?.(readyEventName.replace(/^echo-archer:/, "").replace(/-ready$/, ""));
+    feedback.spawnImpact?.(boss.group.position.clone().add(new THREE.Vector3(0, 1.2, 0)), 0xffd166, 2.6);
+    feedback.playSound?.("bossNotice", 0.75);
+  });
+}
+
 function applyBossCombatPolish(systems, feedbackSystem) {
   const telegraphMethods = [
     "startCharge",
@@ -873,11 +972,29 @@ function applyBossCombatPolish(systems, feedbackSystem) {
           return originalMoveToward(boss, target, speed, deltaSeconds, ...args);
         }
         boss.polishedVelocity ??= new THREE.Vector3();
+        boss.aiStrafeSign ??= Math.random() > 0.5 ? 1 : -1;
+        boss.aiStrafeTimer = Math.max(0, (boss.aiStrafeTimer ?? 0) - deltaSeconds);
+        if (boss.aiStrafeTimer <= 0) {
+          boss.aiStrafeSign *= Math.random() > 0.38 ? 1 : -1;
+          boss.aiStrafeTimer = 1.1 + Math.random() * 1.6;
+        }
+        const adjustedTarget = target.clone?.() ?? new THREE.Vector3(target.x, target.y ?? 0, target.z);
+        const toTarget = adjustedTarget.clone().sub(boss.group.position);
+        toTarget.y = 0;
+        const targetDistance = toTarget.length();
+        if (boss.noticed && targetDistance > 0.001 && targetDistance < 12) {
+          const side = new THREE.Vector3(-toTarget.z, 0, toTarget.x).normalize().multiplyScalar(boss.aiStrafeSign * THREE.MathUtils.clamp(5.5 - targetDistance * 0.28, 1.1, 3.2));
+          adjustedTarget.add(side);
+        }
         const before = boss.group.position.clone();
-        originalMoveToward(boss, target, speed, deltaSeconds, ...args);
+        originalMoveToward(boss, adjustedTarget, speed, deltaSeconds, ...args);
         const after = boss.group.position.clone();
         const step = after.sub(before);
         if (step.lengthSq() <= 0.000001) {
+          if (boss.noticed && targetDistance < 14) {
+            boss.polishedVelocity.x += Math.sin(boss.group.rotation.y + boss.aiStrafeSign * Math.PI * 0.5) * 0.4;
+            boss.polishedVelocity.z += Math.cos(boss.group.rotation.y + boss.aiStrafeSign * Math.PI * 0.5) * 0.4;
+          }
           return;
         }
         const desiredVelocity = step.divideScalar(Math.max(deltaSeconds, 0.001));
@@ -904,10 +1021,10 @@ function applyBossCombatPolish(systems, feedbackSystem) {
         if (boss?.group && !boss.defeated) {
           const impactPoint = boss.group.position.clone().add(new THREE.Vector3(0, 1.15, 0));
           const isAreaAttack = /Slam|Stomp|Splash|Burst|Pulse|Wave|Beam|Gust|Volley/i.test(methodName);
-          feedbackSystem?.spawnImpact?.(impactPoint, isAreaAttack ? 0xffcf5f : 0xff8a3d, isAreaAttack ? 2.15 : 1.55);
-          feedbackSystem?.shake?.(isAreaAttack ? 0.08 : 0.055);
-          feedbackSystem?.playSound?.("bossCharge", isAreaAttack ? 0.74 : 0.92);
-          boss.telegraphTimer = Math.max(boss.telegraphTimer ?? 0, isAreaAttack ? 0.48 : 0.34);
+          feedbackSystem?.spawnImpact?.(impactPoint, isAreaAttack ? 0xffcf5f : 0xff8a3d, isAreaAttack ? 2.45 : 1.82);
+          feedbackSystem?.shake?.(isAreaAttack ? 0.095 : 0.068);
+          feedbackSystem?.playSound?.("bossCharge", isAreaAttack ? 0.84 : 1);
+          boss.telegraphTimer = Math.max(boss.telegraphTimer ?? 0, isAreaAttack ? 0.62 : 0.46);
         }
         return original(boss, ...args);
       };
@@ -926,12 +1043,48 @@ function updateBossWhenRelevant(system, deltaSeconds) {
   const distance = boss.group.position.distanceTo(player.group.position);
   if (boss.noticed || distance <= (world.performanceMode ? 72 : 120)) {
     const previousPhase = boss.phase;
+    updateBossAiPressure(boss, distance, deltaSeconds);
     system.update(deltaSeconds, player, camera);
     if (boss.phase && previousPhase && boss.phase !== previousPhase) {
       feedback.spawnImpact(boss.group.position.clone().add(new THREE.Vector3(0, 1.35, 0)), 0xfff1a6, 2.65);
       feedback.playSound("bossNotice", 0.78);
       feedback.shake(0.12);
     }
+  }
+}
+
+function updateBossAiPressure(boss, distance, deltaSeconds) {
+  if (!boss.noticed || boss.defeated) {
+    return;
+  }
+
+  boss.aiPressureTimer = Math.max(0, (boss.aiPressureTimer ?? 0) - deltaSeconds);
+  if (boss.aiPressureTimer > 0) {
+    return;
+  }
+
+  const playerIsAiming = Boolean(window.echoArcherCombatState?.isDrawing);
+  const playerSpeed = player.velocity?.length?.() ?? 0;
+  const verticalDelta = Math.abs((player.group?.position?.y ?? 0) - (boss.group?.position?.y ?? 0));
+  const playerKiting = playerSpeed > 4.2 && distance > 10;
+  boss.aiPressureTimer = playerIsAiming ? 0.9 + Math.random() * 0.8 : 1.25 + Math.random() * 1.25;
+
+  if (typeof boss.attackCooldown === "number") {
+    if (distance > 22) {
+      boss.attackCooldown = Math.min(boss.attackCooldown, playerKiting ? 0.42 : 0.58);
+      boss.telegraphTimer = Math.max(boss.telegraphTimer ?? 0, playerIsAiming ? 0.34 : 0.26);
+    } else if (distance > 12) {
+      boss.attackCooldown = Math.min(boss.attackCooldown, playerIsAiming ? 0.62 : 0.78);
+      boss.telegraphTimer = Math.max(boss.telegraphTimer ?? 0, 0.24);
+    } else if (distance < 4.5) {
+      boss.attackCooldown = Math.min(boss.attackCooldown, 0.95);
+      boss.telegraphTimer = Math.max(boss.telegraphTimer ?? 0, 0.34);
+    }
+  }
+
+  if (verticalDelta > 3.2) {
+    boss.telegraphTimer = Math.max(boss.telegraphTimer ?? 0, 0.34);
+    boss.aiStrafeTimer = Math.min(boss.aiStrafeTimer ?? 0, 0.2);
   }
 }
 
@@ -965,6 +1118,7 @@ function update(deltaSeconds) {
   const menuOpen = progression.menuOpen || inventoryOpen || shopOpen || questBoardOpen || rpgOpen || journalOpen || mapOpen || graphicsOpen || photoOpen || questMenuOpen || defeatedOpen;
   input.setGameplayBlocked(menuOpen);
   audio.setGameplayPaused(menuOpen);
+  audio.update(deltaSeconds);
 
   if (defeatedOpen) {
     setDeathScreenVisible(true);
@@ -1006,6 +1160,7 @@ function update(deltaSeconds) {
   }
   world.updateDayNight(deltaSeconds, timeState);
   world.updateDistanceDetail?.(player.group.position, deltaSeconds);
+  world.updateLivingWorldMotion?.(deltaSeconds, player.group.position);
   const nextCaveAudioActive = world.isInsideWhisperCave?.(player.group.position) ?? false;
   if (nextCaveAudioActive !== caveAudioActive) {
     caveAudioActive = nextCaveAudioActive;
@@ -1027,12 +1182,16 @@ function update(deltaSeconds) {
   cameraRig.setAimState(archery.isDrawing, archery.drawAmount);
   cameraRig.update(player, world.terrain, deltaSeconds);
   enemies.update(deltaSeconds, player, camera);
-  bossSystems.forEach((system) => updateBossWhenRelevant(system, deltaSeconds));
-  player.updateSafeRecovery(deltaSeconds, player.inSafeZone && !isCombatActive());
+  bossSystems.forEach((system) => {
+    updateBossWhenRelevant(system, deltaSeconds);
+    updateBossAnimationPolish(system, deltaSeconds);
+  });
+  const canRecoverHealth = player.inSafeZone || (player.recentDamageTimer ?? 0) <= 0;
+  player.updateSafeRecovery(deltaSeconds, canRecoverHealth);
   weather.update(deltaSeconds, player);
   wind.update(deltaSeconds, player);
   wildlife.update(deltaSeconds, player);
-  mounts.update(input, player);
+  mounts.update(input, player, deltaSeconds);
   targetPractice.update(deltaSeconds, camera);
   feedback.update(deltaSeconds);
   updateRegionHud();
@@ -1043,6 +1202,52 @@ function update(deltaSeconds) {
     window.setTimeout(hideLoadingScreen, 450);
   }
   input.endFrame();
+}
+
+function updateBossAnimationPolish(system, deltaSeconds) {
+  const boss = system?.boss;
+  const group = boss?.group;
+  if (!group || !group.visible) {
+    return;
+  }
+
+  boss.visualTime = (boss.visualTime ?? 0) + deltaSeconds;
+  boss.visualBaseScale = boss.visualBaseScale ?? (group.scale.x || 1);
+  if (boss.noticed && !boss.visualIntroduced) {
+    boss.visualIntroduced = true;
+    boss.visualIntroTimer = 1.05;
+  }
+  boss.visualIntroTimer = Math.max(0, (boss.visualIntroTimer ?? 0) - deltaSeconds);
+  boss.telegraphTimer = Math.max(0, (boss.telegraphTimer ?? 0) - deltaSeconds);
+  const time = boss.visualTime;
+  const active = Boolean(boss.noticed || boss.active);
+  const attacking = /charge|slam|pulse|gust|dive|surge|wave|volley|howl|splash|burst|root|vine/i.test(boss.state ?? "");
+  const recovering = boss.state === "recover";
+  const hitReact = boss.hitReactTimer > 0 ? Math.min(1, boss.hitReactTimer / 0.7) : 0;
+  const intro = boss.visualIntroTimer > 0 ? Math.sin((boss.visualIntroTimer / 1.05) * Math.PI) : 0;
+  const telegraph = Math.min(1, boss.telegraphTimer / 0.62);
+  const breathing = Math.sin(time * (active ? 2.0 : 1.1)) * (active ? 0.025 : 0.014);
+  const attackLean = attacking ? -0.12 - Math.sin(time * 8) * 0.025 : recovering ? 0.05 : intro > 0 ? -0.08 * intro : 0;
+
+  group.rotation.x = THREE.MathUtils.lerp(group.rotation.x, attackLean + hitReact * 0.1 - telegraph * 0.055, 1 - Math.exp(-7.5 * deltaSeconds));
+  group.rotation.z = THREE.MathUtils.lerp(group.rotation.z, Math.sin(time * 1.25) * (active ? 0.018 : 0.01) + intro * 0.035 + hitReact * 0.03 + telegraph * 0.025, 1 - Math.exp(-6.5 * deltaSeconds));
+  group.scale.setScalar(boss.visualBaseScale * (1 + breathing + hitReact * 0.07 + intro * 0.055 + telegraph * 0.065 + (attacking ? 0.04 : 0)));
+
+  group.userData?.wings?.forEach(({ mesh, side }) => {
+    mesh.rotation.z = side * (1.08 + Math.sin(time * (attacking ? 12 : 5)) * (attacking ? 0.34 : 0.16));
+  });
+  group.userData?.halos?.forEach((halo, index) => {
+    halo.rotation.z += deltaSeconds * (0.45 + index * 0.12 + (attacking ? 0.8 : 0));
+  });
+  if (group.userData?.tail) {
+    group.userData.tail.rotation.z += Math.sin(time * 2.7) * 0.01;
+  }
+  if (group.userData?.crest) {
+    group.userData.crest.rotation.z = -0.55 + Math.sin(time * 4.2) * (attacking ? 0.08 : 0.035);
+  }
+  if (group.userData?.glow?.emissiveIntensity !== undefined) {
+    group.userData.glow.emissiveIntensity = 0.5 + Math.sin(time * 3.4) * 0.12 + hitReact * 0.38 + intro * 0.32 + telegraph * 0.46;
+  }
 }
 
 window.addEventListener("resize", resize);

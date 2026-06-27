@@ -214,6 +214,7 @@ export class QuestSystem {
     this.toastTimer = 0;
     this.finderActive = false;
     this.finderTarget = null;
+    this.legendaryPlatformTimers = new Map();
     this.finderArrow = this.createFinderArrow();
     this.load();
     this.bindFinderButton();
@@ -238,6 +239,9 @@ export class QuestSystem {
     const showPrompt = nearTrainer || nearbyInteractable;
     this.ui.prompt.textContent = nearTrainer ? "E Talk" : nearbyInteractable?.prompt ?? "E Interact";
     this.ui.prompt.classList.toggle("visible", Boolean(showPrompt));
+    if (nearbyInteractable?.type === "legendary-platform") {
+      this.updateLegendaryPlatform(nearbyInteractable, deltaSeconds);
+    }
 
     if (nearTrainer && input.wasPressed("KeyE")) {
       this.showDialogue(this.getTrainerLine());
@@ -975,6 +979,11 @@ export class QuestSystem {
       return;
     }
 
+    if (interactable.type === "legendary-platform") {
+      this.useLegendaryPlatform(interactable, true);
+      return;
+    }
+
     if (interactable.type === "frontier-track" || interactable.type === "frontier-expedition-console") {
       interactable.read = true;
       this.showMessage(interactable.name, interactable.text);
@@ -1029,6 +1038,58 @@ export class QuestSystem {
     window.dispatchEvent(new CustomEvent("echo-archer:sound", {
       detail: { name: "uiClick", intensity: 0.7 },
     }));
+  }
+
+  updateLegendaryPlatform(interactable, deltaSeconds) {
+    const current = this.legendaryPlatformTimers.get(interactable.id) ?? 0;
+    this.legendaryPlatformTimers.set(interactable.id, Math.max(0, current - deltaSeconds));
+    const activationRadius = interactable.activationRadius ?? Math.min(1.75, interactable.radius * 0.58);
+    if (this.player.group.position.distanceTo(interactable.position) <= activationRadius) {
+      this.useLegendaryPlatform(interactable, false);
+    }
+  }
+
+  useLegendaryPlatform(interactable, manual = false) {
+    const timer = this.legendaryPlatformTimers.get(interactable.id) ?? 0;
+    if (timer > 0 || interactable.teleporting) {
+      return;
+    }
+    this.legendaryPlatformTimers.set(interactable.id, manual ? 0.9 : 2.4);
+
+    if (!interactable.unlocked) {
+      this.showMessage(interactable.name, interactable.lockedText ?? "Locked: this legendary structure is not awake yet.");
+      window.dispatchEvent(new CustomEvent("echo-archer:sound", {
+        detail: { name: "uiClick", intensity: 0.42 },
+      }));
+      return;
+    }
+
+    const destination = interactable.destination;
+    if (!destination) {
+      this.showMessage(interactable.name, interactable.unlockedText ?? "The legendary platform hums, but its destination is still being prepared.");
+      return;
+    }
+
+    interactable.teleporting = true;
+    this.showMessage(interactable.name, interactable.unlockedText ?? "The platform wakes beneath your boots.");
+    window.dispatchEvent(new CustomEvent("echo-archer:sound", {
+      detail: { name: "questComplete", intensity: 0.72 },
+    }));
+    window.dispatchEvent(new CustomEvent("echo-archer:combat-text", {
+      detail: {
+        text: `Entering ${interactable.destinationName ?? interactable.name}`,
+        kind: "xp",
+        x: window.innerWidth / 2,
+        y: window.innerHeight * 0.33,
+      },
+    }));
+    window.setTimeout(() => {
+      const y = Number.isFinite(destination.y) ? destination.y : this.world.terrain.getHeightAt(destination.x, destination.z);
+      this.player.group.position.set(destination.x, y + 0.02, destination.z);
+      this.player.velocity?.set?.(0, 0, 0);
+      interactable.teleporting = false;
+      this.legendaryPlatformTimers.set(interactable.id, 2.2);
+    }, 720);
   }
 
   collectInteractable(interactable) {

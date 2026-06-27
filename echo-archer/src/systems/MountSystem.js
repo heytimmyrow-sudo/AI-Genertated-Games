@@ -19,13 +19,13 @@ export class MountSystem {
     };
   }
 
-  update(input = null, player = this.player) {
+  update(input = null, player = this.player, deltaSeconds = 1 / 60) {
     this.mountSlot = this.inventory?.equipped?.mounts ?? this.mountSlot;
     this.equipmentSlot = this.inventory?.equipped?.mountGear ?? this.equipmentSlot;
     if (input?.wasPressed?.("KeyR")) {
       this.toggleMount(player);
     }
-    this.updateMountVisual(player);
+    this.updateMountVisual(player, deltaSeconds);
   }
 
   canSpawnMount() {
@@ -73,7 +73,13 @@ export class MountSystem {
     const saddle = new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.12, 0.54), trimMaterial);
     saddle.position.set(-0.08, 1.27, 0);
     saddle.castShadow = true;
-    group.add(body, neck, head, saddle);
+    const chestStrap = new THREE.Mesh(new THREE.TorusGeometry(0.34, 0.018, 8, 20), trimMaterial);
+    chestStrap.position.set(0.1, 1.02, 0);
+    chestStrap.rotation.x = Math.PI / 2;
+    const tail = new THREE.Mesh(new THREE.CapsuleGeometry(0.055, 0.58, 5, 8), maneMaterial);
+    tail.position.set(-0.86, 0.98, 0);
+    tail.rotation.z = Math.PI / 2.55;
+    group.add(body, neck, head, saddle, chestStrap, tail);
     group.userData.legs = [];
     [-0.55, -0.1, 0.32, 0.72].forEach((x, index) => {
       const leg = new THREE.Mesh(new THREE.CapsuleGeometry(0.055, 0.72, 5, 8), maneMaterial);
@@ -102,53 +108,64 @@ export class MountSystem {
     group.userData.mountBob = 0;
     group.userData.neck = neck;
     group.userData.head = head;
+    group.userData.body = body;
+    group.userData.tail = tail;
+    group.userData.saddle = saddle;
     this.scene.add(group);
     this.activeMount = group;
   }
 
-  updateMountVisual(player = this.player) {
+  updateMountVisual(player = this.player, deltaSeconds = 1 / 60) {
     if (!this.activeMount) {
       return;
     }
     const { THREE } = window;
-    this.visualTime += 1 / 60;
+    this.visualTime += deltaSeconds;
     if (this.riding && player) {
       const target = player.group.position.clone();
       target.y = this.world.terrain.getHeightAt(target.x, target.z);
       const previous = this.activeMount.position.clone();
-      this.activeMount.position.lerp(target, 0.32);
+      this.activeMount.position.lerp(target, 1 - Math.exp(-18 * deltaSeconds));
       const moved = previous.distanceTo(this.activeMount.position);
-      this.visualSpeed = THREE.MathUtils.lerp(this.visualSpeed, Math.min(1, moved * 14), 0.16);
+      this.visualSpeed = THREE.MathUtils.lerp(this.visualSpeed, Math.min(1, moved / Math.max(deltaSeconds, 0.001) * 0.18), 1 - Math.exp(-8 * deltaSeconds));
       const yawDelta = Math.atan2(
         Math.sin(player.group.rotation.y - this.activeMount.rotation.y),
         Math.cos(player.group.rotation.y - this.activeMount.rotation.y),
       );
-      this.activeMount.rotation.y += yawDelta * 0.18;
+      this.activeMount.rotation.y += yawDelta * (1 - Math.exp(-8 * deltaSeconds));
     } else {
       const y = this.world.terrain.getHeightAt(this.activeMount.position.x, this.activeMount.position.z);
-      this.activeMount.position.y = THREE.MathUtils.lerp(this.activeMount.position.y, y + Math.sin(performance.now() * 0.002) * 0.025, 0.12);
-      this.visualSpeed = THREE.MathUtils.lerp(this.visualSpeed, 0, 0.08);
+      this.activeMount.position.y = THREE.MathUtils.lerp(this.activeMount.position.y, y + Math.sin(performance.now() * 0.002) * 0.025, 1 - Math.exp(-7 * deltaSeconds));
+      this.visualSpeed = THREE.MathUtils.lerp(this.visualSpeed, 0, 1 - Math.exp(-4 * deltaSeconds));
     }
-    this.animateMount();
+    this.animateMount(deltaSeconds);
   }
 
-  animateMount() {
+  animateMount(deltaSeconds = 1 / 60) {
     if (!this.activeMount) {
       return;
     }
     const { THREE } = window;
     const time = performance.now() * 0.001;
     const gait = time * (5.5 + this.visualSpeed * 6.5);
+    const breathing = Math.sin(time * 1.2) * 0.018;
+    this.activeMount.rotation.z = THREE.MathUtils.lerp(this.activeMount.rotation.z, Math.sin(gait * 0.5) * 0.018 * this.visualSpeed, 1 - Math.exp(-8 * deltaSeconds));
     this.activeMount.userData.legs?.forEach(({ mesh, phase, side }) => {
       const stride = Math.sin(gait + phase) * this.visualSpeed;
       mesh.rotation.x = THREE.MathUtils.lerp(mesh.rotation.x, stride * 0.42, 0.18);
       mesh.rotation.z = THREE.MathUtils.lerp(mesh.rotation.z, side * 0.03 + stride * 0.08, 0.18);
     });
+    if (this.activeMount.userData.body) {
+      this.activeMount.userData.body.scale.y = 0.82 + breathing;
+    }
     if (this.activeMount.userData.neck) {
-      this.activeMount.userData.neck.rotation.z = -0.45 + Math.sin(gait * 0.5) * 0.035 * this.visualSpeed;
+      this.activeMount.userData.neck.rotation.z = -0.45 + Math.sin(gait * 0.5) * 0.035 * this.visualSpeed + Math.sin(time * 0.8) * 0.018 * (1 - this.visualSpeed);
     }
     if (this.activeMount.userData.head) {
-      this.activeMount.userData.head.position.y = 1.42 + Math.sin(gait * 0.5 + 0.4) * 0.025 * this.visualSpeed;
+      this.activeMount.userData.head.position.y = 1.42 + Math.sin(gait * 0.5 + 0.4) * 0.025 * this.visualSpeed + Math.sin(time * 1.1) * 0.014 * (1 - this.visualSpeed);
+    }
+    if (this.activeMount.userData.tail) {
+      this.activeMount.userData.tail.rotation.z = Math.PI / 2.55 + Math.sin(time * 2.6) * (0.08 + this.visualSpeed * 0.12);
     }
   }
 

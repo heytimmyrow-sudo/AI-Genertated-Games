@@ -37,6 +37,7 @@ export const SETTINGS = {
     staminaRecovery: 18,
     staminaSprintMinimum: 8,
     safeHealthRegenDelay: 0,
+    safeHealthRegenCombatDelay: 3,
     safeHealthRegen: 10,
   },
   camera: {

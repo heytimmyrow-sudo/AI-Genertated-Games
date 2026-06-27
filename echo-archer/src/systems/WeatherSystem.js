@@ -123,6 +123,13 @@ export class WeatherSystem {
     if (this.regionCheckTimer <= 0) {
       this.cachedRegion = this.world.getRegionAt?.(player.group.position);
       this.regionCheckTimer = 0.45;
+      const ambientRegion = this.cachedRegion?.id ?? this.cachedRegion?.name ?? "forest";
+      if (ambientRegion !== this.ambientRegion) {
+        this.ambientRegion = ambientRegion;
+        window.dispatchEvent(new CustomEvent("echo-archer:ambient-region", {
+          detail: { region: ambientRegion },
+        }));
+      }
     }
     const region = this.cachedRegion;
     const nowFrostpeak = region?.id?.includes("frost") || region?.id === "summit-overlook" || region?.id === "icefall-cavern";
