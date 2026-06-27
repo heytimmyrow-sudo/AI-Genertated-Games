@@ -88,6 +88,8 @@ const questSidebarButton = document.querySelector("#quest-sidebar-button");
 const questSidebarBadge = document.querySelector("#quest-sidebar-badge");
 const shortcutSidebar = document.querySelector(".status-bar");
 const sidebarToggle = document.querySelector("#sidebar-toggle");
+const hudCompactToggle = document.querySelector("#hud-compact-toggle");
+const hudPanelsToggle = document.querySelector("#hud-panels-toggle");
 const questMenu = document.querySelector("#quest-menu");
 const questMenuContent = document.querySelector("#quest-menu-content");
 const questMenuClose = document.querySelector("#quest-menu-close");
@@ -264,6 +266,52 @@ try {
 sidebarToggle?.addEventListener("click", () => {
   setShortcutSidebarCollapsed(!shortcutSidebar?.classList.contains("collapsed"));
 });
+
+function setMobileHudCompact(compact) {
+  document.body.classList.toggle("mobile-hud-compact", compact);
+  if (hudCompactToggle) {
+    hudCompactToggle.textContent = compact ? "Expanded HUD" : "Compact HUD";
+    hudCompactToggle.setAttribute("aria-pressed", String(compact));
+  }
+  try {
+    localStorage.setItem("echo-archer-mobile-hud-compact", compact ? "true" : "false");
+  } catch {
+    // Mobile HUD still works for this session.
+  }
+}
+
+function setMobileHudPanelsHidden(hidden) {
+  document.body.classList.toggle("mobile-hud-panels-hidden", hidden);
+  if (hudPanelsToggle) {
+    hudPanelsToggle.textContent = hidden ? "Show Panels" : "Hide Panels";
+    hudPanelsToggle.setAttribute("aria-pressed", String(hidden));
+  }
+  try {
+    localStorage.setItem("echo-archer-mobile-hud-panels-hidden", hidden ? "true" : "false");
+  } catch {
+    // Mobile HUD still works for this session.
+  }
+}
+
+try {
+  setMobileHudCompact(localStorage.getItem("echo-archer-mobile-hud-compact") === "true");
+  setMobileHudPanelsHidden(localStorage.getItem("echo-archer-mobile-hud-panels-hidden") === "true");
+} catch {
+  setMobileHudCompact(false);
+  setMobileHudPanelsHidden(false);
+}
+
+hudCompactToggle?.addEventListener("click", () => {
+  setMobileHudCompact(!document.body.classList.contains("mobile-hud-compact"));
+});
+
+hudPanelsToggle?.addEventListener("click", () => {
+  setMobileHudPanelsHidden(!document.body.classList.contains("mobile-hud-panels-hidden"));
+});
+
+if (window.matchMedia?.("(pointer: coarse)").matches) {
+  document.body.classList.add("touch-device");
+}
 
 const enemies = new EnemySystem(scene, world, { bars: enemyBars }, feedback);
 setLoading("Waking bosses...", 0.58);

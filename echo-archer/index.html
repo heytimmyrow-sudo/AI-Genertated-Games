@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
@@ -59,6 +59,10 @@
           <span id="player-stamina-fill"></span>
         </span>
       </section>
+      <div id="mobile-hud-controls" data-ui-interactive="true" aria-label="Mobile HUD controls">
+        <button id="hud-compact-toggle" type="button" aria-pressed="false">Compact HUD</button>
+        <button id="hud-panels-toggle" type="button" aria-pressed="false">Hide Panels</button>
+      </div>
       <button id="quest-sidebar-button" type="button" data-ui-interactive="true" aria-label="Open quest menu">
         Quests <strong id="quest-sidebar-badge" hidden>0</strong>
       </button>
@@ -102,6 +106,22 @@
       <span class="reticle-line reticle-line-left"></span>
       <span class="reticle-power"></span>
     </div>
+    <section id="touch-controls" data-ui-interactive="true" aria-label="Touch gameplay controls">
+      <div class="touch-move-pad" aria-label="Movement controls">
+        <button type="button" data-touch-key="KeyW" class="touch-up" aria-label="Move forward">↑</button>
+        <button type="button" data-touch-key="KeyA" class="touch-left" aria-label="Move left">←</button>
+        <button type="button" data-touch-key="KeyS" class="touch-down" aria-label="Move backward">↓</button>
+        <button type="button" data-touch-key="KeyD" class="touch-right" aria-label="Move right">→</button>
+      </div>
+      <div class="touch-action-pad" aria-label="Action controls">
+        <button type="button" data-touch-mouse="0" class="touch-shoot" aria-label="Hold to draw, release to shoot">Draw</button>
+        <button type="button" data-touch-key="Space" aria-label="Jump">Jump</button>
+        <button type="button" data-touch-key="ShiftLeft" aria-label="Sprint">Sprint</button>
+        <button type="button" data-touch-tap="KeyE" aria-label="Interact">E</button>
+        <button type="button" data-touch-tap="KeyI" aria-label="Open inventory">Inv</button>
+        <button type="button" data-touch-tap="KeyM" aria-label="Open world map">Map</button>
+      </div>
+    </section>
     <div id="score-popups" aria-hidden="true"></div>
     <div id="enemy-bars" aria-hidden="true"></div>
     <section id="save-controls" data-ui-interactive="true" aria-live="polite">

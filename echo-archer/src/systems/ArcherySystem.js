@@ -150,7 +150,8 @@ export class ArcherySystem {
   }
 
   updateDraw(deltaSeconds, input, player, cameraRig, world) {
-    if (!this.isDrawing && input.isMouseDown(0) && input.pointerLocked) {
+    const hasAimControl = input.hasGameplayPointer?.() ?? input.pointerLocked;
+    if (!this.isDrawing && input.isMouseDown(0) && hasAimControl) {
       this.isDrawing = true;
       this.drawAmount = Math.max(this.drawAmount, 0.08);
       this.lastDrawSoundStep = 0;
@@ -159,7 +160,7 @@ export class ArcherySystem {
       this.feedback?.playSound("bowDraw", 0.46);
     }
 
-    if (this.isDrawing && input.isMouseDown(0) && input.pointerLocked) {
+    if (this.isDrawing && input.isMouseDown(0) && hasAimControl) {
       const previousDraw = this.drawAmount;
       const drawCurveBoost = 0.94 + this.drawAmount * 0.18;
       this.drawAmount = Math.min(1, this.drawAmount + (deltaSeconds * this.getDrawSpeedMultiplier() * drawCurveBoost) / SETTINGS.archery.drawTime);
@@ -181,7 +182,7 @@ export class ArcherySystem {
       this.drawAmount = 0;
     }
 
-    if (!input.pointerLocked || !input.isMouseDown(0)) {
+    if (!hasAimControl || !input.isMouseDown(0)) {
       this.isDrawing = false;
       this.drawAmount = input.wasMouseReleased(0) ? 0 : Math.max(0, this.drawAmount - deltaSeconds * 3);
     }
