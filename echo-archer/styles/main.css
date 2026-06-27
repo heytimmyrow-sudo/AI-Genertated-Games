@@ -3669,10 +3669,10 @@ body.mobile-device #touch-controls {
   inset: auto 0 calc(14px + var(--safe-bottom)) 0;
   z-index: 24;
   display: grid;
-  grid-template-columns: 122px minmax(92px, 112px) 82px;
+  grid-template-columns: 142px minmax(168px, 1fr) 118px;
   align-items: end;
   justify-content: space-between;
-  gap: 10px;
+  gap: 12px;
   padding:
     0
     calc(8px + var(--safe-right))
@@ -3682,12 +3682,12 @@ body.mobile-device #touch-controls {
 }
 
 body.mobile-device #touch-controls button {
-  min-width: 38px;
-  min-height: 38px;
-  padding: 6px;
-  border-radius: 13px;
-  font-size: 10px;
-  opacity: 0.78;
+  min-width: 44px;
+  min-height: 42px;
+  padding: 7px 9px;
+  border-radius: 15px;
+  font-size: 11px;
+  opacity: 0.72;
   pointer-events: auto;
   touch-action: none;
   user-select: none;
@@ -3696,16 +3696,16 @@ body.mobile-device #touch-controls button {
 
 body.mobile-device .touch-move-pad {
   justify-self: start;
-  width: 112px;
-  height: 112px;
-  opacity: 0.62;
+  width: 132px;
+  height: 132px;
+  opacity: 0.58;
 }
 
 body.mobile-device .touch-look-pad {
   justify-self: end;
-  width: 82px;
-  height: 82px;
-  opacity: 0.48;
+  width: 106px;
+  height: 106px;
+  opacity: 0.46;
 }
 
 body.mobile-device .touch-joystick {
@@ -3734,8 +3734,8 @@ body.mobile-device .touch-joystick-knob {
   position: absolute;
   left: 50%;
   top: 50%;
-  width: 40px;
-  height: 40px;
+  width: 46px;
+  height: 46px;
   border: 1px solid rgba(255, 222, 157, 0.42);
   border-radius: inherit;
   background: linear-gradient(145deg, rgba(255, 226, 162, 0.72), rgba(91, 64, 28, 0.62));
@@ -3765,21 +3765,23 @@ body.mobile-device .touch-joystick small {
 }
 
 body.mobile-device .touch-action-pad {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(38px, 48px));
-  gap: 5px;
-  justify-content: center;
-  max-width: 104px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-evenly;
+  gap: clamp(6px, 1.8vw, 14px);
+  width: min(420px, 52vw);
+  max-width: none;
   pointer-events: none;
 }
 
 body.mobile-device .touch-action-pad .touch-shoot {
-  grid-column: span 2;
-  min-width: 86px;
+  min-width: clamp(78px, 16vw, 116px);
+  color: #2b1a0b;
+  background: linear-gradient(145deg, rgba(255, 217, 134, 0.9), rgba(217, 145, 62, 0.78));
 }
 
 body.mobile-device .touch-action-pad [data-touch-key="ShiftLeft"] {
-  grid-column: span 2;
+  min-width: clamp(54px, 10vw, 76px);
 }
 
 body.mobile-device #touch-controls button:active {
@@ -4009,30 +4011,30 @@ body.mobile-device #quest-board-close {
   }
 
   body.mobile-device .touch-move-pad {
-    width: 102px;
-    height: 102px;
+    width: 118px;
+    height: 118px;
   }
 
   body.mobile-device #touch-controls button {
-    min-width: 38px;
-    min-height: 38px;
+    min-width: 40px;
+    min-height: 40px;
     border-radius: 13px;
     font-size: 10px;
   }
 
   body.mobile-device .touch-action-pad {
-    grid-template-columns: repeat(2, minmax(36px, 46px));
-    max-width: 98px;
+    width: min(300px, 48vw);
+    gap: 5px;
   }
 
   body.mobile-device .touch-look-pad {
-    width: 76px;
-    height: 76px;
+    width: 92px;
+    height: 92px;
   }
 
   body.mobile-device .touch-joystick-knob {
-    width: 38px;
-    height: 38px;
+    width: 42px;
+    height: 42px;
   }
 }
 
@@ -4066,16 +4068,17 @@ body.mobile-device #quest-board-close {
 
   body.mobile-device #touch-controls {
     inset: auto 0 calc(8px + var(--safe-bottom)) 0;
+    grid-template-columns: 112px minmax(190px, 1fr) 96px;
   }
 
   body.mobile-device .touch-move-pad {
-    width: 94px;
-    height: 94px;
+    width: 106px;
+    height: 106px;
   }
 
   body.mobile-device .touch-look-pad {
-    width: 72px;
-    height: 72px;
+    width: 86px;
+    height: 86px;
   }
 
   body.mobile-device #touch-controls button {
