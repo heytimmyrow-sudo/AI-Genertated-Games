@@ -228,6 +228,10 @@ export class InputController {
       this.requestPointerLock();
     }
 
+    if (event.button === 0) {
+      this.virtualPointerActive = true;
+    }
+
     if (!this.mouseButtons.has(event.button)) {
       this.justMousePressed.add(event.button);
     }
@@ -242,6 +246,9 @@ export class InputController {
 
     event.preventDefault();
     this.mouseButtons.delete(event.button);
+    if (event.button === 0 && this.touchLookPointerId === null) {
+      this.virtualPointerActive = false;
+    }
     this.justMouseReleased.add(event.button);
   }
 
@@ -289,6 +296,7 @@ export class InputController {
     this.pointerLocked = document.pointerLockElement === this.canvas;
     if (!this.pointerLocked) {
       this.mouseButtons.clear();
+      this.virtualPointerActive = false;
     }
   }
 
