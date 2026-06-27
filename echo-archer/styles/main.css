@@ -3668,8 +3668,9 @@ body.mobile-device #touch-controls {
   position: fixed;
   inset: auto 0 0 0;
   z-index: 18;
-  display: flex;
-  align-items: flex-end;
+  display: grid;
+  grid-template-columns: 92px minmax(96px, 126px) 92px;
+  align-items: end;
   justify-content: space-between;
   gap: 8px;
   padding:
@@ -3681,11 +3682,12 @@ body.mobile-device #touch-controls {
 }
 
 body.mobile-device #touch-controls button {
-  min-width: 42px;
-  min-height: 42px;
+  min-width: 38px;
+  min-height: 38px;
   padding: 6px;
-  border-radius: 14px;
-  font-size: 11px;
+  border-radius: 13px;
+  font-size: 10px;
+  opacity: 0.78;
   pointer-events: auto;
   touch-action: none;
   user-select: none;
@@ -3693,25 +3695,82 @@ body.mobile-device #touch-controls button {
 }
 
 body.mobile-device .touch-move-pad {
-  display: grid;
-  grid-template-columns: repeat(3, 43px);
-  grid-template-rows: repeat(3, 43px);
-  gap: 4px;
-  pointer-events: none;
+  justify-self: start;
+}
+
+body.mobile-device .touch-look-pad {
+  justify-self: end;
+}
+
+body.mobile-device .touch-joystick {
+  position: relative;
+  width: 86px;
+  height: 86px;
+  border-radius: 50%;
+  opacity: 0.74;
+  pointer-events: auto;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+body.mobile-device .touch-joystick-ring {
+  position: absolute;
+  inset: 0;
+  border: 1px solid rgba(255, 222, 157, 0.28);
+  border-radius: inherit;
+  background:
+    radial-gradient(circle, rgba(255, 209, 102, 0.08) 0 35%, rgba(24, 38, 33, 0.45) 36% 100%),
+    linear-gradient(145deg, rgba(22, 34, 30, 0.5), rgba(81, 60, 29, 0.38));
+  box-shadow: inset 0 0 20px rgba(255, 244, 210, 0.08), 0 12px 30px rgba(0, 0, 0, 0.22);
+}
+
+body.mobile-device .touch-joystick-knob {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 36px;
+  height: 36px;
+  border: 1px solid rgba(255, 222, 157, 0.42);
+  border-radius: inherit;
+  background: linear-gradient(145deg, rgba(255, 226, 162, 0.8), rgba(91, 64, 28, 0.72));
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.24);
+  transform: translate(-50%, -50%);
+  transition: transform 80ms ease;
+}
+
+body.mobile-device .touch-joystick.active {
+  opacity: 0.92;
+}
+
+body.mobile-device .touch-joystick.active .touch-joystick-knob {
+  transition: none;
+}
+
+body.mobile-device .touch-joystick small {
+  position: absolute;
+  left: 50%;
+  bottom: -16px;
+  color: rgba(255, 244, 210, 0.68);
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  transform: translateX(-50%);
 }
 
 body.mobile-device .touch-action-pad {
   display: grid;
-  grid-template-columns: repeat(2, minmax(42px, 56px));
-  gap: 6px;
-  justify-content: end;
-  max-width: 118px;
+  grid-template-columns: repeat(2, minmax(38px, 48px));
+  gap: 5px;
+  justify-content: center;
+  max-width: 104px;
   pointer-events: none;
 }
 
 body.mobile-device .touch-action-pad .touch-shoot {
   grid-column: span 2;
-  min-width: 94px;
+  min-width: 86px;
 }
 
 body.mobile-device .touch-action-pad [data-touch-key="ShiftLeft"] {
@@ -3945,8 +4004,8 @@ body.mobile-device #quest-board-close {
   }
 
   body.mobile-device .touch-move-pad {
-    grid-template-columns: repeat(3, 39px);
-    grid-template-rows: repeat(3, 39px);
+    width: 76px;
+    height: 76px;
   }
 
   body.mobile-device #touch-controls button {
@@ -3957,8 +4016,18 @@ body.mobile-device #quest-board-close {
   }
 
   body.mobile-device .touch-action-pad {
-    grid-template-columns: repeat(2, minmax(38px, 50px));
-    max-width: 112px;
+    grid-template-columns: repeat(2, minmax(36px, 46px));
+    max-width: 98px;
+  }
+
+  body.mobile-device .touch-look-pad {
+    width: 76px;
+    height: 76px;
+  }
+
+  body.mobile-device .touch-joystick-knob {
+    width: 32px;
+    height: 32px;
   }
 }
 
@@ -3995,8 +4064,13 @@ body.mobile-device #quest-board-close {
   }
 
   body.mobile-device .touch-move-pad {
-    grid-template-columns: repeat(3, 38px);
-    grid-template-rows: repeat(3, 38px);
+    width: 72px;
+    height: 72px;
+  }
+
+  body.mobile-device .touch-look-pad {
+    width: 72px;
+    height: 72px;
   }
 
   body.mobile-device #touch-controls button {

@@ -137,11 +137,10 @@
       <span class="reticle-power"></span>
     </div>
     <section id="touch-controls" data-ui-interactive="true" aria-label="Touch gameplay controls">
-      <div class="touch-move-pad" aria-label="Movement controls">
-        <button type="button" data-touch-key="KeyW" class="touch-up" aria-label="Move forward">W</button>
-        <button type="button" data-touch-key="KeyA" class="touch-left" aria-label="Move left">A</button>
-        <button type="button" data-touch-key="KeyS" class="touch-down" aria-label="Move backward">S</button>
-        <button type="button" data-touch-key="KeyD" class="touch-right" aria-label="Move right">D</button>
+      <div class="touch-joystick touch-move-pad" data-touch-joystick="move" aria-label="Movement joystick">
+        <span class="touch-joystick-ring"></span>
+        <span class="touch-joystick-knob"></span>
+        <small>Move</small>
       </div>
       <div class="touch-action-pad" aria-label="Action controls">
         <button type="button" data-touch-mouse="0" class="touch-shoot" aria-label="Hold to draw, release to shoot">Draw</button>
@@ -150,6 +149,11 @@
         <button type="button" data-touch-tap="KeyE" aria-label="Interact">E</button>
         <button type="button" data-touch-tap="KeyI" aria-label="Open inventory">Inv</button>
         <button type="button" data-touch-tap="KeyM" aria-label="Open world map">Map</button>
+      </div>
+      <div class="touch-joystick touch-look-pad" data-touch-joystick="look" aria-label="Camera look joystick">
+        <span class="touch-joystick-ring"></span>
+        <span class="touch-joystick-knob"></span>
+        <small>Look</small>
       </div>
     </section>
     <div id="score-popups" aria-hidden="true"></div>
