@@ -65,6 +65,7 @@ const accuracyState = document.querySelector("#accuracy-state");
 const regionState = document.querySelector("#region-state");
 const reticle = document.querySelector("#reticle");
 const scorePopups = document.querySelector("#score-popups");
+const mobileEventPopups = document.querySelector("#mobile-event-popups");
 const enemyBars = document.querySelector("#enemy-bars");
 const bossHealth = document.querySelector("#boss-health");
 const bossName = document.querySelector("#boss-name");
@@ -82,14 +83,23 @@ const trackedSideQuest = document.querySelector("#tracked-side-quest");
 const trackedSideTitle = document.querySelector("#tracked-side-title");
 const trackedSideObjective = document.querySelector("#tracked-side-objective");
 const findLandmarkButton = document.querySelector("#find-landmark-button");
+const questTracker = document.querySelector("#quest-tracker");
 const questMenuButton = document.querySelector("#quest-menu-button");
 const questMenuBadge = document.querySelector("#quest-menu-badge");
 const questSidebarButton = document.querySelector("#quest-sidebar-button");
 const questSidebarBadge = document.querySelector("#quest-sidebar-badge");
 const shortcutSidebar = document.querySelector(".status-bar");
 const sidebarToggle = document.querySelector("#sidebar-toggle");
-const hudCompactToggle = document.querySelector("#hud-compact-toggle");
-const hudPanelsToggle = document.querySelector("#hud-panels-toggle");
+const mobileExpandUi = document.querySelector("#mobile-expand-ui");
+const mobileHudSettingsToggle = document.querySelector("#mobile-hud-settings-toggle");
+const mobileHudSettings = document.querySelector("#mobile-hud-settings");
+const mobileHudSettingsClose = document.querySelector("#mobile-hud-settings-close");
+const mobilePauseButton = document.querySelector("#mobile-pause-button");
+const mobilePanelToggles = document.querySelectorAll("[data-mobile-panel-toggle]");
+const mobilePanelSettings = document.querySelectorAll("[data-mobile-panel-setting]");
+const mobileMiniMapRegion = document.querySelector("#mobile-mini-map-region");
+const mobileMiniMap = document.querySelector("#mobile-mini-map");
+const mobileHudModeInputs = document.querySelectorAll("[name='mobile-hud-mode']");
 const questMenu = document.querySelector("#quest-menu");
 const questMenuContent = document.querySelector("#quest-menu-content");
 const questMenuClose = document.querySelector("#quest-menu-close");
@@ -267,51 +277,287 @@ sidebarToggle?.addEventListener("click", () => {
   setShortcutSidebarCollapsed(!shortcutSidebar?.classList.contains("collapsed"));
 });
 
-function setMobileHudCompact(compact) {
-  document.body.classList.toggle("mobile-hud-compact", compact);
-  if (hudCompactToggle) {
-    hudCompactToggle.textContent = compact ? "Expanded HUD" : "Compact HUD";
-    hudCompactToggle.setAttribute("aria-pressed", String(compact));
-  }
+const mobilePanelDefaults = {
+  quest: false,
+  map: false,
+  stats: false,
+  equipment: false,
+  region: false,
+  notifications: true,
+};
+const mobileHudModes = {
+  minimal: {
+    quest: false,
+    map: false,
+    stats: false,
+    equipment: false,
+    region: false,
+    notifications: true,
+  },
+  standard: {
+    quest: true,
+    map: true,
+    stats: false,
+    equipment: false,
+    region: false,
+    notifications: true,
+  },
+  explorer: {
+    quest: true,
+    map: true,
+    stats: true,
+    equipment: false,
+    region: true,
+    notifications: true,
+  },
+};
+const mobilePanelState = { ...mobilePanelDefaults };
+let mobileHudMode = "minimal";
+let mobileExpandTimeout = null;
+let mobileHudSettingsOpen = false;
+let mobilePopupReady = false;
+const mobilePopupSnapshot = {
+  xp: "",
+  gold: "",
+  reputation: "",
+  boss: "",
+  quest: "",
+  region: "",
+};
+
+function isMobileViewport() {
+  const coarsePointer = window.matchMedia?.("(pointer: coarse)").matches ?? false;
+  const narrowViewport = window.matchMedia?.("(max-width: 920px)").matches ?? false;
+  const mobileAgent = /Android|iPhone|iPad|iPod|Mobile|Tablet/i.test(navigator.userAgent);
+  return coarsePointer || (narrowViewport && mobileAgent);
+}
+
+function applyMobileDeviceState() {
+  document.body.classList.toggle("mobile-device", isMobileViewport());
+}
+
+function readMobilePanelState(panel) {
   try {
-    localStorage.setItem("echo-archer-mobile-hud-compact", compact ? "true" : "false");
+    const saved = localStorage.getItem(`echo-archer-mobile-panel-${panel}`);
+    if (saved === "shown") {
+      return true;
+    }
+    if (saved === "hidden") {
+      return false;
+    }
   } catch {
-    // Mobile HUD still works for this session.
+    // Session preferences are optional; defaults keep the HUD usable.
   }
+  return mobilePanelDefaults[panel] ?? true;
 }
 
-function setMobileHudPanelsHidden(hidden) {
-  document.body.classList.toggle("mobile-hud-panels-hidden", hidden);
-  if (hudPanelsToggle) {
-    hudPanelsToggle.textContent = hidden ? "Show Panels" : "Hide Panels";
-    hudPanelsToggle.setAttribute("aria-pressed", String(hidden));
-  }
+function saveMobilePanelState(panel, shown) {
   try {
-    localStorage.setItem("echo-archer-mobile-hud-panels-hidden", hidden ? "true" : "false");
+    localStorage.setItem(`echo-archer-mobile-panel-${panel}`, shown ? "shown" : "hidden");
   } catch {
-    // Mobile HUD still works for this session.
+    // Ignore storage failures; controls still work for the current session.
   }
 }
 
-try {
-  setMobileHudCompact(localStorage.getItem("echo-archer-mobile-hud-compact") === "true");
-  setMobileHudPanelsHidden(localStorage.getItem("echo-archer-mobile-hud-panels-hidden") === "true");
-} catch {
-  setMobileHudCompact(false);
-  setMobileHudPanelsHidden(false);
+function setMobilePanel(panel, shown, { persist = true, custom = true } = {}) {
+  if (!panel) {
+    return;
+  }
+  mobilePanelState[panel] = shown;
+  document.body.classList.toggle(`mobile-panel-${panel}-hidden`, !shown);
+  mobilePanelToggles.forEach((button) => {
+    if (button.dataset.mobilePanelToggle !== panel) {
+      return;
+    }
+    button.classList.toggle("panel-hidden", !shown);
+    button.setAttribute("aria-pressed", String(shown));
+  });
+  mobilePanelSettings.forEach((input) => {
+    if (input.dataset.mobilePanelSetting === panel) {
+      input.checked = shown;
+    }
+  });
+  if (persist) {
+    saveMobilePanelState(panel, shown);
+    if (custom) {
+      setMobileHudMode("custom", { applyPreset: false, persist: true });
+    }
+  }
 }
 
-hudCompactToggle?.addEventListener("click", () => {
-  setMobileHudCompact(!document.body.classList.contains("mobile-hud-compact"));
+function syncMobilePanelsFromSession() {
+  Object.keys(mobilePanelDefaults).forEach((panel) => {
+    setMobilePanel(panel, readMobilePanelState(panel), { persist: false, custom: false });
+  });
+}
+
+function expandMobileUiTemporarily() {
+  Object.keys(mobilePanelDefaults).forEach((panel) => {
+    setMobilePanel(panel, true, { persist: false, custom: false });
+  });
+  document.body.classList.add("mobile-ui-expanded");
+  mobileExpandUi?.setAttribute("aria-pressed", "true");
+  window.clearTimeout(mobileExpandTimeout);
+  mobileExpandTimeout = window.setTimeout(() => {
+    document.body.classList.remove("mobile-ui-expanded");
+    mobileExpandUi?.setAttribute("aria-pressed", "false");
+    syncMobilePanelsFromSession();
+  }, 6500);
+}
+
+function readMobileHudMode() {
+  try {
+    const saved = localStorage.getItem("echo-archer-mobile-hud-mode");
+    if (saved === "standard" || saved === "explorer" || saved === "custom") {
+      return saved;
+    }
+  } catch {
+    // Default to minimal if storage is unavailable.
+  }
+  return "minimal";
+}
+
+function setMobileHudMode(mode, { applyPreset = true, persist = true } = {}) {
+  mobileHudMode = mode;
+  document.body.dataset.mobileHudMode = mode;
+  mobileHudModeInputs.forEach((input) => {
+    input.checked = input.value === mode;
+  });
+  if (applyPreset && mobileHudModes[mode]) {
+    Object.entries(mobileHudModes[mode]).forEach(([panel, shown]) => {
+      setMobilePanel(panel, shown, { persist, custom: false });
+    });
+  }
+  if (persist) {
+    try {
+      localStorage.setItem("echo-archer-mobile-hud-mode", mode);
+    } catch {
+      // Mode still applies for the active page.
+    }
+  }
+}
+
+function setMobileHudSettingsOpen(open) {
+  mobileHudSettingsOpen = open;
+  mobileHudSettings?.classList.toggle("visible", open);
+  mobileHudSettingsToggle?.setAttribute("aria-expanded", String(open));
+  mobilePauseButton?.setAttribute("aria-expanded", String(open));
+}
+
+applyMobileDeviceState();
+const savedMobileHudMode = readMobileHudMode();
+setMobileHudMode(savedMobileHudMode, { applyPreset: savedMobileHudMode !== "custom", persist: false });
+if (savedMobileHudMode === "custom") {
+  syncMobilePanelsFromSession();
+}
+window.addEventListener("resize", applyMobileDeviceState);
+
+mobilePanelToggles.forEach((button) => {
+  button.addEventListener("click", () => {
+    const panel = button.dataset.mobilePanelToggle;
+    setMobilePanel(panel, !mobilePanelState[panel]);
+  });
 });
 
-hudPanelsToggle?.addEventListener("click", () => {
-  setMobileHudPanelsHidden(!document.body.classList.contains("mobile-hud-panels-hidden"));
+mobileExpandUi?.addEventListener("click", expandMobileUiTemporarily);
+mobilePauseButton?.addEventListener("click", () => {
+  setMobileHudSettingsOpen(true);
+});
+mobileHudSettingsToggle?.addEventListener("click", () => {
+  setMobileHudSettingsOpen(!mobileHudSettingsOpen);
+});
+mobileHudSettingsClose?.addEventListener("click", () => {
+  setMobileHudSettingsOpen(false);
+});
+mobilePanelSettings.forEach((input) => {
+  input.addEventListener("change", () => {
+    setMobilePanel(input.dataset.mobilePanelSetting, input.checked);
+  });
+});
+mobileHudModeInputs.forEach((input) => {
+  input.addEventListener("change", () => {
+    if (input.checked) {
+      setMobileHudMode(input.value);
+    }
+  });
+});
+mobileMiniMap?.addEventListener("click", () => {
+  input.tapVirtualKey?.("KeyM");
+});
+questTracker?.addEventListener("click", (event) => {
+  if (!isMobileHudActive() || event.target.closest("button")) {
+    return;
+  }
+  questTracker.classList.toggle("mobile-quest-expanded");
 });
 
-if (window.matchMedia?.("(pointer: coarse)").matches) {
-  document.body.classList.add("touch-device");
+function isMobileHudActive() {
+  return document.body.classList.contains("mobile-device");
 }
+
+function showMobileEventPopup(title, message, kind = "") {
+  if (!isMobileHudActive() || !mobilePanelState.notifications || !mobileEventPopups || !message) {
+    return;
+  }
+  const popup = document.createElement("span");
+  popup.className = `mobile-event-popup ${kind}`.trim();
+  const titleElement = document.createElement("strong");
+  titleElement.textContent = title;
+  const messageElement = document.createElement("small");
+  messageElement.textContent = message;
+  popup.append(titleElement, messageElement);
+  mobileEventPopups.appendChild(popup);
+  while (mobileEventPopups.children.length > 3) {
+    mobileEventPopups.firstElementChild?.remove();
+  }
+  window.setTimeout(() => popup.remove(), 2800);
+}
+
+function watchMobileHudChanges() {
+  const nextSnapshot = {
+    xp: xpState?.textContent?.trim() ?? "",
+    gold: goldState?.textContent?.trim() ?? "",
+    reputation: reputationState?.textContent?.trim() ?? "",
+    boss: bossHealth?.classList.contains("visible") ? (bossName?.textContent?.trim() ?? "") : "",
+    quest: `${questTitle?.textContent?.trim() ?? ""}|${questObjective?.textContent?.trim() ?? ""}`,
+    region: regionState?.textContent?.trim() ?? "",
+  };
+
+  if (!mobilePopupReady || !isMobileHudActive()) {
+    Object.assign(mobilePopupSnapshot, nextSnapshot);
+    mobilePopupReady = true;
+    return;
+  }
+
+  if (nextSnapshot.xp && nextSnapshot.xp !== mobilePopupSnapshot.xp) {
+    showMobileEventPopup("XP", nextSnapshot.xp, "xp");
+  }
+  if (nextSnapshot.gold && nextSnapshot.gold !== mobilePopupSnapshot.gold) {
+    showMobileEventPopup("Gold", nextSnapshot.gold, "gold");
+  }
+  if (nextSnapshot.reputation && nextSnapshot.reputation !== mobilePopupSnapshot.reputation) {
+    showMobileEventPopup("Reputation", nextSnapshot.reputation, "reputation");
+  }
+  if (nextSnapshot.boss && nextSnapshot.boss !== mobilePopupSnapshot.boss) {
+    showMobileEventPopup("Boss", nextSnapshot.boss, "boss");
+  }
+  if (nextSnapshot.region && nextSnapshot.region !== mobilePopupSnapshot.region) {
+    showMobileEventPopup("Region", nextSnapshot.region, "region");
+  }
+  if (nextSnapshot.quest && nextSnapshot.quest !== mobilePopupSnapshot.quest) {
+    showMobileEventPopup("Quest Updated", questObjective?.textContent?.trim() ?? "New objective", "quest");
+  }
+
+  Object.assign(mobilePopupSnapshot, nextSnapshot);
+}
+
+window.addEventListener("echo-archer:boss-defeated", (event) => {
+  showMobileEventPopup("Boss Defeated", event.detail?.name ?? "Victory", "boss");
+});
+
+window.addEventListener("echo-archer:achievement", (event) => {
+  showMobileEventPopup("Achievement", event.detail?.name ?? event.detail?.title ?? "Unlocked", "achievement");
+});
 
 const enemies = new EnemySystem(scene, world, { bars: enemyBars }, feedback);
 setLoading("Waking bosses...", 0.58);
@@ -869,6 +1115,7 @@ function updateHud() {
   reticle.classList.toggle("is-full-draw", archery.drawAmount > 0.9);
   reticle.style.setProperty("--draw-power", archery.drawAmount.toFixed(3));
   reticle.style.setProperty("--release-kick", archery.releaseKick.toFixed(3));
+  watchMobileHudChanges();
 }
 
 function updateRegionHud() {
@@ -881,9 +1128,14 @@ function updateRegionHud() {
   }
   currentRegionId = region.id;
   regionState.textContent = region.name;
+  if (mobileMiniMapRegion) {
+    mobileMiniMapRegion.textContent = region.name;
+  }
   regionState.classList.remove("region-pulse");
   void regionState.offsetWidth;
   regionState.classList.add("region-pulse");
+  showMobileEventPopup("Region", region.name, "region");
+  mobilePopupSnapshot.region = region.name;
   window.dispatchEvent(new CustomEvent("echo-archer:journal-landmark", {
     detail: { id: region.id, name: region.name },
   }));
@@ -1163,7 +1415,7 @@ function update(deltaSeconds) {
     quests.setQuestMenuOpen(false);
   }
 
-  const menuOpen = progression.menuOpen || inventoryOpen || shopOpen || questBoardOpen || rpgOpen || journalOpen || mapOpen || graphicsOpen || photoOpen || questMenuOpen || defeatedOpen;
+  const menuOpen = progression.menuOpen || inventoryOpen || shopOpen || questBoardOpen || rpgOpen || journalOpen || mapOpen || graphicsOpen || photoOpen || questMenuOpen || defeatedOpen || mobileHudSettingsOpen;
   input.setGameplayBlocked(menuOpen);
   audio.setGameplayPaused(menuOpen);
   audio.update(deltaSeconds);
