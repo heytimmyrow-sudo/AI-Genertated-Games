@@ -5238,6 +5238,7 @@ export class World {
     this.addDefensiveArchitectureMasterpiecePass();
     this.addLegendaryBossStructures();
     this.addWorldCompositionClearings();
+    this.addLakesAndBoathousesPass();
     this.addGearPickups();
   }
 
@@ -5846,6 +5847,271 @@ export class World {
       group,
       text,
     });
+  }
+
+  addLakesAndBoathousesPass() {
+    if (this.hiddenLake) {
+      this.addLakeDestinationDetails(this.hiddenLake, {
+        id: "hidden-lake",
+        style: "wilds",
+        radiusX: 6.8,
+        radiusZ: 5.9,
+        yaw: -0.12,
+      });
+      this.addBoathouseSite({
+        id: "hidden-lake-boathouse",
+        waterName: "Hidden Lake",
+        keeper: "Mira Reed",
+        itemId: "lake-skiff-permit",
+        rewardName: "Lake Skiff Permit",
+        origin: { x: this.hiddenLake.x + 7.4, z: this.hiddenLake.z - 2.8, yaw: -0.55 },
+        launchLocal: [-1.1, 2.9],
+        destination: { x: this.hiddenLake.x - 5.4, z: this.hiddenLake.z + 3.9 },
+        material: this.materials.agedWood,
+        roof: this.materials.mistLeafDark ?? this.materials.pineDark,
+        accent: this.materials.glowPlant,
+        water: this.materials.water,
+      });
+    }
+
+    if (this.greenwaterCrossing) {
+      const origin = { x: this.greenwaterCrossing.x - 6.6, z: this.greenwaterCrossing.z + 4.7, yaw: 0.78 };
+      this.addLakeDestinationDetails({ x: 160, z: -132, yaw: 0.42 }, {
+        id: "greenwater",
+        style: "frontier",
+        radiusX: 8.4,
+        radiusZ: 3.4,
+        yaw: 0.42,
+      });
+      this.addBoathouseSite({
+        id: "greenwater-boathouse",
+        waterName: "Greenwater Crossing",
+        keeper: "Old Noll",
+        itemId: "keeper-rowboat",
+        rewardName: "Keeper Rowboat",
+        origin,
+        launchLocal: [1.2, 3.2],
+        destination: { x: this.greenwaterCrossing.x + 5.6, z: this.greenwaterCrossing.z - 4.1 },
+        material: this.materials.wood,
+        roof: this.materials.weatheredDock,
+        accent: this.materials.frontierFlower ?? this.materials.flower,
+        water: this.materials.frontierWater,
+      });
+    }
+  }
+
+  addLakeDestinationDetails(origin, options = {}) {
+    const shoreline = {
+      x: origin.x,
+      z: origin.z,
+      rx: options.radiusX ?? 6,
+      rz: options.radiusZ ?? 4,
+      yaw: options.yaw ?? origin.yaw ?? 0,
+      style: options.style === "frontier" ? "river" : "lake",
+      water: options.water ?? this.materials.water,
+    };
+    this.addNaturalShoreline(shoreline, 19);
+    this.addWaterRippleSet(shoreline, 21);
+    const detailCount = this.performanceMode ? 4 : 8;
+    for (let index = 0; index < detailCount; index += 1) {
+      const angle = index * Math.PI * 2 / detailCount + (options.yaw ?? 0);
+      const x = origin.x + Math.sin(angle) * (shoreline.rx + 1.0 + (index % 2) * 0.7);
+      const z = origin.z + Math.cos(angle) * (shoreline.rz + 0.8 + (index % 3) * 0.35);
+      if (index % 3 === 0) {
+        this.addOrganicRockCluster(x, z, 0.55 + (index % 2) * 0.16, index, options.style === "frontier" ? this.materials.frontierStone : this.materials.mossStone);
+      } else {
+        this.addLakeGrassClump(x, z, index, options.style);
+      }
+    }
+  }
+
+  addLakeGrassClump(x, z, seed = 0, style = "lake") {
+    const y = this.terrain.getHeightAt(x, z);
+    const patch = new THREE.Mesh(new THREE.CircleGeometry(0.36 + (seed % 3) * 0.08, 9), style === "frontier" ? this.materials.frontierGrass : this.materials.grassLight);
+    patch.position.set(x, y + 0.04, z);
+    patch.rotation.x = -Math.PI / 2;
+    this.scene.add(patch);
+    if (this.performanceMode) {
+      return;
+    }
+    for (let index = 0; index < 3; index += 1) {
+      const blade = new THREE.Mesh(this.geometries.grassBlade, index % 2 ? this.materials.lily : this.materials.flower);
+      blade.position.set(x + Math.sin(seed + index) * 0.28, y + 0.18, z + Math.cos(seed * 0.7 + index) * 0.24);
+      blade.rotation.y = seed + index * 0.8;
+      blade.scale.setScalar(0.7 + index * 0.08);
+      this.scene.add(blade);
+    }
+  }
+
+  addBoathouseSite(config) {
+    const { origin } = config;
+    const y = this.terrain.getHeightAt(origin.x, origin.z);
+    const group = new THREE.Group();
+    group.position.set(origin.x, y, origin.z);
+    group.rotation.y = origin.yaw ?? 0;
+
+    const foundation = new THREE.Mesh(new THREE.BoxGeometry(3.6, 0.34, 2.85), this.materials.darkStone);
+    foundation.position.y = 0.18;
+    group.add(foundation);
+
+    const body = new THREE.Mesh(new THREE.BoxGeometry(3.08, 1.55, 2.22), config.material ?? this.materials.agedWood);
+    body.position.y = 1.1;
+    body.castShadow = true;
+    body.receiveShadow = true;
+    group.add(body);
+
+    const roof = this.createLayeredGableRoof(4.2, 3.05, 2.05, config.roof ?? this.materials.barkDark, {
+      overhang: 0.44,
+      pitch: 0.58,
+      trim: this.materials.warmTrim,
+      beams: true,
+      dormer: true,
+    });
+    group.add(roof);
+
+    [-1.68, 1.68].forEach((xOffset) => {
+      const post = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.1, 2.25, 7), this.materials.barkDark);
+      post.position.set(xOffset, 1.1, 1.1);
+      group.add(post);
+    });
+    const door = new THREE.Mesh(new THREE.BoxGeometry(0.64, 1.05, 0.08), this.materials.barkDark);
+    door.position.set(0, 0.88, 1.16);
+    group.add(door);
+    [-1.1, 1.1].forEach((xOffset) => {
+      const window = new THREE.Mesh(new THREE.BoxGeometry(0.46, 0.36, 0.07), this.materials.warmWindow);
+      window.position.set(xOffset, 1.22, 1.18);
+      group.add(window);
+    });
+    const chimney = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.88, 0.34), this.materials.darkStone);
+    chimney.position.set(-1.08, 2.72, -0.64);
+    group.add(chimney);
+    const sign = new THREE.Mesh(new THREE.BoxGeometry(1.18, 0.34, 0.06), this.materials.parchment);
+    sign.position.set(0, 1.58, 1.28);
+    group.add(sign);
+
+    const dock = new THREE.Group();
+    dock.position.set(0, 0.18, 2.08);
+    for (let index = 0; index < 7; index += 1) {
+      const plank = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.11, 2.4), this.materials.weatheredDock);
+      plank.position.x = (index - 3) * 0.42;
+      plank.position.z = 0.84 + Math.sin(index) * 0.03;
+      plank.rotation.z = Math.sin(index * 1.7) * 0.025;
+      dock.add(plank);
+    }
+    [-1.55, 1.55].forEach((xOffset) => {
+      const rail = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.055, 2.55, 6), this.materials.barkDark);
+      rail.position.set(xOffset, 0.42, 0.86);
+      rail.rotation.x = Math.PI / 2;
+      dock.add(rail);
+    });
+    group.add(dock);
+
+    const crate = new THREE.Mesh(new THREE.BoxGeometry(0.46, 0.34, 0.44), this.materials.cutWood);
+    crate.position.set(-1.28, 0.58, -1.06);
+    group.add(crate);
+    const oar = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.035, 1.55, 6), this.materials.cutWood);
+    oar.position.set(1.34, 0.76, -0.92);
+    oar.rotation.set(0.2, 0.2, Math.PI / 2);
+    group.add(oar);
+
+    group.traverse((child) => {
+      if (child.isMesh) {
+        child.castShadow = true;
+        child.receiveShadow = true;
+      }
+    });
+    this.scene.add(group);
+    this.addCollisionBox(origin.x, origin.z, 3.75, 2.9, 2.9, origin.yaw ?? 0);
+
+    const launchPoint = this.getSettlementPoint(origin, ...(config.launchLocal ?? [0, 3.0]));
+    this.addRowboatModel(launchPoint.x, launchPoint.z, origin.yaw ?? 0, config.water ?? this.materials.water);
+    this.addBoatKeeperFigure(origin.x - Math.sin(origin.yaw + Math.PI / 2) * 2.35, origin.z - Math.cos(origin.yaw + Math.PI / 2) * 2.35, origin.yaw + 0.45, config);
+
+    const keeperPoint = this.getSettlementPoint(origin, -2.4, 0.4);
+    this.interactables.push({
+      id: `${config.id}-keeper`,
+      type: "boat-keeper",
+      name: `${config.keeper}, Boat Keeper`,
+      prompt: "E Talk boats",
+      position: new THREE.Vector3(keeperPoint.x, this.terrain.getHeightAt(keeperPoint.x, keeperPoint.z) + 0.75, keeperPoint.z),
+      radius: 3.2,
+      category: "items",
+      itemId: config.itemId,
+      rewardName: config.rewardName,
+      text: `${config.keeper}: Calm water teaches patience. I can unlock a boat for this lake, and someday we'll stock bait and rods here too.`,
+      unlockText: `${config.keeper}: Take this ${config.rewardName}. Use marked launch docks to cross calm water.`,
+      unlockedText: `${config.keeper}: Your ${config.rewardName} is ready. The fishing racks are still empty, but not for long.`,
+    });
+
+    this.interactables.push({
+      id: `${config.id}-launch`,
+      type: "boat-launch",
+      name: `${config.waterName} Boat Launch`,
+      prompt: "E Launch boat",
+      position: new THREE.Vector3(launchPoint.x, this.terrain.getHeightAt(launchPoint.x, launchPoint.z) + 0.55, launchPoint.z),
+      radius: 2.8,
+      itemIds: ["keeper-rowboat", "lake-skiff-permit"],
+      destination: new THREE.Vector3(config.destination.x, this.terrain.getHeightAt(config.destination.x, config.destination.z), config.destination.z),
+      destinationName: config.waterName,
+      lockedText: "A Boat Keeper can unlock a skiff before you use this launch.",
+      travelText: `You glide quietly across ${config.waterName}.`,
+    });
+
+    const fishingPoint = this.getSettlementPoint(origin, 1.55, 2.7);
+    this.interactables.push({
+      id: `${config.id}-future-fishing`,
+      type: "future-fishing-dock",
+      name: `${config.waterName} Fishing Rack`,
+      prompt: "E Inspect",
+      position: new THREE.Vector3(fishingPoint.x, this.terrain.getHeightAt(fishingPoint.x, fishingPoint.z) + 0.55, fishingPoint.z),
+      radius: 2.2,
+      text: "A neat rack for rods, bait tins, and lake notes. The Boat Keepers are clearly preparing for fishing lessons later.",
+    });
+  }
+
+  addRowboatModel(x, z, yaw = 0, waterMaterial = this.materials.water) {
+    const y = this.terrain.getHeightAt(x, z) + 0.12;
+    const boat = new THREE.Group();
+    boat.position.set(x, y, z);
+    boat.rotation.y = yaw;
+    const hull = new THREE.Mesh(new THREE.CapsuleGeometry(0.34, 1.5, 4, 10), this.materials.weatheredDock);
+    hull.scale.set(1.0, 0.32, 1.62);
+    hull.rotation.z = Math.PI / 2;
+    boat.add(hull);
+    const inset = new THREE.Mesh(new THREE.BoxGeometry(1.55, 0.08, 0.52), this.materials.barkDark);
+    inset.position.y = 0.12;
+    boat.add(inset);
+    [-0.46, 0.46].forEach((xOffset) => {
+      const bench = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.1, 0.68), this.materials.cutWood);
+      bench.position.set(xOffset, 0.2, 0);
+      boat.add(bench);
+    });
+    const waterShadow = new THREE.Mesh(new THREE.CircleGeometry(1.25, 18), waterMaterial);
+    waterShadow.position.y = -0.05;
+    waterShadow.rotation.x = -Math.PI / 2;
+    waterShadow.scale.set(1.45, 0.58, 1);
+    boat.add(waterShadow);
+    boat.traverse((child) => { if (child.isMesh) child.castShadow = true; });
+    this.scene.add(boat);
+  }
+
+  addBoatKeeperFigure(x, z, yaw = 0, config = {}) {
+    const y = this.terrain.getHeightAt(x, z);
+    const figure = new THREE.Group();
+    figure.position.set(x, y, z);
+    figure.rotation.y = yaw;
+    const body = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.28, 0.82, 8), this.materials.canvas);
+    body.position.y = 0.62;
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.18, 10, 8), this.materials.parchment);
+    head.position.y = 1.18;
+    const hat = new THREE.Mesh(new THREE.ConeGeometry(0.28, 0.22, 8), config.accent ?? this.materials.banner);
+    hat.position.y = 1.39;
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.035, 1.25, 6), this.materials.cutWood);
+    pole.position.set(0.34, 0.76, 0.05);
+    pole.rotation.z = -0.2;
+    figure.add(body, head, hat, pole);
+    figure.traverse((child) => { if (child.isMesh) child.castShadow = true; });
+    this.scene.add(figure);
   }
 
   addLostKingdom() {
