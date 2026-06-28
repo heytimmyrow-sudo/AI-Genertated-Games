@@ -2065,6 +2065,7 @@ export class World {
     const segmentsX = options.segmentsX ?? Math.max(2, Math.min(8, Math.round(width / 2.6)));
     const segmentsZ = options.segmentsZ ?? Math.max(2, Math.min(8, Math.round(depth / 1.6)));
     const offset = options.offset ?? 0.026;
+    const irregularity = options.irregularity ?? 0.035;
     const vertices = [];
     const uvs = [];
     const indices = [];
@@ -2074,9 +2075,15 @@ export class World {
     const cosForward = Math.cos(yaw);
 
     for (let zIndex = 0; zIndex <= segmentsZ; zIndex += 1) {
-      const localZ = (zIndex / segmentsZ - 0.5) * depth;
+      const v = zIndex / segmentsZ;
+      const endTaper = 0.86 + Math.sin(v * Math.PI) * 0.14;
+      const localZ = (v - 0.5) * depth;
       for (let xIndex = 0; xIndex <= segmentsX; xIndex += 1) {
-        const localX = (xIndex / segmentsX - 0.5) * width;
+        const u = xIndex / segmentsX;
+        const side = Math.abs(u - 0.5) * 2;
+        const edgeSoftening = 1 - Math.pow(side, 3) * 0.045;
+        const wobble = Math.sin((u * 6.1 + v * 3.7 + width * 0.19 + depth * 0.31) * Math.PI) * irregularity;
+        const localX = (u - 0.5) * width * endTaper * edgeSoftening + wobble * width;
         const edgeTaper = Math.max(Math.abs(localX) / Math.max(0.01, width * 0.5), Math.abs(localZ) / Math.max(0.01, depth * 0.5));
         const worldX = x + sinRight * localX + sinForward * localZ;
         const worldZ = z + cosRight * localX + cosForward * localZ;
@@ -2106,6 +2113,36 @@ export class World {
     path.userData.terrain = true;
     path.userData.groundedPath = true;
     return path;
+  }
+
+  createSoftRectMesh(width, height, depth, material, options = {}) {
+    const radius = Math.min(options.radius ?? 0.12, width * 0.22, height * 0.22);
+    const bevel = Math.min(options.bevel ?? radius * 0.28, radius * 0.45);
+    const shape = new THREE.Shape();
+    const halfWidth = width * 0.5;
+    const halfHeight = height * 0.5;
+    shape.moveTo(-halfWidth + radius, -halfHeight);
+    shape.lineTo(halfWidth - radius, -halfHeight);
+    shape.quadraticCurveTo(halfWidth, -halfHeight, halfWidth, -halfHeight + radius);
+    shape.lineTo(halfWidth, halfHeight - radius);
+    shape.quadraticCurveTo(halfWidth, halfHeight, halfWidth - radius, halfHeight);
+    shape.lineTo(-halfWidth + radius, halfHeight);
+    shape.quadraticCurveTo(-halfWidth, halfHeight, -halfWidth, halfHeight - radius);
+    shape.lineTo(-halfWidth, -halfHeight + radius);
+    shape.quadraticCurveTo(-halfWidth, -halfHeight, -halfWidth + radius, -halfHeight);
+    const geometry = new THREE.ExtrudeGeometry(shape, {
+      depth,
+      bevelEnabled: true,
+      bevelSegments: options.bevelSegments ?? 1,
+      bevelSize: bevel,
+      bevelThickness: bevel,
+      steps: 1,
+    });
+    geometry.translate(0, 0, -depth * 0.5);
+    const mesh = new THREE.Mesh(geometry, material);
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
+    return mesh;
   }
 
   addTransitionPebbleTrail(x, z, yaw, id, seed = 0) {
@@ -5493,7 +5530,7 @@ export class World {
 
   addFrontierCrate(x, z, yaw) {
     const y = this.terrain.getHeightAt(x, z);
-    const crate = new THREE.Mesh(new THREE.BoxGeometry(0.82, 0.58, 0.72), this.materials.cutWood);
+    const crate = this.createSoftRectMesh(0.82, 0.58, 0.72, this.materials.cutWood, { radius: 0.08, bevel: 0.014 });
     crate.position.set(x, y + 0.29, z);
     crate.rotation.y = yaw;
     crate.castShadow = true;
@@ -5533,9 +5570,9 @@ export class World {
     group.position.set(point.x, y, point.z);
     group.rotation.y = yaw;
 
-    const foundation = new THREE.Mesh(new THREE.BoxGeometry(width + 0.42, 0.2, depth + 0.36), this.materials.darkStone);
+    const foundation = this.createSoftRectMesh(width + 0.42, 0.2, depth + 0.36, this.materials.darkStone, { radius: 0.18, bevel: 0.035 });
     foundation.position.y = 0.1;
-    const body = new THREE.Mesh(new THREE.BoxGeometry(width, height, depth), options.material ?? this.materials.agedWood);
+    const body = this.createSoftRectMesh(width, height, depth, options.material ?? this.materials.agedWood, { radius: 0.16, bevel: 0.025 });
     body.position.y = 0.2 + height * 0.5;
     body.scale.x = 0.98 + Math.sin(localX * 0.73) * 0.025;
     body.scale.z = 0.98 + Math.cos(localZ * 0.61) * 0.02;
@@ -5544,9 +5581,9 @@ export class World {
       overhang: 0.46,
       asymmetry: Math.sin(localX - localZ) * 0.09,
     });
-    const door = new THREE.Mesh(new THREE.BoxGeometry(0.68, 1.15, 0.1), this.materials.warmTrim);
+    const door = this.createSoftRectMesh(0.68, 1.15, 0.1, this.materials.warmTrim, { radius: 0.09, bevel: 0.015 });
     door.position.set(0, 0.78, -depth * 0.515);
-    const sign = new THREE.Mesh(new THREE.BoxGeometry(1.05, 0.24, 0.08), new THREE.MeshStandardMaterial({ color: options.sign ?? 0xe6b75d, roughness: 0.66, emissive: options.sign ?? 0xe6b75d, emissiveIntensity: 0.07 }));
+    const sign = this.createSoftRectMesh(1.05, 0.24, 0.08, new THREE.MeshStandardMaterial({ color: options.sign ?? 0xe6b75d, roughness: 0.66, emissive: options.sign ?? 0xe6b75d, emissiveIntensity: 0.07 }), { radius: 0.07, bevel: 0.01 });
     sign.position.set(0, height + 0.12, -depth * 0.56);
     group.add(foundation, body, roof, door, sign);
     this.addBuildingCraftDetails(group, width, depth, height, {
@@ -5565,7 +5602,7 @@ export class World {
     });
 
     if (options.porch) {
-      const porch = new THREE.Mesh(new THREE.BoxGeometry(width * 0.72, 0.16, 0.78), this.materials.cutWood);
+      const porch = this.createSoftRectMesh(width * 0.72, 0.16, 0.78, this.materials.cutWood, { radius: 0.08, bevel: 0.012 });
       porch.position.set(0, 0.18, -depth * 0.5 - 0.42);
       group.add(porch);
       [-0.38, 0.38].forEach((side) => {
@@ -5579,7 +5616,7 @@ export class World {
       chimney.position.set(width * 0.28, height + 1.04, depth * 0.16);
       chimney.rotation.z = -0.06;
       group.add(chimney);
-      const chimneyCap = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.12, 0.46), this.materials.ancientStone);
+      const chimneyCap = this.createSoftRectMesh(0.5, 0.12, 0.46, this.materials.ancientStone, { radius: 0.05, bevel: 0.01 });
       chimneyCap.position.set(width * 0.28, height + 1.64, depth * 0.16);
       chimneyCap.rotation.y = 0.15;
       group.add(chimneyCap);
@@ -5604,7 +5641,7 @@ export class World {
     }
 
     if (!options.openFront && width > 3.2) {
-      const rearLeanTo = new THREE.Mesh(new THREE.BoxGeometry(width * 0.46, 0.13, depth * 0.56), options.roof ?? this.materials.barkDark);
+      const rearLeanTo = this.createSoftRectMesh(width * 0.46, 0.13, depth * 0.56, options.roof ?? this.materials.barkDark, { radius: 0.06, bevel: 0.01 });
       rearLeanTo.position.set(-width * 0.28, height * 0.84, depth * 0.62);
       rearLeanTo.rotation.z = -0.18;
       rearLeanTo.rotation.y = 0.02;
@@ -5666,10 +5703,10 @@ export class World {
       const group = new THREE.Group();
       group.position.set(point.x, y, point.z);
       group.rotation.y = yaw;
-      const counter = new THREE.Mesh(new THREE.BoxGeometry(1.48, 0.5, 0.7), this.materials.cutWood);
+      const counter = this.createSoftRectMesh(1.48, 0.5, 0.7, this.materials.cutWood, { radius: 0.12, bevel: 0.02 });
       counter.position.y = 0.25;
       const clothMaterial = new THREE.MeshStandardMaterial({ color: colors[index], roughness: 0.82 });
-      const awningLeft = new THREE.Mesh(new THREE.BoxGeometry(0.98, 0.08, 1.08), clothMaterial);
+      const awningLeft = this.createSoftRectMesh(0.98, 0.08, 1.08, clothMaterial, { radius: 0.05, bevel: 0.01 });
       awningLeft.position.set(-0.38, 1.12, 0);
       awningLeft.rotation.z = -0.16;
       const awningRight = awningLeft.clone();
@@ -5705,12 +5742,12 @@ export class World {
         const postB = postA.clone();
         postA.position.set(point.x - 0.85, y + 0.68, point.z);
         postB.position.set(point.x + 0.85, y + 0.68, point.z + 0.12);
-        const cloth = new THREE.Mesh(new THREE.BoxGeometry(0.56, 0.36, 0.035), this.materials.parchment);
+        const cloth = this.createSoftRectMesh(0.56, 0.36, 0.035, this.materials.parchment, { radius: 0.05, bevel: 0.006 });
         cloth.position.set(point.x, y + 1.12, point.z + 0.06);
         this.scene.add(postA, postB, cloth);
       } else if (type === "animalPen") {
         [-1, 1].forEach((side) => {
-          const rail = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.12, 0.12), this.materials.barkDark);
+          const rail = this.createSoftRectMesh(2.0, 0.12, 0.12, this.materials.barkDark, { radius: 0.045, bevel: 0.008 });
           rail.position.set(point.x, y + 0.58, point.z + side * 0.82);
           rail.rotation.y = yaw;
           this.scene.add(rail);
@@ -5731,7 +5768,7 @@ export class World {
     const y = this.terrain.getHeightAt(x, z);
     const post = new THREE.Mesh(this.geometries.fencePost, this.materials.barkDark);
     post.position.set(x, y + 0.68, z);
-    const board = new THREE.Mesh(new THREE.BoxGeometry(1.3, 0.38, 0.08), this.materials.cutWood);
+    const board = this.createSoftRectMesh(1.3, 0.38, 0.08, this.materials.cutWood, { radius: 0.08, bevel: 0.012 });
     board.position.set(x, y + 1.25, z);
     board.rotation.y = yaw;
     this.scene.add(post, board);
@@ -10619,9 +10656,9 @@ export class World {
     group.position.set(point.x, y, point.z);
     group.rotation.y = yaw;
 
-    const foundation = new THREE.Mesh(new THREE.BoxGeometry(width + 0.35, 0.22, depth + 0.35), this.materials.darkStone);
+    const foundation = this.createSoftRectMesh(width + 0.35, 0.22, depth + 0.35, this.materials.darkStone, { radius: 0.18, bevel: 0.035 });
     foundation.position.y = 0.11;
-    const body = new THREE.Mesh(new THREE.BoxGeometry(width, height, depth), options.material ?? this.materials.agedWood);
+    const body = this.createSoftRectMesh(width, height, depth, options.material ?? this.materials.agedWood, { radius: 0.16, bevel: 0.025 });
     body.position.y = 0.22 + height * 0.5;
     body.scale.x = 0.98 + Math.sin(localX * 0.7) * 0.015;
     body.scale.z = 0.98 + Math.cos(localZ * 0.6) * 0.015;
@@ -10630,9 +10667,9 @@ export class World {
       overhang: 0.48,
       asymmetry: Math.sin(localX + localZ) * 0.08,
     });
-    const door = new THREE.Mesh(new THREE.BoxGeometry(0.72, 1.25, 0.1), this.materials.warmTrim);
+    const door = this.createSoftRectMesh(0.72, 1.25, 0.1, this.materials.warmTrim, { radius: 0.1, bevel: 0.015 });
     door.position.set(0, 0.86, -depth * 0.51);
-    const sign = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.24, 0.08), new THREE.MeshStandardMaterial({ color: options.sign ?? 0xe6b75d, roughness: 0.64, emissive: options.sign ?? 0xe6b75d, emissiveIntensity: 0.08 }));
+    const sign = this.createSoftRectMesh(1.0, 0.24, 0.08, new THREE.MeshStandardMaterial({ color: options.sign ?? 0xe6b75d, roughness: 0.64, emissive: options.sign ?? 0xe6b75d, emissiveIntensity: 0.08 }), { radius: 0.07, bevel: 0.01 });
     sign.position.set(0, 1.72, -depth * 0.56);
     group.add(foundation, body, roof, door, sign);
     this.addBuildingCraftDetails(group, width, depth, height, {
@@ -10650,17 +10687,17 @@ export class World {
     });
 
     if (label === "Inn") {
-      const balcony = new THREE.Mesh(new THREE.BoxGeometry(width * 0.56, 0.14, 0.42), this.materials.cutWood);
+      const balcony = this.createSoftRectMesh(width * 0.56, 0.14, 0.42, this.materials.cutWood, { radius: 0.06, bevel: 0.012 });
       balcony.position.set(0.42, height * 0.75, -depth * 0.62);
-      const rail = new THREE.Mesh(new THREE.BoxGeometry(width * 0.5, 0.08, 0.08), this.materials.barkDark);
+      const rail = this.createSoftRectMesh(width * 0.5, 0.08, 0.08, this.materials.barkDark, { radius: 0.035, bevel: 0.008 });
       rail.position.set(0.42, height * 0.98, -depth * 0.84);
       group.add(balcony, rail);
     }
 
     if (label === "Smith") {
-      const forgeGlow = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.52, 0.08), this.materials.lavaGlow ?? this.materials.warmWindow);
+      const forgeGlow = this.createSoftRectMesh(0.8, 0.52, 0.08, this.materials.lavaGlow ?? this.materials.warmWindow, { radius: 0.08, bevel: 0.01 });
       forgeGlow.position.set(width * 0.28, 0.72, -depth * 0.565);
-      const hood = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.36, 0.16), this.materials.obsidian ?? this.materials.darkStone);
+      const hood = this.createSoftRectMesh(1.0, 0.36, 0.16, this.materials.obsidian ?? this.materials.darkStone, { radius: 0.08, bevel: 0.015 });
       hood.position.set(width * 0.28, 1.12, -depth * 0.58);
       group.add(forgeGlow, hood);
     }
@@ -10696,7 +10733,7 @@ export class World {
     }
 
     if (label === "Home") {
-      const sideShed = new THREE.Mesh(new THREE.BoxGeometry(width * 0.42, 0.12, depth * 0.52), options.roof ?? this.materials.barkDark);
+      const sideShed = this.createSoftRectMesh(width * 0.42, 0.12, depth * 0.52, options.roof ?? this.materials.barkDark, { radius: 0.05, bevel: 0.01 });
       sideShed.position.set(-width * 0.52, height * 0.72, depth * 0.08);
       sideShed.rotation.z = 0.2;
       sideShed.rotation.y = -0.04;
@@ -10795,10 +10832,10 @@ export class World {
       const group = new THREE.Group();
       group.position.set(point.x, y, point.z);
       group.rotation.y = yaw;
-      const counter = new THREE.Mesh(new THREE.BoxGeometry(1.55, 0.55, 0.72), this.materials.cutWood);
+      const counter = this.createSoftRectMesh(1.55, 0.55, 0.72, this.materials.cutWood, { radius: 0.12, bevel: 0.02 });
       counter.position.y = 0.28;
       const clothMaterial = new THREE.MeshStandardMaterial({ color, roughness: 0.82 });
-      const awningLeft = new THREE.Mesh(new THREE.BoxGeometry(1.05, 0.08, 1.16), clothMaterial);
+      const awningLeft = this.createSoftRectMesh(1.05, 0.08, 1.16, clothMaterial, { radius: 0.05, bevel: 0.01 });
       awningLeft.position.set(-0.42, 1.24, 0);
       awningLeft.rotation.z = -0.16;
       const awningRight = awningLeft.clone();
@@ -10829,9 +10866,9 @@ export class World {
     const group = new THREE.Group();
     group.position.set(point.x, y, point.z);
     group.rotation.y = yaw;
-    const board = new THREE.Mesh(new THREE.BoxGeometry(2.2, 1.35, 0.16), this.materials.agedWood);
+    const board = this.createSoftRectMesh(2.2, 1.35, 0.16, this.materials.agedWood, { radius: 0.13, bevel: 0.018 });
     board.position.y = 1.1;
-    const cap = new THREE.Mesh(new THREE.BoxGeometry(2.5, 0.2, 0.24), this.materials.barkDark);
+    const cap = this.createSoftRectMesh(2.5, 0.2, 0.24, this.materials.barkDark, { radius: 0.08, bevel: 0.012 });
     cap.position.y = 1.86;
     [-0.92, 0.92].forEach((x) => {
       const post = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.1, 1.8, 7), this.materials.barkDark);
@@ -10935,7 +10972,7 @@ export class World {
     const material = new THREE.MeshStandardMaterial({ color, roughness: 0.58, emissive: color, emissiveIntensity: 0.1 });
     const post = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.075, 1.45, 7), this.materials.barkDark);
     post.position.y = 0.72;
-    const sign = new THREE.Mesh(new THREE.BoxGeometry(0.92, 0.34, 0.08), material);
+    const sign = this.createSoftRectMesh(0.92, 0.34, 0.08, material, { radius: 0.07, bevel: 0.01 });
     sign.position.set(0, 1.38, -0.03);
     group.add(post, sign);
 
@@ -10972,7 +11009,7 @@ export class World {
     const point = this.getGuildPoint(origin, localX, localZ);
     const y = this.terrain.getHeightAt(point.x, point.z);
     const yaw = origin.yaw + yawOffset;
-    const seat = new THREE.Mesh(new THREE.BoxGeometry(1.25, 0.16, 0.34), this.materials.cutWood);
+    const seat = this.createSoftRectMesh(1.25, 0.16, 0.34, this.materials.cutWood, { radius: 0.06, bevel: 0.01 });
     seat.position.set(point.x, y + 0.42, point.z);
     seat.rotation.y = yaw;
     seat.castShadow = true;
@@ -10982,7 +11019,7 @@ export class World {
         x: point.x + Math.sin(yaw + Math.PI / 2) * offset,
         z: point.z + Math.cos(yaw + Math.PI / 2) * offset,
       };
-      const leg = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.42, 0.14), this.materials.barkDark);
+      const leg = this.createSoftRectMesh(0.14, 0.42, 0.14, this.materials.barkDark, { radius: 0.035, bevel: 0.008 });
       leg.position.set(legPoint.x, y + 0.21, legPoint.z);
       leg.rotation.y = yaw;
       this.scene.add(leg);
@@ -11086,20 +11123,20 @@ export class World {
     const crestArrow = new THREE.Mesh(new THREE.ConeGeometry(0.13, 1.2, 5), this.materials.targetGold);
     crestArrow.position.set(0.12, 0.3, 1.0);
     crestArrow.rotation.set(0, 0, -Math.PI / 2);
-    const meetingTable = new THREE.Mesh(new THREE.BoxGeometry(2.35, 0.18, 0.9), this.materials.cutWood);
+    const meetingTable = this.createSoftRectMesh(2.35, 0.18, 0.9, this.materials.cutWood, { radius: 0.08, bevel: 0.012 });
     meetingTable.position.set(0, 0.72, -0.65);
     meetingTable.rotation.y = 0.04;
-    const mapParchment = new THREE.Mesh(new THREE.BoxGeometry(1.45, 0.04, 0.62), this.materials.parchment);
+    const mapParchment = this.createSoftRectMesh(1.45, 0.04, 0.62, this.materials.parchment, { radius: 0.06, bevel: 0.006 });
     mapParchment.position.set(0, 0.84, -0.65);
     mapParchment.rotation.y = 0.04;
     [-0.92, 0.92].forEach((x) => {
-      const bench = new THREE.Mesh(new THREE.BoxGeometry(0.84, 0.16, 0.34), this.materials.barkDark);
+      const bench = this.createSoftRectMesh(0.84, 0.16, 0.34, this.materials.barkDark, { radius: 0.05, bevel: 0.01 });
       bench.position.set(x, 0.52, -0.68);
       bench.rotation.y = x * -0.04;
       group.add(bench);
     });
     [-1.8, -0.9, 0, 0.9, 1.8].forEach((x, index) => {
-      const record = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.5, 0.08), index % 2 ? this.materials.masterBlue : this.materials.parchment);
+      const record = this.createSoftRectMesh(0.22, 0.5, 0.08, index % 2 ? this.materials.masterBlue : this.materials.parchment, { radius: 0.04, bevel: 0.008 });
       record.position.set(x, 1.18, -1.34);
       record.rotation.z = Math.sin(index) * 0.05;
       group.add(record);
@@ -11130,7 +11167,7 @@ export class World {
       segmentsZ: 2,
     });
     this.scene.add(stallPad);
-    const counter = new THREE.Mesh(new THREE.BoxGeometry(1.85, 0.48, 0.74), this.materials.cutWood);
+    const counter = this.createSoftRectMesh(1.85, 0.48, 0.74, this.materials.cutWood, { radius: 0.13, bevel: 0.02 });
     counter.position.y = 0.26;
     const awning = this.createLayeredGableRoof(2.15, 1.55, 1.2, awningMaterial, {
       pitch: 0.26,
@@ -11144,7 +11181,7 @@ export class World {
       post.position.set(x, 0.62, -0.44);
       group.add(post);
     });
-    const sign = new THREE.Mesh(new THREE.BoxGeometry(0.82, 0.22, 0.08), this.materials.parchment);
+    const sign = this.createSoftRectMesh(0.82, 0.22, 0.08, this.materials.parchment, { radius: 0.06, bevel: 0.01 });
     sign.position.set(0, 1.18, -0.84);
     group.add(counter, awning, sign);
     const goodMaterial = type === "bows"
@@ -11158,7 +11195,7 @@ export class World {
       const good = type === "bows"
         ? new THREE.Mesh(new THREE.TorusGeometry(0.16, 0.01, 6, 18, Math.PI * 1.35), this.materials.cutWood)
         : type === "cloth"
-          ? new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.07, 0.34), goodMaterial)
+          ? this.createSoftRectMesh(0.18, 0.07, 0.34, goodMaterial, { radius: 0.025, bevel: 0.004 })
           : new THREE.Mesh(new THREE.SphereGeometry(0.08, 8, 5), goodMaterial);
       good.position.set(-0.62 + index * 0.24, 0.55 + (index % 2) * 0.06, 0.02 + Math.sin(index) * 0.16);
       if (type === "bows") good.rotation.set(0, Math.PI / 2, Math.PI / 2);
@@ -11176,16 +11213,16 @@ export class World {
 
   addBlacksmithYardDetails(origin, localX, localZ) {
     const group = this.createGuildVillageDetailGroup(origin, localX + 3.2, localZ + 1.5, 0.12);
-    const anvil = new THREE.Mesh(new THREE.BoxGeometry(0.58, 0.28, 0.28), this.materials.obsidian ?? this.materials.darkStone);
+    const anvil = this.createSoftRectMesh(0.58, 0.28, 0.28, this.materials.obsidian ?? this.materials.darkStone, { radius: 0.05, bevel: 0.01 });
     anvil.position.set(-0.75, 0.42, 0);
     const stump = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.3, 0.42, 8), this.materials.barkDark);
     stump.position.set(-0.75, 0.21, 0);
     const coal = new THREE.Mesh(new THREE.DodecahedronGeometry(0.32, 0), this.materials.obsidian ?? this.materials.darkStone);
     coal.position.set(0.72, 0.18, 0.38);
     coal.scale.set(1.3, 0.45, 0.9);
-    const forge = new THREE.Mesh(new THREE.BoxGeometry(0.95, 0.48, 0.62), this.materials.darkStone);
+    const forge = this.createSoftRectMesh(0.95, 0.48, 0.62, this.materials.darkStone, { radius: 0.09, bevel: 0.018 });
     forge.position.set(0.35, 0.24, -0.42);
-    const glow = new THREE.Mesh(new THREE.BoxGeometry(0.72, 0.1, 0.44), this.materials.lavaGlow ?? this.materials.warmWindow);
+    const glow = this.createSoftRectMesh(0.72, 0.1, 0.44, this.materials.lavaGlow ?? this.materials.warmWindow, { radius: 0.04, bevel: 0.006 });
     glow.position.set(0.35, 0.52, -0.42);
     group.add(stump, anvil, coal, forge, glow);
     this.finishGuildVillageDetailGroup(group);
@@ -11199,9 +11236,9 @@ export class World {
       bow.rotation.set(0, Math.PI / 2, Math.PI / 2);
       group.add(bow);
     });
-    const bench = new THREE.Mesh(new THREE.BoxGeometry(1.9, 0.18, 0.48), this.materials.cutWood);
+    const bench = this.createSoftRectMesh(1.9, 0.18, 0.48, this.materials.cutWood, { radius: 0.07, bevel: 0.012 });
     bench.position.set(0, 0.42, 0.52);
-    const stringRack = new THREE.Mesh(new THREE.BoxGeometry(0.12, 1.18, 1.6), this.materials.barkDark);
+    const stringRack = this.createSoftRectMesh(0.12, 1.18, 1.6, this.materials.barkDark, { radius: 0.04, bevel: 0.008 });
     stringRack.position.set(1.18, 0.68, 0);
     group.add(bench, stringRack);
     this.finishGuildVillageDetailGroup(group);
@@ -11209,7 +11246,7 @@ export class World {
 
   addInnYardDetails(origin, localX, localZ) {
     const group = this.createGuildVillageDetailGroup(origin, localX + 3.4, localZ - 1.2, -0.2);
-    const table = new THREE.Mesh(new THREE.BoxGeometry(1.55, 0.18, 0.86), this.materials.cutWood);
+    const table = this.createSoftRectMesh(1.55, 0.18, 0.86, this.materials.cutWood, { radius: 0.08, bevel: 0.012 });
     table.position.y = 0.56;
     [-0.72, 0.72].forEach((x) => {
       const stool = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.2, 0.28, 8), this.materials.wood);
@@ -11232,7 +11269,7 @@ export class World {
       [localX - 1.0, localZ + 4.0, 4.8, Math.PI / 2],
     ].forEach(([x, z, length, yawOffset]) => this.addGuildFenceRail(origin, x, z, length, yawOffset));
     const group = this.createGuildVillageDetailGroup(origin, localX - 1.4, localZ + 2.7, 0.08);
-    const trough = new THREE.Mesh(new THREE.BoxGeometry(1.55, 0.26, 0.46), this.materials.cutWood);
+    const trough = this.createSoftRectMesh(1.55, 0.26, 0.46, this.materials.cutWood, { radius: 0.08, bevel: 0.012 });
     trough.position.set(0, 0.2, 0);
     const hay = new THREE.Mesh(new THREE.CylinderGeometry(0.36, 0.46, 1.0, 9), this.materials.grassLight);
     hay.position.set(1.2, 0.28, -0.2);
@@ -11286,8 +11323,9 @@ export class World {
 
   addGuildFlowerBed(origin, localX, localZ, length = 2, yawOffset = 0) {
     const group = this.createGuildVillageDetailGroup(origin, localX, localZ, yawOffset);
-    const bed = new THREE.Mesh(new THREE.BoxGeometry(length, 0.08, 0.48), this.materials.darkStone);
+    const bed = this.createSoftRectMesh(length, 0.08, 0.48, this.materials.darkStone, { radius: 0.12, bevel: 0.01 });
     bed.position.y = 0.04;
+    bed.rotation.y = Math.sin(length + localX) * 0.03;
     group.add(bed);
     const plantCount = Math.max(4, Math.round(length * 2.2));
     for (let index = 0; index < plantCount; index += 1) {
@@ -11302,7 +11340,7 @@ export class World {
 
   addGuildFenceRail(origin, localX, localZ, length, yawOffset = 0) {
     const group = this.createGuildVillageDetailGroup(origin, localX, localZ, yawOffset);
-    const rail = new THREE.Mesh(new THREE.BoxGeometry(length, 0.13, 0.13), this.materials.barkDark);
+    const rail = this.createSoftRectMesh(length, 0.13, 0.13, this.materials.barkDark, { radius: 0.045, bevel: 0.008 });
     rail.position.y = 0.68;
     [-0.45, 0.45].forEach((heightOffset) => {
       const secondRail = rail.clone();
@@ -11320,7 +11358,7 @@ export class World {
   addGuildVillageCrateStack(origin, localX, localZ, yawOffset = 0, count = 3) {
     const group = this.createGuildVillageDetailGroup(origin, localX, localZ, yawOffset);
     for (let index = 0; index < count; index += 1) {
-      const crate = new THREE.Mesh(new THREE.BoxGeometry(0.48, 0.38, 0.44), index % 2 ? this.materials.agedWood : this.materials.cutWood);
+      const crate = this.createSoftRectMesh(0.48 + (index % 2) * 0.04, 0.38, 0.44 - (index % 3) * 0.025, index % 2 ? this.materials.agedWood : this.materials.cutWood, { radius: 0.055, bevel: 0.01 });
       crate.position.set((index % 2) * 0.42, 0.19 + Math.floor(index / 2) * 0.34, Math.floor(index / 2) * 0.28);
       crate.rotation.y = index * 0.16;
       group.add(crate);
@@ -11330,7 +11368,7 @@ export class World {
 
   addGuildVillageCart(origin, localX, localZ, yawOffset = 0) {
     const group = this.createGuildVillageDetailGroup(origin, localX, localZ, yawOffset);
-    const bed = new THREE.Mesh(new THREE.BoxGeometry(1.45, 0.28, 0.82), this.materials.agedWood);
+    const bed = this.createSoftRectMesh(1.45, 0.28, 0.82, this.materials.agedWood, { radius: 0.09, bevel: 0.014 });
     bed.position.y = 0.42;
     [-0.52, 0.52].forEach((x) => {
       const wheel = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, 0.08, 12), this.materials.barkDark);
@@ -11340,7 +11378,7 @@ export class World {
       rearWheel.position.z = 0.48;
       group.add(wheel, rearWheel);
     });
-    const handle = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.12, 0.9), this.materials.barkDark);
+    const handle = this.createSoftRectMesh(0.12, 0.12, 0.9, this.materials.barkDark, { radius: 0.04, bevel: 0.008 });
     handle.position.set(0.86, 0.46, 0);
     handle.rotation.y = Math.PI / 2;
     group.add(bed, handle);
