@@ -73,18 +73,28 @@ export class InputController {
 
     document.querySelectorAll("[data-touch-mouse]").forEach((button) => {
       const mouseButton = Number(button.dataset.touchMouse ?? 0);
+      let activePointerId = null;
       const press = (event) => {
         event.preventDefault();
+        if (activePointerId !== null) {
+          return;
+        }
+        activePointerId = event.pointerId;
+        button.setPointerCapture?.(event.pointerId);
         this.pressVirtualMouse(mouseButton);
       };
       const release = (event) => {
+        if (activePointerId !== null && event.pointerId !== activePointerId) {
+          return;
+        }
         event.preventDefault();
+        button.releasePointerCapture?.(event.pointerId);
+        activePointerId = null;
         this.releaseVirtualMouse(mouseButton);
       };
       button.addEventListener("pointerdown", press);
       button.addEventListener("pointerup", release);
       button.addEventListener("pointercancel", release);
-      button.addEventListener("pointerleave", release);
     });
 
     document.querySelectorAll("[data-touch-joystick]").forEach((joystick) => {

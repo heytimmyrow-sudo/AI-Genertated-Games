@@ -3282,6 +3282,30 @@ body.mobile-device #game-canvas {
   touch-action: none;
 }
 
+body.mobile-device #reticle {
+  pointer-events: auto;
+  touch-action: none;
+  cursor: pointer;
+}
+
+body.mobile-device #reticle::before {
+  content: "";
+  display: block !important;
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 104px;
+  height: 104px;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: rgba(255, 232, 166, 0.03);
+}
+
+body.mobile-device #reticle:active .reticle-ring {
+  border-color: rgba(255, 238, 184, 0.98);
+  box-shadow: 0 0 28px rgba(230, 183, 93, 0.68), inset 0 0 18px rgba(230, 183, 93, 0.3);
+}
+
 body.mobile-device #hud {
   padding:
     calc(8px + var(--safe-top))
