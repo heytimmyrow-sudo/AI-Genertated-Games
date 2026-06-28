@@ -1602,6 +1602,99 @@ export class World {
     this.scene.add(group);
   }
 
+  addInteriorDetailSet(group, width, depth, height, role = "home", options = {}) {
+    const trim = options.trim ?? this.materials.warmTrim;
+    const wood = options.wood ?? this.materials.cutWood;
+    const dark = options.dark ?? this.materials.barkDark;
+    const cloth = options.cloth ?? this.materials.parchment;
+    const glow = options.glow ?? this.materials.warmWindow;
+    const backZ = depth * 0.34;
+    const sideX = width * 0.36;
+
+    const rug = new THREE.Mesh(new THREE.BoxGeometry(width * 0.54, 0.035, depth * 0.34), role === "smith" ? this.materials.darkStone : role === "bowyer" ? this.materials.groundPath : cloth);
+    rug.position.set(0, 0.25, 0.05);
+    rug.rotation.y = Math.sin(width + depth) * 0.04;
+    group.add(rug);
+
+    const table = new THREE.Mesh(new THREE.BoxGeometry(width * 0.28, 0.12, depth * 0.22), wood);
+    table.position.set(-sideX * 0.55, 0.72, backZ * 0.35);
+    table.rotation.y = -0.08;
+    const tableLeg = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.045, 0.58, 6), dark);
+    tableLeg.position.set(table.position.x, 0.44, table.position.z);
+    group.add(table, tableLeg);
+
+    const shelf = new THREE.Mesh(new THREE.BoxGeometry(0.16, Math.max(0.78, height * 0.36), depth * 0.42), dark);
+    shelf.position.set(sideX, 0.94, backZ * 0.15);
+    shelf.rotation.y = -0.04;
+    group.add(shelf);
+    for (let index = 0; index < 3; index += 1) {
+      const item = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.18 + index * 0.035, 0.08), index % 2 ? trim : cloth);
+      item.position.set(sideX - 0.1, 0.62 + index * 0.22, backZ * 0.15 - depth * 0.14 + index * depth * 0.12);
+      item.rotation.y = -0.04;
+      group.add(item);
+    }
+
+    if (role === "inn") {
+      [-0.22, 0.24].forEach((offset, index) => {
+        const bench = new THREE.Mesh(new THREE.BoxGeometry(width * 0.32, 0.16, 0.34), wood);
+        bench.position.set(offset * width, 0.54, -depth * 0.16 - index * 0.16);
+        bench.rotation.y = offset * -0.25;
+        group.add(bench);
+      });
+      const hearth = new THREE.Mesh(new THREE.BoxGeometry(0.54, 0.52, 0.16), this.materials.darkStone);
+      hearth.position.set(-sideX, 0.62, depth * 0.18);
+      const fire = new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.34, 6), this.materials.lavaGlow ?? glow);
+      fire.position.set(-sideX, 0.88, depth * 0.1);
+      group.add(hearth, fire);
+    } else if (role === "smith") {
+      const anvil = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.28, 0.32), this.materials.obsidian ?? this.materials.darkStone);
+      anvil.position.set(0.04, 0.52, -depth * 0.12);
+      const forge = new THREE.Mesh(new THREE.BoxGeometry(0.72, 0.5, 0.2), this.materials.lavaGlow ?? glow);
+      forge.position.set(-sideX, 0.64, depth * 0.16);
+      group.add(anvil, forge);
+    } else if (role === "bowyer") {
+      [-0.18, 0.18].forEach((offset) => {
+        const bow = new THREE.Mesh(new THREE.TorusGeometry(0.22, 0.01, 6, 18, Math.PI * 1.35), trim);
+        bow.position.set(sideX * 0.8, 0.88, offset * depth);
+        bow.rotation.set(0, Math.PI / 2, Math.PI / 2);
+        group.add(bow);
+      });
+      const fletching = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.26, 3), this.materials.banner);
+      fletching.position.set(-sideX * 0.35, 0.86, -depth * 0.18);
+      fletching.rotation.x = Math.PI / 2;
+      group.add(fletching);
+    } else if (role === "shop" || role === "storage") {
+      [-0.32, 0, 0.32].forEach((offset, index) => {
+        const crate = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.28, 0.3), index % 2 ? this.materials.wood : this.materials.cutWood);
+        crate.position.set(offset * width, 0.42, depth * 0.12 + index * 0.08);
+        crate.rotation.y = index * 0.12;
+        group.add(crate);
+      });
+    } else {
+      const bed = new THREE.Mesh(new THREE.BoxGeometry(width * 0.34, 0.14, depth * 0.34), cloth);
+      bed.position.set(-sideX, 0.47, depth * 0.12);
+      bed.rotation.y = 0.08;
+      const pillow = new THREE.Mesh(new THREE.BoxGeometry(width * 0.16, 0.08, depth * 0.12), this.materials.canvas ?? cloth);
+      pillow.position.set(-sideX, 0.59, depth * 0.25);
+      pillow.rotation.y = 0.08;
+      group.add(bed, pillow);
+    }
+
+    [-1, 1].forEach((side) => {
+      const lantern = new THREE.Mesh(new THREE.SphereGeometry(0.08, 8, 6), glow);
+      lantern.position.set(side * sideX, Math.min(height + 0.2, 1.65), -depth * 0.2);
+      group.add(lantern);
+    });
+
+    group.traverse((child) => {
+      if (child.isMesh) {
+        child.castShadow = true;
+        child.receiveShadow = true;
+        child.userData.detailObject = true;
+      }
+    });
+  }
+
   addLandmarkCompositionBrushstrokes() {
     [
       [-24, 11, -0.2, "watch", 1.05], [23, 20, 0.4, "pond", 0.82], [27, -29, 0.24, "ruin", 1.0],
@@ -4041,6 +4134,51 @@ export class World {
     const chamberLight = new THREE.PointLight(0x8ddcff, 1.25, 12, 2.1);
     chamberLight.position.set(chamberLightPoint.x, chamberY + 2.1, chamberLightPoint.z);
     this.scene.add(chamberLight);
+
+    const detailPieces = [
+      [-1.65, 2.7, "pack"], [1.72, 4.0, "bones"], [-1.7, 7.2, "ledge"], [2.2, 8.2, "marker"],
+      [-2.7, 11.4, "altar"], [2.9, 12.2, "ledge"], [0.6, 15.0, "camp"],
+    ];
+    detailPieces.forEach(([localX, localZ, type], index) => {
+      const point = this.getWhisperCavePoint(origin, localX, localZ);
+      const y = this.terrain.getHeightAt(point.x, point.z);
+      const group = new THREE.Group();
+      group.position.set(point.x, y + 0.08, point.z);
+      group.rotation.y = origin.yaw + Math.sin(index) * 0.28;
+      if (type === "ledge") {
+        const shelf = new THREE.Mesh(new THREE.BoxGeometry(1.05, 0.16, 0.44), index % 2 ? this.materials.caveStone : this.materials.darkStone);
+        shelf.position.y = 0.48;
+        shelf.rotation.z = Math.sin(index) * 0.08;
+        group.add(shelf);
+      } else if (type === "altar") {
+        const base = new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.42, 0.42, 8), this.materials.glyphStone);
+        base.position.y = 0.28;
+        const glyph = new THREE.Mesh(new THREE.SphereGeometry(0.12, 10, 8), this.materials.crystalViolet);
+        glyph.position.y = 0.62;
+        group.add(base, glyph);
+      } else if (type === "camp") {
+        const mat = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.08, 0.42), this.materials.canvas);
+        mat.position.y = 0.12;
+        const lantern = new THREE.Mesh(new THREE.SphereGeometry(0.1, 8, 6), this.materials.crystalBlue);
+        lantern.position.set(0.42, 0.34, -0.08);
+        group.add(mat, lantern);
+      } else {
+        const stone = new THREE.Mesh(new THREE.DodecahedronGeometry(0.22, 0), type === "marker" ? this.materials.glyphStone : this.materials.caveStone);
+        stone.position.y = 0.2;
+        stone.scale.set(1.2, 0.55, 0.9);
+        const small = new THREE.Mesh(new THREE.BoxGeometry(0.36, 0.12, 0.22), type === "pack" ? this.materials.hideLeather : this.materials.parchment);
+        small.position.set(0.18, 0.16, 0.22);
+        group.add(stone, small);
+      }
+      group.traverse((child) => {
+        if (child.isMesh) {
+          child.castShadow = true;
+          child.receiveShadow = true;
+          child.userData.detailObject = true;
+        }
+      });
+      this.scene.add(group);
+    });
   }
 
   addWhisperCaveCrystals(origin) {
@@ -5141,6 +5279,17 @@ export class World {
     this.addBuildingCraftDetails(group, width, depth, height, {
       trim: new THREE.MeshStandardMaterial({ color: options.sign ?? 0xe6b75d, roughness: 0.7, emissive: options.sign ?? 0xe6b75d, emissiveIntensity: 0.04 }),
     });
+    const interiorRole = /inn/i.test(label) ? "inn"
+      : /smith/i.test(label) ? "smith"
+        : /bow/i.test(label) ? "bowyer"
+          : /store/i.test(label) ? "storage"
+            : /stable/i.test(label) ? "storage"
+              : "home";
+    this.addInteriorDetailSet(group, width, depth, height, interiorRole, {
+      trim: new THREE.MeshStandardMaterial({ color: options.sign ?? 0xe6b75d, roughness: 0.62, emissive: options.sign ?? 0xe6b75d, emissiveIntensity: 0.08 }),
+      wood: options.material ?? this.materials.cutWood,
+      cloth: interiorRole === "inn" ? this.materials.parchment : this.materials.canvas,
+    });
 
     if (options.porch) {
       const porch = new THREE.Mesh(new THREE.BoxGeometry(width * 0.72, 0.16, 0.78), this.materials.cutWood);
@@ -6143,7 +6292,24 @@ export class World {
     const ceilingHint = new THREE.Mesh(new THREE.CylinderGeometry(5.25, 5.55, 0.34, 18, 1, false, 0, Math.PI), this.materials.darkStone);
     ceilingHint.position.set(0, 4.85, 0.55);
     ceilingHint.rotation.z = Math.PI;
-    shell.add(rearWall, sideWallLeft, sideWallRight, vaultedBeam, ceilingHint);
+    const centerRunner = new THREE.Mesh(new THREE.BoxGeometry(1.35, 0.045, 7.4), this.materials.banner);
+    centerRunner.position.set(0, 0.16, 0.15);
+    const sideRunnerLeft = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.04, 6.2), this.materials.masterBlue);
+    sideRunnerLeft.position.set(-3.05, 0.17, 0.32);
+    const sideRunnerRight = sideRunnerLeft.clone();
+    sideRunnerRight.position.x = 3.05;
+    shell.add(rearWall, sideWallLeft, sideWallRight, vaultedBeam, ceilingHint, centerRunner, sideRunnerLeft, sideRunnerRight);
+
+    [-1, 1].forEach((side) => {
+      for (let index = 0; index < 4; index += 1) {
+        const bench = new THREE.Mesh(new THREE.BoxGeometry(1.15, 0.16, 0.34), this.materials.cutWood);
+        bench.position.set(side * 2.4, 0.44, -2.3 + index * 1.22);
+        bench.rotation.y = side * -0.08;
+        const leg = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.32, 0.26), this.materials.barkDark);
+        leg.position.set(side * 2.4, 0.26, -2.3 + index * 1.22);
+        shell.add(bench, leg);
+      }
+    });
 
     [-3.6, -1.2, 1.2, 3.6].forEach((xOffset, index) => {
       const sconce = new THREE.Mesh(new THREE.SphereGeometry(0.16, 10, 8), this.materials.warmWindow);
@@ -6158,7 +6324,9 @@ export class World {
       }
       const banner = new THREE.Mesh(new THREE.BoxGeometry(0.42, 1.45, 0.08), index % 2 ? this.materials.masterBlue : this.materials.banner);
       banner.position.set(xOffset, 1.85, 3.86);
-      shell.add(banner);
+      const bannerTrim = new THREE.Mesh(new THREE.BoxGeometry(0.54, 0.08, 0.09), this.materials.targetGold);
+      bannerTrim.position.set(xOffset, 2.62, 3.84);
+      shell.add(banner, bannerTrim);
     });
 
     shell.traverse((child) => {
@@ -6229,6 +6397,31 @@ export class World {
     ceremonialBeam.rotation.x = Math.PI / 2;
     ceremonialBeam.castShadow = true;
     hallDetails.add(ceremonialBeam);
+
+    [-1, 1].forEach((side) => {
+      const recordDesk = new THREE.Mesh(new THREE.BoxGeometry(1.05, 0.22, 0.72), this.materials.cutWood);
+      recordDesk.position.set(side * 3.65, 0.82, 2.72);
+      recordDesk.rotation.y = side * -0.18;
+      const ledger = new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.045, 0.42), this.materials.parchment);
+      ledger.position.set(side * 3.65, 0.96, 2.72);
+      ledger.rotation.y = side * -0.18;
+      const candle = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.24, 8), this.materials.warmWindow);
+      candle.position.set(side * 3.2, 1.02, 2.46);
+      hallDetails.add(recordDesk, ledger, candle);
+
+      const arrowRack = new THREE.Group();
+      arrowRack.position.set(side * 4.58, 1.28, 0.18);
+      arrowRack.rotation.y = side * -0.08;
+      const rackBack = new THREE.Mesh(new THREE.BoxGeometry(0.1, 1.6, 0.9), this.materials.barkDark);
+      arrowRack.add(rackBack);
+      for (let index = 0; index < 5; index += 1) {
+        const arrow = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.01, 0.86, 5), index % 2 ? this.materials.targetGold : this.materials.rope);
+        arrow.position.set(0.08, -0.46 + index * 0.22, -0.3 + index * 0.15);
+        arrow.rotation.x = Math.PI / 2;
+        arrowRack.add(arrow);
+      }
+      hallDetails.add(arrowRack);
+    });
 
     [-1, 1].forEach((side) => {
       for (let index = 0; index < 4; index += 1) {
@@ -7594,6 +7787,29 @@ export class World {
     chair.position.set(-2.45, 0.88, 1.58);
     chair.rotation.y = 0.35;
     group.add(chair);
+
+    const readingNook = new THREE.Group();
+    readingNook.position.set(2.0, 0.56, 1.35);
+    const nookBench = new THREE.Mesh(new THREE.BoxGeometry(1.35, 0.18, 0.48), this.materials.cutWood);
+    nookBench.position.y = 0.18;
+    const cushion = new THREE.Mesh(new THREE.BoxGeometry(1.16, 0.08, 0.4), this.materials.banner);
+    cushion.position.y = 0.32;
+    const sideLamp = new THREE.Mesh(new THREE.SphereGeometry(0.12, 9, 7), this.materials.warmWindow);
+    sideLamp.position.set(0.72, 0.78, -0.2);
+    readingNook.add(nookBench, cushion, sideLamp);
+    group.add(readingNook);
+
+    [-0.62, 0, 0.62].forEach((offset, index) => {
+      const mapPin = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.035, 0.16, 6), index % 2 ? this.materials.targetRed : this.materials.targetGold);
+      mapPin.position.set(-1.0 + offset, 1.16, -1.05 + Math.sin(index) * 0.26);
+      mapPin.rotation.z = 0.08;
+      group.add(mapPin);
+    });
+
+    const ceilingBeam = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.11, 6.8, 7), this.materials.barkDark);
+    ceilingBeam.position.set(-0.2, 2.35, 0);
+    ceilingBeam.rotation.z = Math.PI / 2;
+    group.add(ceilingBeam);
   }
 
   addLodgeExteriorDetails(group) {
@@ -9788,6 +10004,16 @@ export class World {
     this.addBuildingCraftDetails(group, width, depth, height, {
       trim: new THREE.MeshStandardMaterial({ color: options.sign ?? 0xe6b75d, roughness: 0.68, emissive: options.sign ?? 0xe6b75d, emissiveIntensity: 0.04 }),
     });
+    const interiorRole = label === "Inn" ? "inn"
+      : label === "Smith" ? "smith"
+        : label === "Bowyer" ? "bowyer"
+          : label === "Stable" ? "storage"
+            : "home";
+    this.addInteriorDetailSet(group, width, depth, height, interiorRole, {
+      trim: new THREE.MeshStandardMaterial({ color: options.sign ?? 0xe6b75d, roughness: 0.62, emissive: options.sign ?? 0xe6b75d, emissiveIntensity: 0.08 }),
+      wood: options.material ?? this.materials.cutWood,
+      cloth: label === "Inn" ? this.materials.parchment : this.materials.canvas,
+    });
 
     if (label === "Inn") {
       const balcony = new THREE.Mesh(new THREE.BoxGeometry(width * 0.56, 0.14, 0.42), this.materials.cutWood);
@@ -10195,7 +10421,25 @@ export class World {
     const crestArrow = new THREE.Mesh(new THREE.ConeGeometry(0.13, 1.2, 5), this.materials.targetGold);
     crestArrow.position.set(0.12, 0.3, 1.0);
     crestArrow.rotation.set(0, 0, -Math.PI / 2);
-    group.add(crestBase, crestArrow);
+    const meetingTable = new THREE.Mesh(new THREE.BoxGeometry(2.35, 0.18, 0.9), this.materials.cutWood);
+    meetingTable.position.set(0, 0.72, -0.65);
+    meetingTable.rotation.y = 0.04;
+    const mapParchment = new THREE.Mesh(new THREE.BoxGeometry(1.45, 0.04, 0.62), this.materials.parchment);
+    mapParchment.position.set(0, 0.84, -0.65);
+    mapParchment.rotation.y = 0.04;
+    [-0.92, 0.92].forEach((x) => {
+      const bench = new THREE.Mesh(new THREE.BoxGeometry(0.84, 0.16, 0.34), this.materials.barkDark);
+      bench.position.set(x, 0.52, -0.68);
+      bench.rotation.y = x * -0.04;
+      group.add(bench);
+    });
+    [-1.8, -0.9, 0, 0.9, 1.8].forEach((x, index) => {
+      const record = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.5, 0.08), index % 2 ? this.materials.masterBlue : this.materials.parchment);
+      record.position.set(x, 1.18, -1.34);
+      record.rotation.z = Math.sin(index) * 0.05;
+      group.add(record);
+    });
+    group.add(crestBase, crestArrow, meetingTable, mapParchment);
     this.finishGuildVillageDetailGroup(group);
   }
 
