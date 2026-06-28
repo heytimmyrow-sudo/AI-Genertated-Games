@@ -2061,6 +2061,53 @@ export class World {
     this.scene.add(patch);
   }
 
+  createGroundedPathMesh(x, z, width, depth, yaw, material, options = {}) {
+    const segmentsX = options.segmentsX ?? Math.max(2, Math.min(8, Math.round(width / 2.6)));
+    const segmentsZ = options.segmentsZ ?? Math.max(2, Math.min(8, Math.round(depth / 1.6)));
+    const offset = options.offset ?? 0.026;
+    const vertices = [];
+    const uvs = [];
+    const indices = [];
+    const sinRight = Math.sin(yaw + Math.PI / 2);
+    const cosRight = Math.cos(yaw + Math.PI / 2);
+    const sinForward = Math.sin(yaw);
+    const cosForward = Math.cos(yaw);
+
+    for (let zIndex = 0; zIndex <= segmentsZ; zIndex += 1) {
+      const localZ = (zIndex / segmentsZ - 0.5) * depth;
+      for (let xIndex = 0; xIndex <= segmentsX; xIndex += 1) {
+        const localX = (xIndex / segmentsX - 0.5) * width;
+        const edgeTaper = Math.max(Math.abs(localX) / Math.max(0.01, width * 0.5), Math.abs(localZ) / Math.max(0.01, depth * 0.5));
+        const worldX = x + sinRight * localX + sinForward * localZ;
+        const worldZ = z + cosRight * localX + cosForward * localZ;
+        const worldY = this.terrain.getHeightAt(worldX, worldZ) + offset + (1 - edgeTaper) * 0.006;
+        vertices.push(worldX, worldY, worldZ);
+        uvs.push(xIndex / segmentsX, zIndex / segmentsZ);
+      }
+    }
+
+    for (let zIndex = 0; zIndex < segmentsZ; zIndex += 1) {
+      for (let xIndex = 0; xIndex < segmentsX; xIndex += 1) {
+        const a = zIndex * (segmentsX + 1) + xIndex;
+        const b = a + 1;
+        const c = a + segmentsX + 1;
+        const d = c + 1;
+        indices.push(a, c, b, b, c, d);
+      }
+    }
+
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute("position", new THREE.Float32BufferAttribute(vertices, 3));
+    geometry.setAttribute("uv", new THREE.Float32BufferAttribute(uvs, 2));
+    geometry.setIndex(indices);
+    geometry.computeVertexNormals();
+    const path = new THREE.Mesh(geometry, material);
+    path.receiveShadow = true;
+    path.userData.terrain = true;
+    path.userData.groundedPath = true;
+    return path;
+  }
+
   addTransitionPebbleTrail(x, z, yaw, id, seed = 0) {
     const styleMaterial = id.includes("coast") ? this.materials.cliffStone
       : id.includes("ash") ? this.materials.obsidian
@@ -5272,10 +5319,7 @@ export class World {
       [142, -150, 8.0, 1.1, 0.42],
       [151, -157, 7.0, 0.95, 0.32],
     ].forEach(([x, z, width, depth, yaw]) => {
-      const road = new THREE.Mesh(new THREE.BoxGeometry(width, 0.045, depth), this.materials.frontierRoad);
-      road.position.set(x, this.terrain.getHeightAt(x, z) + 0.055, z);
-      road.rotation.y = yaw;
-      road.receiveShadow = true;
+      const road = this.createGroundedPathMesh(x, z, width, depth, yaw, this.materials.frontierRoad, { offset: 0.034, segmentsX: 4, segmentsZ: 3 });
       this.scene.add(road);
     });
 
@@ -5468,13 +5512,16 @@ export class World {
 
   addSettlementRoad(origin, localX, localZ, width, depth, yawOffset = 0, material = this.materials.cutWood) {
     const point = this.getSettlementPoint(origin, localX, localZ);
-    const road = new THREE.Mesh(new THREE.PlaneGeometry(width, depth, 3, 4), material);
-    road.position.set(point.x, this.terrain.getHeightAt(point.x, point.z) + 0.04, point.z);
-    road.rotation.set(-Math.PI / 2, 0, (origin.yaw ?? 0) + yawOffset);
-    road.receiveShadow = true;
+    const yaw = (origin.yaw ?? 0) + yawOffset;
+    const road = this.createGroundedPathMesh(point.x, point.z, width, depth, yaw, material, {
+      offset: 0.03,
+      segmentsX: Math.max(3, Math.round(width / 3)),
+      segmentsZ: Math.max(3, Math.round(depth / 2)),
+    });
     this.scene.add(road);
+    this.addTerrainBlendOval(point.x, point.z, width * 0.58, depth * 0.68, yaw, material, 0.18, Math.round(localX * 3 + localZ * 5));
     if (!this.performanceMode && width > 3.4) {
-      this.addPathEdgeCluster(point.x, point.z, (origin.yaw ?? 0) + yawOffset, Math.min(8, Math.round(width / 2)), "frontier", Math.round(localX + localZ));
+      this.addPathEdgeCluster(point.x, point.z, yaw, Math.min(8, Math.round(width / 2)), "frontier", Math.round(localX + localZ));
     }
   }
 
@@ -6167,10 +6214,7 @@ export class World {
       [90, 162, 7.8, 1.0, -0.38],
       [98, 171, 6.8, 0.95, -0.1],
     ].forEach(([x, z, width, depth, yaw], index) => {
-      const path = new THREE.Mesh(new THREE.BoxGeometry(width, 0.055, depth), index % 2 ? this.materials.crystalSand : this.materials.celestialMarble);
-      path.position.set(x, this.terrain.getHeightAt(x, z) + 0.075, z);
-      path.rotation.y = yaw;
-      path.receiveShadow = true;
+      const path = this.createGroundedPathMesh(x, z, width, depth, yaw, index % 2 ? this.materials.crystalSand : this.materials.celestialMarble, { offset: 0.042, segmentsX: 4, segmentsZ: 3 });
       this.scene.add(path);
     });
 
@@ -6431,10 +6475,7 @@ export class World {
       ];
 
     approach.forEach(([x, z, width, depth, yaw]) => {
-      const path = new THREE.Mesh(new THREE.BoxGeometry(width, 0.05, depth), this.materials.visibleTrail);
-      path.position.set(x, this.terrain.getHeightAt(x, z) + 0.06, z);
-      path.rotation.y = yaw;
-      path.receiveShadow = true;
+      const path = this.createGroundedPathMesh(x, z, width, depth, yaw, this.materials.visibleTrail, { offset: 0.036, segmentsX: 4, segmentsZ: 3 });
       this.scene.add(path);
     });
 
@@ -8563,10 +8604,7 @@ export class World {
       [82, 77, 4.4, 1.05, 0.48], [91, 83, 4.6, 1.08, 0.3],
     ];
     trailPoints.forEach(([x, z, width, depth, yaw]) => {
-      const path = new THREE.Mesh(new THREE.BoxGeometry(width, 0.045, depth), this.materials.visibleTrail);
-      path.position.set(x, this.terrain.getHeightAt(x, z) + 0.055, z);
-      path.rotation.y = yaw;
-      path.receiveShadow = true;
+      const path = this.createGroundedPathMesh(x, z, width, depth, yaw, this.materials.visibleTrail, { offset: 0.034, segmentsX: 4, segmentsZ: 3 });
       this.scene.add(path);
     });
     [[67, 65, 0.62, [["Mistwood", 0.25]]], [94, 84, 0.22, [["Elder Tree", 0.18], ["Shrine", -0.28]]]].forEach(([x, z, yaw, arms]) => {
@@ -8791,9 +8829,11 @@ export class World {
       const dx = next[0] - x;
       const dz = next[1] - z;
       const length = Math.max(2.8, Math.hypot(dx, dz));
-      const trail = new THREE.Mesh(new THREE.BoxGeometry(length, 0.04, 0.62), material);
-      trail.position.set(x, this.terrain.getHeightAt(x, z) + 0.065, z);
-      trail.rotation.y = Math.atan2(dx, dz) + Math.PI / 2;
+      const trail = this.createGroundedPathMesh(x, z, length, 0.62, Math.atan2(dx, dz) + Math.PI / 2, material, {
+        offset: 0.038,
+        segmentsX: 4,
+        segmentsZ: 2,
+      });
       trail.visible = false;
       this.scene.add(trail);
       return trail;
@@ -8869,10 +8909,7 @@ export class World {
       [-73, -55, 4.8, 1.08, -0.56], [-85, -68, 5.2, 1.12, -0.42], [-96, -82, 5.6, 1.16, -0.28],
     ];
     trailPoints.forEach(([x, z, width, depth, yaw]) => {
-      const path = new THREE.Mesh(new THREE.BoxGeometry(width, 0.045, depth), this.materials.swampMud);
-      path.position.set(x, this.terrain.getHeightAt(x, z) + 0.052, z);
-      path.rotation.y = yaw;
-      path.receiveShadow = true;
+      const path = this.createGroundedPathMesh(x, z, width, depth, yaw, this.materials.swampMud, { offset: 0.03, segmentsX: 4, segmentsZ: 3 });
       this.scene.add(path);
     });
     [[-55, -36, -0.75, [["Marsh", 0.18]]], [-92, -73, -0.2, [["Shrine", -0.28], ["Tower", 0.28]]]].forEach(([x, z, yaw, arms]) => {
@@ -9214,10 +9251,7 @@ export class World {
       [-3, 72, 4.5, 1.0, 0.02], [-1, 82, 4.2, 1.0, 0.08], [3, 92, 4.2, 1.0, 0.18],
       [2, 103, 5.0, 1.08, -0.05], [0, 114, 5.8, 1.12, -0.12],
     ].forEach(([x, z, width, depth, yaw]) => {
-      const path = new THREE.Mesh(new THREE.BoxGeometry(width, 0.05, depth), this.materials.canyonTrail);
-      path.position.set(x, this.terrain.getHeightAt(x, z) + 0.055, z);
-      path.rotation.y = yaw;
-      path.receiveShadow = true;
+      const path = this.createGroundedPathMesh(x, z, width, depth, yaw, this.materials.canyonTrail, { offset: 0.034, segmentsX: 4, segmentsZ: 3 });
       this.scene.add(path);
     });
     [[-2, 86, 0.06, [["Red Canyon", 0.24]]], [1, 112, -0.12, [["Skybridge", -0.36], ["Plateau", 0.34]]]].forEach(([x, z, yaw, arms]) => {
@@ -9431,10 +9465,7 @@ export class World {
       [-28, 148, 5.0, 1.0, 1.2], [-48, 150, 5.4, 1.05, 1.35], [-70, 146, 5.2, 1.05, 1.7],
       [-92, 138, 5.8, 1.1, 1.9], [-112, 134, 6.0, 1.12, 1.72], [-130, 132, 6.4, 1.12, 1.58],
     ].forEach(([x, z, width, depth, yaw]) => {
-      const path = new THREE.Mesh(new THREE.BoxGeometry(width, 0.055, depth), this.materials.ashField);
-      path.position.set(x, this.terrain.getHeightAt(x, z) + 0.06, z);
-      path.rotation.y = yaw;
-      path.receiveShadow = true;
+      const path = this.createGroundedPathMesh(x, z, width, depth, yaw, this.materials.ashField, { offset: 0.036, segmentsX: 4, segmentsZ: 3 });
       this.scene.add(path);
     });
     [[-62, 148, 1.58, [["Highlands", 0.18]]], [-124, 133, 1.55, [["Peak", -0.35], ["Citadel", 0.32]]]].forEach(([x, z, yaw, arms]) => {
@@ -9685,10 +9716,7 @@ export class World {
       [64, 52, 4.2, 1.1, 0.85], [82, 50, 4.8, 1.15, 0.9], [101, 48, 5.2, 1.2, 0.96],
       [119, 45, 5.4, 1.25, 1.12], [136, 42, 5.7, 1.25, 1.26],
     ].forEach(([x, z, width, depth, yaw]) => {
-      const path = new THREE.Mesh(new THREE.BoxGeometry(width, 0.055, depth), this.materials.visibleTrail);
-      path.position.set(x, this.terrain.getHeightAt(x, z) + 0.06, z);
-      path.rotation.y = yaw;
-      path.receiveShadow = true;
+      const path = this.createGroundedPathMesh(x, z, width, depth, yaw, this.materials.visibleTrail, { offset: 0.036, segmentsX: 4, segmentsZ: 3 });
       this.scene.add(path);
     });
     [[102, 48, 1.18, [["Starfall", 0.16]]], [139, 43, 0.92, [["Observatory", -0.32], ["Sanctum", 0.35]]]].forEach(([x, z, yaw, arms]) => {
@@ -9977,10 +10005,7 @@ export class World {
       [82, -50, 4.6, 1.08, -0.54], [91, -64, 4.8, 1.08, -0.42], [101, -78, 5.4, 1.12, -0.34],
     ];
     trailPoints.forEach(([x, z, width, depth, yaw]) => {
-      const path = new THREE.Mesh(new THREE.BoxGeometry(width, 0.045, depth), this.materials.sand);
-      path.position.set(x, this.terrain.getHeightAt(x, z) + 0.055, z);
-      path.rotation.y = yaw;
-      path.receiveShadow = true;
+      const path = this.createGroundedPathMesh(x, z, width, depth, yaw, this.materials.sand, { offset: 0.034, segmentsX: 4, segmentsZ: 3 });
       this.scene.add(path);
     });
     [[60, -25, -0.8, [["Coast", 0.22]]], [94, -72, -0.38, [["Lighthouse", 0.24], ["Cove", -0.32]]]].forEach(([x, z, yaw, arms]) => {
@@ -10461,12 +10486,16 @@ export class World {
       const t = index / 9;
       const x = -38 + (-56 + 38) * t + Math.sin(t * Math.PI * 2) * 1.8;
       const z = 10 + (22 - 10) * t;
-      const y = this.terrain.getHeightAt(x, z) + 0.025;
-      const stone = new THREE.Mesh(new THREE.BoxGeometry(2.4 - t * 0.4, 0.05, 0.95), this.materials.cutWood);
-      stone.position.set(x, y, z);
-      stone.rotation.y = -0.75 + Math.sin(t * 3) * 0.12;
-      stone.receiveShadow = true;
+      const yaw = -0.75 + Math.sin(t * 3) * 0.12;
+      const stone = this.createGroundedPathMesh(x, z, 2.4 - t * 0.4, 0.95, yaw, this.materials.groundPath ?? this.materials.cutWood, {
+        offset: 0.03,
+        segmentsX: 3,
+        segmentsZ: 2,
+      });
       this.scene.add(stone);
+      if (index % 2 === 0) {
+        this.addTerrainBlendOval(x, z, 1.35, 0.58, yaw, this.materials.groundPath ?? this.materials.cutWood, 0.18, index + 301);
+      }
     }
 
     [[-43, 14.5, -0.8], [-50, 19.8, -0.65], [-59, 21.2, -0.2]].forEach(([x, z, yaw]) => {
@@ -10560,15 +10589,24 @@ export class World {
       [14.2, 1.6, 2.05, 10.6, 0.08],
     ].forEach(([localX, localZ, width, depth, yawOffset]) => {
       const point = this.getGuildPoint(origin, localX, localZ);
-      const road = new THREE.Mesh(new THREE.PlaneGeometry(width, depth, 3, 5), this.materials.groundPath ?? this.materials.cutWood);
-      road.rotation.set(-Math.PI / 2, 0, origin.yaw + yawOffset);
-      road.position.set(point.x, this.terrain.getHeightAt(point.x, point.z) + 0.032, point.z);
-      road.scale.x = 0.92 + Math.sin(localZ) * 0.05;
-      road.scale.y = 0.94 + Math.cos(localX) * 0.04;
-      road.receiveShadow = true;
+      const yaw = origin.yaw + yawOffset;
+      const road = this.createGroundedPathMesh(
+        point.x,
+        point.z,
+        width * (0.92 + Math.sin(localZ) * 0.05),
+        depth * (0.94 + Math.cos(localX) * 0.04),
+        yaw,
+        this.materials.groundPath ?? this.materials.cutWood,
+        {
+          offset: 0.028,
+          segmentsX: Math.max(4, Math.round(width / 3.2)),
+          segmentsZ: Math.max(3, Math.round(depth / 2.2)),
+        },
+      );
       this.scene.add(road);
+      this.addTerrainBlendOval(point.x, point.z, width * 0.56, depth * 0.62, yaw, this.materials.groundPath ?? this.materials.cutWood, 0.16, Math.round(localX * 4 + localZ * 7));
       if (!this.performanceMode) {
-        this.addPathEdgeCluster(point.x, point.z, origin.yaw + yawOffset, Math.min(9, Math.round(width / 2.4)), "guild", Math.round(localX * 2 + localZ));
+        this.addPathEdgeCluster(point.x, point.z, yaw, Math.min(9, Math.round(width / 2.4)), "guild", Math.round(localX * 2 + localZ));
       }
     });
   }
@@ -10672,6 +10710,19 @@ export class World {
       }
     });
     this.scene.add(group);
+    const entranceX = point.x + Math.sin(yaw) * (-depth * 0.58 - 0.48);
+    const entranceZ = point.z + Math.cos(yaw) * (-depth * 0.58 - 0.48);
+    const entrancePad = this.createGroundedPathMesh(
+      entranceX,
+      entranceZ,
+      Math.min(width * 0.72, 3.1),
+      1.35,
+      yaw,
+      this.materials.groundPath ?? this.materials.cutWood,
+      { offset: 0.032, segmentsX: 3, segmentsZ: 3 },
+    );
+    this.scene.add(entrancePad);
+    this.addTerrainBlendOval(entranceX, entranceZ, Math.min(width * 0.5, 2.2), 0.8, yaw, this.materials.groundPath ?? this.materials.cutWood, 0.2, Math.round(localX * 9 + localZ * 5));
     this.addCollisionBox(point.x, point.z, width + 0.25, depth + 0.25, height + 0.9, yaw);
     this.villageBuildings = this.villageBuildings ?? [];
     this.villageBuildings.push({ id, label, position: new THREE.Vector3(point.x, y, point.z), yaw, width, depth });
@@ -10713,6 +10764,19 @@ export class World {
   }
 
   addGuildVillageMarket(origin, localX, localZ) {
+    const marketCenter = this.getGuildPoint(origin, localX, localZ);
+    const marketYaw = origin.yaw + 0.05;
+    const marketGround = this.createGroundedPathMesh(
+      marketCenter.x,
+      marketCenter.z,
+      7.8,
+      5.8,
+      marketYaw,
+      this.materials.groundPath ?? this.materials.cutWood,
+      { offset: 0.024, segmentsX: 5, segmentsZ: 5 },
+    );
+    this.scene.add(marketGround);
+    this.addTerrainBlendOval(marketCenter.x, marketCenter.z, 5.2, 3.7, marketYaw, this.materials.grassLight, 0.12, 428);
     const stalls = [
       [-1.6, 0.3, 0x8b6844],
       [1.45, -0.4, 0x2f5545],
@@ -10722,6 +10786,12 @@ export class World {
       const point = this.getGuildPoint(origin, localX + offsetX, localZ + offsetZ);
       const y = this.terrain.getHeightAt(point.x, point.z);
       const yaw = origin.yaw + (index - 1) * 0.18;
+      const stallPad = this.createGroundedPathMesh(point.x, point.z, 2.5, 1.55, yaw, this.materials.groundPath ?? this.materials.cutWood, {
+        offset: 0.034,
+        segmentsX: 3,
+        segmentsZ: 2,
+      });
+      this.scene.add(stallPad);
       const group = new THREE.Group();
       group.position.set(point.x, y, point.z);
       group.rotation.y = yaw;
@@ -10836,11 +10906,11 @@ export class World {
   addGuildVillagePlazaFocus(origin) {
     const point = this.getGuildPoint(origin, 0.4, 5.6);
     const y = this.terrain.getHeightAt(point.x, point.z);
-    const plaza = new THREE.Mesh(new THREE.CircleGeometry(3.2, 16), this.materials.groundPath ?? this.materials.cutWood);
-    plaza.position.set(point.x, y + 0.04, point.z);
-    plaza.rotation.x = -Math.PI / 2;
-    plaza.rotation.z = origin.yaw + 0.2;
-    plaza.receiveShadow = true;
+    const plaza = this.createGroundedPathMesh(point.x, point.z, 6.4, 5.6, origin.yaw + 0.2, this.materials.groundPath ?? this.materials.cutWood, {
+      offset: 0.03,
+      segmentsX: 6,
+      segmentsZ: 5,
+    });
     this.scene.add(plaza);
 
     const crest = new THREE.Group();
@@ -10980,12 +11050,11 @@ export class World {
       const patchMaterial = (this.materials.groundPath ?? this.materials.frontierRoad ?? this.materials.cutWood).clone();
       patchMaterial.transparent = true;
       patchMaterial.opacity = opacity;
-      const patch = new THREE.Mesh(new THREE.CircleGeometry(radius, 20), patchMaterial);
-      patch.position.set(point.x, this.terrain.getHeightAt(point.x, point.z) + 0.045 + index * 0.002, point.z);
-      patch.rotation.x = -Math.PI / 2;
-      patch.rotation.z = origin.yaw + index * 0.24;
-      patch.receiveShadow = true;
-      patch.userData.terrain = true;
+      const patch = this.createGroundedPathMesh(point.x, point.z, radius * 2, radius * 1.5, origin.yaw + index * 0.24, patchMaterial, {
+        offset: 0.026 + index * 0.002,
+        segmentsX: 5,
+        segmentsZ: 4,
+      });
       this.scene.add(patch);
     });
 
@@ -11055,6 +11124,12 @@ export class World {
 
   addGuildMarketStallDetail(origin, localX, localZ, yawOffset, awningMaterial, type, seed = 0) {
     const group = this.createGuildVillageDetailGroup(origin, localX, localZ, yawOffset);
+    const stallPad = this.createGroundedPathMesh(group.position.x, group.position.z, 2.75, 1.85, group.rotation.y, this.materials.groundPath ?? this.materials.cutWood, {
+      offset: 0.036,
+      segmentsX: 3,
+      segmentsZ: 2,
+    });
+    this.scene.add(stallPad);
     const counter = new THREE.Mesh(new THREE.BoxGeometry(1.85, 0.48, 0.74), this.materials.cutWood);
     counter.position.y = 0.26;
     const awning = this.createLayeredGableRoof(2.15, 1.55, 1.2, awningMaterial, {
@@ -11770,10 +11845,7 @@ export class World {
       [-156, -150, 12, 0.82, -0.18],
       [-166, -153, 10, 0.72, 0.28],
     ].forEach(([x, z, width, depth, yaw], index) => {
-      const path = new THREE.Mesh(new THREE.PlaneGeometry(width, depth, 3, 2), this.materials.sand);
-      path.position.set(x, this.terrain.getHeightAt(x, z) + 0.055, z);
-      path.rotation.set(-Math.PI / 2, 0, yaw + Math.sin(index) * 0.05);
-      path.receiveShadow = true;
+      const path = this.createGroundedPathMesh(x, z, width, depth, yaw + Math.sin(index) * 0.05, this.materials.sand, { offset: 0.034, segmentsX: 4, segmentsZ: 3 });
       this.scene.add(path);
     });
   }
@@ -11941,10 +12013,7 @@ export class World {
       { id: "tidefall-citadel", x: -158, z: -167, width: 16, depth: 1.1, yaw: 0.28, target: "drowned-citadel" },
       { id: "beacon-cove", x: -172, z: -151, width: 12, depth: 1.0, yaw: -0.56, target: "broken-beacon" },
     ].forEach((path) => {
-      const mesh = new THREE.Mesh(new THREE.PlaneGeometry(path.width, path.depth, 3, 1), this.materials.sand);
-      mesh.position.set(path.x, this.terrain.getHeightAt(path.x, path.z) + 0.09, path.z);
-      mesh.rotation.set(-Math.PI / 2, 0, path.yaw);
-      mesh.receiveShadow = true;
+      const mesh = this.createGroundedPathMesh(path.x, path.z, path.width, path.depth, path.yaw, this.materials.sand, { offset: 0.04, segmentsX: 4, segmentsZ: 2 });
       this.scene.add(mesh);
       this.tidalPathObjects.push({ ...path, mesh });
     });
@@ -12054,10 +12123,7 @@ export class World {
       [-54, -148, 18, 0.78, -0.58],
       [-31, -144, 15, 0.74, 1.08],
     ].forEach(([x, z, width, depth, yaw], index) => {
-      const path = new THREE.Mesh(new THREE.PlaneGeometry(width, depth, 4, 1), this.materials.visibleTrail);
-      path.position.set(x, this.terrain.getHeightAt(x, z) + 0.06, z);
-      path.rotation.set(-Math.PI / 2, 0, yaw + Math.sin(index) * 0.08);
-      path.receiveShadow = true;
+      const path = this.createGroundedPathMesh(x, z, width, depth, yaw + Math.sin(index) * 0.08, this.materials.visibleTrail, { offset: 0.036, segmentsX: 4, segmentsZ: 2 });
       this.scene.add(path);
     });
   }
@@ -12192,9 +12258,7 @@ export class World {
     ].forEach((path) => {
       const material = this.materials.visibleTrail.clone();
       material.opacity = 0.18;
-      const mesh = new THREE.Mesh(new THREE.PlaneGeometry(path.width, path.depth, 4, 1), material);
-      mesh.position.set(path.x, this.terrain.getHeightAt(path.x, path.z) + 0.085, path.z);
-      mesh.rotation.set(-Math.PI / 2, 0, path.yaw);
+      const mesh = this.createGroundedPathMesh(path.x, path.z, path.width, path.depth, path.yaw, material, { offset: 0.042, segmentsX: 4, segmentsZ: 2 });
       mesh.visible = false;
       mesh.receiveShadow = true;
       this.scene.add(mesh);
