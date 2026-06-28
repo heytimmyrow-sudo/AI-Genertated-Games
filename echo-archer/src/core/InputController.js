@@ -11,6 +11,7 @@ export class InputController {
     this.gameplayBlocked = false;
     this.virtualPointerActive = false;
     this.touchLookPointerId = null;
+    this.touchDrawPointerId = null;
     this.touchLookLast = { x: 0, y: 0 };
     this.virtualMoveCodes = new Set();
     this.touchJoysticks = new Map();
@@ -266,9 +267,14 @@ export class InputController {
       return;
     }
     event.preventDefault();
+    if (this.touchLookPointerId !== null) {
+      return;
+    }
     this.touchLookPointerId = event.pointerId;
+    this.touchDrawPointerId = event.pointerId;
     this.touchLookLast.x = event.clientX;
     this.touchLookLast.y = event.clientY;
+    this.pressVirtualMouse(0);
     this.canvas.setPointerCapture?.(event.pointerId);
   }
 
@@ -287,6 +293,10 @@ export class InputController {
   handleTouchLookEnd(event) {
     if (event.pointerId !== this.touchLookPointerId) {
       return;
+    }
+    if (event.pointerId === this.touchDrawPointerId) {
+      this.releaseVirtualMouse(0);
+      this.touchDrawPointerId = null;
     }
     this.touchLookPointerId = null;
     this.canvas.releasePointerCapture?.(event.pointerId);
@@ -377,6 +387,7 @@ export class InputController {
       this.mouseButtons.clear();
       this.virtualPointerActive = false;
       this.touchLookPointerId = null;
+      this.touchDrawPointerId = null;
       this.setVirtualMoveFromAxis(0, 0);
       this.touchJoysticks.forEach((state, joystick) => {
         state.pointerId = null;
