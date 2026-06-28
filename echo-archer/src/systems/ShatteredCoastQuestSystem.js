@@ -3,7 +3,7 @@ const STORAGE_KEY = "echo-archer-shattered-coast-v1";
 const OBJECTIVES = [
   { id: "arrival", title: "The Sea of Forgotten Kings", objective: "Discover Shattered Coast", goal: 1 },
   { id: "landmarks", title: "Coastal Ruins", objective: "Discover 5 Shattered Coast landmarks", goal: 5 },
-  { id: "records", title: "Destroyed Harbor Records", objective: "Recover 2 coastal records", goal: 2 },
+  { id: "records", title: "Destroyed Coastal Records", objective: "Recover 2 coastal records", goal: 2 },
   { id: "tidal", title: "Tidal Routes", objective: "Find the low-tide passages", goal: 2 },
   { id: "range", title: "Stormwatch Range", objective: "Complete the Shattered Coast target challenge", goal: 1 },
   { id: "warden", title: "The Tidebound Warden", objective: "Defeat The Tidebound Warden", goal: 1 },

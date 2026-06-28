@@ -517,7 +517,7 @@ export class WorldMapSystem {
     if (text.includes("mountain-fortress")) return "illustration-fortress";
     if (/guild|village|town|outpost|camp|cabin|lodge|hall-of-arrows/.test(text)) return "illustration-town";
     if (/observatory|starfall|celestial|skyfall|starforge|first-sky|astral/.test(text)) return "illustration-observatory";
-    if (/harbor|coast|cove|shipwreck|lighthouse|beacon|sea|drowned|tide|wreckers/.test(text)) return "illustration-harbor";
+    if (/coast|cove|shipwreck|lighthouse|beacon|sea|drowned|tide|wreckers/.test(text)) return "illustration-coast";
     if (shrine) return "illustration-shrine";
     if (/ruin|king|temple|archive|citadel|gate|plaza|sentinel|circle|arch/.test(text)) return "illustration-ruin";
     if (/tower|watch|spire/.test(text)) return "illustration-tower";

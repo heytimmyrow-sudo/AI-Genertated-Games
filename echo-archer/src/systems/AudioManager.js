@@ -378,7 +378,7 @@ export class AudioManager {
     if (value.includes("cave") || value.includes("hollow") || value.includes("cavern")) return "cave";
     if (value.includes("village") || value.includes("guild") || value.includes("inn") || value.includes("market") || value.includes("lodge")) return "village";
     if (value.includes("fortress") || value.includes("hall-of-arrows") || value.includes("mountain-fortress")) return "fortress";
-    if (value.includes("coast") || value.includes("sea") || value.includes("harbor") || value.includes("shattered") || value.includes("beacon") || value.includes("tide")) return "coast";
+    if (value.includes("coast") || value.includes("sea") || value.includes("shattered") || value.includes("beacon") || value.includes("tide")) return "coast";
     if (value.includes("marsh") || value.includes("blackwater") || value.includes("sunken") || value.includes("mire")) return "marsh";
     if (value.includes("frost") || value.includes("mountain") || value.includes("summit") || value.includes("ice")) return "mountain";
     if (value.includes("mistwood") || value.includes("veiled") || value.includes("grove") || value.includes("worldroot")) return "mistwood";

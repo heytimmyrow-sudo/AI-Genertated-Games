@@ -984,25 +984,6 @@ export class QuestSystem {
       return;
     }
 
-    if (interactable.type === "boat-keeper") {
-      this.visitBoatKeeper(interactable);
-      return;
-    }
-
-    if (interactable.type === "boat-launch") {
-      this.useBoatLaunch(interactable);
-      return;
-    }
-
-    if (interactable.type === "future-fishing-dock") {
-      interactable.read = true;
-      this.showMessage(interactable.name, interactable.text ?? "Fishing gear is not ready yet, but this dock is clearly built for it.");
-      window.dispatchEvent(new CustomEvent("echo-archer:sound", {
-        detail: { name: "uiClick", intensity: 0.55 },
-      }));
-      return;
-    }
-
     if (interactable.type === "frontier-track" || interactable.type === "frontier-expedition-console") {
       interactable.read = true;
       this.showMessage(interactable.name, interactable.text);
@@ -1057,90 +1038,6 @@ export class QuestSystem {
     window.dispatchEvent(new CustomEvent("echo-archer:sound", {
       detail: { name: "uiClick", intensity: 0.7 },
     }));
-  }
-
-  visitBoatKeeper(interactable) {
-    const itemId = interactable.itemId ?? "lake-skiff-permit";
-    const wasUnlocked = this.hasBoatAccess(itemId);
-    if (!wasUnlocked) {
-      try {
-        localStorage.setItem(`echo-archer-boat-${itemId}`, "unlocked");
-      } catch {
-      }
-      interactable.unlocked = true;
-      window.dispatchEvent(new CustomEvent("echo-archer:gear-pickup", {
-        detail: {
-          category: interactable.category ?? "items",
-          itemId,
-          name: interactable.rewardName ?? interactable.name,
-        },
-      }));
-      window.dispatchEvent(new CustomEvent("echo-archer:combat-text", {
-        detail: {
-          text: `${interactable.rewardName ?? "Boat"} unlocked`,
-          kind: "xp",
-          x: window.innerWidth / 2,
-          y: window.innerHeight * 0.38,
-        },
-      }));
-    }
-    this.showMessage(interactable.name, wasUnlocked ? (interactable.unlockedText ?? interactable.text) : (interactable.unlockText ?? interactable.text));
-    window.dispatchEvent(new CustomEvent("echo-archer:sound", {
-      detail: { name: wasUnlocked ? "uiClick" : "questComplete", intensity: wasUnlocked ? 0.58 : 0.72 },
-    }));
-    this.save();
-  }
-
-  hasBoatAccess(itemId = "lake-skiff-permit") {
-    try {
-      if (localStorage.getItem(`echo-archer-boat-${itemId}`) === "unlocked") {
-        return true;
-      }
-      const saved = JSON.parse(localStorage.getItem("echo-archer-save-v1") ?? "null");
-      const ownedItems = saved?.inventory?.owned?.items;
-      if (Array.isArray(ownedItems) && ownedItems.includes(itemId)) {
-        return true;
-      }
-      return itemId !== "lake-skiff-permit" && Array.isArray(ownedItems) && ownedItems.includes("lake-skiff-permit");
-    } catch {
-      return false;
-    }
-  }
-
-  useBoatLaunch(interactable) {
-    const acceptedBoatIds = interactable.itemIds ?? [interactable.itemId ?? "lake-skiff-permit"];
-    const hasBoat = acceptedBoatIds.some((itemId) => this.hasBoatAccess(itemId));
-    if (!hasBoat) {
-      this.showMessage(interactable.name, interactable.lockedText ?? "A Boat Keeper can unlock a lake skiff here.");
-      window.dispatchEvent(new CustomEvent("echo-archer:sound", {
-        detail: { name: "uiClick", intensity: 0.45 },
-      }));
-      return;
-    }
-
-    const destination = interactable.destination;
-    if (!destination) {
-      this.showMessage(interactable.name, interactable.text ?? "The boat rocks gently, ready for future water routes.");
-      return;
-    }
-
-    this.showMessage(interactable.name, interactable.travelText ?? "You push off and glide across the calm water.");
-    window.dispatchEvent(new CustomEvent("echo-archer:sound", {
-      detail: { name: "questComplete", intensity: 0.58 },
-    }));
-    window.dispatchEvent(new CustomEvent("echo-archer:combat-text", {
-      detail: {
-        text: interactable.destinationName ? `Boating to ${interactable.destinationName}` : "Boat launched",
-        kind: "xp",
-        x: window.innerWidth / 2,
-        y: window.innerHeight * 0.34,
-      },
-    }));
-    window.setTimeout(() => {
-      const y = Number.isFinite(destination.y) ? destination.y : this.world.terrain.getHeightAt(destination.x, destination.z);
-      this.player.group.position.set(destination.x, y + 0.02, destination.z);
-      this.player.velocity?.set?.(0, 0, 0);
-    }, 520);
   }
 
   updateLegendaryPlatform(interactable, deltaSeconds) {

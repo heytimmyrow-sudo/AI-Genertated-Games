@@ -43,8 +43,6 @@ export const GEAR_DEFINITIONS = {
     { id: "ice-arrow-bundle", name: "Ice Arrow Bundle", description: "Trade stock for future ice arrow ammunition limits.", stats: { arrows: 8 } },
     { id: "explosive-arrow-bundle", name: "Explosive Arrow Bundle", description: "Trade stock for future explosive arrow ammunition limits.", stats: { arrows: 4 } },
     { id: "guild-supply-token", name: "Guild Supply Token", description: "A simple economy item reserved for later crafting and guild orders.", stats: { value: 1 } },
-    { id: "lake-skiff-permit", name: "Lake Skiff Permit", rarity: "rare", description: "A Boat Keeper's mark that unlocks a small guild skiff for calm lakes and marked waterways. Fishing-ready for a future update.", stats: { boat: true, waterTravel: 1, fishingReady: 1 } },
-    { id: "keeper-rowboat", name: "Keeper Rowboat", rarity: "epic", description: "A warm cedar rowboat prepared by lake keepers for larger crossings, scenic water travel, and future fishing docks.", stats: { boat: true, waterTravel: 1.15, fishingReady: 1 } },
   ],
   mounts: [
     { id: "no-mount", name: "No Mount", rarity: "common", description: "Travel on foot.", stats: {} },

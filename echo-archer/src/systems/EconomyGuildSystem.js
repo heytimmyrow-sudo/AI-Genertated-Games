@@ -173,11 +173,6 @@ const SETTLEMENT_TOPICS = {
     "Out here, a new fence feels like a declaration of war against the wilderness.",
     "The plains are wide enough to make every rumor sound possible.",
   ],
-  harbor: [
-    "Coastal Harbor measures time by tides, gulls, and market bells.",
-    "The harbor is busiest when fog rolls in. Everyone wants news before night.",
-    "Salt gets into rope, timber, and conversations.",
-  ],
   camp: [
     "Expedition camps collect people who prefer questions to comfort.",
     "The campfire burns low, but nobody here stops listening to the dark.",
@@ -214,7 +209,7 @@ const BOSS_MEMORY_LINES = {
   "The Ironhorn": "The Ironhorn is down? Frontier children will pretend to be you for weeks.",
   "The First Sentinel": "The First Sentinel was no campfire beast. That victory means history noticed you.",
   "The Skybound Warden": "People are still trying to understand what the Skybound Warden guarded.",
-  "The Tidebound Warden": "The Tidebound Warden's fall made the harbor bells sound braver.",
+  "The Tidebound Warden": "The Tidebound Warden's fall made the coast road feel braver.",
 };
 
 const ROLE_DIALOGUE_POOLS = {
@@ -336,7 +331,6 @@ const NPC_CONVERSATION_SNIPPETS = [
   ["scout", "hunter", "Tracks by the north road split around something heavy."],
   ["farmer", "child", "No racing through the bean rows unless you plan to weed them."],
   ["stable", "traveler", "Brush your mount before you brag about the miles."],
-  ["harbor", "guard", "Tide is wrong again. Watch the lower ropes."],
   ["frontier", "scout", "If the grass bends twice, something circled back."],
   ["camp", "cartographer", "Mark that ridge in pencil until it stops moving in the mist."],
 ];
@@ -425,26 +419,6 @@ export class EconomyGuildSystem {
       this.makeVillageNpc("frontier-mapkeeper", "dialogue", "Venn", "Mapkeeper", frontierPoint("mapStation", [0, -2]), frontierHome(1, [-9, 7]), { cloak: 0x4d5966, hood: 0x2d3644, staff: 0x9a6d3d, trim: 0x82c8ff }, () => "Maps are promises. The frontier enjoys breaking them.", null, { eveningPoint: frontierSquare }),
     ];
 
-    const harbor = this.world.coastalHarborServices ?? {};
-    const harborOrigin = this.world.coastalHarbor ?? { x: -128, z: -134 };
-    const harborPoint = (name, fallback) => harbor[name] ?? new THREE.Vector3(harborOrigin.x + fallback[0], 0, harborOrigin.z + fallback[1]);
-    const harborHome = (index, fallback) => harbor.homes?.[index] ?? new THREE.Vector3(harborOrigin.x + fallback[0], 0, harborOrigin.z + fallback[1]);
-    const harborSquare = harborPoint("square", [1, 0]);
-    const harborNpcs = [
-      this.makeVillageNpc("harbor-master", "dialogue", "Selka", "Harbor Master", harborPoint("docks", [-6, -1]), harborHome(0, [7, 7]), { cloak: 0x315d69, hood: 0x2d3644, staff: 0x9a6d3d, trim: 0x82c8ff, badge: true }, () => "Storms break docks. Secrets break families.", null, { eveningPoint: harborSquare }),
-      this.makeVillageNpc("harbor-innkeeper", "inn", "Caddo", "Tavern Keeper", harborPoint("tavern", [2, 4]), harborHome(0, [7, 7]), { cloak: 0x8b6844, hood: 0x5a3f2d, staff: 0xa87543, trim: 0xffc579 }, () => "The gulls steal bread. The sailors steal the better stories.", null, { eveningPoint: harborPoint("tavern", [2, 4]) }),
-      this.makeVillageNpc("harbor-fisher", "dialogue", "Neris", "Fisher", harborPoint("docks", [-6, -1]), harborHome(1, [-6, 6]), { cloak: 0x3f8fb4, hood: 0x315d69, staff: 0x8a633d, trim: 0xdaf0e6 }, () => "The tide has been wrong since the old beacon woke.", null, { eveningPoint: harborSquare }),
-      this.makeVillageNpc("harbor-bowyer", "shop", "Orris", "Coastal Bowyer", harborPoint("bowyer", [5, -1]), harborHome(2, [8, 1]), { cloak: 0x52613d, hood: 0x2f3c3f, staff: 0xb47c42, trim: 0x82c8ff, feather: 0xdaf0e6 }, () => "Salt warps poor wood. Good bows learn the sea breeze.", "bowShop", { eveningPoint: harborSquare }),
-      this.makeVillageNpc("harbor-merchant", "shop", "Mira", "Harbor Trader", harborPoint("market", [0, 2]), harborHome(1, [-6, 6]), { cloak: 0x6b4a74, hood: 0x2f3c3f, staff: 0xa87543, trim: 0xe6b75d }, () => "I sell rope, oil, and advice. Only the rope is guaranteed.", "equipmentShop", { eveningPoint: harborSquare }),
-      this.makeVillageNpc("harbor-keeper", "dialogue", "Iven", "Lighthouse Keeper", harborPoint("lighthouseKeeper", [7, 4]), harborHome(2, [8, 1]), { cloak: 0xe9dfc3, hood: 0xa94e3f, staff: 0xd9b978, trim: 0xffd166 }, () => this.getCivLine("At night, the beacon throws shadows that do not match the rocks.", "Master Archer, if you see a light blink twice at sea, tell me first."), null, { eveningPoint: harborSquare }),
-      this.makeVillageNpc("harbor-netmaker", "dialogue", "Talla", "Netmaker", harborPoint("warehouse", [-3, 3]), harborHome(1, [-6, 6]), { cloak: 0x5f7a41, hood: 0x31483c, staff: 0x8f6035, trim: 0xd7bd83 }, () => "Knots remember tension. People do too.", null, { eveningPoint: harborSquare }),
-      this.makeVillageNpc("harbor-sailor", "dialogue", "Brant", "Sailor", harborPoint("docks", [-6, -1]), harborHome(0, [7, 7]), { cloak: 0x4d5966, hood: 0x2d3644, staff: 0x9a6d3d, trim: 0x82c8ff }, () => "Records at King's Sea Gate were burned, not lost. I know ash when I smell it.", null, { eveningPoint: harborPoint("tavern", [2, 4]) }),
-      this.makeVillageNpc("harbor-child", "dialogue", "Pip", "Dock Runner", harborPoint("market", [0, 2]), harborHome(2, [8, 1]), { cloak: 0xf0c6a0, hood: 0x315d69, trim: 0xffd166 }, () => "I can beat gulls in a footrace. Mostly.", null, { eveningPoint: harborSquare }),
-      this.makeVillageNpc("harbor-guard", "dialogue", "Kest", "Harbor Guard", harborPoint("warehouse", [-3, 3]), harborHome(0, [7, 7]), { cloak: 0x3f4f42, hood: 0x252f2a, trim: 0xbfd27a, badge: true }, () => "Wrecker's Point looks empty until the fog folds wrong.", null, { eveningPoint: harborSquare }),
-      this.makeVillageNpc("harbor-healer", "dialogue", "Anwen", "Tide Healer", harborPoint("tavern", [2, 4]), harborHome(1, [-6, 6]), { cloak: 0x466b55, hood: 0x263f35, staff: 0x94704d, trim: 0x8ff0b1 }, () => "Sea mist is medicine if you breathe it slowly.", null, { eveningPoint: harborSquare }),
-      this.makeVillageNpc("harbor-warehouse", "dialogue", "Garrick", "Warehouse Clerk", harborPoint("warehouse", [-3, 3]), harborHome(2, [8, 1]), { cloak: 0x775536, hood: 0x3d5542, staff: 0xb47c42, trim: 0xd0a15d }, () => "Every missing crate has a story. Most are embarrassing.", null, { eveningPoint: harborSquare }),
-    ];
-
     const camp = this.world.expeditionCampServices ?? {};
     const campOrigin = this.world.forgottenCamp ?? { x: 112, z: -166 };
     const campPoint = (name, fallback) => camp[name] ?? new THREE.Vector3(campOrigin.x + fallback[0], 0, campOrigin.z + fallback[1]);
@@ -458,13 +432,13 @@ export class EconomyGuildSystem {
     const travelers = [
       this.makeTravelerNpc("road-trader-essa", "Essa", "Traveling Merchant", [point("market", [5, 6]), frontierPoint("market", [1, 4]), campPoint("fire", [0, 0]), frontierHome(1, [-9, 7])], { cloak: 0x6b4a74, hood: 0x2f3c3f, staff: 0xa87543, trim: 0xe6b75d }, () => "My pack has more mud than profit today."),
       this.makeTravelerNpc("road-hunter-varek", "Varek", "Road Hunter", [frontierPoint("watchtower", [1, -6]), campPoint("scoutPost", [4, -2]), point("questBoard", [-1, 6]), frontierHome(2, [9, 1])], { cloak: 0x475f32, hood: 0x293d2d, staff: 0x6f4a2a, trim: 0xd0a15d }, () => "Creatures avoid busy roads until they do not."),
-      this.makeTravelerNpc("road-explorer-nyx", "Nyx", "Wandering Explorer", [harborPoint("docks", [-6, -1]), point("inn", [-8, 6]), frontierPoint("mapStation", [0, -2]), harborHome(1, [-6, 6])], { cloak: 0x52613d, hood: 0x475f52, staff: 0x94704d, trim: 0x82c8ff }, () => "The best clues are the ones locals stopped noticing."),
-      this.makeTravelerNpc("road-pilgrim-sorin", "Sorin", "Pilgrim Archer", [campPoint("fire", [0, 0]), frontierPoint("square", [0, 0]), harborPoint("tavern", [2, 4]), point("inn", [-8, 6])], { cloak: 0xe8d3a0, hood: 0x5a3f2d, staff: 0xa87543, trim: 0xffd166 }, () => this.getCivLine("Every shrine changes the silence around it.", "Master Archer, your trial songs already reached the road.")),
-      this.makeTravelerNpc("road-courier-til", "Til", "Guild Courier", [point("guildHall", [0, -2]), frontierPoint("mapStation", [0, -2]), harborPoint("warehouse", [-3, 3]), point("guildHall", [0, -2])], { cloak: 0x355f42, hood: 0x223f33, staff: 0x9b6838, trim: 0xf0c66a, badge: true }, () => "Guild seals open doors. Good manners keep them open."),
-      this.makeTravelerNpc("road-minstrel-ava", "Ava", "Traveling Minstrel", [harborPoint("tavern", [2, 4]), frontierPoint("inn", [-6, 4]), point("inn", [-8, 6]), harborPoint("tavern", [2, 4])], { cloak: 0xb8553f, hood: 0x6b4a74, staff: 0xa87543, trim: 0xffc579 }, () => "Every town wants a song where it survives the storm."),
+      this.makeTravelerNpc("road-explorer-nyx", "Nyx", "Wandering Explorer", [campPoint("scoutPost", [4, -2]), point("inn", [-8, 6]), frontierPoint("mapStation", [0, -2]), frontierHome(1, [-9, 7])], { cloak: 0x52613d, hood: 0x475f52, staff: 0x94704d, trim: 0x82c8ff }, () => "The best clues are the ones locals stopped noticing."),
+      this.makeTravelerNpc("road-pilgrim-sorin", "Sorin", "Pilgrim Archer", [campPoint("fire", [0, 0]), frontierPoint("square", [0, 0]), point("guildHall", [0, -2]), point("inn", [-8, 6])], { cloak: 0xe8d3a0, hood: 0x5a3f2d, staff: 0xa87543, trim: 0xffd166 }, () => this.getCivLine("Every shrine changes the silence around it.", "Master Archer, your trial songs already reached the road.")),
+      this.makeTravelerNpc("road-courier-til", "Til", "Guild Courier", [point("guildHall", [0, -2]), frontierPoint("mapStation", [0, -2]), campPoint("supply", [2, 1]), point("guildHall", [0, -2])], { cloak: 0x355f42, hood: 0x223f33, staff: 0x9b6838, trim: 0xf0c66a, badge: true }, () => "Guild seals open doors. Good manners keep them open."),
+      this.makeTravelerNpc("road-minstrel-ava", "Ava", "Traveling Minstrel", [point("market", [5, 6]), frontierPoint("inn", [-6, 4]), point("inn", [-8, 6]), campPoint("fire", [0, 0])], { cloak: 0xb8553f, hood: 0x6b4a74, staff: 0xa87543, trim: 0xffc579 }, () => "Every town wants a song where it survives the storm."),
     ];
 
-    return [...guildNpcs, ...frontierNpcs, ...harborNpcs, ...campNpcs, ...travelers];
+    return [...guildNpcs, ...frontierNpcs, ...campNpcs, ...travelers];
   }
 
   makeVillageNpc(id, kind, name, role, workPoint, homePoint, appearance, line, shopId = null, options = {}) {
@@ -546,7 +520,6 @@ export class EconomyGuildSystem {
 
   inferSettlement(id) {
     if (id.startsWith("frontier-")) return "frontier";
-    if (id.startsWith("harbor-")) return "harbor";
     if (id.startsWith("camp-")) return "camp";
     if (id.startsWith("road-")) return "road";
     return "guild";
@@ -735,7 +708,6 @@ export class EconomyGuildSystem {
   getFriendlyAside(entry) {
     const settlement = entry.settlement ?? "guild";
     if (settlement === "frontier") return "Stay for stew if the wind turns mean.";
-    if (settlement === "harbor") return "If gulls start screaming, check the sky.";
     if (settlement === "camp") return "The fire is yours if you need it.";
     if (settlement === "road") return "May your boots find the better path.";
     return "The village is glad to see you.";
@@ -837,7 +809,6 @@ export class EconomyGuildSystem {
     const settlementBias = {
       guild: 0,
       frontier: 2,
-      harbor: 7,
       camp: 4,
       road: 6,
     };
@@ -884,7 +855,6 @@ export class EconomyGuildSystem {
   getConversationTags(entry) {
     const tags = new Set([entry.personality, entry.settlement, this.getRoleKey(entry)]);
     const role = entry.npc?.role?.toLowerCase?.() ?? "";
-    if (/harbor|dock|fisher|sailor|tide|lighthouse/.test(role)) tags.add("harbor");
     if (/frontier|trail|road|watch/.test(role)) tags.add("frontier");
     if (/camp|expedition|cartographer/.test(role)) tags.add("camp");
     if (/cartographer/.test(role)) tags.add("cartographer");

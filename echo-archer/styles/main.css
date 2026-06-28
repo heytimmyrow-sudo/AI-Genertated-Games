@@ -2053,7 +2053,7 @@ body.map-open #audio-controls {
 
 .illustration-town .map-illustration-mark::before,
 .illustration-ruin .map-illustration-mark::before,
-.illustration-harbor .map-illustration-mark::before,
+.illustration-coast .map-illustration-mark::before,
 .illustration-observatory .map-illustration-mark::before,
 .illustration-shrine .map-illustration-mark::before,
 .illustration-tower .map-illustration-mark::before,
@@ -2073,7 +2073,7 @@ body.map-open #audio-controls {
   clip-path: polygon(14% 75%, 14% 28%, 27% 28%, 27% 75%, 42% 75%, 42% 38%, 55% 38%, 55% 75%, 72% 75%, 72% 24%, 85% 24%, 85% 75%);
 }
 
-.illustration-harbor .map-illustration-mark::before {
+.illustration-coast .map-illustration-mark::before {
   clip-path: polygon(10% 68%, 28% 52%, 42% 30%, 42% 60%, 82% 60%, 70% 78%, 26% 78%);
 }
 
