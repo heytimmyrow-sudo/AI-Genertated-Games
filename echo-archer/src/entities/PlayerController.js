@@ -68,6 +68,8 @@ export class PlayerController {
     const bootMaterial = new THREE.MeshStandardMaterial({ color: 0x3d2a1f, roughness: 0.86 });
     const gloveMaterial = new THREE.MeshStandardMaterial({ color: 0x4b3425, roughness: 0.82 });
     const shadowFaceMaterial = new THREE.MeshStandardMaterial({ color: 0x11120e, roughness: 0.94 });
+    const bowMaterial = new THREE.MeshStandardMaterial({ color: 0xa86836, roughness: 0.62, metalness: 0.04 });
+    const bowStringMaterial = new THREE.MeshStandardMaterial({ color: 0xf5e9c6, roughness: 0.7, emissive: 0x1e1304, emissiveIntensity: 0.05 });
 
     const torso = new THREE.Mesh(new THREE.CapsuleGeometry(0.3, 0.86, 7, 14), cloakMaterial);
     torso.position.y = 0.96;
@@ -87,6 +89,19 @@ export class PlayerController {
     chestArrow.castShadow = true;
     body.add(chestArrow);
 
+    const chestStrap = new THREE.Mesh(new THREE.BoxGeometry(0.075, 0.92, 0.042), leatherMaterial);
+    chestStrap.position.set(-0.13, 1.0, 0.285);
+    chestStrap.rotation.set(-0.04, 0, -0.48);
+    chestStrap.castShadow = true;
+    body.add(chestStrap);
+
+    const waistWrap = new THREE.Mesh(new THREE.TorusGeometry(0.31, 0.018, 8, 30), clothMaterial);
+    waistWrap.position.set(0, 0.9, 0.012);
+    waistWrap.rotation.x = Math.PI / 2;
+    waistWrap.scale.set(1.06, 0.72, 1);
+    waistWrap.castShadow = true;
+    body.add(waistWrap);
+
     const layeredTunic = new THREE.Mesh(new THREE.ConeGeometry(0.36, 0.52, 7), clothMaterial);
     layeredTunic.position.set(0, 0.78, 0.02);
     layeredTunic.scale.set(0.78, 0.76, 0.58);
@@ -98,6 +113,18 @@ export class PlayerController {
     cloakSkirt.scale.set(0.82, 1, 0.66);
     cloakSkirt.castShadow = true;
     body.add(cloakSkirt);
+
+    const frontTabard = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.44, 0.035), clothMaterial);
+    frontTabard.position.set(0, 0.64, 0.25);
+    frontTabard.rotation.x = -0.06;
+    frontTabard.castShadow = true;
+    body.add(frontTabard);
+
+    const tabardTrim = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.035, 0.042), trimMaterial);
+    tabardTrim.position.set(0, 0.42, 0.272);
+    tabardTrim.rotation.x = -0.06;
+    tabardTrim.castShadow = true;
+    body.add(tabardTrim);
 
     const shoulderCape = new THREE.Mesh(new THREE.ConeGeometry(0.48, 0.38, 7), cloakMaterial);
     shoulderCape.position.y = 1.16;
@@ -113,6 +140,12 @@ export class PlayerController {
     backCape.castShadow = true;
     body.add(backCape);
 
+    const capeHem = new THREE.Mesh(new THREE.BoxGeometry(0.48, 0.045, 0.04), trimMaterial);
+    capeHem.position.set(0, 0.44, -0.42);
+    capeHem.rotation.x = -0.24;
+    capeHem.castShadow = true;
+    body.add(capeHem);
+
     const hood = new THREE.Mesh(new THREE.SphereGeometry(0.33, 20, 14), cloakMaterial);
     hood.position.y = 1.54;
     hood.scale.set(1, 0.88, 0.88);
@@ -125,6 +158,13 @@ export class PlayerController {
     hoodPeak.scale.set(0.9, 0.72, 1);
     hoodPeak.castShadow = true;
     body.add(hoodPeak);
+
+    const hoodTrim = new THREE.Mesh(new THREE.TorusGeometry(0.245, 0.012, 8, 28), trimMaterial);
+    hoodTrim.position.set(0, 1.5, 0.185);
+    hoodTrim.rotation.x = Math.PI / 2;
+    hoodTrim.scale.set(1.04, 0.52, 1);
+    hoodTrim.castShadow = true;
+    body.add(hoodTrim);
 
     const faceShadow = new THREE.Mesh(new THREE.SphereGeometry(0.2, 14, 8), shadowFaceMaterial);
     faceShadow.position.set(0, 1.49, 0.25);
@@ -196,6 +236,7 @@ export class PlayerController {
       bracer.rotation.z = side * 0.18;
       bracer.castShadow = true;
       body.add(bracer);
+      limbs.push({ mesh: bracer, side, baseZ: side * 0.18, type: "bracer" });
 
       const hand = new THREE.Mesh(new THREE.SphereGeometry(0.062, 10, 7), gloveMaterial);
       hand.position.set(side * 0.48, 0.58, 0.06);
@@ -205,12 +246,19 @@ export class PlayerController {
       limbs.push({ mesh: hand, side, baseZ: side * 0.18, type: "hand" });
 
       const upperLeg = new THREE.Mesh(new THREE.CapsuleGeometry(0.07, 0.38, 6, 10), clothMaterial);
-      upperLeg.position.set(side * 0.145, 0.46, 0.035);
-      upperLeg.rotation.z = side * -0.045;
-      upperLeg.scale.set(0.9, 1.04, 0.82);
+      upperLeg.position.set(side * 0.17, 0.47, 0.035);
+      upperLeg.rotation.z = side * -0.075;
+      upperLeg.scale.set(0.98, 1.14, 0.86);
       upperLeg.castShadow = true;
       body.add(upperLeg);
       limbs.push({ mesh: upperLeg, side, baseZ: side * -0.035, type: "upperLeg" });
+
+      const thighWrap = new THREE.Mesh(new THREE.CylinderGeometry(0.078, 0.073, 0.12, 8), leatherMaterial);
+      thighWrap.position.set(side * 0.17, 0.5, 0.042);
+      thighWrap.rotation.z = side * -0.075;
+      thighWrap.castShadow = true;
+      body.add(thighWrap);
+      limbs.push({ mesh: thighWrap, side, baseZ: side * -0.035, type: "thighWrap" });
 
       const kneePad = new THREE.Mesh(new THREE.SphereGeometry(0.075, 9, 6), trimMaterial);
       kneePad.position.set(side * 0.16, 0.34, 0.115);
@@ -220,27 +268,34 @@ export class PlayerController {
       limbs.push({ mesh: kneePad, side, baseZ: side * -0.04, type: "knee" });
 
       const lowerLeg = new THREE.Mesh(new THREE.CapsuleGeometry(0.06, 0.38, 6, 10), bootMaterial);
-      lowerLeg.position.set(side * 0.17, 0.2, 0.055);
-      lowerLeg.rotation.z = side * -0.06;
-      lowerLeg.scale.set(0.94, 1.04, 0.8);
+      lowerLeg.position.set(side * 0.19, 0.2, 0.055);
+      lowerLeg.rotation.z = side * -0.085;
+      lowerLeg.scale.set(1.03, 1.08, 0.86);
       lowerLeg.castShadow = true;
       body.add(lowerLeg);
       limbs.push({ mesh: lowerLeg, side, baseZ: side * -0.06, type: "lowerLeg" });
 
       const bootCuff = new THREE.Mesh(new THREE.CylinderGeometry(0.078, 0.068, 0.1, 8), trimMaterial);
-      bootCuff.position.set(side * 0.17, 0.13, 0.055);
-      bootCuff.rotation.z = side * -0.06;
+      bootCuff.position.set(side * 0.19, 0.13, 0.055);
+      bootCuff.rotation.z = side * -0.085;
       bootCuff.castShadow = true;
       body.add(bootCuff);
       limbs.push({ mesh: bootCuff, side, baseZ: side * -0.06, type: "bootCuff" });
 
       const foot = new THREE.Mesh(new THREE.CapsuleGeometry(0.055, 0.22, 6, 9), bootMaterial);
-      foot.position.set(side * 0.17, 0.024, 0.18);
+      foot.position.set(side * 0.19, 0.02, 0.2);
       foot.rotation.set(Math.PI / 2, 0, side * 0.035);
-      foot.scale.set(0.98, 1.28, 0.76);
+      foot.scale.set(1.08, 1.52, 0.82);
       foot.castShadow = true;
       body.add(foot);
       limbs.push({ mesh: foot, side, baseZ: side * 0.035, type: "foot" });
+
+      const bootToe = new THREE.Mesh(new THREE.SphereGeometry(0.058, 9, 6), bootMaterial);
+      bootToe.position.set(side * 0.19, 0.005, 0.33);
+      bootToe.scale.set(0.86, 0.48, 1.18);
+      bootToe.castShadow = true;
+      body.add(bootToe);
+      limbs.push({ mesh: bootToe, side, baseZ: side * 0.035, type: "bootToe" });
     }
 
     const quiver = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.14, 0.62, 8), leatherMaterial);
@@ -256,13 +311,55 @@ export class PlayerController {
       body.add(arrow);
     }
 
+    const bowGroup = new THREE.Group();
+    bowGroup.position.set(0.42, 0.86, 0.23);
+    bowGroup.rotation.set(0.08, -0.18, -0.16);
+    body.add(bowGroup);
+
+    const bowUpper = new THREE.Mesh(new THREE.CapsuleGeometry(0.025, 0.74, 6, 10), bowMaterial);
+    bowUpper.position.y = 0.28;
+    bowUpper.rotation.z = -0.18;
+    bowUpper.scale.set(0.72, 1, 0.72);
+    bowUpper.castShadow = true;
+    bowGroup.add(bowUpper);
+
+    const bowLower = bowUpper.clone();
+    bowLower.position.y = -0.28;
+    bowLower.rotation.z = 0.18;
+    bowGroup.add(bowLower);
+
+    [-1, 1].forEach((side) => {
+      const bowTip = new THREE.Mesh(new THREE.ConeGeometry(0.045, 0.16, 5), trimMaterial);
+      bowTip.position.set(side * 0.08, side * 0.72, 0);
+      bowTip.rotation.z = side > 0 ? -0.7 : Math.PI + 0.7;
+      bowTip.castShadow = true;
+      bowGroup.add(bowTip);
+    });
+
+    const bowGrip = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.045, 0.18, 8), leatherMaterial);
+    bowGrip.rotation.x = Math.PI / 2;
+    bowGrip.castShadow = true;
+    bowGroup.add(bowGrip);
+
+    const bowString = new THREE.Mesh(new THREE.CylinderGeometry(0.006, 0.006, 1.38, 5), bowStringMaterial);
+    bowString.position.set(0.12, 0, -0.01);
+    bowString.rotation.z = 0.01;
+    bowString.castShadow = true;
+    bowGroup.add(bowString);
+
+    const guildCharm = new THREE.Mesh(new THREE.ConeGeometry(0.035, 0.12, 4), trimMaterial);
+    guildCharm.position.set(0.03, -0.1, 0.035);
+    guildCharm.rotation.set(Math.PI / 2, 0, Math.PI / 4);
+    guildCharm.castShadow = true;
+    bowGroup.add(guildCharm);
+
     const stanceMarker = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.24, 4), trimMaterial);
     stanceMarker.position.set(0.18, 1.38, 0.14);
     stanceMarker.rotation.set(Math.PI / 2, 0, Math.PI / 4);
     stanceMarker.castShadow = true;
     body.add(stanceMarker);
 
-    body.userData = { limbs, torso, layeredTunic, shoulderCape, backCape, scarf };
+    body.userData = { limbs, torso, layeredTunic, shoulderCape, backCape, scarf, frontTabard, capeHem, bowGroup, bowString };
     return body;
   }
 
@@ -524,7 +621,7 @@ export class PlayerController {
     this.body.position.y = THREE.MathUtils.lerp(this.body.position.y, this.visualGroundOffset + bob + idleBreath, 1 - Math.exp(-14 * deltaSeconds));
     this.body.rotation.z = THREE.MathUtils.lerp(this.body.rotation.z, sway, 1 - Math.exp(-9 * deltaSeconds));
 
-    const { limbs = [], torso, layeredTunic, shoulderCape, backCape, scarf } = this.body.userData;
+    const { limbs = [], torso, layeredTunic, shoulderCape, backCape, scarf, frontTabard, capeHem, bowGroup, bowString } = this.body.userData;
     const combatState = window.echoArcherCombatState ?? {};
     const drawAmount = combatState.drawAmount ?? 0;
     const releaseKick = combatState.releaseKick ?? 0;
@@ -544,12 +641,12 @@ export class PlayerController {
         mesh.rotation.z = THREE.MathUtils.lerp(mesh.rotation.z, baseZ + stride * 0.05, 1 - Math.exp(-14 * deltaSeconds));
         return;
       }
-      if (type === "knee" || type === "bootCuff") {
+      if (type === "knee" || type === "bootCuff" || type === "thighWrap") {
         mesh.rotation.x = THREE.MathUtils.lerp(mesh.rotation.x, stride * 0.08, 1 - Math.exp(-14 * deltaSeconds));
         mesh.rotation.z = THREE.MathUtils.lerp(mesh.rotation.z, baseZ + stride * 0.04, 1 - Math.exp(-14 * deltaSeconds));
         return;
       }
-      if (type === "foot") {
+      if (type === "foot" || type === "bootToe") {
         const footPlant = moving ? Math.max(0, stride) * 0.16 - Math.max(0, -stride) * 0.08 : 0;
         mesh.rotation.x = THREE.MathUtils.lerp(mesh.rotation.x, Math.PI / 2 + footPlant, 1 - Math.exp(-16 * deltaSeconds));
         mesh.rotation.z = THREE.MathUtils.lerp(mesh.rotation.z, baseZ + stride * 0.025, 1 - Math.exp(-16 * deltaSeconds));
@@ -561,7 +658,7 @@ export class PlayerController {
       const target = baseZ + stride * 0.16 + (aiming ? -side * (0.12 + drawPose * 0.12) : 0) + gestureLift;
       mesh.rotation.z = THREE.MathUtils.lerp(mesh.rotation.z, target, 1 - Math.exp(-12 * deltaSeconds));
       mesh.rotation.x = THREE.MathUtils.lerp(mesh.rotation.x, aiming ? -0.16 - drawPose * 0.12 + releaseKick * 0.08 : gesture > 0 && side > 0 ? -0.18 * Math.sin(gesture * Math.PI) : 0, 1 - Math.exp(-10 * deltaSeconds));
-      if (type === "hand") {
+      if (type === "hand" || type === "bracer") {
         mesh.position.z = THREE.MathUtils.lerp(mesh.position.z, aiming ? 0.12 + drawPose * 0.04 : gesture > 0 && side > 0 ? 0.18 : 0.06, 1 - Math.exp(-11 * deltaSeconds));
       }
     });
@@ -573,6 +670,10 @@ export class PlayerController {
     if (layeredTunic) {
       layeredTunic.rotation.z = Math.sin(gait * 0.5) * 0.018 * this.visualMoveAmount + sway * 0.35;
     }
+    if (frontTabard) {
+      frontTabard.rotation.x = THREE.MathUtils.lerp(frontTabard.rotation.x, -0.06 + this.visualMoveAmount * 0.035 + landingRatio * 0.05, 1 - Math.exp(-8 * deltaSeconds));
+      frontTabard.rotation.z = Math.sin(gait * 0.5) * 0.016 * this.visualMoveAmount + sway * 0.25;
+    }
     if (scarf) {
       scarf.rotation.z = Math.sin(this.visualTime * 2.1) * 0.018 + this.visualMoveAmount * 0.035;
     }
@@ -581,6 +682,23 @@ export class PlayerController {
     }
     if (backCape) {
       backCape.rotation.x = -0.18 - Math.min(horizontalSpeed / this.getMoveSpeed(true), 1) * 0.18 + Math.sin(this.visualTime * 1.4) * 0.018;
+    }
+    if (capeHem) {
+      capeHem.rotation.x = -0.24 - Math.min(horizontalSpeed / this.getMoveSpeed(true), 1) * 0.16 + Math.sin(this.visualTime * 1.4 + 0.3) * 0.02;
+      capeHem.rotation.z = sway * 0.35;
+    }
+    if (bowGroup) {
+      bowGroup.position.x = THREE.MathUtils.lerp(bowGroup.position.x, aiming ? 0.52 : 0.42, 1 - Math.exp(-10 * deltaSeconds));
+      bowGroup.position.y = THREE.MathUtils.lerp(bowGroup.position.y, aiming ? 0.94 : 0.86 + Math.sin(this.visualTime * 1.2) * 0.006, 1 - Math.exp(-9 * deltaSeconds));
+      bowGroup.position.z = THREE.MathUtils.lerp(bowGroup.position.z, aiming ? 0.31 + drawAmount * 0.035 : 0.23, 1 - Math.exp(-10 * deltaSeconds));
+      bowGroup.rotation.x = THREE.MathUtils.lerp(bowGroup.rotation.x, aiming ? -0.14 - drawAmount * 0.08 + releaseKick * 0.05 : 0.08, 1 - Math.exp(-10 * deltaSeconds));
+      bowGroup.rotation.y = THREE.MathUtils.lerp(bowGroup.rotation.y, aiming ? -0.34 : -0.18, 1 - Math.exp(-10 * deltaSeconds));
+      bowGroup.rotation.z = THREE.MathUtils.lerp(bowGroup.rotation.z, aiming ? -0.04 - drawAmount * 0.09 : -0.16 + Math.sin(this.visualTime * 1.6) * 0.008, 1 - Math.exp(-10 * deltaSeconds));
+      bowGroup.scale.setScalar(THREE.MathUtils.lerp(bowGroup.scale.x, 1 + drawAmount * 0.035 + releaseKick * 0.04, 1 - Math.exp(-12 * deltaSeconds)));
+    }
+    if (bowString) {
+      bowString.position.x = THREE.MathUtils.lerp(bowString.position.x, 0.12 - drawAmount * 0.08 + releaseKick * 0.06, 1 - Math.exp(-14 * deltaSeconds));
+      bowString.scale.y = THREE.MathUtils.lerp(bowString.scale.y, 1 + drawAmount * 0.05, 1 - Math.exp(-14 * deltaSeconds));
     }
   }
 
