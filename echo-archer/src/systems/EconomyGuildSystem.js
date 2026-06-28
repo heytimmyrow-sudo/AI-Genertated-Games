@@ -105,10 +105,50 @@ const PERSONALITY_PROFILES = {
     lines: ["I buy low, sell fair, and embellish only when bored.", "A safe road is worth more than a fat purse. Usually.", "If you find ancient treasure, remember your charming local merchant."],
     respected: ["For you, I only exaggerate by half.", "Your name moves prices before your coin does."],
   },
+  quartermaster: {
+    style: "organized, dry-witted, and impossible to surprise",
+    lines: ["If it is not labeled, it is already lost.", "Supplies win journeys long before songs notice them.", "A spare buckle is not exciting until it saves your day."],
+    respected: ["I started a Master Archer shelf. It is mostly spare string and things you forgot.", "You make my ledgers look heroic, which is frankly inconvenient."],
+  },
   guard: {
     style: "watchful, protective, and dry",
     lines: ["Quiet roads make me suspicious. Loud roads make me tired.", "A watchpost is just patience with a roof.", "If trouble comes, I prefer seeing it before it sees me."],
     respected: ["If you say a road is safe, people sleep easier.", "I still keep watch. Your reputation is not a wall."],
+  },
+  hunter: {
+    style: "quiet, practical, and forest-wise",
+    lines: ["Tracks tell the truth. Hunters decide whether to believe it.", "Never step over a snapped twig without asking who snapped it.", "A calm forest is either safe or holding its breath."],
+    respected: ["You move through danger without making the woods flinch.", "The old trails seem less lonely after your hunts."],
+  },
+  farmer: {
+    style: "steady, generous, and rooted in village life",
+    lines: ["Good soil remembers careful hands.", "A fence is just a promise with posts.", "Adventurers chase legends. I chase rabbits out of carrots."],
+    respected: ["When the roads are safer, gardens grow wider. That is your doing too.", "You protect harvests you may never notice. We notice."],
+  },
+  stable: {
+    style: "patient, earthy, and animal-smart",
+    lines: ["A nervous mount hears your heartbeat before your words.", "Brush first, saddle second, pride last.", "Animals trust quiet hands. People should try it."],
+    respected: ["Even the skittish ones settle when you pass. That says something.", "If you ride out, I know the road will bring you back."],
+  },
+  recruit: {
+    style: "eager, earnest, and trying very hard",
+    lines: ["I only missed twice today. Well, three times if barrels count.", "Do Master Archers still get blisters?", "I copied your stance and nearly fell over. Progress."],
+    respected: ["If I become half the archer you are, I will be insufferable.", "The recruits argue over who saw your best shot first."],
+  },
+  healer: {
+    style: "gentle, attentive, and quietly brave",
+    lines: ["Breathe before the pain tells the whole story.", "Small remedies matter. So does sitting down when told.", "Healing is mostly patience with clean hands."],
+    respected: ["You come back with scars, but also with people still alive.", "The village feels less afraid when you return upright."],
+  },
+  artisan: {
+    style: "craft-proud, observant, and fond of details",
+    lines: ["Good work looks simple after someone sweated through the hard parts.", "A crooked beam has a better story than a lazy straight one.", "Tools have tempers. Treat them like neighbors."],
+    respected: ["I build things stronger when I know you are out there using them.", "Your stories are making everyone ask for better door hinges."],
+  },
+  child: {
+    style: "bright, quick, and cheerfully nosy",
+    lines: ["I saw a gull steal an entire roll. I respect it.", "If I had a bow, I would only shoot targets. Mostly.", "Do heroes ever get told to wash up before dinner?"],
+    respected: ["I told everyone I know you. I know you now, right?", "When I grow up, I am going to be brave and probably taller."],
   },
   traveler: {
     style: "wandering, reflective, and rumor-rich",
@@ -177,6 +217,130 @@ const BOSS_MEMORY_LINES = {
   "The Tidebound Warden": "The Tidebound Warden's fall made the harbor bells sound braver.",
 };
 
+const ROLE_DIALOGUE_POOLS = {
+  bowyer: [
+    "For a cleaner release, think less about letting go and more about stopping the pull.",
+    "Long shots are not about strength. They are about refusing to rush the quiet part.",
+    "If your arrows drift, check the wind before blaming your hands.",
+  ],
+  blacksmith: [
+    "Bring shields in before they split. I can fix worn. I cannot fix stubborn.",
+    "A field kit should sound boring when you shake it. Rattles mean trouble.",
+    "Heat, hammer, patience. Most problems want two of those.",
+  ],
+  quartermaster: [
+    "Travel light enough to move and heavy enough to survive your optimism.",
+    "I keep extra rations near the quest board. Recruits pretend they do not know.",
+    "The best supply is the one you remember before the storm starts.",
+  ],
+  innkeeper: [
+    "Evening brings better rumors. Morning brings more honest faces.",
+    "If someone lowers their voice near the hearth, they either owe money or know a secret.",
+    "A good inn gives travelers enough warmth to admit they were scared.",
+  ],
+  scout: [
+    "High ground solves half a map and reveals the other half.",
+    "When paths fork near old stone, choose the one with fewer bird calls.",
+    "Fresh tracks shine a little after rain. Old lies do not.",
+  ],
+  guard: [
+    "I watch hands first. Trouble usually reaches for something.",
+    "Villages sleep because someone stays bored at the gate.",
+    "If monsters turn back before the lanterns, the boundary is working.",
+  ],
+  hunter: [
+    "Wolves test distance. Crawlers test patience.",
+    "If the brush goes quiet all at once, stop walking.",
+    "A clean hunt ends before panic begins.",
+  ],
+  farmer: [
+    "Road dust on boots means trade. Mud on boots means rain. Both matter.",
+    "A village that gardens together argues less about dinner.",
+    "If you see rabbits near the west beds, tell them Elsie is watching.",
+  ],
+  stable: [
+    "Mounts forgive bad weather faster than bad riders.",
+    "Keep your knees soft. Animals notice stiff fear.",
+    "A calm road starts in the stable.",
+  ],
+  merchant: [
+    "I have festival cloth, sturdy rope, and opinions priced to move.",
+    "If a customer says 'just looking,' I hear 'slowly surrendering.'",
+    "Ancient relics sell best when they are only a little cursed.",
+  ],
+  traveler: [
+    "The road between settlements has started sounding like a conversation.",
+    "I met a pilgrim who follows weather instead of signs. Oddly successful.",
+    "Never ignore a campsite where the fire ring is swept clean.",
+  ],
+  healer: [
+    "Safe places heal more than wounds. They let the body stop arguing.",
+    "Drink water before courage. It works better.",
+    "Rain makes old injuries honest.",
+  ],
+  artisan: [
+    "A settlement becomes home when people start improving things nobody asked them to.",
+    "I can tell who is new by how they look at unfinished beams.",
+    "Every good market stall needs shade, a sign, and a little bragging.",
+  ],
+  recruit: [
+    "I am trying to breathe after the draw instead of during the panic.",
+    "The targets look closer when you are watching. That feels unfair.",
+    "One day I want my arrows to sound confident.",
+  ],
+};
+
+const PROGRESSION_REACTIONS = {
+  novice: [
+    "The first steps matter. Everyone here remembers taking them.",
+    "The village notices effort before medals.",
+  ],
+  apprentice: [
+    "Apprentice suits you. Still learning, but no longer guessing.",
+    "People are starting to point you toward real trouble. That is trust, mostly.",
+  ],
+  ranger: [
+    "Ranger rank carries weight. Roads listen to that sort of thing.",
+    "You are becoming the archer people hope arrives before trouble does.",
+  ],
+  master: [
+    "Master Archer is not an ending. It is everyone expecting you to keep showing up.",
+    "The title shines, but the work underneath is what people trust.",
+  ],
+};
+
+const WEATHER_DIALOGUE = {
+  rain: [
+    "Rain sends most folk indoors and all gossip closer to the fire.",
+    "Wet roads make quiet footsteps. Useful to remember.",
+  ],
+  snow: [
+    "Snow softens the world, then tests anyone foolish enough to believe it.",
+    "Tracks tell better stories in snow, if the wind lets them finish.",
+  ],
+  ash: [
+    "Ashfall makes everyone speak softer, like the sky is listening.",
+    "Cover your water when the air tastes like old fire.",
+  ],
+  fog: [
+    "Fog makes landmarks feel like rumors until you are nearly on top of them.",
+    "On foggy mornings, follow sound before sight.",
+  ],
+};
+
+const NPC_CONVERSATION_SNIPPETS = [
+  ["guard", "merchant", "Keep the stalls tucked behind the lantern line tonight."],
+  ["bowyer", "recruit", "Draw smooth first. Speed can wait its turn."],
+  ["blacksmith", "quartermaster", "Tell Bram the left hinge squeaks because Bram bought cheap pins."],
+  ["innkeeper", "traveler", "If you bring a story, I will find you a seat."],
+  ["scout", "hunter", "Tracks by the north road split around something heavy."],
+  ["farmer", "child", "No racing through the bean rows unless you plan to weed them."],
+  ["stable", "traveler", "Brush your mount before you brag about the miles."],
+  ["harbor", "guard", "Tide is wrong again. Watch the lower ropes."],
+  ["frontier", "scout", "If the grass bends twice, something circled back."],
+  ["camp", "cartographer", "Mark that ridge in pencil until it stops moving in the mist."],
+];
+
 export class EconomyGuildSystem {
   constructor(scene, world, player, ui, systems) {
     this.scene = scene;
@@ -201,6 +365,7 @@ export class EconomyGuildSystem {
     this.challengeMemories = new Set();
     this.npcScheduleTimer = 0;
     this.npcAmbientLifeTimer = 0;
+    this.npcConversationToastTimer = 0;
     this.load();
     this.npcs = this.createGuildNpcs();
     this.bindShopUi();
@@ -361,12 +526,20 @@ export class EconomyGuildSystem {
   inferPersonality(id, role = "") {
     const value = `${id} ${role}`.toLowerCase();
     if (value.includes("guild-master") || value.includes("warden")) return "guildMaster";
+    if (value.includes("quartermaster")) return "quartermaster";
     if (value.includes("bowyer") || value.includes("archer")) return "bowyer";
     if (value.includes("blacksmith") || value.includes("smith")) return "blacksmith";
     if (value.includes("inn") || value.includes("tavern") || value.includes("cook")) return "innkeeper";
     if (value.includes("scout") || value.includes("map") || value.includes("explorer") || value.includes("cartographer")) return "scout";
     if (value.includes("merchant") || value.includes("trader") || value.includes("supplier")) return "merchant";
     if (value.includes("guard") || value.includes("watch")) return "guard";
+    if (value.includes("hunter")) return "hunter";
+    if (value.includes("farmer")) return "farmer";
+    if (value.includes("stable")) return "stable";
+    if (value.includes("recruit")) return "recruit";
+    if (value.includes("healer")) return "healer";
+    if (value.includes("carpenter") || value.includes("netmaker") || value.includes("clerk")) return "artisan";
+    if (value.includes("child") || value.includes("runner")) return "child";
     if (value.includes("traveler") || value.includes("pilgrim") || value.includes("courier") || value.includes("minstrel")) return "traveler";
     return "villager";
   }
@@ -523,11 +696,24 @@ export class EconomyGuildSystem {
     if (memoryLine) {
       return this.decorateDialogue(entry, memoryLine, relationship);
     }
+    const weatherLine = this.getWeatherReactionLine(entry, talkCount);
+    if (weatherLine) {
+      return this.decorateDialogue(entry, weatherLine, relationship);
+    }
+    if (talkCount % 6 === 0) {
+      return this.decorateDialogue(entry, this.getProgressionReactionLine(entry), relationship);
+    }
     if (talkCount % 5 === 0) {
       return this.decorateDialogue(entry, this.getRumorLine(entry), relationship);
     }
+    if (talkCount % 4 === 0) {
+      return this.decorateDialogue(entry, this.getRoleDialogueLine(entry), relationship);
+    }
     if (talkCount % 3 === 0) {
       return this.decorateDialogue(entry, this.getSettlementLine(entry), relationship);
+    }
+    if (talkCount % 2 === 0 && entry.line) {
+      return this.decorateDialogue(entry, entry.line(), relationship);
     }
     const profile = PERSONALITY_PROFILES[entry.personality] ?? PERSONALITY_PROFILES.villager;
     const pool = relationship === "respected" && profile.respected?.length ? profile.respected : profile.lines;
@@ -589,12 +775,62 @@ export class EconomyGuildSystem {
     const personality = entry.personality ?? "villager";
     if (personality === "blacksmith") return "Master Archer, hm. Good. Now your gear has to survive better stories.";
     if (personality === "bowyer") return "A Master Archer makes a bow look calm. That is harder than power.";
+    if (personality === "quartermaster") return "Master Archer. I moved your name from the duty ledger to the history shelf. Do not let it gather dust.";
     if (personality === "innkeeper") return "People ask which chair you used. Fame is very silly, but good for business.";
     if (personality === "scout") return "Master Archer or not, I bet you still check tracks twice. That is why it suits you.";
     if (personality === "merchant") return "Master Archer! I knew you before your name became expensive.";
     if (personality === "guard") return "Respectfully, I still watch the gate. Titles do not stop wolves.";
+    if (personality === "hunter") return "Master Archer. The woods know the difference between noise and skill.";
+    if (personality === "farmer") return "Master Archer or not, you still get mud on your boots like the rest of us.";
+    if (personality === "stable") return "Even the mounts stand taller when your title comes up. Or maybe they want carrots.";
+    if (personality === "recruit") return "Master Archer! I tried bowing and saluting at once. It went poorly.";
+    if (personality === "healer") return "Master Archer, please remember that brave people are still allowed bandages.";
+    if (personality === "artisan") return "A Master Archer deserves straighter shelves. I am working on it.";
+    if (personality === "child") return "Master Archer! I practiced saying it loudly. Everyone heard.";
     if (personality === "traveler") return "I heard your title two roads ago. It arrived before breakfast.";
     return "Master Archer. That sounds grand, but you still feel like one of ours.";
+  }
+
+  getRoleDialogueLine(entry) {
+    const pool = ROLE_DIALOGUE_POOLS[entry.personality] ?? ROLE_DIALOGUE_POOLS[this.getRoleKey(entry)] ?? PERSONALITY_PROFILES.villager.lines;
+    return pool[this.stableIndex(entry.id, this.npcTalkCounts[entry.id] ?? 0, pool.length)];
+  }
+
+  getProgressionReactionLine(entry) {
+    const rank = this.getRank?.().id ?? "novice";
+    const pool = PROGRESSION_REACTIONS[rank] ?? PROGRESSION_REACTIONS.novice;
+    const line = pool[this.stableIndex(entry.id, this.reputation + this.villageReputation, pool.length)];
+    if (entry.kind === "shop" && entry.shopId === "bowShop") {
+      return `${line} I also set aside better bowstrings when your rank permits.`;
+    }
+    if (entry.kind === "blacksmith") {
+      return `${line} Bring your gear by before it starts speaking for itself.`;
+    }
+    if (entry.kind === "inn") {
+      return `${line} Your room stays aired out, just in case.`;
+    }
+    return line;
+  }
+
+  getWeatherReactionLine(entry, talkCount) {
+    if (talkCount % 8 !== 5) {
+      return "";
+    }
+    const weather = this.world.lastWeatherProfile ?? {};
+    const key = (weather.ash ?? 0) > 0.35
+      ? "ash"
+      : (weather.snow ?? 0) > 0.35
+      ? "snow"
+      : (weather.rain ?? 0) > 0.25
+      ? "rain"
+      : (weather.fog ?? 0) > 0.35
+      ? "fog"
+      : "";
+    const pool = WEATHER_DIALOGUE[key];
+    if (!pool) {
+      return "";
+    }
+    return pool[this.stableIndex(entry.id, talkCount, pool.length)];
   }
 
   getRumorLine(entry) {
@@ -612,6 +848,47 @@ export class EconomyGuildSystem {
   getSettlementLine(entry) {
     const pool = SETTLEMENT_TOPICS[entry.settlement] ?? SETTLEMENT_TOPICS.guild;
     return pool[this.stableIndex(entry.id, this.npcTalkCounts[entry.id] ?? 0, pool.length)];
+  }
+
+  getRoleKey(entry) {
+    const role = entry.npc?.role?.toLowerCase?.() ?? entry.id ?? "";
+    if (/bowyer|archer/.test(role)) return "bowyer";
+    if (/smith/.test(role)) return "blacksmith";
+    if (/inn|tavern|cook/.test(role)) return "innkeeper";
+    if (/scout|map|explorer|cartographer/.test(role)) return "scout";
+    if (/merchant|trader|supplier/.test(role)) return "merchant";
+    if (/guard|watch|warden/.test(role)) return "guard";
+    if (/hunter/.test(role)) return "hunter";
+    if (/farmer/.test(role)) return "farmer";
+    if (/stable/.test(role)) return "stable";
+    if (/recruit/.test(role)) return "recruit";
+    if (/healer/.test(role)) return "healer";
+    if (/carpenter|netmaker|clerk/.test(role)) return "artisan";
+    return entry.personality ?? "villager";
+  }
+
+  getOverheardConversationLine(entry, neighbor) {
+    const leftTags = this.getConversationTags(entry);
+    const rightTags = this.getConversationTags(neighbor);
+    const match = NPC_CONVERSATION_SNIPPETS.find(([a, b]) => (
+      (leftTags.has(a) && rightTags.has(b)) || (leftTags.has(b) && rightTags.has(a))
+    ));
+    if (match) {
+      return `${entry.npc.name}: ${match[2]}`;
+    }
+    const settlement = entry.settlement === neighbor.settlement ? entry.settlement : "road";
+    const pool = SETTLEMENT_TOPICS[settlement] ?? SETTLEMENT_TOPICS.road;
+    return `${entry.npc.name}: ${pool[this.stableIndex(`${entry.id}-${neighbor.id}`, this.npcTalkCounts[entry.id] ?? 0, pool.length)]}`;
+  }
+
+  getConversationTags(entry) {
+    const tags = new Set([entry.personality, entry.settlement, this.getRoleKey(entry)]);
+    const role = entry.npc?.role?.toLowerCase?.() ?? "";
+    if (/harbor|dock|fisher|sailor|tide|lighthouse/.test(role)) tags.add("harbor");
+    if (/frontier|trail|road|watch/.test(role)) tags.add("frontier");
+    if (/camp|expedition|cartographer/.test(role)) tags.add("camp");
+    if (/cartographer/.test(role)) tags.add("cartographer");
+    return tags;
   }
 
   stableIndex(id, salt, length) {
@@ -681,6 +958,7 @@ export class EconomyGuildSystem {
   }
 
   updateAmbientNpcLife(deltaSeconds, phase) {
+    this.npcConversationToastTimer = Math.max(0, this.npcConversationToastTimer - deltaSeconds);
     this.npcAmbientLifeTimer -= deltaSeconds;
     if (this.npcAmbientLifeTimer > 0) {
       return;
@@ -706,8 +984,22 @@ export class EconomyGuildSystem {
       if (neighbor && Math.random() < (phase === "evening" ? 0.34 : 0.18)) {
         entry.npc.playGesture?.(phase === "evening" ? "wave" : "talk");
         neighbor.npc.playGesture?.("talk");
+        if (
+          this.npcConversationToastTimer <= 0
+          && entry.npc.group.position.distanceTo(this.player.group.position) < 22
+          && Math.random() < (phase === "evening" ? 0.22 : 0.1)
+        ) {
+          this.showToast(this.getOverheardConversationLine(entry, neighbor));
+          this.npcConversationToastTimer = 18;
+        }
       } else if (/(smith|bowyer|merchant|farmer|fisher|stable|clerk|supplier)/i.test(role) && Math.random() < 0.22) {
         entry.npc.playGesture?.("work");
+      } else if (/(guard|watch|warden)/i.test(role) && Math.random() < 0.18) {
+        entry.npc.playGesture?.("point");
+      } else if (/(child|runner|recruit)/i.test(role) && phase !== "night" && Math.random() < 0.2) {
+        entry.npc.playGesture?.("wave");
+      } else if (/(traveler|pilgrim|courier|minstrel|scout|hunter)/i.test(role) && Math.random() < 0.18) {
+        entry.npc.playGesture?.("talk");
       }
     });
   }
