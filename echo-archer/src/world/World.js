@@ -83,7 +83,9 @@ export class World {
       parchment: new THREE.MeshStandardMaterial({ color: 0xe8d3a0, roughness: 0.82, emissive: 0x2a1700, emissiveIntensity: 0.05 }),
       warmWindow: new THREE.MeshStandardMaterial({ color: 0xffc579, roughness: 0.48, emissive: 0xff8f3a, emissiveIntensity: 0.42 }),
       hideLeather: new THREE.MeshStandardMaterial({ color: 0x6f4c2f, roughness: 0.9 }),
-      water: new THREE.MeshPhysicalMaterial({ color: 0x6fa8a2, roughness: 0.18, metalness: 0.04, transparent: true, opacity: 0.68, envMapIntensity: 0.9 }),
+      water: new THREE.MeshPhysicalMaterial({ color: 0x79b6ad, roughness: 0.12, metalness: 0.03, transparent: true, opacity: 0.72, envMapIntensity: 1.12 }),
+      wetShore: new THREE.MeshStandardMaterial({ color: 0x7f8064, roughness: 0.96, transparent: true, opacity: 0.42, depthWrite: false }),
+      riverFoam: new THREE.MeshBasicMaterial({ color: 0xdaf0e6, transparent: true, opacity: 0.42, depthWrite: false }),
       lily: new THREE.MeshStandardMaterial({ color: 0x7fa35b, roughness: 0.86 }),
       blossom: new THREE.MeshStandardMaterial({ color: 0xf0c6a0, roughness: 0.72, emissive: 0x2a1208, emissiveIntensity: 0.05 }),
       snow: new THREE.MeshStandardMaterial({ color: 0xe7f1ee, roughness: 0.82 }),
@@ -94,7 +96,7 @@ export class World {
       sand: new THREE.MeshStandardMaterial({ color: 0xd9b978, roughness: 0.9 }),
       cliffStone: new THREE.MeshStandardMaterial({ color: 0x9a886b, roughness: 0.88 }),
       seaGrass: new THREE.MeshStandardMaterial({ color: 0x6f9258, roughness: 0.86 }),
-      seaWater: new THREE.MeshPhysicalMaterial({ color: 0x3f8fb4, roughness: 0.12, metalness: 0.02, transparent: true, opacity: 0.72, envMapIntensity: 1.1 }),
+      seaWater: new THREE.MeshPhysicalMaterial({ color: 0x4198bd, roughness: 0.08, metalness: 0.02, transparent: true, opacity: 0.74, envMapIntensity: 1.24 }),
       seaFoam: new THREE.MeshStandardMaterial({ color: 0xdaf0e6, roughness: 0.5, transparent: true, opacity: 0.72 }),
       weatheredDock: new THREE.MeshStandardMaterial({ color: 0x8a633d, roughness: 0.9 }),
       lighthouseWhite: new THREE.MeshStandardMaterial({ color: 0xe9dfc3, roughness: 0.78 }),
@@ -1804,7 +1806,203 @@ export class World {
     this.addBiomeTransitionBrushstrokes();
     this.addGeologyMasterpieceAccents();
     this.addRiverbankAndCoastlineDetails();
+    this.addPathsAndWaterMasterpiecePass();
     this.addScenicVistaFrames();
+  }
+
+  addPathsAndWaterMasterpiecePass() {
+    this.addWindingRouteMasterpieceOverlays();
+    this.addWaterShorelineMasterpieceDetails();
+    this.addBridgeAndCrossingMasterpieceDetails();
+  }
+
+  addWindingRouteMasterpieceOverlays() {
+    const routes = [
+      {
+        style: "forest",
+        material: this.materials.groundPath ?? this.materials.cutWood,
+        width: 2.6,
+        points: [[-18, -8], [-12, -3], [-17, 8], [-25, 15], [-34, 20], [-45, 24], [-56, 28]],
+      },
+      {
+        style: "pond",
+        material: this.materials.visibleTrail,
+        width: 2.15,
+        points: [[2, 4], [8, 7], [15, 10], [24, 14], [31, 18]],
+      },
+      {
+        style: "river",
+        material: this.materials.groundPath ?? this.materials.cutWood,
+        width: 2.4,
+        points: [[30, -3], [39, 0], [50, 4], [62, 4], [72, 8]],
+      },
+      {
+        style: "frontier",
+        material: this.materials.frontierRoad,
+        width: 2.7,
+        points: [[112, -119], [123, -130], [134, -139], [143, -150], [154, -157]],
+      },
+      {
+        style: "coast",
+        material: this.materials.sand,
+        width: 2.45,
+        points: [[-112, -126], [-126, -134], [-140, -143], [-153, -150], [-168, -154]],
+      },
+      {
+        style: "mountain",
+        material: this.materials.visibleTrail,
+        width: 2.2,
+        points: [[-55, 31], [-65, 42], [-76, 57], [-86, 70], [-92, 84]],
+      },
+    ];
+
+    routes.forEach((route, routeIndex) => {
+      this.addWindingRouteOverlay(route.points, route.width, route.material, route.style, routeIndex);
+      if (!this.performanceMode) {
+        route.points.forEach(([x, z], pointIndex) => {
+          if (pointIndex % 2 === 0) {
+            this.addPathEdgeCluster(x, z, Math.sin(routeIndex + pointIndex) * 0.8, 3, route.style, routeIndex * 7 + pointIndex);
+          }
+        });
+      }
+    });
+  }
+
+  addWindingRouteOverlay(points, width, material, style = "forest", seed = 0) {
+    const routeMaterial = material.clone?.() ?? material;
+    if (routeMaterial) {
+      routeMaterial.transparent = true;
+      routeMaterial.opacity = Math.min(routeMaterial.opacity ?? 1, style === "coast" ? 0.58 : 0.46);
+      routeMaterial.depthWrite = false;
+      routeMaterial.needsUpdate = true;
+    }
+
+    for (let index = 0; index < points.length - 1; index += 1) {
+      const [ax, az] = points[index];
+      const [bx, bz] = points[index + 1];
+      const dx = bx - ax;
+      const dz = bz - az;
+      const length = Math.hypot(dx, dz);
+      if (length <= 0.01) continue;
+      const yaw = Math.atan2(dx, dz);
+      const sideX = Math.sin(yaw + Math.PI / 2);
+      const sideZ = Math.cos(yaw + Math.PI / 2);
+      const pieces = Math.max(2, Math.round(length / 5));
+      for (let piece = 0; piece < pieces; piece += 1) {
+        const t = (piece + 0.5) / pieces;
+        const bend = Math.sin((t + seed * 0.17) * Math.PI * 2 + index) * width * 0.22;
+        const x = ax + dx * t + sideX * bend;
+        const z = az + dz * t + sideZ * bend;
+        const y = this.terrain.getHeightAt(x, z);
+        const segment = new THREE.Mesh(new THREE.CircleGeometry(1, 22), routeMaterial);
+        segment.position.set(x, y + 0.044 + (seed + index + piece) * 0.0006, z);
+        segment.rotation.set(-Math.PI / 2, 0, yaw + Math.sin(piece + seed) * 0.08);
+        segment.scale.set(width * (0.92 + (piece % 2) * 0.08), Math.max(1.6, length / pieces * 0.58), 1);
+        segment.receiveShadow = true;
+        segment.userData.terrain = true;
+        this.scene.add(segment);
+      }
+    }
+  }
+
+  addWaterShorelineMasterpieceDetails() {
+    const shorelines = [
+      { x: this.hiddenPond?.x ?? 28, z: this.hiddenPond?.z ?? 17, rx: 5.4, rz: 3.7, yaw: 0.08, style: "pond", water: this.materials.water },
+      { x: this.hiddenLake?.x ?? -18, z: this.hiddenLake?.z ?? -142, rx: 6.4, rz: 5.6, yaw: -0.1, style: "lake", water: this.materials.water },
+      { x: 143, z: -145, rx: 13.8, rz: 2.9, yaw: -0.18, style: "river", water: this.materials.frontierWater },
+      { x: 53, z: 2.5, rx: 20.5, rz: 3.1, yaw: 0.08, style: "river", water: this.materials.water },
+      { x: 136, z: -118, rx: 46, rz: 34, yaw: -0.04, style: "coast", water: this.materials.seaWater },
+      { x: -184, z: -150, rx: 36, rz: 43, yaw: 0.03, style: "coast", water: this.materials.seaWater },
+      { x: -108, z: -84, rx: 12, rz: 5.8, yaw: 0.2, style: "marsh", water: this.materials.swampWater },
+      { x: 80, z: 154, rx: 9.5, rz: 4.5, yaw: 0.16, style: "star", water: this.materials.starWater },
+    ];
+
+    shorelines.forEach((shoreline, index) => {
+      this.addNaturalShoreline(shoreline, index);
+      this.addWaterRippleSet(shoreline, index);
+    });
+  }
+
+  addNaturalShoreline({ x, z, rx, rz, yaw = 0, style = "pond" }, seed = 0) {
+    const material = style === "coast" ? this.materials.sand
+      : style === "marsh" ? this.materials.swampMud
+        : style === "star" ? this.materials.crystalSand
+          : this.materials.wetShore;
+    const ringMaterial = material.clone?.() ?? material;
+    if (ringMaterial) {
+      ringMaterial.transparent = true;
+      ringMaterial.opacity = Math.min(ringMaterial.opacity ?? 1, style === "coast" ? 0.36 : 0.42);
+      ringMaterial.depthWrite = false;
+      ringMaterial.needsUpdate = true;
+    }
+    const count = this.performanceMode ? 8 : 14;
+    for (let index = 0; index < count; index += 1) {
+      const angle = (index / count) * Math.PI * 2;
+      const wobble = 1 + Math.sin(seed * 1.7 + index * 1.31) * 0.08;
+      const localX = Math.sin(angle) * rx * wobble;
+      const localZ = Math.cos(angle) * rz * (1 + Math.cos(seed + index) * 0.06);
+      const rotatedX = x + Math.sin(yaw + Math.PI / 2) * localX + Math.sin(yaw) * localZ;
+      const rotatedZ = z + Math.cos(yaw + Math.PI / 2) * localX + Math.cos(yaw) * localZ;
+      const y = this.terrain.getHeightAt(rotatedX, rotatedZ);
+      const patch = new THREE.Mesh(new THREE.CircleGeometry(1, 14), ringMaterial);
+      patch.position.set(rotatedX, y + 0.038 + index * 0.0005, rotatedZ);
+      patch.rotation.set(-Math.PI / 2, 0, yaw + angle + Math.sin(index) * 0.18);
+      patch.scale.set(1.2 + (index % 3) * 0.28, 0.34 + (index % 2) * 0.14, 1);
+      patch.receiveShadow = true;
+      patch.userData.terrain = true;
+      this.scene.add(patch);
+    }
+  }
+
+  addWaterRippleSet({ x, z, rx, rz, yaw = 0, style = "pond", water }, seed = 0) {
+    const rippleMaterial = style === "coast" ? this.materials.seaFoam : this.materials.riverFoam;
+    const count = this.performanceMode ? 3 : 6;
+    for (let index = 0; index < count; index += 1) {
+      const offset = (index - count * 0.5) / Math.max(1, count);
+      const px = x + Math.sin(yaw + Math.PI / 2) * offset * rx * 0.9 + Math.sin(seed + index) * rx * 0.08;
+      const pz = z + Math.cos(yaw + Math.PI / 2) * offset * rx * 0.9 + Math.cos(seed * 0.8 + index) * rz * 0.08;
+      const y = this.terrain.getHeightAt(px, pz) + 0.095 + index * 0.004;
+      const ripple = new THREE.Mesh(new THREE.TorusGeometry(0.62 + index * 0.1, 0.012, 6, 36), rippleMaterial);
+      ripple.position.set(px, y, pz);
+      ripple.rotation.set(-Math.PI / 2, 0, yaw + Math.sin(seed + index) * 0.2);
+      ripple.scale.set(Math.max(0.8, rx * 0.08), Math.max(0.45, rz * 0.08), 1);
+      ripple.userData.detailObject = true;
+      this.scene.add(ripple);
+    }
+
+    if (water?.color && style !== "coast") {
+      water.needsUpdate = true;
+    }
+  }
+
+  addBridgeAndCrossingMasterpieceDetails() {
+    [
+      { x: this.riverCrossing?.x ?? 52, z: this.riverCrossing?.z ?? 2, yaw: this.riverCrossing?.yaw ?? -0.12, style: "river" },
+      { x: this.greenwaterCrossing?.x ?? 161, z: this.greenwaterCrossing?.z ?? -132, yaw: this.greenwaterCrossing?.yaw ?? -0.62, style: "frontier" },
+      { x: this.windspireBridge?.x ?? 108, z: this.windspireBridge?.z ?? -94, yaw: this.windspireBridge?.yaw ?? 0.2, style: "coast" },
+    ].forEach((crossing, index) => this.addCrossingApproachDetails(crossing, index));
+  }
+
+  addCrossingApproachDetails({ x, z, yaw, style }, seed = 0) {
+    const material = style === "coast" ? this.materials.weatheredDock : style === "frontier" ? this.materials.frontierRoad : this.materials.cutWood;
+    const shoulder = style === "coast" ? this.materials.sand : this.materials.groundPath ?? this.materials.cutWood;
+    const forwardX = Math.sin(yaw);
+    const forwardZ = Math.cos(yaw);
+    [-1, 1].forEach((side) => {
+      const padX = x + forwardX * side * 4.2;
+      const padZ = z + forwardZ * side * 4.2;
+      this.addTerrainBlendOval(padX, padZ, 4.2, 1.4, yaw, shoulder, 0.34, seed + side + 91);
+      const marker = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.09, 0.82, 7), material);
+      marker.position.set(
+        padX + Math.sin(yaw + Math.PI / 2) * 1.8,
+        this.terrain.getHeightAt(padX, padZ) + 0.42,
+        padZ + Math.cos(yaw + Math.PI / 2) * 1.8,
+      );
+      marker.rotation.z = side * 0.08;
+      marker.castShadow = true;
+      marker.userData.detailObject = true;
+      this.scene.add(marker);
+    });
   }
 
   addIntegratedRoadShoulders() {
