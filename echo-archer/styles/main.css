@@ -2447,6 +2447,19 @@ body.map-open #audio-controls {
   text-align: left;
 }
 
+.gear-swatch {
+  flex: 0 0 auto;
+  width: 18px;
+  height: 42px;
+  border: 1px solid rgba(255, 240, 189, 0.32);
+  border-radius: 999px 999px 8px 8px;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.34), transparent 38%),
+    var(--gear-color, #d8d3bd);
+  box-shadow: 0 0 18px color-mix(in srgb, var(--gear-color, #d8d3bd) 42%, transparent);
+  transform: rotate(-7deg);
+}
+
 .inventory-item:disabled {
   cursor: default;
   opacity: 0.52;
@@ -2495,6 +2508,23 @@ body.map-open #audio-controls {
   font-style: normal;
   font-weight: 900;
   text-transform: uppercase;
+}
+
+.gear-preview {
+  display: block;
+  width: min(230px, 100%);
+  height: 84px;
+  margin: 16px 0 10px;
+  border: 1px solid rgba(255, 225, 170, 0.16);
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at 76% 50%, color-mix(in srgb, var(--gear-color, #ffd166) 72%, transparent) 0 5%, transparent 6%),
+    linear-gradient(106deg, transparent 0 28%, color-mix(in srgb, var(--gear-color, #ffd166) 88%, #382414) 29% 34%, transparent 35% 100%),
+    linear-gradient(74deg, transparent 0 32%, rgba(255, 239, 198, 0.82) 33% 36%, transparent 37% 100%),
+    radial-gradient(circle at 50% 50%, color-mix(in srgb, var(--gear-color, #ffd166) 28%, transparent), rgba(255, 238, 204, 0.05) 62%, rgba(0, 0, 0, 0.16));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 247, 220, 0.1),
+    0 0 28px color-mix(in srgb, var(--gear-color, #ffd166) 24%, transparent);
 }
 
 #inventory-details p {

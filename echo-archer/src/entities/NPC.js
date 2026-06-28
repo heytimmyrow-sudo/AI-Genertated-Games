@@ -1,3 +1,5 @@
+import { getBowVisual } from "../config/gearVisuals.js";
+
 const { THREE } = window;
 
 export class NPC {
@@ -98,12 +100,32 @@ export class NPC {
     group.add(feather);
 
     if (this.role.includes("Archer")) {
-      const bow = new THREE.Mesh(new THREE.TorusGeometry(0.5, 0.02, 7, 32, Math.PI * 1.42), staffMaterial);
-      bow.position.set(-0.46, 1.0, -0.14);
-      bow.rotation.set(0.08, 0.18, Math.PI / 2.08);
-      bow.scale.set(0.68, 1.38, 1);
-      bow.castShadow = true;
-      group.add(bow);
+      const bowVisual = getBowVisual(role.includes("master") ? "hallmarked-bow" : role.includes("guild") ? "hunter-bow" : "starter-bow");
+      const npcBowMaterial = new THREE.MeshStandardMaterial({ color: bowVisual.limb, roughness: 0.62, metalness: 0.04 });
+      const npcBowAccent = new THREE.MeshStandardMaterial({ color: bowVisual.accent, roughness: 0.48, metalness: 0.16, emissive: bowVisual.accent, emissiveIntensity: role.includes("master") ? 0.14 : 0.06 });
+      const bowGroup = new THREE.Group();
+      bowGroup.position.set(-0.46, 1.0, -0.14);
+      bowGroup.rotation.set(0.08, 0.18, -0.12);
+      bowGroup.scale.set(0.74, bowVisual.scale * 0.92, 0.74);
+      const upperLimb = new THREE.Mesh(new THREE.CapsuleGeometry(0.022, 0.56, 5, 8), npcBowMaterial);
+      upperLimb.position.y = 0.24;
+      upperLimb.rotation.z = -0.16 - bowVisual.curve * 0.2;
+      const lowerLimb = upperLimb.clone();
+      lowerLimb.position.y = -0.24;
+      lowerLimb.rotation.z = 0.16 + bowVisual.curve * 0.2;
+      [-1, 1].forEach((side) => {
+        const tip = new THREE.Mesh(new THREE.ConeGeometry(0.04, 0.12, 5), npcBowAccent);
+        tip.position.set(side * 0.05, side * 0.58, 0);
+        tip.rotation.z = side > 0 ? -0.68 : Math.PI + 0.68;
+        bowGroup.add(tip);
+      });
+      const bowGrip = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.16, 8), staffMaterial);
+      bowGrip.rotation.x = Math.PI / 2;
+      bowGroup.add(upperLimb, lowerLimb, bowGrip);
+      bowGroup.traverse((child) => {
+        if (child.isMesh) child.castShadow = true;
+      });
+      group.add(bowGroup);
 
       const string = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.95, 5), trimMaterial);
       string.position.set(-0.48, 1.02, -0.1);
@@ -115,6 +137,11 @@ export class NPC {
       quiver.rotation.set(-0.45, 0.12, 0.08);
       quiver.castShadow = true;
       group.add(quiver);
+
+      const quiverRim = new THREE.Mesh(new THREE.TorusGeometry(0.12, 0.01, 6, 18), npcBowAccent);
+      quiverRim.position.set(0.08, 1.31, -0.42);
+      quiverRim.rotation.set(Math.PI / 2 - 0.45, 0.12, 0.08);
+      group.add(quiverRim);
 
       for (let index = 0; index < 5; index += 1) {
         const arrow = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.54, 5), trimMaterial);
@@ -138,17 +165,23 @@ export class NPC {
       const hammer = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.32, 0.08), trimMaterial);
       hammer.position.set(-0.34, 0.78, 0.22);
       hammer.rotation.z = 0.28;
-      group.add(apron, hammer);
-      accessoryMeshes.push(hammer);
+      const hammerHandle = new THREE.Mesh(new THREE.CylinderGeometry(0.024, 0.024, 0.42, 7), staffMaterial);
+      hammerHandle.position.set(-0.38, 0.65, 0.2);
+      hammerHandle.rotation.z = 0.28;
+      group.add(apron, hammer, hammerHandle);
+      accessoryMeshes.push(hammer, hammerHandle);
     } else if (role.includes("merchant") || role.includes("trader") || role.includes("supplier")) {
       const pack = new THREE.Mesh(new THREE.BoxGeometry(0.36, 0.5, 0.22), staffMaterial);
       pack.position.set(-0.18, 0.92, -0.38);
       pack.rotation.y = 0.18;
+      const packRoll = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.055, 0.34, 8), cloakMaterial);
+      packRoll.position.set(-0.18, 1.22, -0.43);
+      packRoll.rotation.z = Math.PI / 2;
       const coin = new THREE.Mesh(new THREE.CylinderGeometry(0.075, 0.075, 0.018, 12), trimMaterial);
       coin.position.set(0.18, 1.02, 0.31);
       coin.rotation.x = Math.PI / 2;
-      group.add(pack, coin);
-      accessoryMeshes.push(pack, coin);
+      group.add(pack, packRoll, coin);
+      accessoryMeshes.push(pack, packRoll, coin);
     } else if (role.includes("inn") || role.includes("tavern") || role.includes("cook")) {
       const apron = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.46, 0.035), new THREE.MeshStandardMaterial({ color: 0xe8d3a0, roughness: 0.82 }));
       apron.position.set(0, 0.78, 0.32);

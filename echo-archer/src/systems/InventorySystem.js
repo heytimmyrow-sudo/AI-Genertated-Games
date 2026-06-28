@@ -1,3 +1,5 @@
+import { BOW_VISUALS, RARITY_VISUALS } from "../config/gearVisuals.js";
+
 export const GEAR_DEFINITIONS = {
   outfits: [
     { id: "starter-outfit", name: "Starter Outfit", rarity: "common", description: "A simple green archer outfit.", effects: {} },
@@ -133,6 +135,8 @@ export class InventorySystem {
   applyGear() {
     const bow = this.getEquipped("bows");
     const outfit = this.getEquipped("outfits");
+    const weapon = this.getEquipped("weapons");
+    const shield = this.getEquipped("shields");
     const bowStats = bow?.stats ?? {};
     const outfitEffects = outfit?.effects ?? {};
 
@@ -144,6 +148,8 @@ export class InventorySystem {
     });
     this.systems.archery.setBowStyle?.(bow);
     this.systems.player.setOutfitStyle?.(outfit?.setId ?? "starter");
+    this.systems.player.setBowStyle?.(bow);
+    this.systems.player.setEquipmentStyle?.({ weapon, shield, outfit, bow });
     this.systems.player.stats.staminaRecoveryMultiplier = outfitEffects.staminaRecoveryMultiplier ?? 1;
     this.systems.rpg?.applyBonuses?.();
   }
@@ -181,6 +187,7 @@ export class InventorySystem {
       button.type = "button";
       button.className = `inventory-item ${equipped ? "equipped" : ""} rarity-${item.rarity ?? "common"}`;
       button.innerHTML = `
+        <i class="gear-swatch" style="--gear-color: #${this.getVisualColor(item).toString(16).padStart(6, "0")}"></i>
         <span>
           <strong>${item.name}</strong>
           <small>${owned ? item.description : "Not found yet"}</small>
@@ -198,6 +205,7 @@ export class InventorySystem {
     this.ui.details.innerHTML = `
       <strong class="rarity-${selected.rarity ?? "common"}">${selected.name}</strong>
       <em>${selectedEquipped ? "Equipped" : selectedOwned ? "Unlocked" : "Locked"}</em>
+      <span class="gear-preview" style="--gear-color: #${this.getVisualColor(selected).toString(16).padStart(6, "0")}"></span>
       <p>${selected.description}</p>
       <p class="item-rarity">${this.formatRarity(selected.rarity)}</p>
       <dl>${this.renderStats(selected)}</dl>
@@ -231,6 +239,21 @@ export class InventorySystem {
 
   formatRarity(rarity = "common") {
     return `${rarity.slice(0, 1).toUpperCase()}${rarity.slice(1)}${rarity === "legendary" ? " • Legendary hook" : ""}`;
+  }
+
+  formatRarity(rarity = "common") {
+    const visual = RARITY_VISUALS[rarity] ?? RARITY_VISUALS.common;
+    return `${visual.label}${rarity === "legendary" ? " • Legendary signature" : ""}`;
+  }
+
+  getVisualColor(item) {
+    if (!item) {
+      return RARITY_VISUALS.common.color;
+    }
+    if (this.activeCategory === "bows") {
+      return BOW_VISUALS[item.id]?.accent ?? RARITY_VISUALS[item.rarity ?? "common"]?.color ?? RARITY_VISUALS.common.color;
+    }
+    return RARITY_VISUALS[item.rarity ?? "common"]?.color ?? RARITY_VISUALS.common.color;
   }
 
   showToast(text) {

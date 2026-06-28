@@ -1,4 +1,5 @@
 import { SETTINGS } from "../config/settings.js";
+import { getBowVisual, RARITY_VISUALS } from "../config/gearVisuals.js";
 import { ArrowProjectile } from "../entities/ArrowProjectile.js";
 
 const { THREE } = window;
@@ -126,6 +127,9 @@ export class ArcherySystem {
     group.userData.bowHand = bowHand;
     group.userData.drawHand = drawHand;
     group.userData.readyArrow = readyArrow;
+    group.userData.wrapMeshes = [upperWrap, lowerWrap, upperTip, lowerTip, nockGlow, sightBead];
+    group.userData.handMeshes = [bowHand, drawHand];
+    group.userData.visualScale = 1;
     this.updateString(group, 0);
     return group;
   }
@@ -255,7 +259,8 @@ export class ArcherySystem {
       .add(cameraRig.getPlanarSide().clone().multiplyScalar((cameraRig.mode === "first" ? -0.11 : -0.04) * this.drawAmount + drawSettle))
       .add(pullBack)
       .add(releaseForward);
-    const modeScale = cameraRig.mode === "first" ? 1.16 : 0.56;
+    const visualScale = this.bow.userData.visualScale ?? 1;
+    const modeScale = (cameraRig.mode === "first" ? 1.16 : 0.56) * visualScale;
     const tensionPulse = Math.sin(performance.now() * 0.034) * tension * 0.03 + this.drawTensionPulse * 0.04;
     this.bow.scale.setScalar(modeScale + this.bowPulse * 0.06 + this.drawAmount * 0.064 + this.releaseKick * 0.034 + tensionPulse);
     this.bowPulse *= 0.74;
@@ -407,29 +412,38 @@ export class ArcherySystem {
   }
 
   setBowStyle(bow = {}) {
-    const palette = {
-      stormcaller: 0x82c8ff,
-      whisperbranch: 0x9af6b9,
-      frostbite: 0x8ddcff,
-      sunpiercer: 0xffa64f,
-      whisperwind: 0xcfffc2,
-      tidepiercer: 0x5fd8ff,
-      bogpiercer: 0x9af6b9,
-      infernoheart: 0xff6a1d,
-      "ancient-bow": 0xc79cff,
-      "hunter-bow": 0x9b6838,
-      longbow: 0xd0a15d,
-    };
-    const color = palette[bow.id] ?? 0x8e5b2f;
-    this.bow.traverse((child) => {
-      if (child.material?.color && child.type !== "Line") {
-        child.material.color.setHex(color);
-        if (child.material.emissive) {
-          child.material.emissive.setHex(bow.rarity === "legendary" ? color : 0x261400);
-          child.material.emissiveIntensity = bow.rarity === "legendary" ? 0.18 : 0.08;
-        }
+    const visual = getBowVisual(bow?.id);
+    const rarity = RARITY_VISUALS[bow?.rarity ?? "common"] ?? RARITY_VISUALS.common;
+    const legendary = bow?.rarity === "legendary";
+    if (this.bow.userData.limb?.material?.color) {
+      this.bow.userData.limb.material.color.setHex(visual.limb);
+      this.bow.userData.limb.material.emissive?.setHex(visual.limb);
+      this.bow.userData.limb.material.emissiveIntensity = legendary ? 0.08 : 0.02;
+    }
+    if (this.bow.userData.limbEdge?.material?.color) {
+      this.bow.userData.limbEdge.material.color.setHex(visual.accent);
+      this.bow.userData.limbEdge.material.opacity = legendary ? 0.9 : 0.68;
+    }
+    this.bow.userData.wrapMeshes?.forEach((mesh) => {
+      if (mesh.material?.color) {
+        mesh.material.color.setHex(visual.accent);
+      }
+      if (mesh.material?.emissive) {
+        mesh.material.emissive.setHex(visual.accent);
+        mesh.material.emissiveIntensity = legendary ? rarity.glow : 0.08;
       }
     });
+    this.bow.userData.handMeshes?.forEach((mesh) => {
+      if (mesh.material?.color) {
+        mesh.material.color.setHex(0x4b3425);
+      }
+    });
+    this.bow.userData.string?.material?.color?.setHex(visual.string);
+    this.bow.userData.visualScale = visual.scale ?? 1;
+    if (this.bow.userData.sightBead) {
+      this.bow.userData.sightBead.position.x = 0.14 + (visual.curve ?? 0.1) * 0.2;
+      this.bow.userData.sightBead.scale.setScalar(legendary ? 1.18 : 1);
+    }
   }
 
   setRpgModifiers(modifiers = {}) {

@@ -1,4 +1,5 @@
 import { SETTINGS } from "../config/settings.js";
+import { getBowVisual, getOutfitVisual, SHIELD_VISUALS, WEAPON_VISUALS } from "../config/gearVisuals.js";
 
 const { THREE } = window;
 
@@ -315,6 +316,8 @@ export class PlayerController {
     bowGroup.position.set(0.42, 0.86, 0.23);
     bowGroup.rotation.set(0.08, -0.18, -0.16);
     body.add(bowGroup);
+    const bowLimbMeshes = [];
+    const bowAccentMeshes = [];
 
     const bowUpper = new THREE.Mesh(new THREE.CapsuleGeometry(0.025, 0.74, 6, 10), bowMaterial);
     bowUpper.position.y = 0.28;
@@ -322,11 +325,13 @@ export class PlayerController {
     bowUpper.scale.set(0.72, 1, 0.72);
     bowUpper.castShadow = true;
     bowGroup.add(bowUpper);
+    bowLimbMeshes.push(bowUpper);
 
     const bowLower = bowUpper.clone();
     bowLower.position.y = -0.28;
     bowLower.rotation.z = 0.18;
     bowGroup.add(bowLower);
+    bowLimbMeshes.push(bowLower);
 
     [-1, 1].forEach((side) => {
       const bowTip = new THREE.Mesh(new THREE.ConeGeometry(0.045, 0.16, 5), trimMaterial);
@@ -334,6 +339,7 @@ export class PlayerController {
       bowTip.rotation.z = side > 0 ? -0.7 : Math.PI + 0.7;
       bowTip.castShadow = true;
       bowGroup.add(bowTip);
+      bowAccentMeshes.push(bowTip);
     });
 
     const bowGrip = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.045, 0.18, 8), leatherMaterial);
@@ -352,6 +358,55 @@ export class PlayerController {
     guildCharm.rotation.set(Math.PI / 2, 0, Math.PI / 4);
     guildCharm.castShadow = true;
     bowGroup.add(guildCharm);
+    bowAccentMeshes.push(guildCharm);
+    bowGroup.userData = { limbMeshes: bowLimbMeshes, accentMeshes: bowAccentMeshes, stringMesh: bowString, grip: bowGrip };
+
+    const sidearmGroup = new THREE.Group();
+    sidearmGroup.position.set(0.31, 0.58, -0.22);
+    sidearmGroup.rotation.set(-0.2, -0.16, -0.72);
+    body.add(sidearmGroup);
+    const sidearmBlade = new THREE.Mesh(new THREE.BoxGeometry(0.045, 0.5, 0.025), trimMaterial);
+    sidearmBlade.position.y = 0.18;
+    sidearmBlade.castShadow = true;
+    const sidearmGrip = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.18, 8), leatherMaterial);
+    sidearmGrip.position.y = -0.13;
+    sidearmGrip.rotation.x = Math.PI / 2;
+    sidearmGrip.castShadow = true;
+    const sidearmGuard = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.035, 0.035), trimMaterial);
+    sidearmGuard.position.y = -0.03;
+    sidearmGuard.castShadow = true;
+    sidearmGroup.add(sidearmBlade, sidearmGrip, sidearmGuard);
+
+    const shieldGroup = new THREE.Group();
+    shieldGroup.position.set(-0.38, 0.84, -0.28);
+    shieldGroup.rotation.set(-0.18, 0.46, 0.22);
+    shieldGroup.visible = false;
+    body.add(shieldGroup);
+    const shieldFace = new THREE.Mesh(new THREE.CylinderGeometry(0.26, 0.3, 0.055, 9), leatherMaterial);
+    shieldFace.rotation.x = Math.PI / 2;
+    shieldFace.scale.set(0.85, 1.15, 1);
+    shieldFace.castShadow = true;
+    const shieldRim = new THREE.Mesh(new THREE.TorusGeometry(0.27, 0.014, 8, 28), trimMaterial);
+    shieldRim.rotation.x = Math.PI / 2;
+    shieldRim.scale.set(0.85, 1.15, 1);
+    const shieldBoss = new THREE.Mesh(new THREE.SphereGeometry(0.07, 10, 7), trimMaterial);
+    shieldBoss.scale.set(1, 0.4, 1);
+    shieldBoss.position.z = 0.035;
+    shieldGroup.add(shieldFace, shieldRim, shieldBoss);
+
+    const backpackGroup = new THREE.Group();
+    backpackGroup.position.set(0.08, 0.93, -0.42);
+    backpackGroup.rotation.set(-0.1, -0.08, 0.04);
+    body.add(backpackGroup);
+    const backpack = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.44, 0.18), leatherMaterial);
+    backpack.castShadow = true;
+    const bedroll = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.42, 8), clothMaterial);
+    bedroll.position.set(0, 0.27, -0.02);
+    bedroll.rotation.z = Math.PI / 2;
+    bedroll.castShadow = true;
+    const packStrap = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.045, 0.035), trimMaterial);
+    packStrap.position.set(0, 0.02, 0.1);
+    backpackGroup.add(backpack, bedroll, packStrap);
 
     const stanceMarker = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.24, 4), trimMaterial);
     stanceMarker.position.set(0.18, 1.38, 0.14);
@@ -359,7 +414,22 @@ export class PlayerController {
     stanceMarker.castShadow = true;
     body.add(stanceMarker);
 
-    body.userData = { limbs, torso, layeredTunic, shoulderCape, backCape, scarf, frontTabard, capeHem, bowGroup, bowString };
+    body.userData = {
+      limbs,
+      torso,
+      layeredTunic,
+      shoulderCape,
+      backCape,
+      scarf,
+      frontTabard,
+      capeHem,
+      bowGroup,
+      bowString,
+      sidearmGroup,
+      shieldGroup,
+      backpackGroup,
+      gearMeshes: { sidearmBlade, sidearmGuard, shieldFace, shieldRim, shieldBoss, backpack, bedroll, packStrap, chestPlate, chestArrow, tabardTrim, hoodTrim, belt, buckle },
+    };
     return body;
   }
 
@@ -621,7 +691,7 @@ export class PlayerController {
     this.body.position.y = THREE.MathUtils.lerp(this.body.position.y, this.visualGroundOffset + bob + idleBreath, 1 - Math.exp(-14 * deltaSeconds));
     this.body.rotation.z = THREE.MathUtils.lerp(this.body.rotation.z, sway, 1 - Math.exp(-9 * deltaSeconds));
 
-    const { limbs = [], torso, layeredTunic, shoulderCape, backCape, scarf, frontTabard, capeHem, bowGroup, bowString } = this.body.userData;
+    const { limbs = [], torso, layeredTunic, shoulderCape, backCape, scarf, frontTabard, capeHem, bowGroup, bowString, sidearmGroup, shieldGroup, backpackGroup } = this.body.userData;
     const combatState = window.echoArcherCombatState ?? {};
     const drawAmount = combatState.drawAmount ?? 0;
     const releaseKick = combatState.releaseKick ?? 0;
@@ -688,17 +758,28 @@ export class PlayerController {
       capeHem.rotation.z = sway * 0.35;
     }
     if (bowGroup) {
+      const bowVisualScale = bowGroup.userData.visualScale ?? 1;
       bowGroup.position.x = THREE.MathUtils.lerp(bowGroup.position.x, aiming ? 0.52 : 0.42, 1 - Math.exp(-10 * deltaSeconds));
       bowGroup.position.y = THREE.MathUtils.lerp(bowGroup.position.y, aiming ? 0.94 : 0.86 + Math.sin(this.visualTime * 1.2) * 0.006, 1 - Math.exp(-9 * deltaSeconds));
       bowGroup.position.z = THREE.MathUtils.lerp(bowGroup.position.z, aiming ? 0.31 + drawAmount * 0.035 : 0.23, 1 - Math.exp(-10 * deltaSeconds));
       bowGroup.rotation.x = THREE.MathUtils.lerp(bowGroup.rotation.x, aiming ? -0.14 - drawAmount * 0.08 + releaseKick * 0.05 : 0.08, 1 - Math.exp(-10 * deltaSeconds));
       bowGroup.rotation.y = THREE.MathUtils.lerp(bowGroup.rotation.y, aiming ? -0.34 : -0.18, 1 - Math.exp(-10 * deltaSeconds));
       bowGroup.rotation.z = THREE.MathUtils.lerp(bowGroup.rotation.z, aiming ? -0.04 - drawAmount * 0.09 : -0.16 + Math.sin(this.visualTime * 1.6) * 0.008, 1 - Math.exp(-10 * deltaSeconds));
-      bowGroup.scale.setScalar(THREE.MathUtils.lerp(bowGroup.scale.x, 1 + drawAmount * 0.035 + releaseKick * 0.04, 1 - Math.exp(-12 * deltaSeconds)));
+      bowGroup.scale.setScalar(THREE.MathUtils.lerp(bowGroup.scale.x, bowVisualScale * (1 + drawAmount * 0.035 + releaseKick * 0.04), 1 - Math.exp(-12 * deltaSeconds)));
     }
     if (bowString) {
       bowString.position.x = THREE.MathUtils.lerp(bowString.position.x, 0.12 - drawAmount * 0.08 + releaseKick * 0.06, 1 - Math.exp(-14 * deltaSeconds));
       bowString.scale.y = THREE.MathUtils.lerp(bowString.scale.y, 1 + drawAmount * 0.05, 1 - Math.exp(-14 * deltaSeconds));
+    }
+    if (sidearmGroup) {
+      sidearmGroup.rotation.z = -0.72 + Math.sin(gait * 0.5) * 0.025 * this.visualMoveAmount + sway * 0.18;
+    }
+    if (shieldGroup) {
+      shieldGroup.rotation.z = 0.22 + Math.sin(gait * 0.5 + 0.4) * 0.018 * this.visualMoveAmount;
+    }
+    if (backpackGroup) {
+      backpackGroup.rotation.x = -0.1 - Math.min(horizontalSpeed / this.getMoveSpeed(true), 1) * 0.035 + Math.sin(this.visualTime * 1.2) * 0.008;
+      backpackGroup.position.y = 0.93 + idleBreath * 0.7 + Math.abs(rawBob) * 0.4;
     }
   }
 
@@ -850,14 +931,8 @@ export class PlayerController {
   }
 
   setOutfitStyle(setId = "starter") {
-    const palette = {
-      hunter: { torso: 0x2f4d38, cape: 0x1e3328 },
-      explorer: { torso: 0x51613e, cape: 0x37462f },
-      guildRanger: { torso: 0x314b55, cape: 0x21363e },
-      ancientArcher: { torso: 0x4b4267, cape: 0x302842 },
-      starter: { torso: 0x263f36, cape: 0x172922 },
-    }[setId] ?? { torso: 0x263f36, cape: 0x172922 };
-    const { torso, shoulderCape, backCape } = this.body.userData;
+    const palette = getOutfitVisual(setId);
+    const { torso, shoulderCape, backCape, layeredTunic, frontTabard, scarf, gearMeshes = {} } = this.body.userData;
     if (torso?.material?.color) {
       torso.material.color.setHex(palette.torso);
     }
@@ -866,5 +941,77 @@ export class PlayerController {
         mesh.material.color.setHex(palette.cape);
       }
     });
+    [layeredTunic, frontTabard, scarf].forEach((mesh) => {
+      if (mesh?.material?.color) {
+        mesh.material.color.setHex(palette.torso);
+      }
+    });
+    [gearMeshes.chestPlate, gearMeshes.chestArrow, gearMeshes.tabardTrim, gearMeshes.hoodTrim, gearMeshes.buckle].forEach((mesh) => {
+      if (mesh?.material?.color) {
+        mesh.material.color.setHex(palette.trim);
+      }
+      if (mesh?.material?.emissive) {
+        mesh.material.emissive.setHex(palette.trim);
+        mesh.material.emissiveIntensity = setId === "masterArcher" || setId === "ancientArcher" ? 0.14 : 0.08;
+      }
+    });
+    [gearMeshes.backpack, gearMeshes.packStrap].forEach((mesh) => {
+      if (mesh?.material?.color) {
+        mesh.material.color.setHex(palette.leather);
+      }
+    });
+  }
+
+  setBowStyle(bow = {}) {
+    const visual = getBowVisual(bow?.id);
+    const { bowGroup } = this.body.userData;
+    if (!bowGroup) {
+      return;
+    }
+    bowGroup.userData.limbMeshes?.forEach((mesh) => {
+      mesh.material.color.setHex(visual.limb);
+      if (mesh.material.emissive) {
+        mesh.material.emissive.setHex(visual.limb);
+        mesh.material.emissiveIntensity = bow?.rarity === "legendary" ? 0.08 : 0.02;
+      }
+    });
+    bowGroup.userData.accentMeshes?.forEach((mesh) => {
+      mesh.material.color.setHex(visual.accent);
+      if (mesh.material.emissive) {
+        mesh.material.emissive.setHex(visual.accent);
+        mesh.material.emissiveIntensity = bow?.rarity === "legendary" ? 0.18 : 0.06;
+      }
+    });
+    if (bowGroup.userData.stringMesh?.material?.color) {
+      bowGroup.userData.stringMesh.material.color.setHex(visual.string);
+    }
+    bowGroup.scale.setScalar(visual.scale ?? 1);
+    bowGroup.userData.visualScale = visual.scale ?? 1;
+  }
+
+  setEquipmentStyle({ weapon = null, shield = null } = {}) {
+    const { sidearmGroup, shieldGroup, gearMeshes = {} } = this.body.userData;
+    const weaponVisual = WEAPON_VISUALS[weapon?.id] ?? WEAPON_VISUALS["wooden-sword"];
+    if (sidearmGroup) {
+      sidearmGroup.visible = Boolean(weapon);
+      sidearmGroup.scale.setScalar(weaponVisual.scale ?? 1);
+    }
+    [gearMeshes.sidearmBlade, gearMeshes.sidearmGuard].forEach((mesh, index) => {
+      if (mesh?.material?.color) {
+        mesh.material.color.setHex(index === 0 ? weaponVisual.color : weaponVisual.accent);
+      }
+    });
+    const shieldVisual = SHIELD_VISUALS[shield?.id];
+    if (shieldGroup) {
+      shieldGroup.visible = Boolean(shieldVisual);
+      shieldGroup.scale.setScalar(shieldVisual?.scale ?? 1);
+    }
+    if (shieldVisual) {
+      [gearMeshes.shieldFace, gearMeshes.shieldRim, gearMeshes.shieldBoss].forEach((mesh, index) => {
+        if (mesh?.material?.color) {
+          mesh.material.color.setHex(index === 0 ? shieldVisual.color : shieldVisual.accent);
+        }
+      });
+    }
   }
 }

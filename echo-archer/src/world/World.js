@@ -1,4 +1,5 @@
 import { SETTINGS } from "../config/settings.js";
+import { getBowVisual } from "../config/gearVisuals.js";
 import { Terrain } from "./Terrain.js";
 
 const { THREE } = window;
@@ -6294,12 +6295,12 @@ export class World {
 
   addLegendaryBowDisplays(origin, groundY) {
     const displays = [
-      { name: "Stormcaller", color: 0x9fdcff, local: [-4.2, -3.3], yaw: 0.18 },
-      { name: "Whisperbranch", color: 0x9af6b9, local: [-2.55, -3.75], yaw: 0.08 },
-      { name: "Windrunner", color: 0xffd166, local: [-0.85, -3.95], yaw: 0.02 },
-      { name: "Kingmaker", color: 0xd9ad57, local: [0.85, -3.95], yaw: -0.02 },
-      { name: "Voidstar", color: 0x8c6dff, local: [2.55, -3.75], yaw: -0.08 },
-      { name: "Starpiercer", color: 0xcdb7ff, local: [4.2, -3.3], yaw: -0.18 },
+      { id: "stormcaller", name: "Stormcaller", local: [-4.2, -3.3], yaw: 0.18 },
+      { id: "whisperbranch", name: "Whisperbranch", local: [-2.55, -3.75], yaw: 0.08 },
+      { id: "windrunner", name: "Windrunner", local: [-0.85, -3.95], yaw: 0.02 },
+      { id: "kingmaker", name: "Kingmaker", local: [0.85, -3.95], yaw: -0.02 },
+      { id: "voidstar", name: "Voidstar", local: [2.55, -3.75], yaw: -0.08 },
+      { id: "starpiercer", name: "Starpiercer", local: [4.2, -3.3], yaw: -0.18 },
     ];
 
     displays.forEach((display, index) => {
@@ -6308,24 +6309,49 @@ export class World {
       const group = new THREE.Group();
       group.position.set(point.x, y + 0.18, point.z);
       group.rotation.y = origin.yaw + display.yaw;
+      const visual = getBowVisual(display.id);
       const displayMaterial = new THREE.MeshStandardMaterial({
-        color: display.color,
+        color: visual.limb,
         roughness: 0.38,
         metalness: 0.08,
-        emissive: display.color,
-        emissiveIntensity: 0.18,
+        emissive: visual.limb,
+        emissiveIntensity: 0.12,
+      });
+      const accentMaterial = new THREE.MeshStandardMaterial({
+        color: visual.accent,
+        roughness: 0.32,
+        metalness: 0.16,
+        emissive: visual.accent,
+        emissiveIntensity: 0.24,
       });
       const plinth = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.54, 0.36, 9), this.materials.masterMarble);
       plinth.position.y = 0.18;
-      const bow = new THREE.Mesh(new THREE.TorusGeometry(0.42, 0.018, 7, 32, Math.PI * 1.42), displayMaterial);
-      bow.position.y = 0.96;
-      bow.rotation.set(0, Math.PI / 2, Math.PI / 2 + (index % 2 ? 0.08 : -0.08));
-      const string = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.72, 5), this.materials.rope);
-      string.position.set(0.0, 0.96, -0.03);
-      string.rotation.z = Math.PI / 2;
+      const bowRig = new THREE.Group();
+      bowRig.position.y = 0.98;
+      bowRig.rotation.z = index % 2 ? 0.08 : -0.08;
+      bowRig.scale.set(0.95, visual.scale, 0.95);
+      const upperLimb = new THREE.Mesh(new THREE.CapsuleGeometry(0.022, 0.54, 6, 10), displayMaterial);
+      upperLimb.position.y = 0.24;
+      upperLimb.rotation.z = -0.12 - visual.curve * 0.28;
+      const lowerLimb = upperLimb.clone();
+      lowerLimb.position.y = -0.24;
+      lowerLimb.rotation.z = 0.12 + visual.curve * 0.28;
+      const grip = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.18, 8), this.materials.rope);
+      grip.rotation.x = Math.PI / 2;
+      const string = new THREE.Mesh(new THREE.CylinderGeometry(0.007, 0.007, 0.9, 5), this.materials.rope);
+      string.position.x = 0.08 + visual.curve * 0.18;
+      [-1, 1].forEach((side) => {
+        const tip = new THREE.Mesh(new THREE.ConeGeometry(0.04, 0.14, 5), accentMaterial);
+        tip.position.set(side * 0.055, side * 0.55, 0);
+        tip.rotation.z = side > 0 ? -0.72 : Math.PI + 0.72;
+        bowRig.add(tip);
+      });
+      const motif = new THREE.Mesh(new THREE.SphereGeometry(0.055, 10, 8), accentMaterial);
+      motif.position.set(0.02, 0, 0.04);
+      bowRig.add(upperLimb, lowerLimb, grip, string, motif);
       const namePlate = new THREE.Mesh(new THREE.BoxGeometry(0.76, 0.14, 0.06), this.materials.targetGold);
       namePlate.position.set(0, 0.46, -0.43);
-      group.add(plinth, bow, string, namePlate);
+      group.add(plinth, bowRig, namePlate);
       group.traverse((child) => {
         if (child.isMesh) {
           child.castShadow = true;
