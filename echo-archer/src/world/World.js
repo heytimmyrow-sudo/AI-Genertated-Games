@@ -6671,10 +6671,11 @@ export class World {
 
     const cliff = new THREE.Group();
     const cliffShapes = [
-      [0, 2.8, 0, 10.8, 8.4, 4.2, 0.02],
-      [-4.6, 2.15, 1.0, 4.8, 6.2, 3.8, -0.08],
-      [4.7, 2.35, 0.8, 5.3, 6.8, 3.4, 0.1],
-      [-1.6, 4.6, -1.4, 7.2, 4.2, 2.2, 0.04],
+      [0, 2.8, -0.2, 11.8, 8.8, 4.35, 0.02],
+      [-5.2, 2.1, 1.05, 5.4, 6.3, 3.9, -0.08],
+      [5.15, 2.35, 0.8, 5.7, 6.95, 3.55, 0.1],
+      [-1.6, 4.82, -1.55, 8.0, 4.55, 2.45, 0.04],
+      [2.8, 4.0, -2.05, 5.2, 4.85, 2.1, -0.05],
     ];
     cliffShapes.forEach(([x, pieceY, z, width, height, depth, roll], index) => {
       const stone = new THREE.Mesh(new THREE.DodecahedronGeometry(1, 1), index % 2 ? this.materials.darkStone : this.materials.ancientStone);
@@ -6789,6 +6790,8 @@ export class World {
     this.addFortressCliffsideAdditions(group);
     this.addFortressEntryDepth(group);
     this.addFortressBelievableFacade(group);
+    this.addFortressWallConstructionDetails(group);
+    this.addFortressApproachDominance(group);
 
     const entrance = new THREE.Group();
     entrance.position.set(0, 0.28, 5.3);
@@ -6800,6 +6803,8 @@ export class World {
     const symbol = this.createGuildSymbol(1.25);
     symbol.position.y = 0.51;
     symbol.rotation.x = -Math.PI / 2;
+    const platformBase = new THREE.Mesh(new THREE.CylinderGeometry(3.05, 3.38, 0.24, 12), this.materials.kingdomDarkStone);
+    platformBase.position.y = 0.04;
     const archLeft = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.24, 2.65, 8), this.materials.ancientStone);
     archLeft.position.set(-1.55, 1.38, -0.72);
     const archRight = archLeft.clone();
@@ -6807,7 +6812,9 @@ export class World {
     const archTop = new THREE.Mesh(new THREE.TorusGeometry(1.55, 0.17, 8, 30, Math.PI), this.materials.ancientStone);
     archTop.position.set(0, 2.7, -0.72);
     archTop.rotation.z = Math.PI;
-    entrance.add(platform, activationRing, symbol, archLeft, archRight, archTop);
+    const threshold = new THREE.Mesh(new THREE.BoxGeometry(4.3, 0.22, 1.1), this.materials.warmTrim);
+    threshold.position.set(0, 0.24, -1.05);
+    entrance.add(platformBase, platform, activationRing, symbol, archLeft, archRight, archTop, threshold);
     entrance.traverse((child) => {
       if (child.isMesh) {
         child.castShadow = true;
@@ -6884,7 +6891,7 @@ export class World {
 
     const gateHouse = new THREE.Group();
     gateHouse.position.set(0, 0.2, 1.25);
-    const gateStone = new THREE.Mesh(new THREE.BoxGeometry(3.4, 3.6, 1.0), this.materials.kingdomDarkStone);
+    const gateStone = new THREE.Mesh(new THREE.BoxGeometry(3.75, 3.85, 1.08), this.materials.kingdomDarkStone);
     gateStone.position.y = 1.8;
     const gateArch = new THREE.Mesh(new THREE.TorusGeometry(1.18, 0.18, 10, 32, Math.PI), this.materials.masterMarble);
     gateArch.position.set(0, 2.68, -0.54);
@@ -6893,7 +6900,21 @@ export class World {
     gateDark.position.set(0, 1.38, -0.62);
     const lintel = new THREE.Mesh(new THREE.BoxGeometry(3.85, 0.28, 0.72), this.materials.warmTrim);
     lintel.position.set(0, 3.45, -0.2);
-    gateHouse.add(gateStone, gateArch, gateDark, lintel);
+    const gateRoof = this.createLayeredGableRoof(4.15, 1.58, 3.92, this.materials.barkDark, {
+      pitch: 0.44,
+      overhang: 0.24,
+      thickness: 0.16,
+      shingleRows: this.performanceMode ? 1 : 2,
+      asymmetry: -0.06,
+    });
+    [-1, 1].forEach((side) => {
+      const gatePier = new THREE.Mesh(new THREE.BoxGeometry(0.42, 3.4, 1.28), this.materials.darkStone);
+      gatePier.position.set(side * 2.08, 1.7, -0.02);
+      const pierCap = new THREE.Mesh(new THREE.BoxGeometry(0.64, 0.22, 1.42), this.materials.masterMarble);
+      pierCap.position.set(side * 2.08, 3.48, -0.02);
+      gateHouse.add(gatePier, pierCap);
+    });
+    gateHouse.add(gateStone, gateArch, gateDark, lintel, gateRoof);
     facade.add(gateHouse);
 
     const carvedSeams = [-4.8, -3.2, -1.8, -0.55, 0.55, 1.8, 3.2, 4.8];
@@ -6912,6 +6933,85 @@ export class World {
       }
     });
     group.add(facade);
+  }
+
+  addFortressWallConstructionDetails(group) {
+    const masonry = new THREE.Group();
+    masonry.position.set(0, 0.44, 2.04);
+
+    for (let row = 0; row < 6; row += 1) {
+      const course = new THREE.Mesh(new THREE.BoxGeometry(10.6 - row * 0.34, 0.055, 0.075), row % 2 ? this.materials.kingdomDarkStone : this.materials.masterMarble);
+      course.position.set(Math.sin(row) * 0.12, 1.25 + row * 0.48, -0.36);
+      course.rotation.z = Math.sin(row * 1.7) * 0.012;
+      masonry.add(course);
+    }
+
+    [-4.6, -3.35, -2.1, 2.1, 3.35, 4.6].forEach((xOffset, index) => {
+      const slit = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.62, 0.065), this.materials.caveStone);
+      slit.position.set(xOffset, 2.38 + (index % 2) * 0.32, -0.44);
+      const sill = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.06, 0.075), this.materials.warmTrim);
+      sill.position.set(xOffset, slit.position.y - 0.36, -0.46);
+      masonry.add(slit, sill);
+    });
+
+    [-1, 1].forEach((side) => {
+      for (let index = 0; index < 3; index += 1) {
+        const beam = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.16, 1.36), this.materials.barkDark);
+        beam.position.set(side * (2.6 + index * 1.1), 3.9 + index * 0.22, 0.24 - index * 0.12);
+        beam.rotation.z = side * (0.08 + index * 0.025);
+        masonry.add(beam);
+      }
+    });
+
+    const cliffTie = new THREE.Mesh(new THREE.BoxGeometry(12.8, 0.24, 0.32), this.materials.darkStone);
+    cliffTie.position.set(0, 0.76, -0.22);
+    masonry.add(cliffTie);
+    masonry.traverse((child) => {
+      if (child.isMesh) {
+        child.castShadow = true;
+        child.receiveShadow = true;
+        child.userData.landmark = "mountain-fortress-construction-detail";
+      }
+    });
+    group.add(masonry);
+  }
+
+  addFortressApproachDominance(group) {
+    const approach = new THREE.Group();
+    approach.position.set(0, 0.08, 6.9);
+
+    const causeway = new THREE.Mesh(new THREE.BoxGeometry(5.8, 0.16, 4.9), this.materials.kingdomDarkStone);
+    causeway.position.set(0, 0.08, 0.9);
+    const centralPath = new THREE.Mesh(new THREE.BoxGeometry(2.65, 0.06, 4.8), this.materials.visibleTrail);
+    centralPath.position.set(0, 0.22, 0.86);
+    const lowerStep = new THREE.Mesh(new THREE.BoxGeometry(4.6, 0.18, 0.72), this.materials.masterMarble);
+    lowerStep.position.set(0, 0.22, 3.24);
+    const upperStep = lowerStep.clone();
+    upperStep.scale.set(0.82, 1, 0.82);
+    upperStep.position.set(0, 0.42, 2.64);
+    approach.add(causeway, centralPath, lowerStep, upperStep);
+
+    [-1, 1].forEach((side) => {
+      const retaining = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.58, 4.6), this.materials.darkStone);
+      retaining.position.set(side * 3.05, 0.42, 0.8);
+      const rail = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.16, 4.4), this.materials.warmTrim);
+      rail.position.set(side * 3.05, 0.86, 0.7);
+      const bannerPole = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.045, 1.45, 6), this.materials.barkDark);
+      bannerPole.position.set(side * 2.72, 1.22, 2.55);
+      const banner = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.92, 0.055), this.materials.banner);
+      banner.position.set(side * 2.72, 1.18, 2.28);
+      banner.rotation.z = side * 0.04;
+      approach.add(retaining, rail, bannerPole, banner);
+    });
+
+    approach.traverse((child) => {
+      if (child.isMesh) {
+        child.castShadow = true;
+        child.receiveShadow = true;
+        child.userData.landmark = "mountain-fortress-approach";
+      }
+    });
+    group.add(approach);
   }
 
   addFortressDistantCrown(group) {
@@ -7241,16 +7341,26 @@ export class World {
         : style === "ashen" || style === "ashen-spire" ? this.materials.ashField
           : style === "marsh" ? this.materials.swampMud
             : this.materials.mossStone;
-    const seat = new THREE.Mesh(new THREE.CylinderGeometry(width * 0.55, width * 0.68, 0.22, 16), seatMaterial ?? material);
-    seat.position.y = 0.08;
-    seat.scale.z = depth / Math.max(width, 0.1);
-    group.add(seat);
+    const seat = new THREE.Mesh(new THREE.BoxGeometry(width * 1.08, 0.2, depth * 1.08), seatMaterial ?? material);
+    seat.position.y = 0.1;
+    seat.rotation.y = style === "mountain" ? -0.015 : Math.sin(width + depth) * 0.02;
+    const lowerSeat = new THREE.Mesh(new THREE.BoxGeometry(width * 1.2, 0.16, depth * 1.18), material);
+    lowerSeat.position.y = 0.0;
+    lowerSeat.rotation.y = -seat.rotation.y * 0.6;
+    group.add(lowerSeat, seat);
 
     [-0.34, 0.34].forEach((offset, index) => {
-      const retainingWall = new THREE.Mesh(new THREE.BoxGeometry(width * 0.86, 0.28, 0.22), material);
-      retainingWall.position.set(0, 0.3, offset * depth);
+      const retainingWall = new THREE.Mesh(new THREE.BoxGeometry(width * 0.92, 0.32, 0.24), material);
+      retainingWall.position.set(0, 0.33, offset * depth * 1.04);
       retainingWall.rotation.y = Math.sin(index + width) * 0.025;
       group.add(retainingWall);
+    });
+
+    [-1, 1].forEach((side) => {
+      const sideRetainer = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.28, depth * 0.88), material);
+      sideRetainer.position.set(side * width * 0.55, 0.31, 0);
+      sideRetainer.rotation.y = side * 0.025;
+      group.add(sideRetainer);
     });
   }
 
@@ -7267,6 +7377,23 @@ export class World {
     const right = left.clone();
     right.position.x = width * 0.5;
     group.add(front, rear, left, right);
+
+    for (let row = 0; row < 3; row += 1) {
+      const frontCourse = new THREE.Mesh(new THREE.BoxGeometry(width * (0.96 - row * 0.035), 0.055, wallThickness * 1.12), trimMaterial);
+      frontCourse.position.set(0, 0.74 + row * wallHeight * 0.28, -depth * 0.5 - wallThickness * 0.03);
+      const rearCourse = frontCourse.clone();
+      rearCourse.position.z = depth * 0.5 + wallThickness * 0.03;
+      rearCourse.scale.x = 0.9;
+      group.add(frontCourse, rearCourse);
+    }
+
+    [-1, 1].forEach((side) => {
+      for (let index = 0; index < 3; index += 1) {
+        const slit = new THREE.Mesh(new THREE.BoxGeometry(0.055, 0.38, 0.08), this.materials.caveStone);
+        slit.position.set(side * (-width * 0.24 + index * width * 0.24), wallHeight * 0.62 + 0.42, -depth * 0.5 - wallThickness * 0.62);
+        group.add(slit);
+      }
+    });
 
     const merlonRows = [
       { z: -depth * 0.5 - wallThickness * 0.18, width: width * 0.92 },
@@ -7306,7 +7433,24 @@ export class World {
     const crest = this.createGuildSymbol(style === "mountain" ? 0.82 : 0.48, { gold: this.materials.targetGold, dark: this.materials.banner });
     crest.position.set(0, gateHeight * 0.7, -0.62);
     crest.rotation.y = Math.PI;
-    gate.add(body, archDark, lintel, crest);
+    const threshold = new THREE.Mesh(new THREE.BoxGeometry(gateWidth * 0.92, 0.16, 1.24), trimMaterial);
+    threshold.position.set(0, 0.08, -0.08);
+    gate.add(body, archDark, lintel, crest, threshold);
+
+    [-1, 1].forEach((side) => {
+      const buttress = new THREE.Mesh(new THREE.BoxGeometry(0.34, gateHeight * 0.84, 1.18), trimMaterial);
+      buttress.position.set(side * gateWidth * 0.54, gateHeight * 0.42, -0.02);
+      const cap = new THREE.Mesh(new THREE.BoxGeometry(0.48, 0.16, 1.26), wallMaterial);
+      cap.position.set(side * gateWidth * 0.54, gateHeight * 0.86, -0.02);
+      gate.add(buttress, cap);
+    });
+
+    const barCount = style === "mountain" ? 7 : 5;
+    for (let index = 0; index < barCount; index += 1) {
+      const bar = new THREE.Mesh(new THREE.BoxGeometry(0.055, gateHeight * 0.46, 0.055), this.materials.barkDark);
+      bar.position.set(-gateWidth * 0.18 + (gateWidth * 0.36 * index) / Math.max(1, barCount - 1), gateHeight * 0.32, -0.66);
+      gate.add(bar);
+    }
 
     if (!style.includes("ruin")) {
       const roof = this.createLayeredGableRoof(gateWidth * 1.12, 1.32, gateHeight + 0.18, roofMaterial, {
@@ -7340,6 +7484,15 @@ export class World {
       ring.position.y = towerHeight * 0.86;
       tower.add(shaft, ring);
 
+      const ribCount = style === "mountain" ? 6 : 4;
+      for (let rib = 0; rib < ribCount; rib += 1) {
+        const angle = (rib / ribCount) * Math.PI * 2;
+        const verticalRib = new THREE.Mesh(new THREE.BoxGeometry(0.08, towerHeight * 0.78, 0.08), this.materials.darkStone);
+        verticalRib.position.set(Math.sin(angle) * radius * 0.78, towerHeight * 0.46, Math.cos(angle) * radius * 0.78);
+        verticalRib.rotation.y = angle;
+        tower.add(verticalRib);
+      }
+
       const merlonCount = 5;
       for (let merlon = 0; merlon < merlonCount; merlon += 1) {
         const angle = (merlon / merlonCount) * Math.PI * 2;
@@ -7363,7 +7516,9 @@ export class World {
 
       const window = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.34, 0.045), style === "ashen" || style === "ashen-spire" ? this.materials.lavaGlow : this.materials.warmWindow);
       window.position.set(0, towerHeight * 0.54, -radius * 0.82);
-      tower.add(window);
+      const lowerSlit = new THREE.Mesh(new THREE.BoxGeometry(0.11, 0.42, 0.05), this.materials.caveStone);
+      lowerSlit.position.set(0, towerHeight * 0.28, -radius * 0.86);
+      tower.add(window, lowerSlit);
       group.add(tower);
     });
   }
@@ -7392,11 +7547,13 @@ export class World {
     }
 
     if (style === "mountain") {
-      const terrace = new THREE.Mesh(new THREE.BoxGeometry(width * 0.78, 0.2, 1.18), this.materials.cutWood);
+      const terrace = new THREE.Mesh(new THREE.BoxGeometry(width * 0.82, 0.22, 1.24), this.materials.cutWood);
       terrace.position.set(0, height * 0.62, depth * 0.18);
       const rearRail = new THREE.Mesh(new THREE.BoxGeometry(width * 0.7, 0.1, 0.12), this.materials.barkDark);
       rearRail.position.set(0, height * 0.82, depth * 0.72);
-      group.add(terrace, rearRail);
+      const underBrace = new THREE.Mesh(new THREE.BoxGeometry(width * 0.72, 0.16, 0.16), trimMaterial);
+      underBrace.position.set(0, height * 0.52, depth * 0.58);
+      group.add(terrace, rearRail, underBrace);
     }
   }
 
