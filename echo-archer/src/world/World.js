@@ -184,15 +184,15 @@ export class World {
     const overhang = options.overhang ?? 0.42;
     const thickness = options.thickness ?? 0.22;
     const asymmetry = options.asymmetry ?? 0;
-    const panelLength = width * 0.62 + overhang;
+    const panelLength = width * 0.68 + overhang;
     const panelDepth = depth + overhang * 2;
     const ridgeY = y + Math.sin(pitch) * width * 0.36;
 
     const left = new THREE.Mesh(new THREE.BoxGeometry(panelLength, thickness, panelDepth), material);
-    left.position.set(-width * 0.26 - asymmetry, y, 0);
+    left.position.set(-width * 0.22 - asymmetry, y, 0);
     left.rotation.z = pitch;
     const right = new THREE.Mesh(new THREE.BoxGeometry(panelLength * (0.96 + Math.abs(asymmetry) * 0.04), thickness, panelDepth * 0.98), material);
-    right.position.set(width * 0.26 - asymmetry * 0.35, y + asymmetry * 0.02, 0.02);
+    right.position.set(width * 0.22 - asymmetry * 0.35, y + asymmetry * 0.02, 0.02);
     right.rotation.z = -pitch * 0.94;
 
     const shingleRows = options.shingleRows ?? (this.performanceMode ? 2 : 4);
@@ -214,6 +214,10 @@ export class World {
     const ridge = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.1, panelDepth + 0.12, 8), this.materials.cutWood);
     ridge.position.set(-asymmetry * 0.7, ridgeY, 0);
     ridge.rotation.x = Math.PI / 2;
+
+    const ridgeSeam = new THREE.Mesh(new THREE.BoxGeometry(0.16, thickness * 1.15, panelDepth * 1.01), this.materials.cutWood);
+    ridgeSeam.position.set(-asymmetry * 0.7, ridgeY - thickness * 0.18, 0);
+    ridgeSeam.rotation.z = -asymmetry * 0.02;
 
     [-1, 1].forEach((side) => {
       const eave = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.055, panelDepth, 7), this.materials.barkDark);
@@ -266,7 +270,7 @@ export class World {
       roof.add(dormer);
     }
 
-    [left, right, ridge].forEach((piece) => {
+    [left, right, ridge, ridgeSeam].forEach((piece) => {
       piece.castShadow = true;
       piece.receiveShadow = true;
       roof.add(piece);
@@ -278,29 +282,39 @@ export class World {
     const trimMaterial = options.trim ?? this.materials.warmTrim;
     const beamMaterial = options.beam ?? this.materials.barkDark;
     const windowMaterial = options.window ?? this.materials.warmWindow;
-    const frontZ = -depth * 0.515;
-    const sideZ = depth * 0.515;
+    const frontZ = -depth * 0.505;
+    const sideZ = depth * 0.505;
+    const wallTopY = height + 0.22;
 
     [-1, 1].forEach((side) => {
-      const frontPost = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.075, height + 0.28, 7), beamMaterial);
-      frontPost.position.set(side * (width * 0.46), height * 0.52 + 0.2, frontZ - 0.035);
+      const frontPost = new THREE.Mesh(new THREE.CylinderGeometry(0.065, 0.085, height + 0.34, 7), beamMaterial);
+      frontPost.position.set(side * (width * 0.49), height * 0.52 + 0.2, frontZ - 0.045);
       frontPost.rotation.z = side * 0.025;
       const backPost = frontPost.clone();
       backPost.position.z = sideZ + 0.035;
       group.add(frontPost, backPost);
     });
 
-    [0.54, height + 0.2].forEach((trimY, index) => {
-      const frontTrim = new THREE.Mesh(new THREE.BoxGeometry(width * 0.94, 0.08, 0.08), index ? trimMaterial : beamMaterial);
-      frontTrim.position.set(0, trimY, frontZ - 0.055);
+    [0.54, wallTopY].forEach((trimY, index) => {
+      const frontTrim = new THREE.Mesh(new THREE.BoxGeometry(width * 1.02, index ? 0.11 : 0.08, 0.09), index ? trimMaterial : beamMaterial);
+      frontTrim.position.set(0, trimY, frontZ - 0.06);
       const backTrim = frontTrim.clone();
       backTrim.position.z = sideZ + 0.055;
       group.add(frontTrim, backTrim);
     });
 
     [-1, 1].forEach((side) => {
-      const sideTrim = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.08, depth * 0.92), beamMaterial);
-      sideTrim.position.set(side * (width * 0.515), height * 0.52 + 0.08, 0);
+      const roofSeat = new THREE.Mesh(new THREE.BoxGeometry(width * 1.06, 0.12, 0.14), beamMaterial);
+      roofSeat.position.set(0, wallTopY + 0.08, side * (depth * 0.5 + 0.04));
+      group.add(roofSeat);
+      const foundationSkirt = new THREE.Mesh(new THREE.BoxGeometry(width * 1.04, 0.12, 0.12), trimMaterial);
+      foundationSkirt.position.set(0, 0.31, side * (depth * 0.5 + 0.045));
+      group.add(foundationSkirt);
+    });
+
+    [-1, 1].forEach((side) => {
+      const sideTrim = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.09, depth * 1.02), beamMaterial);
+      sideTrim.position.set(side * (width * 0.505), height * 0.52 + 0.08, 0);
       sideTrim.rotation.y = Math.PI / 2;
       group.add(sideTrim);
 
@@ -324,9 +338,22 @@ export class World {
         const sideWindow = window.clone();
         sideWindow.position.set(width * 0.515, height * 0.6, depth * 0.12);
         sideWindow.rotation.y = Math.PI / 2;
-        group.add(sideWindow);
+        const sideSill = new THREE.Mesh(new THREE.BoxGeometry(0.68, 0.07, 0.08), trimMaterial);
+        sideSill.position.set(width * 0.525, height * 0.6 - 0.28, depth * 0.12);
+        sideSill.rotation.y = Math.PI / 2;
+        group.add(sideWindow, sideSill);
       }
     });
+
+    const doorTrimY = 0.82;
+    [-1, 1].forEach((side) => {
+      const jamb = new THREE.Mesh(new THREE.BoxGeometry(0.08, 1.26, 0.09), beamMaterial);
+      jamb.position.set(side * 0.42, doorTrimY, frontZ - 0.095);
+      group.add(jamb);
+    });
+    const doorHeader = new THREE.Mesh(new THREE.BoxGeometry(0.94, 0.09, 0.1), beamMaterial);
+    doorHeader.position.set(0, 1.46, frontZ - 0.1);
+    group.add(doorHeader);
 
     const stoneCount = Math.max(3, Math.round(width / 1.2));
     for (let index = 0; index < stoneCount; index += 1) {
@@ -1552,30 +1579,30 @@ export class World {
     group.rotation.y = building.yaw ?? 0;
     const width = building.width ?? 3.6;
     const depth = building.depth ?? 2.8;
-    const frontZ = -depth * 0.55;
+    const frontZ = -depth * 0.515;
     const trim = /smith/i.test(building.label ?? "") ? this.materials.emberRock : /bow/i.test(building.label ?? "") ? this.materials.targetGold : this.materials.warmTrim;
     const beam = /coast|harbor/i.test(`${building.id} ${building.label}`) ? this.materials.weatheredDock : this.materials.barkDark;
 
     [-1, 1].forEach((side) => {
       const bracket = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.72, 0.12), beam);
-      bracket.position.set(side * width * 0.43, 1.08, frontZ - 0.05);
+      bracket.position.set(side * width * 0.46, 1.08, frontZ - 0.045);
       bracket.rotation.z = side * 0.1;
       const brace = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.82, 0.1), beam);
-      brace.position.set(side * width * 0.31, 1.55, frontZ - 0.08);
+      brace.position.set(side * width * 0.31, 1.55, frontZ - 0.065);
       brace.rotation.z = side * 0.65;
       group.add(bracket, brace);
     });
 
-    const lintel = new THREE.Mesh(new THREE.BoxGeometry(width * 0.74, 0.12, 0.12), trim);
-    lintel.position.set(0, 1.46, frontZ - 0.09);
+    const lintel = new THREE.Mesh(new THREE.BoxGeometry(width * 0.82, 0.12, 0.12), trim);
+    lintel.position.set(0, 1.46, frontZ - 0.075);
     lintel.rotation.z = Math.sin(index) * 0.035;
     group.add(lintel);
 
     [-0.31, 0.31].forEach((offset, windowIndex) => {
       const windowFrame = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.38, 0.06), this.materials.warmWindow);
-      windowFrame.position.set(offset * width, 1.08 + (index % 2) * 0.08, frontZ - 0.11);
+      windowFrame.position.set(offset * width, 1.08 + (index % 2) * 0.08, frontZ - 0.075);
       const sill = new THREE.Mesh(new THREE.BoxGeometry(0.58, 0.07, 0.12), trim);
-      sill.position.set(offset * width, 0.84 + (index % 2) * 0.08, frontZ - 0.14);
+      sill.position.set(offset * width, 0.84 + (index % 2) * 0.08, frontZ - 0.095);
       sill.rotation.z = (windowIndex ? -1 : 1) * 0.025;
       group.add(windowFrame, sill);
     });
@@ -1587,7 +1614,7 @@ export class World {
         shingleRows: 1,
         asymmetry: Math.sin(index) * 0.03,
       });
-      awning.position.set(-width * 0.28, 0, frontZ - 0.08);
+      awning.position.set(-width * 0.28, 0, frontZ - 0.06);
       awning.scale.set(0.68, 0.68, 0.68);
       group.add(awning);
     }
