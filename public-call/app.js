@@ -87,6 +87,7 @@ async function ensureLocalStream() {
 
   cameraTrack = localStream.getVideoTracks()[0] || null;
   localVideo.srcObject = localStream;
+  document.body.classList.add("has-media");
   localEmpty.classList.add("is-hidden");
   muteButton.disabled = false;
   cameraButton.disabled = false;
@@ -267,6 +268,7 @@ function hangUp() {
   activeConnection = null;
   localStream = null;
   cameraTrack = null;
+  document.body.classList.remove("has-media");
   remoteVideo.srcObject = null;
   localVideo.srcObject = null;
   remoteEmpty.classList.remove("is-hidden");
