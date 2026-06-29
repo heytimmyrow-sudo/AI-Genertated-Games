@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Treasure Trail</title>
+    <link rel="stylesheet" href="style.css?v=treasure-trail-v17" />
+  </head>
+  <body>
+    <main class="game-shell" aria-label="Treasure Trail browser game">
+      <header class="hud" aria-label="Game status">
+        <div class="brand-block">
+          <p class="eyebrow">Treasure Trail</p>
+          <h1 id="levelTitle">Key first. Chest second.</h1>
+        </div>
+        <div class="hud-cluster">
+          <span class="badge" id="healthBadge">Health: 3</span>
+          <span class="badge" id="coinBadge">Gems: 0/0</span>
+          <span class="badge" id="timerBadge">Time: 0.0</span>
+          <span class="badge" id="bestBadge">Best: --</span>
+          <span class="badge" id="keyBadge">Key: missing</span>
+          <span class="badge" id="statusText">Ready</span>
+          <button class="icon-button" id="muteButton" type="button" aria-label="Toggle sound">Sound</button>
+          <button class="icon-button" id="pauseButton" type="button" aria-label="Pause game">Pause</button>
+        </div>
+      </header>
+
+      <section class="stage-wrap">
+        <canvas id="gameCanvas" width="960" height="540" aria-label="Side-scrolling platformer playfield"></canvas>
+
+        <div class="overlay" id="startScreen">
+          <section class="modal" aria-labelledby="startTitle">
+            <p class="eyebrow">Five worlds. Twenty-five trails.</p>
+            <h2 id="startTitle">Treasure Trail</h2>
+            <p id="storyText">Clear Forest, Ice, Cave, Lava, and Space worlds. Each world has five harder trails: grab the key, survive the hazards, then unlock the chest.</p>
+            <div class="menu-grid">
+              <section class="menu-panel" aria-label="Run options">
+                <p class="panel-title">Run</p>
+                <div class="button-row">
+                  <button id="startButton" type="button">Start Game</button>
+                  <button id="practiceButton" class="ghost" type="button">Practice Off</button>
+                  <button id="speedrunButton" class="ghost" type="button">Speedrun Off</button>
+                </div>
+              </section>
+              <section class="menu-panel" aria-label="Player options">
+                <p class="panel-title">Options</p>
+                <div class="button-row">
+                  <button id="cosmeticButton" class="ghost" type="button">Look: Trail</button>
+                  <button id="shopButton" class="ghost" type="button">Shop</button>
+                  <button id="vaultButton" class="ghost" type="button">Vault</button>
+                  <button id="reducedMotionButton" class="ghost" type="button">Motion: Full</button>
+                  <button id="touchSizeButton" class="ghost" type="button">Touch: Normal</button>
+                  <button id="resetSaveButton" class="ghost danger" type="button">Reset Save</button>
+                </div>
+              </section>
+            </div>
+            <div class="preview-panel" id="levelPreview" aria-label="Selected level preview">Select a level to preview its hazards.</div>
+            <div class="world-map" id="worldMap" aria-label="World map"></div>
+            <div class="level-select" id="levelSelect" aria-label="Level select"></div>
+            <div class="journal-panel" id="journalPanel" aria-label="Relic journal">Relic journal: none found yet.</div>
+            <div class="vault-panel" id="vaultPanel" aria-label="Final treasure vault">Final vault: locked.</div>
+          </section>
+        </div>
+
+        <div class="overlay hidden" id="pauseScreen">
+          <section class="modal compact" aria-labelledby="pauseTitle">
+            <p class="eyebrow">Paused</p>
+            <h2 id="pauseTitle">Trail break</h2>
+            <p>Your progress is saved at the latest checkpoint.</p>
+            <div class="button-row">
+              <button id="resumeButton" type="button">Resume</button>
+              <button class="restart-button ghost" type="button">Restart</button>
+            </div>
+          </section>
+        </div>
+
+        <div class="overlay hidden" id="winScreen">
+          <section class="modal" aria-labelledby="winTitle">
+            <p class="eyebrow">Victory</p>
+            <h2 id="winTitle">The treasure is yours.</h2>
+            <p id="winSummary">You found the key and opened the chest without letting the trail win.</p>
+            <div class="score-row" id="scoreRow" aria-label="Level score"></div>
+            <div class="button-row">
+              <button id="nextLevelButton" type="button">Next Level</button>
+              <button class="restart-button ghost" type="button">Play Again</button>
+            </div>
+          </section>
+        </div>
+
+        <div class="overlay hidden" id="vaultScreen">
+          <section class="modal" aria-labelledby="vaultTitle">
+            <p class="eyebrow">Final Vault</p>
+            <h2 id="vaultTitle">Treasure Vault</h2>
+            <div class="vault-grid" id="vaultGrid" aria-label="Recovered treasures"></div>
+            <p id="vaultSummary">Clear all five worlds to open the vault.</p>
+            <div class="button-row">
+              <button id="closeVaultButton" type="button">Back</button>
+            </div>
+          </section>
+        </div>
+
+        <div class="overlay hidden" id="shopScreen">
+          <section class="modal" aria-labelledby="shopTitle">
+            <p class="eyebrow">Gem Shop</p>
+            <h2 id="shopTitle">Trail Shop</h2>
+            <p id="shopBalance">Gems: 0</p>
+            <div class="shop-grid" id="shopGrid" aria-label="Shop items"></div>
+            <div class="button-row">
+              <button id="closeShopButton" type="button">Back</button>
+            </div>
+          </section>
+        </div>
+
+        <div class="touch-controls" aria-label="Touch controls">
+          <button class="touch-button" data-touch="left" type="button" aria-label="Move left">Left</button>
+          <button class="touch-button" data-touch="right" type="button" aria-label="Move right">Right</button>
+          <button class="touch-button jump" data-touch="jump" type="button" aria-label="Jump">Jump</button>
+        </div>
+      </section>
+
+      <footer class="controls" aria-label="Controls">
+        <span>Move: A/D or Arrow Keys</span>
+        <span>Jump: W, Up, or Space</span>
+        <span>Pause: P</span>
+        <button class="restart-button ghost" type="button">Restart</button>
+      </footer>
+    </main>
+
+    <script src="game.js?v=treasure-trail-v17"></script>
+  </body>
+</html>
