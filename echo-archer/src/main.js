@@ -874,6 +874,37 @@ setLoading(saves.loaded ? "Progress restored." : "Starting fresh adventure.", 0.
 let caveAudioActive = false;
 let currentRegionId = null;
 let firstFrameRendered = false;
+const OPENING_REGION_IDS = new Set([
+  "forest-meadow",
+  "watchtower-region",
+  "hidden-pond-region",
+  "ancient-ruins-region",
+  "hunters-cabin-region",
+  "cliff-overlook-region",
+  "whisper-cave-region",
+  "river-crossing",
+  "mountain-path",
+  "forgotten-grove",
+  "archers-guild",
+  "guild-village",
+]);
+const ARC1_FORTRESS_REGION_IDS = new Set([...OPENING_REGION_IDS, "mountain-fortress", "hall-of-arrows", "archers-lodge"]);
+const FRONTIER_REGION_IDS = new Set(["frontier-plains", "frontier-outpost", "frontier-watch", "whispering-fields", "stone-circle-echoes", "broken-kings-road", "greenwater-crossing", "forgotten-camp"]);
+const LOST_KINGDOM_REGION_IDS = new Set(["lost-kingdom", "kings-gate", "sun-temple", "forgotten-plaza", "watchers-tower", "hall-of-echoes", "sealed-archive"]);
+const CELESTIAL_REGION_IDS = new Set(["celestial-expanse", "observatory-prime", "skyfall-basin", "crystal-sea", "floating-reach", "starforge-ruins", "temple-first-sky"]);
+const ADVANCED_ARC1_REGION_IDS = new Set([
+  "frostpeak-mountains", "frozen-watchtower", "icefall-cavern", "frost-shrine", "summit-overlook",
+  "coastal-cliffs", "broken-lighthouse", "sea-cave-shrine", "shipwreck-cove", "windspire-bridge",
+  "mistwood", "elder-tree", "moonlit-clearing", "forgotten-shrine", "rootfall-hollow", "echo-grove",
+  "blackwater-marsh", "sunken-shrine", "marsh-fortress", "mosswatch-tower", "crooked-boardwalk", "drowned-ruins", "witchlight-grove",
+  "red-canyon", "skybridge-crossing", "crimson-arch", "forgotten-outpost", "sunspire-plateau", "echo-chasm",
+  "ashen-highlands", "ember-peak", "obsidian-citadel", "ashfall-basin", "firewatch-spire", "molten-hollow",
+  "starfall-vale", "starfall-observatory", "moonspire-ridge", "celestial-basin", "shattered-sky-bridge", "crystalheart-grove", "astral-sanctum",
+]);
+const SHATTERED_REGION_IDS = new Set(["shattered-coast", "stormwatch-fortress", "broken-beacon", "tidefall-caverns", "kings-sea-gate", "wreckers-point", "drowned-citadel"]);
+const VEILED_REGION_IDS = new Set(["veiled-wilds", "worldroot-grove", "hidden-lake", "greenheart-ruins", "sleeping-arch", "mistveil-hollow", "forgotten-circle-wilds"]);
+let lastStoryGateToast = 0;
+
 window.setTimeout(() => {
   if (!firstFrameRendered) {
     hideLoadingScreen();
@@ -1118,12 +1149,64 @@ function updateHud() {
   watchMobileHudChanges();
 }
 
+function isRegionAllowedByStory(region) {
+  if (!region?.id) return true;
+  const phase = quests.getStoryPhase?.() ?? "opening";
+  if (phase === "opening") return OPENING_REGION_IDS.has(region.id);
+  if (phase === "arc1-fortress") return ARC1_FORTRESS_REGION_IDS.has(region.id);
+  if (FRONTIER_REGION_IDS.has(region.id)) return phase !== "opening" && phase !== "arc1-fortress";
+  if (LOST_KINGDOM_REGION_IDS.has(region.id)) return quests.hasCompletedMainObjective?.("frontier-expedition");
+  if (CELESTIAL_REGION_IDS.has(region.id)) return quests.hasCompletedMainObjective?.("lost-kingdom");
+  if (SHATTERED_REGION_IDS.has(region.id) || VEILED_REGION_IDS.has(region.id) || ADVANCED_ARC1_REGION_IDS.has(region.id)) {
+    return quests.hasCompletedMainObjective?.("master-trials");
+  }
+  return true;
+}
+
+function getStoryGateMessage(region) {
+  const phase = quests.getStoryPhase?.() ?? "opening";
+  if (phase === "opening") {
+    return "Stay near the village for now. Rowan's first lessons come before distant roads.";
+  }
+  if (phase === "arc1-fortress") {
+    return "The far roads can wait. The Hall of Arrows is your next step.";
+  }
+  if (LOST_KINGDOM_REGION_IDS.has(region?.id)) {
+    return "The Lost Kingdom route opens after the First Expedition.";
+  }
+  if (CELESTIAL_REGION_IDS.has(region?.id)) {
+    return "The First Sky mystery waits until the Lost Kingdom records are understood.";
+  }
+  return "That road is for a later chapter.";
+}
+
+function enforceStoryRegionGate() {
+  const region = world.getRegionAt?.(player.group.position);
+  if (!region || isRegionAllowedByStory(region)) {
+    return;
+  }
+  const fallback = world.safeZones?.find?.((zone) => zone.id === "training-grounds") ?? world.safeZones?.[0];
+  if (fallback?.position) {
+    const y = world.terrain.getHeightAt(fallback.position.x, fallback.position.z);
+    player.group.position.set(fallback.position.x, y + 0.02, fallback.position.z);
+    player.velocity?.set?.(0, 0, 0);
+  }
+  const now = performance.now();
+  if (now - lastStoryGateToast > 2600 && questToast) {
+    lastStoryGateToast = now;
+    questToast.textContent = getStoryGateMessage(region);
+    questToast.classList.remove("visible");
+    void questToast.offsetWidth;
+    questToast.classList.add("visible");
+  }
+}
+
 function updateRegionHud() {
   if (!regionState) {
     return;
   }
   const region = world.getRegionAt?.(player.group.position);
-  if (!region || region.id === currentRegionId) {
+  if (!region || !isRegionAllowedByStory(region) || region.id === currentRegionId) {
     return;
   }
   currentRegionId = region.id;
@@ -1134,8 +1217,10 @@ function updateRegionHud() {
   regionState.classList.remove("region-pulse");
   void regionState.offsetWidth;
   regionState.classList.add("region-pulse");
-  showMobileEventPopup("Region", region.name, "region");
-  mobilePopupSnapshot.region = region.name;
+  if (!quests.isOpeningChapter?.()) {
+    showMobileEventPopup("Region", region.name, "region");
+    mobilePopupSnapshot.region = region.name;
+  }
   window.dispatchEvent(new CustomEvent("echo-archer:journal-landmark", {
     detail: { id: region.id, name: region.name },
   }));
@@ -1453,6 +1538,8 @@ function update(deltaSeconds) {
   }
 
   player.update(deltaSeconds, input, cameraRig);
+  player.inSafeZone = world.isSafeZone?.(player.group.position) ?? false;
+  enforceStoryRegionGate();
   player.inSafeZone = world.isSafeZone?.(player.group.position) ?? false;
   if (player.inSafeZone) {
     enemies.forceReturnAll?.({ resetHealth: false });

@@ -1258,6 +1258,36 @@ export class QuestSystem {
     }
   }
 
+  getStoryPhase() {
+    if (!this.mainQuest?.objectives?.length) {
+      return "opening";
+    }
+    if (!this.mainQuest.objectives.find((objective) => objective.id === "rowan-landmarks")?.complete) {
+      return "opening";
+    }
+    if (!this.mainQuest.objectives.find((objective) => objective.id === "master-trials")?.complete) {
+      return "arc1-fortress";
+    }
+    if (!this.mainQuest.objectives.find((objective) => objective.id === "frontier-expedition")?.complete) {
+      return "frontier";
+    }
+    if (!this.mainQuest.objectives.find((objective) => objective.id === "lost-kingdom")?.complete) {
+      return "lost-kingdom";
+    }
+    if (!this.mainQuest.objectives.find((objective) => objective.id === "celestial-expanse")?.complete) {
+      return "celestial";
+    }
+    return "open-world";
+  }
+
+  isOpeningChapter() {
+    return this.getStoryPhase() === "opening";
+  }
+
+  hasCompletedMainObjective(id) {
+    return Boolean(this.mainQuest?.objectives?.find((objective) => objective.id === id)?.complete);
+  }
+
   getSaveData() {
     return {
       version: 2,

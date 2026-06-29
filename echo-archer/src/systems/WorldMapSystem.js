@@ -416,7 +416,7 @@ export class WorldMapSystem {
   }
 
   getFastTravelDestinations() {
-    return this.getMapDestinations().filter((destination) => this.isFastTravelPoint(destination));
+    return this.getMapDestinations().filter((destination) => this.isFastTravelPoint(destination) && this.isDestinationAllowedByStory(destination));
   }
 
   getMapDestinations() {
@@ -440,13 +440,29 @@ export class WorldMapSystem {
     if (this.player.defeated || this.player.stats?.health <= 0) return false;
     if (this.systems.isCombatActive?.()) return false;
     if (!this.isFastTravelPoint(destination)) return false;
+    if (!this.isDestinationAllowedByStory(destination)) return false;
     return this.discoveredLandmarks.has(destination.id) || this.discoveredRegions.has(destination.id);
+  }
+
+  isDestinationAllowedByStory(destination = {}) {
+    const id = destination.id ?? "";
+    const quests = this.systems.quests;
+    const phase = quests?.getStoryPhase?.() ?? "opening";
+    const opening = /forest-meadow|watchtower|hidden-pond|ancient-ruins|hunters-cabin|cliff-overlook|whisper-cave|river-crossing|mountain-path|forgotten-grove|archers-guild|guild-village/.test(id);
+    if (phase === "opening") return opening;
+    if (phase === "arc1-fortress") return opening || /mountain-fortress|hall-of-arrows|archers-lodge/.test(id);
+    if (/frontier|whispering|stone-circle|kings-road|greenwater|forgotten-camp/.test(id)) return phase !== "opening" && phase !== "arc1-fortress";
+    if (/lost-kingdom|kings-gate|sun-temple|forgotten-plaza|watchers-tower|hall-of-echoes|sealed-archive/.test(id)) return Boolean(quests?.hasCompletedMainObjective?.("frontier-expedition"));
+    if (/celestial-expanse|observatory|skyfall|crystal-sea|floating-reach|starforge|first-sky/.test(id)) return Boolean(quests?.hasCompletedMainObjective?.("lost-kingdom"));
+    if (/frost|coastal|mistwood|blackwater|red-canyon|ashen|starfall|shattered-coast|veiled-wilds/.test(id)) return Boolean(quests?.hasCompletedMainObjective?.("master-trials"));
+    return true;
   }
 
   fastTravelTo(id) {
     const destination = this.getDestinationById(id);
     if (!this.canFastTravel(destination)) {
-      this.showToast(this.systems.isCombatActive?.() ? "Cannot fast travel during combat" : "Destination not discovered");
+      const lockedByStory = destination && !this.isDestinationAllowedByStory(destination);
+      this.showToast(this.systems.isCombatActive?.() ? "Cannot fast travel during combat" : lockedByStory ? "That road opens in a later chapter" : "Destination not discovered");
       return;
     }
     this.ui.fade?.classList.add("visible");

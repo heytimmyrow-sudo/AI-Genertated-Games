@@ -112,12 +112,13 @@ export class LivingWorldEventsSystem {
     this.systems = systems;
     this.elapsed = 0;
     this.eventTimer = 0;
-    this.nextEventTimer = 14;
+    this.nextEventTimer = 90;
     this.eventIndex = 0;
     this.activeEvent = null;
     this.activeRewardClaimed = false;
     this.targetHitsThisEvent = 0;
     this.masterArcher = false;
+    this.eventsUnlocked = false;
     this.decorGroups = new Map();
     this.eventInteractables = new Map();
     this.load();
@@ -129,6 +130,12 @@ export class LivingWorldEventsSystem {
   bindEvents() {
     window.addEventListener("echo-archer:master-archer-complete", () => {
       this.masterArcher = true;
+      this.eventsUnlocked = true;
+      this.nextEventTimer = Math.max(this.nextEventTimer, 45);
+      this.save();
+    });
+    window.addEventListener("echo-archer:frontier-expedition-complete", () => {
+      this.eventsUnlocked = true;
       this.save();
     });
 
@@ -261,6 +268,10 @@ export class LivingWorldEventsSystem {
 
   update(deltaSeconds) {
     this.elapsed += deltaSeconds;
+    if (!this.eventsUnlocked && !this.masterArcher) {
+      this.applyVisibility();
+      return;
+    }
     if (this.activeEvent) {
       this.eventTimer -= deltaSeconds;
       this.updateActiveDecor(deltaSeconds);
@@ -278,7 +289,11 @@ export class LivingWorldEventsSystem {
   }
 
   startNextEvent() {
-    const available = EVENT_DEFINITIONS.filter((event) => !event.requiresMaster || this.masterArcher);
+    const available = EVENT_DEFINITIONS.filter((event) => {
+      if (event.requiresMaster && !this.masterArcher) return false;
+      if (!this.masterArcher && ["guild-day", "frontier-celebration", "victory-festival"].includes(event.id)) return false;
+      return true;
+    });
     const event = available[this.eventIndex % available.length];
     this.eventIndex += 1;
     this.activeEvent = event;
@@ -384,6 +399,7 @@ export class LivingWorldEventsSystem {
       const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "{}");
       this.eventIndex = Number.isFinite(saved.eventIndex) ? saved.eventIndex : this.eventIndex;
       this.masterArcher = Boolean(saved.masterArcher);
+      this.eventsUnlocked = Boolean(saved.eventsUnlocked) || this.masterArcher;
     } catch (error) {
       console.warn("Living world event save ignored:", error);
     }
@@ -394,6 +410,7 @@ export class LivingWorldEventsSystem {
       localStorage.setItem(STORAGE_KEY, JSON.stringify({
         eventIndex: this.eventIndex,
         masterArcher: this.masterArcher,
+        eventsUnlocked: this.eventsUnlocked,
       }));
     } catch (error) {
       console.warn("Living world event save failed:", error);
