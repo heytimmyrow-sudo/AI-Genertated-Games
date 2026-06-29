@@ -57,6 +57,7 @@ button {
 }
 
 .call-stage {
+  position: relative;
   display: grid;
   grid-template-rows: minmax(0, 1fr) auto;
   min-height: calc(100vh - 36px);
@@ -66,6 +67,7 @@ button {
 }
 
 .video-grid {
+  position: relative;
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   gap: 12px;
@@ -94,6 +96,14 @@ button {
   width: min(320px, 28vw);
   aspect-ratio: 16 / 10;
   z-index: 3;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+
+.video-tile--local.is-dragging {
+  cursor: grabbing;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.48), 0 0 0 2px rgba(48, 211, 125, 0.42);
 }
 
 video {
@@ -272,8 +282,7 @@ h2 {
   line-height: 1.5;
 }
 
-.profile-card,
-.notification-card {
+.profile-card {
   display: grid;
   gap: 14px;
   align-items: center;
@@ -285,10 +294,6 @@ h2 {
 
 .profile-card {
   grid-template-columns: auto minmax(0, 1fr);
-}
-
-.notification-card {
-  grid-template-columns: minmax(0, 1fr) auto;
 }
 
 .profile-preview {
@@ -319,56 +324,6 @@ h2 {
   cursor: pointer;
   text-align: center;
   touch-action: manipulation;
-}
-
-.setting-title {
-  margin: 0 0 4px;
-  color: var(--text);
-  font-weight: 900;
-}
-
-.setting-copy {
-  margin: 0;
-  color: var(--muted);
-  font-size: 0.9rem;
-  line-height: 1.4;
-}
-
-.toggle-button {
-  display: inline-flex;
-  align-items: center;
-  gap: 9px;
-  min-width: 104px;
-  min-height: 44px;
-  justify-content: center;
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  padding: 0 12px;
-  color: var(--muted);
-  background: var(--panel-strong);
-  font-weight: 900;
-  cursor: pointer;
-  touch-action: manipulation;
-}
-
-.toggle-button.is-on {
-  color: #06100f;
-  background: var(--green);
-  border-color: rgba(48, 211, 125, 0.85);
-}
-
-.toggle-button.is-blocked,
-.toggle-button.is-unsupported {
-  color: #ffdce0;
-  background: rgba(255, 90, 104, 0.16);
-  border-color: rgba(255, 90, 104, 0.42);
-}
-
-.toggle-knob {
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  background: currentColor;
 }
 
 .sr-only {
@@ -553,10 +508,10 @@ h2 {
   }
 
   .video-tile--local {
-    position: relative;
-    right: auto;
-    bottom: auto;
-    width: 100%;
+    right: 18px;
+    bottom: 88px;
+    width: min(220px, 46vw);
+    min-width: 150px;
   }
 
   .controls {
@@ -599,10 +554,6 @@ h2 {
   }
 
   .profile-card {
-    grid-template-columns: 1fr;
-  }
-
-  .notification-card {
     grid-template-columns: 1fr;
   }
 

@@ -38,7 +38,7 @@
           </div>
         </article>
 
-        <article class="video-tile video-tile--local">
+        <article class="video-tile video-tile--local" id="localTile" aria-label="Your movable camera preview">
           <video id="localVideo" autoplay playsinline muted></video>
           <div class="camera-placeholder" id="localEmpty">Camera preview</div>
           <div class="tile-label profile-chip">
@@ -81,17 +81,6 @@
           <label class="avatar-picker" for="avatarInput">Choose Profile Picture</label>
           <input id="avatarInput" class="sr-only" type="file" accept="image/*">
         </div>
-      </section>
-
-      <section class="notification-card" aria-label="Call notifications">
-        <div>
-          <p class="setting-title">Call notifications</p>
-          <p class="setting-copy" id="notificationHelp">Get a browser alert when someone joins or calls this room.</p>
-        </div>
-        <button class="toggle-button" id="notificationButton" type="button" aria-pressed="false">
-          <span class="toggle-knob" aria-hidden="true"></span>
-          <span id="notificationLabel">Off</span>
-        </button>
       </section>
 
       <label class="field">

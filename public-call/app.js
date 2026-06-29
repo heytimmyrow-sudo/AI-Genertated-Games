@@ -11,6 +11,7 @@ const statusText = document.querySelector("#statusText");
 const statusDot = document.querySelector("#statusDot");
 const localVideo = document.querySelector("#localVideo");
 const remoteVideo = document.querySelector("#remoteVideo");
+const localTile = document.querySelector("#localTile");
 const localEmpty = document.querySelector("#localEmpty");
 const remoteEmpty = document.querySelector("#remoteEmpty");
 const profileNameInput = document.querySelector("#profileNameInput");
@@ -20,12 +21,9 @@ const localAvatar = document.querySelector("#localAvatar");
 const remoteAvatar = document.querySelector("#remoteAvatar");
 const localName = document.querySelector("#localName");
 const remoteName = document.querySelector("#remoteName");
-const notificationButton = document.querySelector("#notificationButton");
-const notificationLabel = document.querySelector("#notificationLabel");
-const notificationHelp = document.querySelector("#notificationHelp");
 
 const profileStorageKey = "facecall-profile-v1";
-const notificationStorageKey = "facecall-notifications-v1";
+const previewStorageKey = "facecall-preview-position-v1";
 
 const peerConfig = {
   host: "0.peerjs.com",
@@ -49,7 +47,7 @@ let isMuted = false;
 let isCameraOff = false;
 let localProfile = loadProfile();
 let remoteProfile = { name: "Guest", avatar: "" };
-let notificationSettings = loadNotificationSettings();
+let previewDrag = null;
 
 function cleanRoomId(value) {
   return value
@@ -87,118 +85,6 @@ function loadProfile() {
 
 function saveProfile() {
   localStorage.setItem(profileStorageKey, JSON.stringify(localProfile));
-}
-
-function loadNotificationSettings() {
-  try {
-    const saved = JSON.parse(localStorage.getItem(notificationStorageKey) || "{}");
-    return { enabled: Boolean(saved.enabled) };
-  } catch {
-    return { enabled: false };
-  }
-}
-
-function saveNotificationSettings() {
-  localStorage.setItem(notificationStorageKey, JSON.stringify(notificationSettings));
-}
-
-function notificationPermission() {
-  if (!("Notification" in window)) {
-    return "unsupported";
-  }
-  return Notification.permission;
-}
-
-function renderNotificationSetting() {
-  const permission = notificationPermission();
-  const isUnsupported = permission === "unsupported";
-  const isBlocked = permission === "denied";
-  const isOn = notificationSettings.enabled && permission === "granted";
-
-  notificationButton.classList.toggle("is-on", isOn);
-  notificationButton.classList.toggle("is-blocked", isBlocked);
-  notificationButton.classList.toggle("is-unsupported", isUnsupported);
-  notificationButton.setAttribute("aria-pressed", String(isOn));
-  notificationButton.disabled = isUnsupported;
-
-  if (isUnsupported) {
-    notificationLabel.textContent = "Unsupported";
-    notificationHelp.textContent = "This browser cannot show FaceCall notifications.";
-    return;
-  }
-
-  if (isBlocked) {
-    notificationSettings.enabled = false;
-    saveNotificationSettings();
-    notificationLabel.textContent = "Blocked";
-    notificationHelp.textContent = "Notifications are blocked in browser settings.";
-    return;
-  }
-
-  notificationLabel.textContent = isOn ? "On" : "Off";
-  notificationHelp.textContent = isOn
-    ? "FaceCall can alert you when someone joins or calls this room."
-    : "Get a browser alert when someone joins or calls this room.";
-}
-
-async function toggleNotifications() {
-  const permission = notificationPermission();
-  if (permission === "unsupported") {
-    renderNotificationSetting();
-    return;
-  }
-
-  if (permission === "denied") {
-    notificationSettings.enabled = false;
-    saveNotificationSettings();
-    renderNotificationSetting();
-    setStatus("Notifications are blocked in browser settings.", "error");
-    return;
-  }
-
-  if (notificationSettings.enabled && permission === "granted") {
-    notificationSettings.enabled = false;
-    saveNotificationSettings();
-    renderNotificationSetting();
-    setStatus("Call notifications turned off.");
-    return;
-  }
-
-  const nextPermission = permission === "granted"
-    ? "granted"
-    : await Notification.requestPermission();
-
-  notificationSettings.enabled = nextPermission === "granted";
-  saveNotificationSettings();
-  renderNotificationSetting();
-  setStatus(
-    notificationSettings.enabled
-      ? "Call notifications turned on."
-      : "Notifications were not allowed.",
-    notificationSettings.enabled ? "live" : "error"
-  );
-}
-
-function showCallNotification(title, body) {
-  if (!notificationSettings.enabled || notificationPermission() !== "granted") {
-    return;
-  }
-
-  try {
-    const notification = new Notification(title, {
-      body,
-      icon: "./assets/icon-192.png",
-      tag: "facecall-call",
-      renotify: true
-    });
-
-    notification.onclick = () => {
-      window.focus();
-      notification.close();
-    };
-  } catch {
-    setStatus("This browser could not show a notification.", "error");
-  }
 }
 
 function applyProfile(target, profile) {
@@ -240,16 +126,100 @@ function handleProfileMessage(data) {
   applyProfile("remote", remoteProfile);
 }
 
-function bindConnection(connection, notifyOnOpen = false) {
+function bindConnection(connection) {
   activeConnection = connection;
   connection.on("open", () => {
     sendLocalProfile();
-    if (notifyOnOpen) {
-      showCallNotification("FaceCall", "Someone joined your call room.");
-    }
     setStatus("Handshake complete. Waiting for video...", "live");
   });
   connection.on("data", handleProfileMessage);
+}
+
+function clamp(value, min, max) {
+  return Math.min(Math.max(value, min), max);
+}
+
+function previewBoundsRect() {
+  return document.querySelector(".video-grid").getBoundingClientRect();
+}
+
+function setPreviewPosition(left, top, shouldSave = true) {
+  const bounds = previewBoundsRect();
+  const tile = localTile.getBoundingClientRect();
+  const maxLeft = Math.max(0, bounds.width - tile.width - 12);
+  const maxTop = Math.max(0, bounds.height - tile.height - 12);
+  const nextLeft = clamp(left, 12, maxLeft);
+  const nextTop = clamp(top, 12, maxTop);
+
+  localTile.style.left = `${nextLeft}px`;
+  localTile.style.top = `${nextTop}px`;
+  localTile.style.right = "auto";
+  localTile.style.bottom = "auto";
+
+  if (shouldSave) {
+    localStorage.setItem(previewStorageKey, JSON.stringify({
+      x: nextLeft / Math.max(1, bounds.width),
+      y: nextTop / Math.max(1, bounds.height)
+    }));
+  }
+}
+
+function restorePreviewPosition() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(previewStorageKey) || "{}");
+    if (Number.isFinite(saved.x) && Number.isFinite(saved.y)) {
+      const bounds = previewBoundsRect();
+      setPreviewPosition(saved.x * bounds.width, saved.y * bounds.height, false);
+    }
+  } catch {
+    localStorage.removeItem(previewStorageKey);
+  }
+}
+
+function beginPreviewDrag(event) {
+  if (event.button !== undefined && event.button !== 0) {
+    return;
+  }
+
+  const bounds = previewBoundsRect();
+  const tile = localTile.getBoundingClientRect();
+  previewDrag = {
+    offsetX: event.clientX - tile.left,
+    offsetY: event.clientY - tile.top,
+    boundsLeft: bounds.left,
+    boundsTop: bounds.top
+  };
+  localTile.classList.add("is-dragging");
+  localTile.setPointerCapture?.(event.pointerId);
+  event.preventDefault();
+}
+
+function movePreviewDrag(event) {
+  if (!previewDrag) {
+    return;
+  }
+
+  setPreviewPosition(
+    event.clientX - previewDrag.boundsLeft - previewDrag.offsetX,
+    event.clientY - previewDrag.boundsTop - previewDrag.offsetY,
+    false
+  );
+}
+
+function endPreviewDrag(event) {
+  if (!previewDrag) {
+    return;
+  }
+
+  const bounds = previewBoundsRect();
+  const tile = localTile.getBoundingClientRect();
+  localStorage.setItem(previewStorageKey, JSON.stringify({
+    x: (tile.left - bounds.left) / Math.max(1, bounds.width),
+    y: (tile.top - bounds.top) / Math.max(1, bounds.height)
+  }));
+  previewDrag = null;
+  localTile.classList.remove("is-dragging");
+  localTile.releasePointerCapture?.(event.pointerId);
 }
 
 function resizeProfileImage(file) {
@@ -368,8 +338,6 @@ function bindPeerEvents(roomId, isHost) {
     if (call.metadata?.profile) {
       handleProfileMessage({ type: "profile", profile: call.metadata.profile });
     }
-    const callerName = cleanProfileName(call.metadata?.profile?.name || "Someone");
-    showCallNotification("Incoming FaceCall", `${callerName} is calling.`);
     await ensureLocalStream();
     call.answer(localStream);
     bindCall(call);
@@ -377,7 +345,7 @@ function bindPeerEvents(roomId, isHost) {
   });
 
   peer.on("connection", (connection) => {
-    bindConnection(connection, true);
+    bindConnection(connection);
   });
 
   peer.on("disconnected", () => setStatus("Signaling disconnected. Trying to reconnect..."));
@@ -531,7 +499,11 @@ muteButton.addEventListener("click", toggleMute);
 cameraButton.addEventListener("click", toggleCamera);
 screenButton.addEventListener("click", shareScreen);
 hangupButton.addEventListener("click", hangUp);
-notificationButton.addEventListener("click", toggleNotifications);
+localTile.addEventListener("pointerdown", beginPreviewDrag);
+localTile.addEventListener("pointermove", movePreviewDrag);
+localTile.addEventListener("pointerup", endPreviewDrag);
+localTile.addEventListener("pointercancel", endPreviewDrag);
+window.addEventListener("resize", restorePreviewPosition);
 
 profileNameInput.addEventListener("input", () => {
   localProfile.name = cleanProfileName(profileNameInput.value);
@@ -581,4 +553,4 @@ if (roomFromUrl) {
 
 applyProfilePreview();
 applyProfile("remote", remoteProfile);
-renderNotificationSetting();
+restorePreviewPosition();
