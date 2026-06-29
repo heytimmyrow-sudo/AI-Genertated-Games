@@ -142,6 +142,7 @@ body {
   }
 }
 
+body.restart-open #game-canvas,
 body.inventory-open #game-canvas,
 body.shop-open #game-canvas,
 body.quest-board-open #game-canvas,
@@ -830,7 +831,8 @@ p {
   pointer-events: auto;
 }
 
-#save-game-button {
+#save-game-button,
+#restart-game-button {
   border: 1px solid rgba(230, 183, 93, 0.45);
   border-radius: 999px;
   padding: 8px 13px;
@@ -842,9 +844,119 @@ p {
   cursor: pointer;
 }
 
-#save-game-button:hover {
+#restart-game-button {
+  border-color: rgba(215, 126, 78, 0.5);
+  color: #ffe0c4;
+  background: linear-gradient(135deg, rgba(99, 45, 26, 0.86), rgba(88, 63, 34, 0.76));
+}
+
+#save-game-button:hover,
+#restart-game-button:hover {
   border-color: rgba(255, 224, 150, 0.72);
   background: linear-gradient(135deg, rgba(116, 81, 35, 0.92), rgba(54, 101, 67, 0.82));
+}
+
+#restart-game-button:hover {
+  border-color: rgba(255, 176, 124, 0.82);
+  background: linear-gradient(135deg, rgba(133, 52, 29, 0.96), rgba(106, 73, 35, 0.86));
+}
+
+#restart-confirmation {
+  position: absolute;
+  inset: 0;
+  z-index: 42;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  color: var(--ink);
+  background:
+    radial-gradient(circle at 50% 42%, rgba(215, 126, 78, 0.22), transparent 36%),
+    linear-gradient(180deg, rgba(5, 8, 9, 0.54), rgba(4, 6, 8, 0.76));
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 160ms ease;
+}
+
+#restart-confirmation.visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+#restart-confirmation[hidden] {
+  display: none;
+}
+
+.restart-card {
+  width: min(520px, calc(100vw - 44px));
+  display: grid;
+  place-items: center;
+  gap: 12px;
+  padding: 30px 28px;
+  border: 1px solid rgba(255, 225, 170, 0.32);
+  border-radius: 24px;
+  text-align: center;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(230, 183, 93, 0.2), transparent 44%),
+    linear-gradient(135deg, rgba(18, 28, 23, 0.96), rgba(42, 25, 17, 0.96));
+  box-shadow: 0 34px 110px rgba(0, 0, 0, 0.56), 0 0 48px rgba(215, 126, 78, 0.16), inset 0 1px 0 rgba(255, 238, 204, 0.12);
+  backdrop-filter: blur(16px);
+}
+
+.restart-mark {
+  width: 54px;
+  height: 54px;
+  border: 3px solid rgba(255, 196, 116, 0.76);
+  border-radius: 50%;
+  background:
+    linear-gradient(45deg, transparent 43%, rgba(255, 196, 116, 0.72) 45%, rgba(255, 196, 116, 0.72) 55%, transparent 57%),
+    radial-gradient(circle, rgba(215, 126, 78, 0.24), transparent 62%);
+  box-shadow: 0 0 28px rgba(230, 183, 93, 0.24);
+}
+
+.restart-card h2 {
+  max-width: 440px;
+  margin: 2px 0 0;
+  color: #fff1c7;
+  font-size: clamp(19px, 2.4vw, 28px);
+  line-height: 1.08;
+  letter-spacing: 0.02em;
+}
+
+.restart-card p {
+  max-width: 410px;
+  margin: 0;
+  color: rgba(245, 238, 220, 0.84);
+  line-height: 1.45;
+}
+
+.restart-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 4px;
+}
+
+.restart-actions button {
+  min-width: 118px;
+  border: 1px solid rgba(230, 183, 93, 0.48);
+  border-radius: 999px;
+  padding: 10px 18px;
+  color: #fff0bd;
+  background: linear-gradient(135deg, rgba(91, 61, 28, 0.9), rgba(42, 76, 52, 0.78));
+  font: inherit;
+  font-weight: 950;
+  cursor: pointer;
+}
+
+#restart-confirm-yes {
+  border-color: rgba(255, 156, 104, 0.62);
+  background: linear-gradient(135deg, rgba(126, 48, 29, 0.94), rgba(91, 61, 28, 0.86));
+}
+
+.restart-actions button:hover {
+  border-color: rgba(255, 224, 150, 0.78);
+  transform: translateY(-1px);
 }
 
 #death-screen {

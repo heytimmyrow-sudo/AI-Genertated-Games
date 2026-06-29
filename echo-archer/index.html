@@ -161,7 +161,19 @@
     <div id="enemy-bars" aria-hidden="true"></div>
     <section id="save-controls" data-ui-interactive="true" aria-live="polite">
       <button id="save-game-button" type="button">Save Progress</button>
+      <button id="restart-game-button" type="button">Restart Game</button>
       <span id="save-state">Autosave ready</span>
+    </section>
+    <section id="restart-confirmation" data-ui-interactive="true" aria-live="assertive" aria-modal="true" role="dialog" aria-labelledby="restart-confirmation-title" hidden>
+      <div class="restart-card">
+        <span class="restart-mark"></span>
+        <h2 id="restart-confirmation-title">ARE YOU SURE YOU WANT TO RESTART THE ENTIRE GAME?</h2>
+        <p>This clears your Echo Archer progress and starts a new adventure.</p>
+        <div class="restart-actions">
+          <button id="restart-confirm-yes" type="button">YES</button>
+          <button id="restart-confirm-no" type="button">NO</button>
+        </div>
+      </div>
     </section>
     <section id="boss-health" aria-live="polite">
       <span id="boss-name">Barkhide Stalker</span>

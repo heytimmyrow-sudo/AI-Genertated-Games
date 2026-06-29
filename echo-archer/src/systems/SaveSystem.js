@@ -31,6 +31,56 @@ export class SaveSystem {
     });
   }
 
+  restartEntireGame() {
+    try {
+      this.clearProgressStorage();
+      this.dirty = false;
+      this.dirtyTimer = AUTOSAVE_DELAY;
+      this.autosaveTimer = AUTOSAVE_INTERVAL;
+      this.updateLabel("Restarting...", "saved");
+      this.playUiClick();
+      window.setTimeout(() => window.location.reload(), 180);
+      return true;
+    } catch (error) {
+      console.warn("Echo Archer restart failed:", error);
+      this.updateLabel("Restart failed", "error");
+      return false;
+    }
+  }
+
+  clearProgressStorage() {
+    const preserved = new Map();
+    const keysToRemove = [];
+    const shouldPreserve = (key) => (
+      key === "echo-archer-muted"
+      || key === "echo-archer-volume"
+      || key === "echo-archer-detail"
+      || key === "echo-archer-graphics-quality-v1"
+      || key === "echo-archer-shortcut-sidebar-collapsed"
+      || key === "echo-archer-mobile-hud-mode"
+      || key.startsWith("echo-archer-mobile-panel-")
+    );
+
+    for (let index = 0; index < localStorage.length; index += 1) {
+      const key = localStorage.key(index);
+      if (!key?.startsWith(STORAGE_PREFIX)) {
+        continue;
+      }
+      if (shouldPreserve(key)) {
+        preserved.set(key, localStorage.getItem(key));
+      } else {
+        keysToRemove.push(key);
+      }
+    }
+
+    keysToRemove.forEach((key) => localStorage.removeItem(key));
+    preserved.forEach((value, key) => {
+      if (typeof value === "string") {
+        localStorage.setItem(key, value);
+      }
+    });
+  }
+
   bindEvents() {
     [
       "echo-archer:quest-reward",

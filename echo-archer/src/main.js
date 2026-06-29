@@ -76,6 +76,10 @@ const playerHealthFill = document.querySelector("#player-health-fill");
 const playerStaminaText = document.querySelector("#player-stamina-text");
 const playerStaminaFill = document.querySelector("#player-stamina-fill");
 const saveGameButton = document.querySelector("#save-game-button");
+const restartGameButton = document.querySelector("#restart-game-button");
+const restartConfirmation = document.querySelector("#restart-confirmation");
+const restartConfirmYes = document.querySelector("#restart-confirm-yes");
+const restartConfirmNo = document.querySelector("#restart-confirm-no");
 const saveState = document.querySelector("#save-state");
 const questTitle = document.querySelector("#quest-title");
 const questObjective = document.querySelector("#quest-objective");
@@ -870,6 +874,43 @@ const saves = new SaveSystem({
   shatteredCoastQuest,
   veiledWildsQuest,
 });
+let restartConfirmationOpen = false;
+
+function setRestartConfirmationOpen(open) {
+  restartConfirmationOpen = Boolean(open);
+  restartConfirmation?.classList.toggle("visible", restartConfirmationOpen);
+  document.body.classList.toggle("restart-open", restartConfirmationOpen);
+  if (restartConfirmation) {
+    restartConfirmation.hidden = !restartConfirmationOpen;
+  }
+  if (restartConfirmationOpen && document.pointerLockElement) {
+    document.exitPointerLock?.();
+  }
+}
+
+restartGameButton?.addEventListener("click", () => {
+  setRestartConfirmationOpen(true);
+  window.dispatchEvent(new CustomEvent("echo-archer:sound", {
+    detail: { name: "uiClick", intensity: 0.58 },
+  }));
+});
+
+restartConfirmNo?.addEventListener("click", () => {
+  setRestartConfirmationOpen(false);
+  window.dispatchEvent(new CustomEvent("echo-archer:sound", {
+    detail: { name: "uiClick", intensity: 0.5 },
+  }));
+});
+
+restartConfirmYes?.addEventListener("click", () => {
+  saves.restartEntireGame();
+});
+
+restartConfirmation?.addEventListener("click", (event) => {
+  if (event.target === restartConfirmation) {
+    setRestartConfirmationOpen(false);
+  }
+});
 setLoading(saves.loaded ? "Progress restored." : "Starting fresh adventure.", 0.92);
 let caveAudioActive = false;
 let currentRegionId = null;
@@ -1500,7 +1541,14 @@ function update(deltaSeconds) {
     quests.setQuestMenuOpen(false);
   }
 
-  const menuOpen = progression.menuOpen || inventoryOpen || shopOpen || questBoardOpen || rpgOpen || journalOpen || mapOpen || graphicsOpen || photoOpen || questMenuOpen || defeatedOpen || mobileHudSettingsOpen;
+  if (restartConfirmationOpen && (input.wasPressed("Escape") || input.wasPressed("KeyN"))) {
+    setRestartConfirmationOpen(false);
+  }
+  if (restartConfirmationOpen && (input.wasPressed("Enter") || input.wasPressed("KeyY"))) {
+    saves.restartEntireGame();
+  }
+
+  const menuOpen = progression.menuOpen || inventoryOpen || shopOpen || questBoardOpen || rpgOpen || journalOpen || mapOpen || graphicsOpen || photoOpen || questMenuOpen || defeatedOpen || mobileHudSettingsOpen || restartConfirmationOpen;
   input.setGameplayBlocked(menuOpen);
   audio.setGameplayPaused(menuOpen);
   audio.update(deltaSeconds);
@@ -1521,7 +1569,7 @@ function update(deltaSeconds) {
 
   setDeathScreenVisible(false);
 
-  if (inventoryOpen || shopOpen || questBoardOpen || rpgOpen || journalOpen || mapOpen || graphicsOpen || photoOpen || questMenuOpen) {
+  if (inventoryOpen || shopOpen || questBoardOpen || rpgOpen || journalOpen || mapOpen || graphicsOpen || photoOpen || questMenuOpen || restartConfirmationOpen) {
     archery.cancelDraw?.();
     cameraRig.setAimState(false, 0);
     updateHud();
