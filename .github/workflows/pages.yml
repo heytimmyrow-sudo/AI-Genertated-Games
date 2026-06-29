@@ -41,6 +41,7 @@ jobs:
           cp -r echo-archer site/echo-archer
           cp -r games site/games
           cp -r idea-arcade site/idea-arcade
+          cp -r public-call site/public-call
           cp -r target-range-fps site/target-range-fps
           cp -r treasure-trail site/treasure-trail
           cp -r js site/js

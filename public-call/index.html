@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; media-src 'self' blob:; connect-src 'self' https://0.peerjs.com wss://0.peerjs.com https://*.peerjs.com wss://*.peerjs.com; object-src 'none'; base-uri 'self'; form-action 'self'">
+  <meta name="referrer" content="no-referrer">
+  <title>Public Call</title>
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+  <main class="call-shell">
+    <section class="call-stage" aria-label="Video call">
+      <div class="video-grid">
+        <article class="video-tile video-tile--remote">
+          <video id="remoteVideo" autoplay playsinline></video>
+          <div class="empty-state" id="remoteEmpty">
+            <span class="signal-mark"></span>
+            <h1>Public Call</h1>
+            <p>Start a room, share the invite link, and talk face to face from the browser.</p>
+          </div>
+          <div class="tile-label">Guest</div>
+        </article>
+
+        <article class="video-tile video-tile--local">
+          <video id="localVideo" autoplay playsinline muted></video>
+          <div class="camera-placeholder" id="localEmpty">Camera preview</div>
+          <div class="tile-label">You</div>
+        </article>
+      </div>
+
+      <section class="controls" aria-label="Call controls">
+        <button class="icon-button" id="muteButton" type="button" disabled aria-label="Mute microphone" title="Mute microphone">
+          <span aria-hidden="true">Mic</span>
+        </button>
+        <button class="icon-button" id="cameraButton" type="button" disabled aria-label="Turn camera off" title="Turn camera off">
+          <span aria-hidden="true">Cam</span>
+        </button>
+        <button class="icon-button" id="screenButton" type="button" disabled aria-label="Share screen" title="Share screen">
+          <span aria-hidden="true">Share</span>
+        </button>
+        <button class="icon-button icon-button--danger" id="hangupButton" type="button" disabled aria-label="End call" title="End call">
+          <span aria-hidden="true">End</span>
+        </button>
+      </section>
+    </section>
+
+    <aside class="call-panel" aria-label="Room setup">
+      <div>
+        <p class="eyebrow">Browser video and voice</p>
+        <h2>Open call room</h2>
+        <p class="panel-copy">No accounts. Create a room, send the link, then keep this tab open as the host.</p>
+      </div>
+
+      <label class="field">
+        <span>Room code</span>
+        <input id="roomInput" type="text" autocomplete="off" spellcheck="false" placeholder="family-call-4821">
+      </label>
+
+      <div class="button-row">
+        <button class="primary-button" id="createButton" type="button">Create Room</button>
+        <button class="secondary-button" id="joinButton" type="button">Join Room</button>
+      </div>
+
+      <label class="field">
+        <span>Invite link</span>
+        <input id="inviteInput" type="text" readonly placeholder="Create a room to make a link">
+      </label>
+
+      <button class="copy-button" id="copyButton" type="button" disabled>Copy Invite Link</button>
+
+      <div class="status-card" aria-live="polite">
+        <span id="statusDot" class="status-dot"></span>
+        <p id="statusText">Ready to create or join a room.</p>
+      </div>
+
+      <div class="privacy-note">
+        <strong>Heads up:</strong> calls use peer-to-peer WebRTC, but the room handshake uses the public PeerJS signaling server.
+      </div>
+    </aside>
+  </main>
+
+  <script src="../target-range-fps/peerjs.min.js"></script>
+  <script src="./app.js"></script>
+</body>
+</html>
