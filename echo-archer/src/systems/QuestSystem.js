@@ -84,10 +84,28 @@ const MAIN_QUEST_OBJECTIVES = [
   {
     id: "future-frontier",
     title: "The Path of the Master Archer",
-    objective: "Main Quest Updated: the frontier mystery continues in future Arc 2 and Arc 3 chapters.",
-    location: "Unknown Lands",
+    objective: "Main Quest Updated: return to the guild, finish open leads, and watch for new frontier reports.",
+    location: "Archer's Guild",
   },
 ];
+
+const MAIN_QUEST_REWARD_ADVANCEMENTS = new Map([
+  ["master-champion", "master-trials"],
+  ["frontier-ironhorn", "frontier-expedition"],
+  ["lost-kingdom-sentinel", "lost-kingdom"],
+  ["celestial-expanse-warden", "celestial-expanse"],
+  ["shattered-coast-warden", "shattered-coast"],
+  ["veiled-wilds-grovekeeper", "veiled-wilds"],
+]);
+
+const MAIN_QUEST_HANDOFFS = new Map([
+  ["master-trials", "Arc 1 closes here, but the world stays open. Side quests and frontier leads unlock."],
+  ["frontier-expedition", "The first outpost proves the Unknown Lands are older than the guild expected."],
+  ["lost-kingdom", "The erased kingdom records point toward a civilization before recorded history."],
+  ["celestial-expanse", "The First Sky confirms the Lost Kingdom was only one piece of the mystery."],
+  ["shattered-coast", "Destroyed sea records suggest someone hid the oldest routes on purpose."],
+  ["veiled-wilds", "Nature has covered evidence that multiple civilizations crossed these lands."],
+]);
 
 const SIDE_QUEST_DEFINITIONS = [
   {
@@ -616,19 +634,31 @@ export class QuestSystem {
     if (!questId) {
       return;
     }
-    if (questId.startsWith("master-")) {
-      if (questId === "master-champion") {
-        this.completeMainObjective("master-trials");
-      }
-      return;
+
+    if (!this.quests.some((quest) => quest.id === questId)) {
+      this.recordCompletedQuest({
+        id: `reward-${questId}`,
+        title: detail.title ?? detail.message ?? "Guild Record",
+        type: this.getRewardQuestType(questId),
+        objective: detail.message ?? "Recorded by the Archer's Guild.",
+        rewards: this.formatReward(detail),
+      }, { silent: true });
     }
-    if (questId.startsWith("frontier-") && questId === "frontier-ironhorn") {
-      this.completeMainObjective("frontier-expedition");
-      return;
+
+    const mainObjectiveId = MAIN_QUEST_REWARD_ADVANCEMENTS.get(questId);
+    if (mainObjectiveId) {
+      this.completeMainObjective(mainObjectiveId);
     }
-    if (questId.startsWith("lost-kingdom-") && questId === "lost-kingdom-sentinel") {
-      this.completeMainObjective("lost-kingdom");
-    }
+  }
+
+  getRewardQuestType(questId) {
+    if (questId.startsWith("master-")) return "Master Trial";
+    if (questId.startsWith("frontier-")) return "Arc 2 - Frontier";
+    if (questId.startsWith("lost-kingdom-")) return "Arc 2 - Lost Kingdom";
+    if (questId.startsWith("celestial-expanse-")) return "Arc 2 - Celestial Expanse";
+    if (questId.startsWith("shattered-coast-")) return "Arc 2 - Shattered Coast";
+    if (questId.startsWith("veiled-wilds-")) return "Arc 2 - Veiled Wilds";
+    return "Guild Record";
   }
 
   unlockPostArcSideQuests() {
@@ -719,7 +749,7 @@ export class QuestSystem {
     const lockedSideQuests = this.sideQuestCatalog
       .map((quest) => this.getSideQuestById(quest.id))
       .filter((quest) => quest?.status === "locked");
-    const completed = [...this.completedQuestHistory].slice(-16).reverse();
+    const completed = [...this.completedQuestHistory].slice(-18).reverse();
 
     this.ui.questContent.innerHTML = `
       <section class="quest-ledger-section">
@@ -728,7 +758,12 @@ export class QuestSystem {
           <span class="quest-ledger-meta">${currentMain?.location ?? "Guild Records"}</span>
           <strong>${this.mainQuest.title}</strong>
           <p>${this.formatMainObjective(currentMain)}</p>
+          ${this.getCurrentStoryHint(currentMain)}
         </article>
+      </section>
+      <section class="quest-ledger-section">
+        <h3>Story Path</h3>
+        ${this.renderMainQuestPath()}
       </section>
       <section class="quest-ledger-section">
         <h3>Side Quests</h3>
@@ -749,6 +784,29 @@ export class QuestSystem {
         `).join("") : "<p>Future quest slots are ready for Arc 2 and Arc 3.</p>"}
       </section>
     `;
+  }
+
+  getCurrentStoryHint(objective) {
+    if (!objective) {
+      return "<p>Main Quest Updated: the guild is ready for the next report.</p>";
+    }
+    const handoff = MAIN_QUEST_HANDOFFS.get(objective.id);
+    return handoff ? `<p>${handoff}</p>` : "";
+  }
+
+  renderMainQuestPath() {
+    return this.mainQuest.objectives.map((objective, index) => {
+      const current = index === this.mainQuest.objectiveIndex;
+      const state = objective.complete ? "Complete" : current ? "Current" : "Locked";
+      const stateClass = objective.complete ? "completed" : current ? "active" : "locked";
+      return `
+        <article class="quest-ledger-item quest-path-item ${stateClass}">
+          <span class="quest-ledger-meta">${state} - ${objective.location}</span>
+          <strong>${objective.title}</strong>
+          <p>${objective.objective}</p>
+        </article>
+      `;
+    }).join("");
   }
 
   renderSideQuestItem(quest) {

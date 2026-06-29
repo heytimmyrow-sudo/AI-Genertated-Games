@@ -1469,13 +1469,13 @@ function update(deltaSeconds) {
     }));
   }
   quests.update(deltaSeconds, input);
+  quests.refreshHud();
   masterTrials.update(deltaSeconds);
   frontierExpedition.update(deltaSeconds);
   lostKingdomQuest.update(deltaSeconds);
   celestialExpanseQuest.update(deltaSeconds);
   shatteredCoastQuest.update(deltaSeconds);
   veiledWildsQuest.update(deltaSeconds);
-  quests.refreshHud();
   livingWorldEvents.update(deltaSeconds);
   specialArrows.update(input);
   archery.update(deltaSeconds, input, player, cameraRig, world);

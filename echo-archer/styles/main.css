@@ -225,6 +225,8 @@ body.photo-open #performance-debug {
 #quest-menu-button,
 #quest-sidebar-button,
 #quest-menu-close,
+
+
 .quest-track-button {
   border: 1px solid rgba(255, 209, 102, 0.32);
   border-radius: 999px;
@@ -1548,6 +1550,42 @@ p {
   font-weight: 800;
   letter-spacing: 0.04em;
   text-transform: uppercase;
+}
+
+
+.quest-path-item {
+  position: relative;
+  padding-left: 14px;
+}
+
+.quest-path-item::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 14px;
+  bottom: 14px;
+  width: 4px;
+  border-radius: 999px;
+  background: rgba(255, 238, 204, 0.18);
+}
+
+.quest-path-item.completed::before {
+  background: linear-gradient(180deg, rgba(166, 218, 135, 0.9), rgba(89, 139, 83, 0.52));
+}
+
+.quest-path-item.active {
+  border-radius: 12px;
+  background: linear-gradient(135deg, rgba(255, 209, 102, 0.14), rgba(81, 118, 87, 0.1));
+  padding-right: 10px;
+}
+
+.quest-path-item.active::before {
+  background: linear-gradient(180deg, #ffd166, rgba(255, 161, 71, 0.7));
+  box-shadow: 0 0 12px rgba(255, 209, 102, 0.45);
+}
+
+.quest-path-item.locked {
+  opacity: 0.72;
 }
 
 .quest-track-button {
