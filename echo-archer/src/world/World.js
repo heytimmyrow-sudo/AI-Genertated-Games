@@ -191,17 +191,22 @@ export class World {
     const panelDepth = depth + overhang * 1.18;
     const ridgeY = y + Math.sin(pitch) * width * 0.36;
 
-    const left = new THREE.Mesh(new THREE.BoxGeometry(panelLength, thickness, panelDepth), material);
+    const roofPanelOptions = { radius: Math.min(0.18, thickness * 0.7), bevel: Math.min(0.025, thickness * 0.12), bevelSegments: 1 };
+    const left = this.createSoftRectMesh(panelLength, thickness, panelDepth, material, roofPanelOptions);
     left.position.set(-width * 0.22 - asymmetry, y, 0);
     left.rotation.z = pitch;
-    const right = new THREE.Mesh(new THREE.BoxGeometry(panelLength * (0.96 + Math.abs(asymmetry) * 0.04), thickness, panelDepth * 0.98), material);
+    const right = this.createSoftRectMesh(panelLength * (0.96 + Math.abs(asymmetry) * 0.04), thickness, panelDepth * 0.98, material, roofPanelOptions);
     right.position.set(width * 0.22 - asymmetry * 0.35, y + asymmetry * 0.02, 0.02);
     right.rotation.z = -pitch * 0.94;
 
     const shingleRows = options.shingleRows ?? (this.performanceMode ? 2 : 4);
     for (let row = 0; row < shingleRows; row += 1) {
       [-1, 1].forEach((side) => {
-        const shingle = new THREE.Mesh(new THREE.BoxGeometry(panelLength * (0.82 - row * 0.035), 0.035, panelDepth * 0.96), this.materials.bark);
+        const shingle = this.createSoftRectMesh(panelLength * (0.82 - row * 0.035), 0.035, panelDepth * 0.96, this.materials.bark, {
+          radius: 0.055,
+          bevel: 0.006,
+          bevelSegments: 1,
+        });
         shingle.position.set(
           side * (width * 0.22 + row * width * 0.052) - asymmetry * 0.45,
           y - 0.14 + row * 0.135,
@@ -231,7 +236,11 @@ export class World {
     });
 
     [-1, 1].forEach((side) => {
-      const fascia = new THREE.Mesh(new THREE.BoxGeometry(width * 0.98 + overhang * 0.36, 0.1, 0.1), this.materials.barkDark);
+      const fascia = this.createSoftRectMesh(width * 0.98 + overhang * 0.36, 0.1, 0.1, this.materials.barkDark, {
+        radius: 0.045,
+        bevel: 0.008,
+        bevelSegments: 1,
+      });
       fascia.position.set(0, y - 0.02, side * (depth * 0.5 + overhang * 0.42));
       fascia.rotation.z = side > 0 ? -0.03 : 0.04;
       roof.add(fascia);
@@ -241,7 +250,7 @@ export class World {
     for (let index = 0; index < rafterCount; index += 1) {
       const z = -panelDepth * 0.42 + (panelDepth * 0.84 * index) / Math.max(1, rafterCount - 1);
       [-1, 1].forEach((side) => {
-        const rafter = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.08, 0.2), this.materials.cutWood);
+        const rafter = this.createSoftRectMesh(0.1, 0.08, 0.2, this.materials.cutWood, { radius: 0.035, bevel: 0.006 });
         rafter.position.set(side * (width * 0.49 + overhang * 0.04), y - 0.25, z);
         rafter.rotation.z = side < 0 ? pitch * 0.9 : -pitch * 0.9;
         roof.add(rafter);
@@ -252,7 +261,7 @@ export class World {
       const dormerWidth = Math.min(0.82, width * 0.18);
       const dormer = new THREE.Group();
       dormer.position.set(-asymmetry * 0.45 + width * 0.12, y + 0.28, -depth * 0.18);
-      const face = new THREE.Mesh(new THREE.BoxGeometry(dormerWidth, 0.44, 0.12), this.materials.cutWood);
+      const face = this.createSoftRectMesh(dormerWidth, 0.44, 0.12, this.materials.cutWood, { radius: 0.06, bevel: 0.008 });
       face.position.y = 0.1;
       const window = new THREE.Mesh(new THREE.BoxGeometry(dormerWidth * 0.5, 0.24, 0.04), this.materials.warmWindow);
       window.position.set(0, 0.12, -0.08);
@@ -307,16 +316,16 @@ export class World {
     });
 
     [-1, 1].forEach((side) => {
-      const roofSeat = new THREE.Mesh(new THREE.BoxGeometry(width * 0.96, 0.1, 0.12), beamMaterial);
+      const roofSeat = this.createSoftRectMesh(width * 0.96, 0.1, 0.12, beamMaterial, { radius: 0.045, bevel: 0.008 });
       roofSeat.position.set(0, wallTopY + 0.08, side * (depth * 0.5 + 0.025));
       group.add(roofSeat);
-      const foundationSkirt = new THREE.Mesh(new THREE.BoxGeometry(width * 0.96, 0.1, 0.1), trimMaterial);
+      const foundationSkirt = this.createSoftRectMesh(width * 0.96, 0.1, 0.1, trimMaterial, { radius: 0.045, bevel: 0.008 });
       foundationSkirt.position.set(0, 0.31, side * (depth * 0.5 + 0.025));
       group.add(foundationSkirt);
     });
 
     [-1, 1].forEach((side) => {
-      const sideTrim = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.08, depth * 0.9), beamMaterial);
+      const sideTrim = this.createSoftRectMesh(0.08, 0.08, depth * 0.9, beamMaterial, { radius: 0.035, bevel: 0.006 });
       sideTrim.position.set(side * (width * 0.49), height * 0.52 + 0.08, 0);
       group.add(sideTrim);
 
@@ -365,6 +374,20 @@ export class World {
       stone.scale.set(0.22 + (index % 2) * 0.05, 0.08, 0.16);
       stone.rotation.set(0.1, index * 0.6, -0.06);
       group.add(stone);
+    }
+
+    const bracketY = Math.min(height + 0.08, wallTopY - 0.08);
+    [-0.34, 0.34].forEach((offset, index) => {
+      const bracket = this.createSoftRectMesh(width * 0.18, 0.09, 0.08, beamMaterial, { radius: 0.035, bevel: 0.006 });
+      bracket.position.set(width * offset, bracketY, frontZ - 0.105);
+      bracket.rotation.z = (index ? -1 : 1) * 0.36;
+      group.add(bracket);
+    });
+
+    if (width > 3.2) {
+      const flowerBox = this.createSoftRectMesh(Math.min(1.05, width * 0.26), 0.11, 0.14, trimMaterial, { radius: 0.05, bevel: 0.008 });
+      flowerBox.position.set(-width * 0.27, height * 0.42 + 0.08, frontZ - 0.12);
+      group.add(flowerBox);
     }
   }
 
@@ -10846,6 +10869,12 @@ export class World {
         frill.rotation.z = Math.PI / 2;
         group.add(frill);
       });
+      [-0.36, 0.36].forEach((xOffset, trimIndex) => {
+        const hangingTrim = this.createSoftRectMesh(0.18, 0.22, 0.035, clothMaterial, { radius: 0.04, bevel: 0.006 });
+        hangingTrim.position.set(xOffset, 1.06 - trimIndex * 0.03, -0.58);
+        hangingTrim.rotation.z = (trimIndex ? -0.08 : 0.08);
+        group.add(hangingTrim);
+      });
       [-0.72, 0.72].forEach((xOffset) => {
         const post = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.055, 1.18, 6), this.materials.barkDark);
         post.position.set(xOffset, 0.72, -0.42);
@@ -11179,6 +11208,12 @@ export class World {
       const post = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.06, 1.18, 6), this.materials.barkDark);
       post.position.set(x, 0.62, -0.44);
       group.add(post);
+    });
+    [-0.46, 0.46].forEach((x, trimIndex) => {
+      const hangingTrim = this.createSoftRectMesh(0.2, 0.2, 0.035, awningMaterial, { radius: 0.04, bevel: 0.006 });
+      hangingTrim.position.set(x, 1.05 - trimIndex * 0.025, -0.84);
+      hangingTrim.rotation.z = trimIndex ? -0.1 : 0.08;
+      group.add(hangingTrim);
     });
     const sign = this.createSoftRectMesh(0.82, 0.22, 0.08, this.materials.parchment, { radius: 0.06, bevel: 0.01 });
     sign.position.set(0, 1.18, -0.84);
