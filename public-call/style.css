@@ -529,10 +529,10 @@ h2 {
   }
 
   .video-tile--local {
-    right: 18px;
-    bottom: 88px;
-    width: min(220px, 46vw);
-    min-width: 150px;
+    right: 14px;
+    bottom: 78px;
+    width: clamp(108px, 31vw, 150px);
+    min-width: 0;
   }
 
   .controls {
@@ -572,6 +572,12 @@ h2 {
 
   .video-grid {
     padding: 8px;
+  }
+
+  .video-tile--local {
+    right: 10px;
+    bottom: 74px;
+    width: clamp(96px, 30vw, 116px);
   }
 
   .profile-card {
