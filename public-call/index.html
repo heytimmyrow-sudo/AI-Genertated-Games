@@ -3,9 +3,22 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; media-src 'self' blob:; connect-src 'self' https://0.peerjs.com wss://0.peerjs.com https://*.peerjs.com wss://*.peerjs.com; object-src 'none'; base-uri 'self'; form-action 'self'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; media-src 'self' blob:; connect-src 'self' https://0.peerjs.com wss://0.peerjs.com https://*.peerjs.com wss://*.peerjs.com; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
   <meta name="referrer" content="no-referrer">
+  <meta name="theme-color" content="#050608">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="FaceCall">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta property="og:title" content="FaceCall">
+  <meta property="og:description" content="Start a private browser video call from your phone, iPad, or computer.">
+  <meta property="og:image" content="https://heytimmyrow-sudo.github.io/AI-Genertated-Games/public-call/assets/facecall-logo.png">
+  <meta name="twitter:card" content="summary_large_image">
   <title>FaceCall</title>
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="icon" type="image/png" sizes="32x32" href="./assets/favicon-32.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="./assets/icon-192.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="./assets/apple-touch-icon.png">
   <link rel="stylesheet" href="./style.css">
 </head>
 <body>
@@ -15,7 +28,7 @@
         <article class="video-tile video-tile--remote">
           <video id="remoteVideo" autoplay playsinline></video>
           <div class="empty-state" id="remoteEmpty">
-            <span class="signal-mark"></span>
+            <img class="brand-logo" src="./assets/facecall-logo.png" alt="FaceCall logo">
             <h1>FaceCall</h1>
             <p>Start a room, share the invite link, and talk face to face from your phone, iPad, or computer.</p>
           </div>

@@ -133,16 +133,12 @@ video {
   font-size: 1.05rem;
 }
 
-.signal-mark {
-  width: 84px;
-  height: 84px;
+.brand-logo {
+  width: min(330px, 72vw);
+  aspect-ratio: 1;
   margin: 0 auto;
-  border-radius: 50%;
-  border: 2px solid rgba(102, 184, 255, 0.52);
-  background:
-    radial-gradient(circle, rgba(48, 211, 125, 0.95) 0 18%, transparent 19%),
-    radial-gradient(circle, rgba(102, 184, 255, 0.28), transparent 62%);
-  box-shadow: 0 0 46px rgba(102, 184, 255, 0.28);
+  object-fit: contain;
+  filter: drop-shadow(0 0 34px rgba(102, 184, 255, 0.26));
 }
 
 .tile-label {

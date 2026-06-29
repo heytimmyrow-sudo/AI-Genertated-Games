@@ -187,7 +187,7 @@ function showCallNotification(title, body) {
   try {
     const notification = new Notification(title, {
       body,
-      icon: remoteProfile.avatar || undefined,
+      icon: "./assets/icon-192.png",
       tag: "facecall-call",
       renotify: true
     });
