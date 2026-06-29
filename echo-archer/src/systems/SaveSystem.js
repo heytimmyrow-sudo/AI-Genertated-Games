@@ -16,6 +16,7 @@ export class SaveSystem {
     this.dirty = false;
     this.lastSavedAt = 0;
     this.lastSavedPosition = null;
+    this.restarting = false;
     this.loaded = this.load();
     this.bindUi();
     this.bindEvents();
@@ -33,6 +34,7 @@ export class SaveSystem {
 
   restartEntireGame() {
     try {
+      this.restarting = true;
       this.clearProgressStorage();
       this.dirty = false;
       this.dirtyTimer = AUTOSAVE_DELAY;
@@ -95,11 +97,15 @@ export class SaveSystem {
       window.addEventListener(eventName, () => this.markDirty());
     });
 
-    window.addEventListener("beforeunload", () => this.save("Saved"));
+    window.addEventListener("beforeunload", () => {
+      if (!this.restarting) {
+        this.save("Saved");
+      }
+    });
   }
 
   update(deltaSeconds) {
-    if (this.systems.player?.defeated) {
+    if (this.restarting || this.systems.player?.defeated) {
       return;
     }
     this.trackMovementProgress();
