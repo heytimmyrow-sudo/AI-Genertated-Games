@@ -184,11 +184,11 @@ export class World {
     const roof = new THREE.Group();
     const pitch = options.pitch ?? 0.48;
     const requestedOverhang = options.overhang ?? 0.34;
-    const overhang = THREE.MathUtils.clamp(requestedOverhang, 0.1, Math.min(0.56, Math.min(width, depth) * 0.13));
+    const overhang = THREE.MathUtils.clamp(requestedOverhang, 0.08, Math.min(0.38, Math.min(width, depth) * 0.1));
     const thickness = options.thickness ?? 0.22;
     const asymmetry = options.asymmetry ?? 0;
-    const panelLength = width * 0.68 + overhang;
-    const panelDepth = depth + overhang * 2;
+    const panelLength = width * 0.64 + overhang * 0.72;
+    const panelDepth = depth + overhang * 1.18;
     const ridgeY = y + Math.sin(pitch) * width * 0.36;
 
     const left = new THREE.Mesh(new THREE.BoxGeometry(panelLength, thickness, panelDepth), material);
@@ -224,15 +224,15 @@ export class World {
 
     [-1, 1].forEach((side) => {
       const eave = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.055, panelDepth, 7), this.materials.barkDark);
-      eave.position.set(side * (width * 0.53 + overhang * 0.08), y - 0.16, 0);
+      eave.position.set(side * (width * 0.49 + overhang * 0.04), y - 0.16, 0);
       eave.rotation.x = Math.PI / 2;
       eave.rotation.z = -side * pitch;
       roof.add(eave);
     });
 
     [-1, 1].forEach((side) => {
-      const fascia = new THREE.Mesh(new THREE.BoxGeometry(width + overhang * 1.2, 0.12, 0.13), this.materials.barkDark);
-      fascia.position.set(0, y - 0.02, side * (depth * 0.5 + overhang * 0.84));
+      const fascia = new THREE.Mesh(new THREE.BoxGeometry(width * 0.98 + overhang * 0.36, 0.1, 0.1), this.materials.barkDark);
+      fascia.position.set(0, y - 0.02, side * (depth * 0.5 + overhang * 0.42));
       fascia.rotation.z = side > 0 ? -0.03 : 0.04;
       roof.add(fascia);
     });
@@ -241,8 +241,8 @@ export class World {
     for (let index = 0; index < rafterCount; index += 1) {
       const z = -panelDepth * 0.42 + (panelDepth * 0.84 * index) / Math.max(1, rafterCount - 1);
       [-1, 1].forEach((side) => {
-        const rafter = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.1, 0.32), this.materials.cutWood);
-        rafter.position.set(side * (width * 0.52 + overhang * 0.1), y - 0.28, z);
+        const rafter = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.08, 0.2), this.materials.cutWood);
+        rafter.position.set(side * (width * 0.49 + overhang * 0.04), y - 0.25, z);
         rafter.rotation.z = side < 0 ? pitch * 0.9 : -pitch * 0.9;
         roof.add(rafter);
       });
@@ -307,18 +307,17 @@ export class World {
     });
 
     [-1, 1].forEach((side) => {
-      const roofSeat = new THREE.Mesh(new THREE.BoxGeometry(width * 1.0, 0.12, 0.14), beamMaterial);
-      roofSeat.position.set(0, wallTopY + 0.08, side * (depth * 0.5 + 0.04));
+      const roofSeat = new THREE.Mesh(new THREE.BoxGeometry(width * 0.96, 0.1, 0.12), beamMaterial);
+      roofSeat.position.set(0, wallTopY + 0.08, side * (depth * 0.5 + 0.025));
       group.add(roofSeat);
-      const foundationSkirt = new THREE.Mesh(new THREE.BoxGeometry(width * 1.0, 0.12, 0.12), trimMaterial);
-      foundationSkirt.position.set(0, 0.31, side * (depth * 0.5 + 0.045));
+      const foundationSkirt = new THREE.Mesh(new THREE.BoxGeometry(width * 0.96, 0.1, 0.1), trimMaterial);
+      foundationSkirt.position.set(0, 0.31, side * (depth * 0.5 + 0.025));
       group.add(foundationSkirt);
     });
 
     [-1, 1].forEach((side) => {
-      const sideTrim = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.09, depth * 0.98), beamMaterial);
-      sideTrim.position.set(side * (width * 0.505), height * 0.52 + 0.08, 0);
-      sideTrim.rotation.y = Math.PI / 2;
+      const sideTrim = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.08, depth * 0.9), beamMaterial);
+      sideTrim.position.set(side * (width * 0.49), height * 0.52 + 0.08, 0);
       group.add(sideTrim);
 
       const brace = new THREE.Mesh(new THREE.BoxGeometry(0.1, height * 0.62, 0.08), trimMaterial);
