@@ -13,6 +13,15 @@ const localVideo = document.querySelector("#localVideo");
 const remoteVideo = document.querySelector("#remoteVideo");
 const localEmpty = document.querySelector("#localEmpty");
 const remoteEmpty = document.querySelector("#remoteEmpty");
+const profileNameInput = document.querySelector("#profileNameInput");
+const avatarInput = document.querySelector("#avatarInput");
+const profilePreview = document.querySelector("#profilePreview");
+const localAvatar = document.querySelector("#localAvatar");
+const remoteAvatar = document.querySelector("#remoteAvatar");
+const localName = document.querySelector("#localName");
+const remoteName = document.querySelector("#remoteName");
+
+const profileStorageKey = "facecall-profile-v1";
 
 const peerConfig = {
   host: "0.peerjs.com",
@@ -34,6 +43,8 @@ let activeConnection = null;
 let cameraTrack = null;
 let isMuted = false;
 let isCameraOff = false;
+let localProfile = loadProfile();
+let remoteProfile = { name: "Guest", avatar: "" };
 
 function cleanRoomId(value) {
   return value
@@ -47,6 +58,106 @@ function cleanRoomId(value) {
 function makeRoomId() {
   const words = ["call", "room", "hello", "family", "video", "chat"];
   return `${words[Math.floor(Math.random() * words.length)]}-${Math.floor(1000 + Math.random() * 9000)}`;
+}
+
+function cleanProfileName(value) {
+  return String(value || "").replace(/\s+/g, " ").trim().slice(0, 28) || "You";
+}
+
+function profileInitial(name) {
+  return cleanProfileName(name).charAt(0).toUpperCase();
+}
+
+function loadProfile() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(profileStorageKey) || "{}");
+    return {
+      name: cleanProfileName(saved.name || "You"),
+      avatar: typeof saved.avatar === "string" ? saved.avatar : ""
+    };
+  } catch {
+    return { name: "You", avatar: "" };
+  }
+}
+
+function saveProfile() {
+  localStorage.setItem(profileStorageKey, JSON.stringify(localProfile));
+}
+
+function applyProfile(target, profile) {
+  const avatar = target === "local" ? localAvatar : remoteAvatar;
+  const name = target === "local" ? localName : remoteName;
+  const safeName = cleanProfileName(profile.name || (target === "local" ? "You" : "Guest"));
+
+  name.textContent = safeName;
+  avatar.textContent = profileInitial(safeName);
+  avatar.classList.toggle("has-photo", Boolean(profile.avatar));
+  avatar.style.backgroundImage = profile.avatar ? `url("${profile.avatar}")` : "";
+}
+
+function applyProfilePreview(syncInput = true) {
+  if (syncInput) {
+    profileNameInput.value = localProfile.name;
+  }
+  profilePreview.textContent = profileInitial(localProfile.name);
+  profilePreview.classList.toggle("has-photo", Boolean(localProfile.avatar));
+  profilePreview.style.backgroundImage = localProfile.avatar ? `url("${localProfile.avatar}")` : "";
+  applyProfile("local", localProfile);
+}
+
+function sendLocalProfile() {
+  if (activeConnection?.open) {
+    activeConnection.send({ type: "profile", profile: localProfile });
+  }
+}
+
+function handleProfileMessage(data) {
+  if (data?.type !== "profile" || !data.profile) {
+    return;
+  }
+
+  remoteProfile = {
+    name: cleanProfileName(data.profile.name || "Guest"),
+    avatar: typeof data.profile.avatar === "string" ? data.profile.avatar : ""
+  };
+  applyProfile("remote", remoteProfile);
+}
+
+function bindConnection(connection) {
+  activeConnection = connection;
+  connection.on("open", () => {
+    sendLocalProfile();
+    setStatus("Handshake complete. Waiting for video...", "live");
+  });
+  connection.on("data", handleProfileMessage);
+}
+
+function resizeProfileImage(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const image = new Image();
+      image.onload = () => {
+        const size = 256;
+        const canvas = document.createElement("canvas");
+        const context = canvas.getContext("2d");
+        const scale = Math.max(size / image.width, size / image.height);
+        const width = image.width * scale;
+        const height = image.height * scale;
+        const x = (size - width) / 2;
+        const y = (size - height) / 2;
+
+        canvas.width = size;
+        canvas.height = size;
+        context.drawImage(image, x, y, width, height);
+        resolve(canvas.toDataURL("image/jpeg", 0.78));
+      };
+      image.onerror = () => reject(new Error("Could not load that profile picture."));
+      image.src = reader.result;
+    };
+    reader.onerror = () => reject(new Error("Could not read that profile picture."));
+    reader.readAsDataURL(file);
+  });
 }
 
 function setStatus(message, mode = "idle") {
@@ -127,14 +238,16 @@ function bindPeerEvents(roomId, isHost) {
     }
 
     setStatus("Calling the room now...");
-    const outgoing = peer.call(roomId, localStream);
+    const outgoing = peer.call(roomId, localStream, { metadata: { profile: localProfile } });
     bindCall(outgoing);
-    activeConnection = peer.connect(roomId);
-    activeConnection.on("open", () => setStatus("Handshake complete. Waiting for video...", "live"));
+    bindConnection(peer.connect(roomId));
     setBusy(false);
   });
 
   peer.on("call", async (call) => {
+    if (call.metadata?.profile) {
+      handleProfileMessage({ type: "profile", profile: call.metadata.profile });
+    }
     await ensureLocalStream();
     call.answer(localStream);
     bindCall(call);
@@ -142,8 +255,7 @@ function bindPeerEvents(roomId, isHost) {
   });
 
   peer.on("connection", (connection) => {
-    activeConnection = connection;
-    connection.on("open", () => connection.send({ type: "host-ready" }));
+    bindConnection(connection);
   });
 
   peer.on("disconnected", () => setStatus("Signaling disconnected. Trying to reconnect..."));
@@ -298,6 +410,37 @@ cameraButton.addEventListener("click", toggleCamera);
 screenButton.addEventListener("click", shareScreen);
 hangupButton.addEventListener("click", hangUp);
 
+profileNameInput.addEventListener("input", () => {
+  localProfile.name = cleanProfileName(profileNameInput.value);
+  saveProfile();
+  applyProfilePreview(false);
+  sendLocalProfile();
+});
+
+avatarInput.addEventListener("change", async () => {
+  const file = avatarInput.files?.[0];
+  if (!file) {
+    return;
+  }
+
+  if (!file.type.startsWith("image/")) {
+    setStatus("Choose an image file for your profile picture.", "error");
+    return;
+  }
+
+  try {
+    localProfile.avatar = await resizeProfileImage(file);
+    saveProfile();
+    applyProfilePreview();
+    sendLocalProfile();
+    setStatus("Profile picture updated.", "live");
+  } catch (error) {
+    setStatus(error.message || "Could not update that profile picture.", "error");
+  } finally {
+    avatarInput.value = "";
+  }
+});
+
 roomInput.addEventListener("input", () => {
   const cleaned = cleanRoomId(roomInput.value);
   if (roomInput.value !== cleaned) {
@@ -312,3 +455,6 @@ if (roomFromUrl) {
   setInvite(roomFromUrl);
   setStatus("Room link loaded. Click Join Room to enter.");
 }
+
+applyProfilePreview();
+applyProfile("remote", remoteProfile);

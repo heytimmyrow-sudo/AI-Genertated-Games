@@ -19,13 +19,19 @@
             <h1>FaceCall</h1>
             <p>Start a room, share the invite link, and talk face to face from your phone, iPad, or computer.</p>
           </div>
-          <div class="tile-label">Guest</div>
+          <div class="tile-label profile-chip">
+            <span class="profile-avatar" id="remoteAvatar">G</span>
+            <span id="remoteName">Guest</span>
+          </div>
         </article>
 
         <article class="video-tile video-tile--local">
           <video id="localVideo" autoplay playsinline muted></video>
           <div class="camera-placeholder" id="localEmpty">Camera preview</div>
-          <div class="tile-label">You</div>
+          <div class="tile-label profile-chip">
+            <span class="profile-avatar" id="localAvatar">Y</span>
+            <span id="localName">You</span>
+          </div>
         </article>
       </div>
 
@@ -51,6 +57,18 @@
         <h2>Start a call</h2>
         <p class="panel-copy">No accounts. Create a room, send the link, then keep this tab open as the host.</p>
       </div>
+
+      <section class="profile-card" aria-label="Your profile">
+        <div class="profile-preview" id="profilePreview">Y</div>
+        <div class="profile-fields">
+          <label class="field">
+            <span>Your name</span>
+            <input id="profileNameInput" type="text" autocomplete="nickname" maxlength="28" placeholder="Your name">
+          </label>
+          <label class="avatar-picker" for="avatarInput">Choose Profile Picture</label>
+          <input id="avatarInput" class="sr-only" type="file" accept="image/*">
+        </div>
+      </section>
 
       <label class="field">
         <span>Room code</span>

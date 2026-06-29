@@ -149,12 +149,54 @@ video {
   position: absolute;
   left: 12px;
   bottom: 12px;
-  padding: 7px 10px;
+  max-width: calc(100% - 24px);
+  padding: 6px 10px 6px 6px;
   border-radius: 999px;
   background: rgba(0, 0, 0, 0.54);
   border: 1px solid rgba(255, 255, 255, 0.13);
   font-size: 0.82rem;
   color: var(--text);
+}
+
+.profile-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.profile-chip span:last-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.profile-avatar,
+.profile-preview {
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 auto;
+  overflow: hidden;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 35% 28%, rgba(255, 255, 255, 0.42), transparent 24%),
+    linear-gradient(145deg, #30d37d, #66b8ff);
+  color: #06100f;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.profile-avatar {
+  width: 28px;
+  height: 28px;
+  font-size: 0.78rem;
+}
+
+.profile-avatar.has-photo,
+.profile-preview.has-photo {
+  background-size: cover;
+  background-position: center;
+  color: transparent;
 }
 
 .controls {
@@ -232,6 +274,56 @@ h2 {
   margin: 10px 0 0;
   color: var(--muted);
   line-height: 1.5;
+}
+
+.profile-card {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 14px;
+  align-items: center;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.profile-preview {
+  width: 72px;
+  height: 72px;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 16px 38px rgba(0, 0, 0, 0.28);
+  font-size: 1.45rem;
+}
+
+.profile-fields {
+  display: grid;
+  gap: 10px;
+}
+
+.avatar-picker {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 42px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 0 12px;
+  color: var(--text);
+  background: var(--panel-strong);
+  font-size: 0.9rem;
+  font-weight: 800;
+  cursor: pointer;
+  text-align: center;
+  touch-action: manipulation;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
 }
 
 .field {
@@ -437,7 +529,8 @@ h2 {
   .primary-button,
   .secondary-button,
   .copy-button,
-  .field input {
+  .field input,
+  .avatar-picker {
     min-height: 50px;
   }
 }
@@ -449,6 +542,15 @@ h2 {
 
   .video-grid {
     padding: 8px;
+  }
+
+  .profile-card {
+    grid-template-columns: 1fr;
+  }
+
+  .profile-preview {
+    width: 64px;
+    height: 64px;
   }
 
   .icon-button {
