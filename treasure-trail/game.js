@@ -696,17 +696,21 @@ class InputController {
       const action = button.dataset.touch;
       const press = (event) => {
         event.preventDefault();
+        button.setPointerCapture?.(event.pointerId);
         this.touch[action] = true;
         if (action === "jump") this.jumpQueued = true;
       };
       const release = (event) => {
         event.preventDefault();
+        button.releasePointerCapture?.(event.pointerId);
         this.touch[action] = false;
       };
       button.addEventListener("pointerdown", press);
       button.addEventListener("pointerup", release);
       button.addEventListener("pointerleave", release);
       button.addEventListener("pointercancel", release);
+      button.addEventListener("lostpointercapture", release);
+      button.addEventListener("contextmenu", (event) => event.preventDefault());
     });
   }
 

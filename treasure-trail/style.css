@@ -24,7 +24,9 @@ body {
   display: grid;
   place-items: start center;
   min-height: 100vh;
-  padding: 12px;
+  min-height: 100svh;
+  overflow-x: hidden;
+  padding: max(12px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
   color: var(--text);
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   background: linear-gradient(180deg, #263e50 0%, #17262f 58%, #101820 100%);
@@ -39,18 +41,18 @@ body.reduced-motion *::after {
 }
 
 body.large-touch .touch-button {
-  width: 92px;
-  height: 72px;
-  min-height: 72px;
+  width: 86px;
+  height: 74px;
+  min-height: 74px;
 }
 
 body.large-touch .touch-button.jump {
-  width: 112px;
-  height: 88px;
+  width: 104px;
+  height: 92px;
 }
 
 button {
-  min-height: 42px;
+  min-height: 44px;
   border: 0;
   border-radius: 8px;
   padding: 0 16px;
@@ -61,6 +63,8 @@ button {
   background: linear-gradient(180deg, #ffe483, var(--gold));
   box-shadow: 0 12px 26px rgba(244, 201, 77, 0.22), inset 0 -2px 0 rgba(70, 45, 3, 0.2);
   transition: transform 140ms ease, filter 140ms ease;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 }
 
 button:hover {
@@ -70,6 +74,13 @@ button:hover {
 
 button:active {
   transform: translateY(1px);
+}
+
+button:focus-visible,
+.level-choice:focus-visible,
+.touch-button:focus-visible {
+  outline: 3px solid #7ee3ff;
+  outline-offset: 3px;
 }
 
 .game-shell {
@@ -271,6 +282,15 @@ canvas {
   gap: 10px;
 }
 
+.modal > .button-row:last-child {
+  position: sticky;
+  bottom: -1px;
+  z-index: 2;
+  margin: 12px -2px -2px;
+  padding-top: 10px;
+  background: linear-gradient(180deg, rgba(20, 31, 40, 0), var(--panel) 36%);
+}
+
 .menu-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -416,65 +436,141 @@ canvas {
 
 .touch-controls {
   position: absolute;
-  inset: auto 18px 18px 18px;
+  inset: auto max(14px, env(safe-area-inset-right)) max(14px, env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left));
   z-index: 3;
   display: none;
   align-items: end;
   justify-content: space-between;
+  gap: 16px;
   pointer-events: none;
 }
 
+.touch-move {
+  display: flex;
+  gap: 10px;
+  pointer-events: auto;
+}
+
 .touch-button {
-  width: 74px;
-  height: 58px;
-  min-height: 58px;
+  width: 68px;
+  height: 64px;
+  min-height: 64px;
   padding: 0;
   color: var(--text);
+  font-size: 1.45rem;
+  font-weight: 950;
   background: rgba(17, 28, 36, 0.55);
   box-shadow: inset 0 0 0 1px rgba(255, 248, 231, 0.24);
   pointer-events: auto;
   touch-action: none;
+  user-select: none;
 }
 
 .touch-button.jump {
-  width: 90px;
-  height: 72px;
+  width: 96px;
+  height: 78px;
+  font-size: 1rem;
 }
 
 @media (hover: none), (max-width: 860px) {
   .touch-controls {
     display: flex;
   }
+
+  button:hover {
+    filter: none;
+    transform: none;
+  }
 }
 
 @media (max-width: 860px) {
   body {
-    padding: 12px;
+    place-items: start stretch;
+    padding: max(8px, env(safe-area-inset-top)) max(8px, env(safe-area-inset-right)) max(8px, env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left));
+  }
+
+  .game-shell {
+    width: 100%;
   }
 
   .hud,
   .controls {
     align-items: stretch;
     flex-direction: column;
+    gap: 8px;
   }
 
   .brand-block {
     min-width: 0;
   }
 
+  .eyebrow {
+    margin-bottom: 2px;
+    font-size: 0.68rem;
+  }
+
+  h1 {
+    font-size: 1.15rem;
+  }
+
+  h2 {
+    font-size: clamp(2rem, 10vw, 3.4rem);
+  }
+
   .hud-cluster {
-    justify-content: stretch;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 6px;
   }
 
   .badge,
   .icon-button,
   .ghost {
-    flex: 1 1 130px;
+    min-width: 0;
+    padding-inline: 8px;
+    font-size: 0.78rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .stage-wrap {
+    border-radius: 6px;
+  }
+
+  .overlay {
+    align-items: start;
+    padding: 10px;
+  }
+
+  .modal {
+    width: min(100%, 720px);
+    max-height: calc(100svh - 24px);
+    overflow: auto;
+    padding: 16px;
+  }
+
+  .modal p:not(.eyebrow) {
+    margin-bottom: 14px;
+    line-height: 1.4;
+  }
+
+  .button-row {
+    gap: 8px;
+  }
+
+  .button-row > button {
+    flex: 1 1 140px;
   }
 
   .level-select {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    max-height: 220px;
+    max-height: min(34svh, 230px);
+  }
+
+  .level-choice {
+    min-height: 50px;
+    font-size: 0.76rem;
   }
 
   .world-map,
@@ -482,5 +578,104 @@ canvas {
   .vault-grid,
   .shop-grid {
     grid-template-columns: 1fr;
+  }
+
+  .world-map {
+    gap: 6px;
+  }
+
+  .world-node,
+  .menu-panel,
+  .preview-panel,
+  .journal-panel,
+  .vault-panel,
+  .shop-card {
+    padding: 9px;
+  }
+
+  .shop-card {
+    min-height: 132px;
+  }
+
+  .shop-grid {
+    max-height: min(48svh, 420px);
+    overflow: auto;
+    padding-right: 4px;
+  }
+
+  .controls {
+    display: none;
+  }
+}
+
+@media (max-width: 520px) {
+  .hud-cluster {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .badge,
+  .icon-button {
+    min-height: 32px;
+    padding: 5px 5px;
+    font-size: 0.66rem;
+  }
+
+  .touch-button {
+    width: 62px;
+    height: 60px;
+    min-height: 60px;
+  }
+
+  .touch-button.jump {
+    width: 88px;
+    height: 72px;
+  }
+}
+
+@media (max-height: 520px) and (orientation: landscape) {
+  body {
+    padding: max(4px, env(safe-area-inset-top)) max(8px, env(safe-area-inset-right)) max(4px, env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left));
+  }
+
+  .hud {
+    display: grid;
+    grid-template-columns: minmax(130px, 0.8fr) minmax(0, 2.2fr);
+    align-items: start;
+    margin-bottom: 4px;
+  }
+
+  h1 {
+    font-size: 0.95rem;
+  }
+
+  .hud-cluster {
+    grid-template-columns: repeat(8, minmax(0, 1fr));
+  }
+
+  .badge,
+  .icon-button {
+    min-height: 32px;
+    padding: 5px 6px;
+    font-size: 0.68rem;
+  }
+
+  .stage-wrap {
+    width: min(100%, calc((100svh - 58px) * 1.777));
+    justify-self: center;
+  }
+
+  .touch-button {
+    width: 60px;
+    height: 54px;
+    min-height: 54px;
+  }
+
+  .touch-button.jump {
+    width: 82px;
+    height: 62px;
+  }
+
+  .modal {
+    max-height: calc(100svh - 16px);
   }
 }

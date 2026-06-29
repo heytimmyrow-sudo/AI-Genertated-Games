@@ -2,9 +2,9 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>Treasure Trail</title>
-    <link rel="stylesheet" href="style.css?v=treasure-trail-v17" />
+    <link rel="stylesheet" href="style.css?v=treasure-trail-v22" />
   </head>
   <body>
     <main class="game-shell" aria-label="Treasure Trail browser game">
@@ -112,8 +112,10 @@
         </div>
 
         <div class="touch-controls" aria-label="Touch controls">
-          <button class="touch-button" data-touch="left" type="button" aria-label="Move left">Left</button>
-          <button class="touch-button" data-touch="right" type="button" aria-label="Move right">Right</button>
+          <div class="touch-move">
+            <button class="touch-button" data-touch="left" type="button" aria-label="Move left">‹</button>
+            <button class="touch-button" data-touch="right" type="button" aria-label="Move right">›</button>
+          </div>
           <button class="touch-button jump" data-touch="jump" type="button" aria-label="Jump">Jump</button>
         </div>
       </section>
@@ -126,6 +128,6 @@
       </footer>
     </main>
 
-    <script src="game.js?v=treasure-trail-v17"></script>
+    <script src="game.js?v=treasure-trail-v22"></script>
   </body>
 </html>
