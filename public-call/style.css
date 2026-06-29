@@ -143,14 +143,6 @@ video {
   font-size: 1.05rem;
 }
 
-.brand-logo {
-  width: min(330px, 72vw);
-  aspect-ratio: 1;
-  margin: 0 auto;
-  object-fit: contain;
-  filter: drop-shadow(0 0 34px rgba(102, 184, 255, 0.26));
-}
-
 .tile-label {
   position: absolute;
   left: 12px;
@@ -260,6 +252,35 @@ video {
   padding: 24px;
   border-radius: 8px;
   background: rgba(21, 25, 31, 0.88);
+}
+
+body.has-media .call-shell {
+  grid-template-columns: minmax(0, 1fr) 276px;
+}
+
+body.has-media .call-panel {
+  gap: 12px;
+  padding: 16px;
+}
+
+body.has-media .call-panel .panel-copy,
+body.has-media .call-panel .profile-card {
+  display: none;
+}
+
+body.has-media .call-panel h2 {
+  font-size: 1.35rem;
+}
+
+body.has-media .button-row {
+  grid-template-columns: 1fr;
+}
+
+body.has-media .field input,
+body.has-media .primary-button,
+body.has-media .secondary-button,
+body.has-media .copy-button {
+  min-height: 42px;
 }
 
 .eyebrow {
