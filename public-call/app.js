@@ -19,6 +19,8 @@ const muteButton = document.querySelector("#muteButton");
 const cameraButton = document.querySelector("#cameraButton");
 const flipButton = document.querySelector("#flipButton");
 const screenButton = document.querySelector("#screenButton");
+const effectsButton = document.querySelector("#effectsButton");
+const playButton = document.querySelector("#playButton");
 const chatButton = document.querySelector("#chatButton");
 const ringButton = document.querySelector("#ringButton");
 const hangupButton = document.querySelector("#hangupButton");
@@ -30,6 +32,7 @@ const cameraBadge = document.querySelector("#cameraBadge");
 const localVideo = document.querySelector("#localVideo");
 const remoteVideo = document.querySelector("#remoteVideo");
 const localTile = document.querySelector("#localTile");
+const remoteTile = document.querySelector(".video-tile--remote");
 const localEmpty = document.querySelector("#localEmpty");
 const remoteEmpty = document.querySelector("#remoteEmpty");
 const profileNameInput = document.querySelector("#profileNameInput");
@@ -46,11 +49,34 @@ const chatCloseButton = document.querySelector("#chatCloseButton");
 const chatLog = document.querySelector("#chatLog");
 const chatForm = document.querySelector("#chatForm");
 const chatInput = document.querySelector("#chatInput");
+const effectsDrawer = document.querySelector("#effectsDrawer");
+const effectsCloseButton = document.querySelector("#effectsCloseButton");
+const playDrawer = document.querySelector("#playDrawer");
+const playCloseButton = document.querySelector("#playCloseButton");
+const filterControls = document.querySelector("#filterControls");
+const backdropControls = document.querySelector("#backdropControls");
+const qualitySelect = document.querySelector("#qualitySelect");
+const reactionControls = document.querySelector("#reactionControls");
+const ticTacToeBoard = document.querySelector("#ticTacToeBoard");
+const ticTacToeStatus = document.querySelector("#ticTacToeStatus");
+const resetTicTacToeButton = document.querySelector("#resetTicTacToeButton");
+const rpsControls = document.querySelector("#rpsControls");
+const rpsStatus = document.querySelector("#rpsStatus");
+const whiteboardCanvas = document.querySelector("#whiteboardCanvas");
+const clearWhiteboardButton = document.querySelector("#clearWhiteboardButton");
 
 const profileStorageKey = "facecall-profile-v1";
 const previewStorageKey = "facecall-preview-position-v1";
 const ringStorageKey = "facecall-ring-v1";
 const recentRoomsStorageKey = "facecall-recent-rooms-v1";
+const effectsStorageKey = "facecall-effects-v1";
+const qualityStorageKey = "facecall-quality-v1";
+
+const qualityPresets = {
+  low: { width: 640, height: 360, frameRate: 18 },
+  balanced: { width: 960, height: 540, frameRate: 24 },
+  high: { width: 1280, height: 720, frameRate: 30 }
+};
 
 const peerConfig = {
   host: "0.peerjs.com",
@@ -79,6 +105,14 @@ let currentFacingMode = "user";
 let ringEnabled = loadRingSetting();
 let audioContext = null;
 let deferredInstallPrompt = null;
+let localEffects = loadEffects();
+let remoteEffects = { filter: "normal", backdrop: "none" };
+let qualityMode = loadQualityMode();
+let ticTacToeState = makeTicTacToeState();
+let rpsState = { local: "", remote: "" };
+let whiteboardDrawing = null;
+let whiteboardContext = whiteboardCanvas.getContext("2d");
+let whiteboardStrokes = [];
 
 function cleanRoomId(value) {
   return value
@@ -271,6 +305,298 @@ function renderRecentRooms() {
   });
 }
 
+function loadEffects() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(effectsStorageKey) || "{}");
+    return {
+      filter: ["normal", "soft", "noir", "warm", "cool", "party", "comic"].includes(saved.filter) ? saved.filter : "normal",
+      backdrop: ["none", "aurora", "sunset", "ocean"].includes(saved.backdrop) ? saved.backdrop : "none"
+    };
+  } catch {
+    return { filter: "normal", backdrop: "none" };
+  }
+}
+
+function saveEffects() {
+  localStorage.setItem(effectsStorageKey, JSON.stringify(localEffects));
+}
+
+function loadQualityMode() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(qualityStorageKey) || "{}");
+    return qualityPresets[saved.mode] ? saved.mode : "balanced";
+  } catch {
+    return "balanced";
+  }
+}
+
+function saveQualityMode() {
+  localStorage.setItem(qualityStorageKey, JSON.stringify({ mode: qualityMode }));
+}
+
+function renderSegmentedState(container, activeValue, attribute) {
+  container.querySelectorAll("button").forEach((button) => {
+    const isActive = button.dataset[attribute] === activeValue;
+    button.classList.toggle("is-active", isActive);
+    button.setAttribute("aria-pressed", String(isActive));
+  });
+}
+
+function applyLocalEffects() {
+  localVideo.dataset.filter = localEffects.filter;
+  localTile.dataset.backdrop = localEffects.backdrop;
+  renderSegmentedState(filterControls, localEffects.filter, "filter");
+  renderSegmentedState(backdropControls, localEffects.backdrop, "backdrop");
+}
+
+function normalizeEffects(effects) {
+  return {
+    filter: ["normal", "soft", "noir", "warm", "cool", "party", "comic"].includes(effects?.filter) ? effects.filter : "normal",
+    backdrop: ["none", "aurora", "sunset", "ocean"].includes(effects?.backdrop) ? effects.backdrop : "none"
+  };
+}
+
+function applyRemoteEffects() {
+  remoteVideo.dataset.filter = remoteEffects.filter;
+  remoteTile.dataset.backdrop = remoteEffects.backdrop;
+}
+
+function sendLocalEffects() {
+  sendDataMessage({ type: "effects", effects: localEffects });
+}
+
+async function applyQualityMode() {
+  qualitySelect.value = qualityMode;
+  if (!cameraTrack?.applyConstraints) {
+    return;
+  }
+
+  const preset = qualityPresets[qualityMode] || qualityPresets.balanced;
+  try {
+    await cameraTrack.applyConstraints({
+      width: { ideal: preset.width },
+      height: { ideal: preset.height },
+      frameRate: { ideal: preset.frameRate, max: preset.frameRate }
+    });
+    updateMediaBadges();
+    setStatus(`Video quality set to ${qualitySelect.selectedOptions[0].textContent}.`, "live");
+  } catch (error) {
+    setStatus(error.message || "Could not change video quality on this device.", "error");
+  }
+}
+
+function getVideoConstraints() {
+  const preset = qualityPresets[qualityMode] || qualityPresets.balanced;
+  return {
+    width: { ideal: preset.width },
+    height: { ideal: preset.height },
+    frameRate: { ideal: preset.frameRate, max: preset.frameRate },
+    facingMode: currentFacingMode
+  };
+}
+
+function sendDataMessage(message) {
+  if (activeConnection?.open) {
+    activeConnection.send(message);
+    return true;
+  }
+  return false;
+}
+
+function makeTicTacToeState() {
+  return {
+    board: Array(9).fill(""),
+    turn: "X",
+    winner: ""
+  };
+}
+
+function checkTicTacToeWinner(board) {
+  const lines = [
+    [0, 1, 2],
+    [3, 4, 5],
+    [6, 7, 8],
+    [0, 3, 6],
+    [1, 4, 7],
+    [2, 5, 8],
+    [0, 4, 8],
+    [2, 4, 6]
+  ];
+
+  for (const [a, b, c] of lines) {
+    if (board[a] && board[a] === board[b] && board[a] === board[c]) {
+      return board[a];
+    }
+  }
+
+  return board.every(Boolean) ? "Draw" : "";
+}
+
+function renderTicTacToe() {
+  ticTacToeBoard.replaceChildren();
+  ticTacToeState.board.forEach((value, index) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.textContent = value;
+    button.setAttribute("aria-label", value ? `Square ${index + 1}, ${value}` : `Square ${index + 1}`);
+    button.addEventListener("click", () => playTicTacToe(index));
+    ticTacToeBoard.append(button);
+  });
+
+  ticTacToeStatus.textContent = ticTacToeState.winner
+    ? ticTacToeState.winner === "Draw" ? "Draw game. Reset to play again." : `${ticTacToeState.winner} wins.`
+    : `${ticTacToeState.turn} goes next.`;
+}
+
+function syncTicTacToe() {
+  sendDataMessage({ type: "tictactoe", state: ticTacToeState });
+}
+
+function playTicTacToe(index) {
+  if (ticTacToeState.winner || ticTacToeState.board[index]) {
+    return;
+  }
+
+  ticTacToeState.board[index] = ticTacToeState.turn;
+  ticTacToeState.winner = checkTicTacToeWinner(ticTacToeState.board);
+  ticTacToeState.turn = ticTacToeState.turn === "X" ? "O" : "X";
+  renderTicTacToe();
+  syncTicTacToe();
+}
+
+function resetTicTacToe(shouldSync = true) {
+  ticTacToeState = makeTicTacToeState();
+  renderTicTacToe();
+  if (shouldSync) {
+    syncTicTacToe();
+  }
+}
+
+function chooseRps(choice) {
+  rpsState.local = choice;
+  renderRps();
+  sendDataMessage({ type: "rps", choice });
+}
+
+function rpsResult(local, remote) {
+  if (!local || !remote) {
+    return "";
+  }
+  if (local === remote) {
+    return "Tie.";
+  }
+  const wins = (
+    (local === "rock" && remote === "scissors") ||
+    (local === "paper" && remote === "rock") ||
+    (local === "scissors" && remote === "paper")
+  );
+  return wins ? "You win." : "Guest wins.";
+}
+
+function renderRps() {
+  rpsControls.querySelectorAll("button").forEach((button) => {
+    const isActive = button.dataset.rps === rpsState.local;
+    button.classList.toggle("is-active", isActive);
+    button.setAttribute("aria-pressed", String(isActive));
+  });
+
+  rpsStatus.textContent = rpsState.local && rpsState.remote
+    ? `You picked ${rpsState.local}. Guest picked ${rpsState.remote}. ${rpsResult(rpsState.local, rpsState.remote)}`
+    : rpsState.local ? "Waiting for guest pick." : "Pick one when you are ready.";
+}
+
+function resizeWhiteboard() {
+  const rect = whiteboardCanvas.getBoundingClientRect();
+  const ratio = window.devicePixelRatio || 1;
+  const width = Math.max(1, Math.round(rect.width * ratio));
+  const height = Math.max(1, Math.round(rect.height * ratio));
+  if (whiteboardCanvas.width === width && whiteboardCanvas.height === height) {
+    return;
+  }
+
+  whiteboardCanvas.width = width;
+  whiteboardCanvas.height = height;
+  whiteboardContext = whiteboardCanvas.getContext("2d");
+  whiteboardContext.lineCap = "round";
+  whiteboardContext.lineJoin = "round";
+  whiteboardContext.lineWidth = 4 * ratio;
+  whiteboardContext.strokeStyle = "#30d37d";
+  whiteboardStrokes.forEach((stroke) => drawWhiteboardSegment(stroke.from, stroke.to, stroke.color, false));
+}
+
+function whiteboardPoint(event) {
+  const rect = whiteboardCanvas.getBoundingClientRect();
+  return {
+    x: clamp((event.clientX - rect.left) / Math.max(1, rect.width), 0, 1),
+    y: clamp((event.clientY - rect.top) / Math.max(1, rect.height), 0, 1)
+  };
+}
+
+function drawWhiteboardSegment(from, to, color = "#30d37d", shouldStore = true) {
+  if (!Number.isFinite(from?.x) || !Number.isFinite(from?.y) || !Number.isFinite(to?.x) || !Number.isFinite(to?.y)) {
+    return;
+  }
+
+  resizeWhiteboard();
+  if (shouldStore) {
+    whiteboardStrokes.push({ from, to, color });
+    whiteboardStrokes = whiteboardStrokes.slice(-600);
+  }
+  whiteboardContext.strokeStyle = color;
+  whiteboardContext.beginPath();
+  whiteboardContext.moveTo(from.x * whiteboardCanvas.width, from.y * whiteboardCanvas.height);
+  whiteboardContext.lineTo(to.x * whiteboardCanvas.width, to.y * whiteboardCanvas.height);
+  whiteboardContext.stroke();
+}
+
+function startWhiteboardDraw(event) {
+  whiteboardDrawing = whiteboardPoint(event);
+  whiteboardCanvas.setPointerCapture?.(event.pointerId);
+  event.preventDefault();
+}
+
+function moveWhiteboardDraw(event) {
+  if (!whiteboardDrawing) {
+    return;
+  }
+
+  const next = whiteboardPoint(event);
+  drawWhiteboardSegment(whiteboardDrawing, next);
+  sendDataMessage({ type: "whiteboard", action: "draw", from: whiteboardDrawing, to: next });
+  whiteboardDrawing = next;
+}
+
+function endWhiteboardDraw(event) {
+  if (!whiteboardDrawing) {
+    return;
+  }
+
+  whiteboardDrawing = null;
+  whiteboardCanvas.releasePointerCapture?.(event.pointerId);
+}
+
+function clearWhiteboard(shouldSync = true) {
+  resizeWhiteboard();
+  whiteboardStrokes = [];
+  whiteboardContext.clearRect(0, 0, whiteboardCanvas.width, whiteboardCanvas.height);
+  if (shouldSync) {
+    sendDataMessage({ type: "whiteboard", action: "clear" });
+  }
+}
+
+function showReaction(text, side = "local") {
+  const bubble = document.createElement("div");
+  bubble.className = `reaction-burst ${side === "remote" ? "is-remote" : ""}`;
+  bubble.textContent = text;
+  document.querySelector(".video-grid").append(bubble);
+  window.setTimeout(() => bubble.remove(), 1500);
+}
+
+function sendReaction(text) {
+  showReaction(text, "local");
+  sendDataMessage({ type: "reaction", reaction: text });
+}
+
 function unlockAudio() {
   if (!audioContext && (window.AudioContext || window.webkitAudioContext)) {
     audioContext = new (window.AudioContext || window.webkitAudioContext)();
@@ -384,6 +710,44 @@ function handleDataMessage(data) {
   if (data?.type === "chat" && data.message) {
     addChatMessage(cleanProfileName(data.name || remoteProfile.name || "Guest"), String(data.message).slice(0, 240), "remote");
     chatButton.classList.add("is-off");
+    return;
+  }
+
+  if (data?.type === "reaction" && data.reaction) {
+    showReaction(String(data.reaction).slice(0, 8), "remote");
+    return;
+  }
+
+  if (data?.type === "effects") {
+    remoteEffects = normalizeEffects(data.effects);
+    applyRemoteEffects();
+    return;
+  }
+
+  if (data?.type === "tictactoe" && data.state && Array.isArray(data.state.board)) {
+    ticTacToeState = {
+      board: data.state.board.slice(0, 9).map((value) => value === "X" || value === "O" ? value : ""),
+      turn: data.state.turn === "O" ? "O" : "X",
+      winner: ["X", "O", "Draw"].includes(data.state.winner) ? data.state.winner : ""
+    };
+    renderTicTacToe();
+    return;
+  }
+
+  if (data?.type === "rps" && ["rock", "paper", "scissors"].includes(data.choice)) {
+    rpsState.remote = data.choice;
+    renderRps();
+    return;
+  }
+
+  if (data?.type === "whiteboard") {
+    if (data.action === "clear") {
+      clearWhiteboard(false);
+      return;
+    }
+    if (data.action === "draw" && data.from && data.to) {
+      drawWhiteboardSegment(data.from, data.to, "#66b8ff");
+    }
   }
 }
 
@@ -391,6 +755,8 @@ function bindConnection(connection) {
   activeConnection = connection;
   connection.on("open", () => {
     sendLocalProfile();
+    sendLocalEffects();
+    syncTicTacToe();
     updateBadge(connectionBadge, "Guest joined", "live");
     waitingCard.hidden = true;
     playRing();
@@ -549,15 +915,12 @@ async function ensureLocalStream() {
       echoCancellation: true,
       noiseSuppression: true
     },
-    video: {
-      width: { ideal: 1280 },
-      height: { ideal: 720 },
-      facingMode: currentFacingMode
-    }
+    video: getVideoConstraints()
   });
 
   cameraTrack = localStream.getVideoTracks()[0] || null;
   localVideo.srcObject = localStream;
+  applyLocalEffects();
   document.body.classList.add("has-media");
   localEmpty.classList.add("is-hidden");
   muteButton.disabled = false;
@@ -738,11 +1101,7 @@ async function flipCamera() {
   currentFacingMode = currentFacingMode === "user" ? "environment" : "user";
   try {
     const replacementStream = await navigator.mediaDevices.getUserMedia({
-      video: {
-        width: { ideal: 1280 },
-        height: { ideal: 720 },
-        facingMode: currentFacingMode
-      }
+      video: getVideoConstraints()
     });
     const nextTrack = replacementStream.getVideoTracks()[0];
     if (!nextTrack) {
@@ -803,6 +1162,8 @@ function hangUp() {
   activeConnection = null;
   localStream = null;
   cameraTrack = null;
+  remoteEffects = { filter: "normal", backdrop: "none" };
+  applyRemoteEffects();
   document.body.classList.remove("has-media");
   remoteVideo.srcObject = null;
   localVideo.srcObject = null;
@@ -863,6 +1224,25 @@ function toggleChat() {
   }
 }
 
+function toggleDrawer(drawer, trigger, forceOpen) {
+  const isOpen = forceOpen ?? !drawer.classList.contains("is-open");
+  drawer.classList.toggle("is-open", isOpen);
+  drawer.setAttribute("aria-hidden", String(!isOpen));
+  trigger.classList.toggle("is-off", isOpen);
+  if (isOpen) {
+    resizeWhiteboard();
+  }
+}
+
+function closeToolDrawers(exceptDrawer = null) {
+  if (exceptDrawer !== effectsDrawer) {
+    toggleDrawer(effectsDrawer, effectsButton, false);
+  }
+  if (exceptDrawer !== playDrawer) {
+    toggleDrawer(playDrawer, playButton, false);
+  }
+}
+
 function addChatMessage(name, message, side) {
   const bubble = document.createElement("div");
   bubble.className = `chat-message ${side === "local" ? "is-local" : ""}`;
@@ -915,6 +1295,18 @@ muteButton.addEventListener("click", toggleMute);
 cameraButton.addEventListener("click", toggleCamera);
 flipButton.addEventListener("click", flipCamera);
 screenButton.addEventListener("click", shareScreen);
+effectsButton.addEventListener("click", () => {
+  const willOpen = !effectsDrawer.classList.contains("is-open");
+  closeToolDrawers(effectsDrawer);
+  toggleDrawer(effectsDrawer, effectsButton, willOpen);
+});
+effectsCloseButton.addEventListener("click", () => toggleDrawer(effectsDrawer, effectsButton, false));
+playButton.addEventListener("click", () => {
+  const willOpen = !playDrawer.classList.contains("is-open");
+  closeToolDrawers(playDrawer);
+  toggleDrawer(playDrawer, playButton, willOpen);
+});
+playCloseButton.addEventListener("click", () => toggleDrawer(playDrawer, playButton, false));
 chatButton.addEventListener("click", toggleChat);
 chatCloseButton.addEventListener("click", toggleChat);
 chatForm.addEventListener("submit", sendChatMessage);
@@ -924,7 +1316,62 @@ localTile.addEventListener("pointerdown", beginPreviewDrag);
 localTile.addEventListener("pointermove", movePreviewDrag);
 localTile.addEventListener("pointerup", endPreviewDrag);
 localTile.addEventListener("pointercancel", endPreviewDrag);
-window.addEventListener("resize", restorePreviewPosition);
+window.addEventListener("resize", () => {
+  restorePreviewPosition();
+  resizeWhiteboard();
+});
+
+filterControls.addEventListener("click", (event) => {
+  const button = event.target.closest("[data-filter]");
+  if (!button) {
+    return;
+  }
+  localEffects.filter = button.dataset.filter;
+  saveEffects();
+  applyLocalEffects();
+  sendLocalEffects();
+  setStatus(`Filter set to ${button.textContent}.`, "live");
+});
+
+backdropControls.addEventListener("click", (event) => {
+  const button = event.target.closest("[data-backdrop]");
+  if (!button) {
+    return;
+  }
+  localEffects.backdrop = button.dataset.backdrop;
+  saveEffects();
+  applyLocalEffects();
+  sendLocalEffects();
+  setStatus(`Backdrop set to ${button.textContent}.`, "live");
+});
+
+qualitySelect.addEventListener("change", () => {
+  qualityMode = qualitySelect.value;
+  saveQualityMode();
+  applyQualityMode();
+});
+
+reactionControls.addEventListener("click", (event) => {
+  const button = event.target.closest("[data-reaction]");
+  if (button) {
+    sendReaction(button.dataset.reaction);
+  }
+});
+
+resetTicTacToeButton.addEventListener("click", () => resetTicTacToe(true));
+
+rpsControls.addEventListener("click", (event) => {
+  const button = event.target.closest("[data-rps]");
+  if (button) {
+    chooseRps(button.dataset.rps);
+  }
+});
+
+whiteboardCanvas.addEventListener("pointerdown", startWhiteboardDraw);
+whiteboardCanvas.addEventListener("pointermove", moveWhiteboardDraw);
+whiteboardCanvas.addEventListener("pointerup", endWhiteboardDraw);
+whiteboardCanvas.addEventListener("pointercancel", endWhiteboardDraw);
+clearWhiteboardButton.addEventListener("click", () => clearWhiteboard(true));
 
 profileNameInput.addEventListener("input", () => {
   localProfile.name = cleanProfileName(profileNameInput.value);
@@ -991,6 +1438,12 @@ applyProfilePreview();
 applyProfile("remote", remoteProfile);
 setupQuickAccess();
 renderRecentRooms();
+applyLocalEffects();
+applyRemoteEffects();
+qualitySelect.value = qualityMode;
+renderTicTacToe();
+renderRps();
+resizeWhiteboard();
 registerServiceWorker();
 renderRingButton();
 updateMediaBadges();

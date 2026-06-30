@@ -68,6 +68,12 @@
         <button class="icon-button" id="screenButton" type="button" disabled aria-label="Share screen" title="Share screen">
           <span aria-hidden="true">Share</span>
         </button>
+        <button class="icon-button" id="effectsButton" type="button" aria-label="Open effects" title="Open effects">
+          <span aria-hidden="true">FX</span>
+        </button>
+        <button class="icon-button" id="playButton" type="button" aria-label="Open games and reactions" title="Open games and reactions">
+          <span aria-hidden="true">Play</span>
+        </button>
         <button class="icon-button" id="chatButton" type="button" aria-label="Open chat" title="Open chat">
           <span aria-hidden="true">Chat</span>
         </button>
@@ -89,6 +95,89 @@
           <input id="chatInput" type="text" autocomplete="off" maxlength="240" placeholder="Message">
           <button type="submit">Send</button>
         </form>
+      </section>
+
+      <section class="tool-drawer" id="effectsDrawer" aria-label="Video effects" aria-hidden="true">
+        <div class="drawer-header">
+          <h3>Effects</h3>
+          <button class="drawer-close" id="effectsCloseButton" type="button" aria-label="Close effects">Close</button>
+        </div>
+        <div class="drawer-body">
+          <div class="tool-group">
+            <p class="tool-title">Video filter</p>
+            <div class="segmented-grid" id="filterControls">
+              <button type="button" data-filter="normal">Normal</button>
+              <button type="button" data-filter="soft">Soft</button>
+              <button type="button" data-filter="noir">Noir</button>
+              <button type="button" data-filter="warm">Warm</button>
+              <button type="button" data-filter="cool">Cool</button>
+              <button type="button" data-filter="party">Party</button>
+              <button type="button" data-filter="comic">Comic</button>
+            </div>
+          </div>
+          <div class="tool-group">
+            <p class="tool-title">Backdrop</p>
+            <div class="segmented-grid" id="backdropControls">
+              <button type="button" data-backdrop="none">None</button>
+              <button type="button" data-backdrop="aurora">Aurora</button>
+              <button type="button" data-backdrop="sunset">Sunset</button>
+              <button type="button" data-backdrop="ocean">Ocean</button>
+            </div>
+          </div>
+          <label class="field compact-field">
+            <span>Call quality</span>
+            <select id="qualitySelect">
+              <option value="balanced">Balanced</option>
+              <option value="low">Low data</option>
+              <option value="high">High quality</option>
+            </select>
+          </label>
+        </div>
+      </section>
+
+      <section class="tool-drawer tool-drawer--wide" id="playDrawer" aria-label="Games and reactions" aria-hidden="true">
+        <div class="drawer-header">
+          <h3>Play</h3>
+          <button class="drawer-close" id="playCloseButton" type="button" aria-label="Close games">Close</button>
+        </div>
+        <div class="drawer-body play-layout">
+          <div class="tool-group">
+            <p class="tool-title">Reactions</p>
+            <div class="reaction-grid" id="reactionControls">
+              <button type="button" data-reaction="LOVE">Love</button>
+              <button type="button" data-reaction="YES">Yes</button>
+              <button type="button" data-reaction="WOW">Wow</button>
+              <button type="button" data-reaction="LOL">LOL</button>
+            </div>
+          </div>
+
+          <div class="tool-group">
+            <div class="game-heading">
+              <p class="tool-title">Tic-tac-toe</p>
+              <button class="text-button" id="resetTicTacToeButton" type="button">Reset</button>
+            </div>
+            <div class="tictactoe-board" id="ticTacToeBoard" aria-label="Tic-tac-toe board"></div>
+            <p class="mini-status" id="ticTacToeStatus">X goes first.</p>
+          </div>
+
+          <div class="tool-group">
+            <p class="tool-title">Rock paper scissors</p>
+            <div class="rps-grid" id="rpsControls">
+              <button type="button" data-rps="rock">Rock</button>
+              <button type="button" data-rps="paper">Paper</button>
+              <button type="button" data-rps="scissors">Scissors</button>
+            </div>
+            <p class="mini-status" id="rpsStatus">Pick one when you are ready.</p>
+          </div>
+
+          <div class="tool-group tool-group--wide">
+            <div class="game-heading">
+              <p class="tool-title">Whiteboard</p>
+              <button class="text-button" id="clearWhiteboardButton" type="button">Clear</button>
+            </div>
+            <canvas id="whiteboardCanvas" class="whiteboard-canvas" width="640" height="360" aria-label="Shared whiteboard"></canvas>
+          </div>
+        </div>
       </section>
     </section>
 
