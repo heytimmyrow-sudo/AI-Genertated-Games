@@ -1,4 +1,4 @@
-const CACHE_NAME = "facecall-shell-v4";
+const CACHE_NAME = "facecall-shell-v5";
 const CORE_ASSETS = [
   "./",
   "./index.html",

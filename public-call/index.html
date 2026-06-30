@@ -68,6 +68,9 @@
         <button class="icon-button" id="screenButton" type="button" disabled aria-label="Share screen" title="Share screen">
           <span aria-hidden="true">Share</span>
         </button>
+        <button class="icon-button" id="snapshotButton" type="button" disabled aria-label="Save snapshot" title="Save snapshot">
+          <span aria-hidden="true">Snap</span>
+        </button>
         <button class="icon-button" id="effectsButton" type="button" aria-label="Open effects" title="Open effects">
           <span aria-hidden="true">FX</span>
         </button>
@@ -140,8 +143,13 @@
           <h3>Play</h3>
           <button class="drawer-close" id="playCloseButton" type="button" aria-label="Close games">Close</button>
         </div>
+        <div class="drawer-tabs" role="tablist" aria-label="Play tools">
+          <button class="is-active" id="playTabReactions" type="button" data-play-tab="reactions">Reactions</button>
+          <button id="playTabGames" type="button" data-play-tab="games">Games</button>
+          <button id="playTabBoard" type="button" data-play-tab="board">Board</button>
+        </div>
         <div class="drawer-body play-layout">
-          <div class="tool-group">
+          <div class="tool-group" data-play-panel="reactions">
             <p class="tool-title">Reactions</p>
             <div class="reaction-grid" id="reactionControls">
               <button type="button" data-reaction="LOVE">Love</button>
@@ -151,26 +159,31 @@
             </div>
           </div>
 
-          <div class="tool-group">
+          <div class="tool-group" data-play-panel="games">
             <div class="game-heading">
               <p class="tool-title">Tic-tac-toe</p>
-              <button class="text-button" id="resetTicTacToeButton" type="button">Reset</button>
+              <button class="text-button" id="resetTicTacToeButton" type="button">New Round</button>
             </div>
             <div class="tictactoe-board" id="ticTacToeBoard" aria-label="Tic-tac-toe board"></div>
             <p class="mini-status" id="ticTacToeStatus">X goes first.</p>
+            <p class="mini-score" id="ticTacToeScore">X 0 · O 0 · Draws 0</p>
           </div>
 
-          <div class="tool-group">
-            <p class="tool-title">Rock paper scissors</p>
+          <div class="tool-group" data-play-panel="games">
+            <div class="game-heading">
+              <p class="tool-title">Rock paper scissors</p>
+              <button class="text-button" id="resetRpsButton" type="button">New Round</button>
+            </div>
             <div class="rps-grid" id="rpsControls">
               <button type="button" data-rps="rock">Rock</button>
               <button type="button" data-rps="paper">Paper</button>
               <button type="button" data-rps="scissors">Scissors</button>
             </div>
             <p class="mini-status" id="rpsStatus">Pick one when you are ready.</p>
+            <p class="mini-score" id="rpsScore">You 0 · Guest 0 · Ties 0</p>
           </div>
 
-          <div class="tool-group tool-group--wide">
+          <div class="tool-group tool-group--wide" data-play-panel="board">
             <div class="game-heading">
               <p class="tool-title">Whiteboard</p>
               <button class="text-button" id="clearWhiteboardButton" type="button">Clear</button>
@@ -218,6 +231,11 @@
         </div>
       </section>
 
+      <label class="field">
+        <span>Room name</span>
+        <input id="roomNameInput" type="text" autocomplete="off" maxlength="24" placeholder="Family, Friends, Team">
+      </label>
+
       <div class="room-field">
         <label class="field">
           <span>Room code</span>
@@ -247,11 +265,26 @@
       <div class="share-row">
         <button class="copy-button" id="copyButton" type="button" disabled>Copy Invite Link</button>
         <button class="secondary-button" id="nativeShareButton" type="button" disabled>Share Invite</button>
+        <button class="secondary-button" id="copyCodeButton" type="button" disabled>Copy Room Code</button>
       </div>
+
+      <label class="toggle-row">
+        <input id="approvalToggle" type="checkbox" checked>
+        <span>Approve guests before they enter</span>
+      </label>
 
       <section class="waiting-card" id="waitingCard" hidden>
         <p class="setting-title">Waiting room</p>
         <p class="setting-copy">Waiting for someone to join. Keep this tab open and send the invite link.</p>
+      </section>
+
+      <section class="knock-card" id="knockCard" hidden>
+        <p class="setting-title" id="knockTitle">Guest is asking to join</p>
+        <p class="setting-copy" id="knockCopy">Approve them to start the video call.</p>
+        <div class="button-row">
+          <button class="primary-button" id="approveGuestButton" type="button">Approve</button>
+          <button class="secondary-button" id="declineGuestButton" type="button">Decline</button>
+        </div>
       </section>
 
       <div class="status-card" aria-live="polite">

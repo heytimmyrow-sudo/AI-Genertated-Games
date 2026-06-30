@@ -341,6 +341,31 @@ video {
   padding: 12px;
 }
 
+.drawer-tabs {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--line);
+}
+
+.drawer-tabs button {
+  min-height: 36px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.06);
+  font-size: 0.86rem;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.drawer-tabs button.is-active {
+  color: #06100f;
+  border-color: rgba(48, 211, 125, 0.78);
+  background: var(--green);
+}
+
 .tool-group {
   display: grid;
   gap: 10px;
@@ -413,6 +438,13 @@ video {
   min-height: 20px;
   color: var(--muted);
   font-size: 0.86rem;
+}
+
+.mini-score {
+  margin: -2px 0 0;
+  color: var(--blue);
+  font-size: 0.8rem;
+  font-weight: 900;
 }
 
 .whiteboard-canvas {
@@ -612,7 +644,12 @@ body.has-media .button-row {
   grid-template-columns: 1fr;
 }
 
+body.has-media .share-row {
+  grid-template-columns: 1fr;
+}
+
 body.has-media .field input,
+body.has-media .field select,
 body.has-media .primary-button,
 body.has-media .secondary-button,
 body.has-media .copy-button {
@@ -793,7 +830,7 @@ h2 {
 
 .share-row {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 10px;
 }
 
@@ -836,6 +873,30 @@ h2 {
   border: 1px solid rgba(48, 211, 125, 0.26);
   border-radius: 8px;
   background: rgba(48, 211, 125, 0.08);
+}
+
+.knock-card {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid rgba(255, 200, 87, 0.36);
+  border-radius: 8px;
+  background: rgba(255, 200, 87, 0.1);
+}
+
+.toggle-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--text);
+  font-size: 0.9rem;
+  font-weight: 800;
+}
+
+.toggle-row input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--green);
 }
 
 .recent-card {
@@ -932,6 +993,10 @@ h2 {
 
 .is-hidden {
   display: none;
+}
+
+[hidden] {
+  display: none !important;
 }
 
 @media (max-width: 920px) {

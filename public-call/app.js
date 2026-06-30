@@ -11,6 +11,14 @@ const qrCodeImage = document.querySelector("#qrCodeImage");
 const installHelp = document.querySelector("#installHelp");
 const nativeShareButton = document.querySelector("#nativeShareButton");
 const newRoomButton = document.querySelector("#newRoomButton");
+const roomNameInput = document.querySelector("#roomNameInput");
+const copyCodeButton = document.querySelector("#copyCodeButton");
+const approvalToggle = document.querySelector("#approvalToggle");
+const knockCard = document.querySelector("#knockCard");
+const knockTitle = document.querySelector("#knockTitle");
+const knockCopy = document.querySelector("#knockCopy");
+const approveGuestButton = document.querySelector("#approveGuestButton");
+const declineGuestButton = document.querySelector("#declineGuestButton");
 const recentRoomsCard = document.querySelector("#recentRoomsCard");
 const recentRoomsList = document.querySelector("#recentRoomsList");
 const clearRecentRoomsButton = document.querySelector("#clearRecentRoomsButton");
@@ -19,6 +27,7 @@ const muteButton = document.querySelector("#muteButton");
 const cameraButton = document.querySelector("#cameraButton");
 const flipButton = document.querySelector("#flipButton");
 const screenButton = document.querySelector("#screenButton");
+const snapshotButton = document.querySelector("#snapshotButton");
 const effectsButton = document.querySelector("#effectsButton");
 const playButton = document.querySelector("#playButton");
 const chatButton = document.querySelector("#chatButton");
@@ -60,10 +69,15 @@ const reactionControls = document.querySelector("#reactionControls");
 const ticTacToeBoard = document.querySelector("#ticTacToeBoard");
 const ticTacToeStatus = document.querySelector("#ticTacToeStatus");
 const resetTicTacToeButton = document.querySelector("#resetTicTacToeButton");
+const ticTacToeScore = document.querySelector("#ticTacToeScore");
 const rpsControls = document.querySelector("#rpsControls");
 const rpsStatus = document.querySelector("#rpsStatus");
+const rpsScore = document.querySelector("#rpsScore");
+const resetRpsButton = document.querySelector("#resetRpsButton");
 const whiteboardCanvas = document.querySelector("#whiteboardCanvas");
 const clearWhiteboardButton = document.querySelector("#clearWhiteboardButton");
+const playTabButtons = document.querySelectorAll("[data-play-tab]");
+const playPanels = document.querySelectorAll("[data-play-panel]");
 
 const profileStorageKey = "facecall-profile-v1";
 const previewStorageKey = "facecall-preview-position-v1";
@@ -71,6 +85,7 @@ const ringStorageKey = "facecall-ring-v1";
 const recentRoomsStorageKey = "facecall-recent-rooms-v1";
 const effectsStorageKey = "facecall-effects-v1";
 const qualityStorageKey = "facecall-quality-v1";
+const approvalStorageKey = "facecall-approval-v1";
 
 const qualityPresets = {
   low: { width: 640, height: 360, frameRate: 18 },
@@ -109,10 +124,12 @@ let localEffects = loadEffects();
 let remoteEffects = { filter: "normal", backdrop: "none" };
 let qualityMode = loadQualityMode();
 let ticTacToeState = makeTicTacToeState();
-let rpsState = { local: "", remote: "" };
+let rpsState = { local: "", remote: "", settled: false, score: { you: 0, guest: 0, ties: 0 } };
 let whiteboardDrawing = null;
 let whiteboardContext = whiteboardCanvas.getContext("2d");
 let whiteboardStrokes = [];
+let pendingKnockConnection = null;
+let currentRoomId = "";
 
 function cleanRoomId(value) {
   return value
@@ -121,6 +138,10 @@ function cleanRoomId(value) {
     .replace(/-+/g, "-")
     .replace(/^-|-$/g, "")
     .slice(0, 42);
+}
+
+function cleanRoomName(value) {
+  return String(value || "").replace(/\s+/g, " ").trim().slice(0, 24);
 }
 
 function makeRoomId() {
@@ -265,7 +286,19 @@ function saveRingSetting() {
 function loadRecentRooms() {
   try {
     const saved = JSON.parse(localStorage.getItem(recentRoomsStorageKey) || "[]");
-    return Array.isArray(saved) ? saved.map(cleanRoomId).filter(Boolean).slice(0, 5) : [];
+    if (!Array.isArray(saved)) {
+      return [];
+    }
+
+    return saved.map((item) => {
+      if (typeof item === "string") {
+        return { id: cleanRoomId(item), name: "" };
+      }
+      return {
+        id: cleanRoomId(item?.id || ""),
+        name: cleanRoomName(item?.name || "")
+      };
+    }).filter((item) => item.id).slice(0, 5);
   } catch {
     return [];
   }
@@ -275,13 +308,17 @@ function saveRecentRooms(rooms) {
   localStorage.setItem(recentRoomsStorageKey, JSON.stringify(rooms.slice(0, 5)));
 }
 
-function rememberRoom(roomId) {
+function rememberRoom(roomId, roomName = roomNameInput.value) {
   const cleanId = cleanRoomId(roomId);
   if (!cleanId) {
     return;
   }
 
-  const rooms = [cleanId, ...loadRecentRooms().filter((item) => item !== cleanId)];
+  const cleanName = cleanRoomName(roomName);
+  const rooms = [
+    { id: cleanId, name: cleanName },
+    ...loadRecentRooms().filter((item) => item.id !== cleanId)
+  ];
   saveRecentRooms(rooms);
   renderRecentRooms();
 }
@@ -295,14 +332,28 @@ function renderRecentRooms() {
     const button = document.createElement("button");
     button.className = "recent-room-button";
     button.type = "button";
-    button.textContent = roomId;
+    button.textContent = roomId.name ? `${roomId.name} · ${roomId.id}` : roomId.id;
     button.addEventListener("click", () => {
-      roomInput.value = roomId;
-      setInvite(roomId, false);
+      roomInput.value = roomId.id;
+      roomNameInput.value = roomId.name;
+      setInvite(roomId.id, false);
       setStatus("Recent room loaded. Click Join Room to enter.");
     });
     recentRoomsList.append(button);
   });
+}
+
+function loadApprovalSetting() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(approvalStorageKey) || "{}");
+    return saved.enabled !== false;
+  } catch {
+    return true;
+  }
+}
+
+function saveApprovalSetting() {
+  localStorage.setItem(approvalStorageKey, JSON.stringify({ enabled: approvalToggle.checked }));
 }
 
 function loadEffects() {
@@ -407,7 +458,8 @@ function makeTicTacToeState() {
   return {
     board: Array(9).fill(""),
     turn: "X",
-    winner: ""
+    winner: "",
+    score: { x: 0, o: 0, draws: 0 }
   };
 }
 
@@ -446,6 +498,7 @@ function renderTicTacToe() {
   ticTacToeStatus.textContent = ticTacToeState.winner
     ? ticTacToeState.winner === "Draw" ? "Draw game. Reset to play again." : `${ticTacToeState.winner} wins.`
     : `${ticTacToeState.turn} goes next.`;
+  ticTacToeScore.textContent = `X ${ticTacToeState.score.x} · O ${ticTacToeState.score.o} · Draws ${ticTacToeState.score.draws}`;
 }
 
 function syncTicTacToe() {
@@ -459,13 +512,22 @@ function playTicTacToe(index) {
 
   ticTacToeState.board[index] = ticTacToeState.turn;
   ticTacToeState.winner = checkTicTacToeWinner(ticTacToeState.board);
+  if (ticTacToeState.winner === "X") {
+    ticTacToeState.score.x += 1;
+  } else if (ticTacToeState.winner === "O") {
+    ticTacToeState.score.o += 1;
+  } else if (ticTacToeState.winner === "Draw") {
+    ticTacToeState.score.draws += 1;
+  }
   ticTacToeState.turn = ticTacToeState.turn === "X" ? "O" : "X";
   renderTicTacToe();
   syncTicTacToe();
 }
 
 function resetTicTacToe(shouldSync = true) {
+  const score = ticTacToeState.score;
   ticTacToeState = makeTicTacToeState();
+  ticTacToeState.score = score;
   renderTicTacToe();
   if (shouldSync) {
     syncTicTacToe();
@@ -473,7 +535,13 @@ function resetTicTacToe(shouldSync = true) {
 }
 
 function chooseRps(choice) {
+  if (rpsState.settled) {
+    setStatus("Start a new rock paper scissors round first.");
+    return;
+  }
+
   rpsState.local = choice;
+  rpsState.settled = false;
   renderRps();
   sendDataMessage({ type: "rps", choice });
 }
@@ -500,9 +568,32 @@ function renderRps() {
     button.setAttribute("aria-pressed", String(isActive));
   });
 
+  if (rpsState.local && rpsState.remote && !rpsState.settled) {
+    const result = rpsResult(rpsState.local, rpsState.remote);
+    if (result === "You win.") {
+      rpsState.score.you += 1;
+    } else if (result === "Guest wins.") {
+      rpsState.score.guest += 1;
+    } else {
+      rpsState.score.ties += 1;
+    }
+    rpsState.settled = true;
+  }
+
   rpsStatus.textContent = rpsState.local && rpsState.remote
     ? `You picked ${rpsState.local}. Guest picked ${rpsState.remote}. ${rpsResult(rpsState.local, rpsState.remote)}`
     : rpsState.local ? "Waiting for guest pick." : "Pick one when you are ready.";
+  rpsScore.textContent = `You ${rpsState.score.you} · Guest ${rpsState.score.guest} · Ties ${rpsState.score.ties}`;
+}
+
+function resetRps(shouldSync = true) {
+  rpsState.local = "";
+  rpsState.remote = "";
+  rpsState.settled = false;
+  renderRps();
+  if (shouldSync) {
+    sendDataMessage({ type: "rps-reset" });
+  }
 }
 
 function resizeWhiteboard() {
@@ -697,7 +788,92 @@ function sendLocalProfile() {
   }
 }
 
+function approveGuest() {
+  const connection = pendingKnockConnection || activeConnection;
+  if (!connection?.open) {
+    setStatus("No waiting guest to approve.", "error");
+    return;
+  }
+
+  connection.send({ type: "approved" });
+  knockCard.hidden = true;
+  pendingKnockConnection = null;
+  updateBadge(connectionBadge, "Approved", "live");
+  setStatus("Guest approved. Waiting for their video...", "live");
+}
+
+function declineGuest() {
+  const connection = pendingKnockConnection || activeConnection;
+  connection?.send?.({ type: "declined" });
+  connection?.close?.();
+  knockCard.hidden = true;
+  pendingKnockConnection = null;
+  waitingCard.hidden = false;
+  updateBadge(connectionBadge, "Waiting", "warn");
+  setStatus("Guest declined. The room is still open.");
+}
+
+function handleKnock(data) {
+  const profile = data.profile || {};
+  remoteProfile = {
+    name: cleanProfileName(profile.name || "Guest"),
+    avatar: typeof profile.avatar === "string" ? profile.avatar : ""
+  };
+  applyProfile("remote", remoteProfile);
+
+  pendingKnockConnection = activeConnection;
+  waitingCard.hidden = true;
+  knockTitle.textContent = `${remoteProfile.name} is asking to join`;
+  knockCopy.textContent = approvalToggle.checked
+    ? "Approve them to start the video call."
+    : "Guest auto-approved because room approval is off.";
+  knockCard.hidden = !approvalToggle.checked;
+  updateBadge(connectionBadge, "Knocking", "warn");
+
+  if (approvalToggle.checked) {
+    playRing();
+    setStatus(`${remoteProfile.name} is waiting for approval.`, "live");
+  } else {
+    approveGuest();
+  }
+}
+
+async function startApprovedGuestCall(roomId) {
+  try {
+    setStatus("Approved. Asking for camera and microphone permission...");
+    await ensureLocalStream();
+    const outgoing = peer.call(roomId, localStream, { metadata: { profile: localProfile } });
+    bindCall(outgoing);
+    sendLocalProfile();
+    sendLocalEffects();
+    syncTicTacToe();
+    updateBadge(connectionBadge, "Calling", "warn");
+    setStatus("Calling the room now...");
+    setBusy(false);
+  } catch (error) {
+    setStatus(error.message || "Camera or microphone permission was blocked.", "error");
+    setBusy(false);
+  }
+}
+
 function handleDataMessage(data) {
+  if (data?.type === "knock") {
+    handleKnock(data);
+    return;
+  }
+
+  if (data?.type === "approved") {
+    startApprovedGuestCall(currentRoomId || cleanRoomId(roomInput.value));
+    return;
+  }
+
+  if (data?.type === "declined") {
+    updateBadge(connectionBadge, "Declined", "warn");
+    setStatus("The host declined the request to join.");
+    setBusy(false);
+    return;
+  }
+
   if (data?.type === "profile" && data.profile) {
     remoteProfile = {
       name: cleanProfileName(data.profile.name || "Guest"),
@@ -728,7 +904,12 @@ function handleDataMessage(data) {
     ticTacToeState = {
       board: data.state.board.slice(0, 9).map((value) => value === "X" || value === "O" ? value : ""),
       turn: data.state.turn === "O" ? "O" : "X",
-      winner: ["X", "O", "Draw"].includes(data.state.winner) ? data.state.winner : ""
+      winner: ["X", "O", "Draw"].includes(data.state.winner) ? data.state.winner : "",
+      score: {
+        x: Math.max(0, Number(data.state.score?.x) || 0),
+        o: Math.max(0, Number(data.state.score?.o) || 0),
+        draws: Math.max(0, Number(data.state.score?.draws) || 0)
+      }
     };
     renderTicTacToe();
     return;
@@ -736,7 +917,13 @@ function handleDataMessage(data) {
 
   if (data?.type === "rps" && ["rock", "paper", "scissors"].includes(data.choice)) {
     rpsState.remote = data.choice;
+    rpsState.settled = false;
     renderRps();
+    return;
+  }
+
+  if (data?.type === "rps-reset") {
+    resetRps(false);
     return;
   }
 
@@ -751,13 +938,21 @@ function handleDataMessage(data) {
   }
 }
 
-function bindConnection(connection) {
+function bindConnection(connection, mode = "host", roomId = "") {
   activeConnection = connection;
   connection.on("open", () => {
+    if (mode === "joiner") {
+      connection.send({ type: "knock", profile: localProfile });
+      waitingCard.hidden = true;
+      updateBadge(connectionBadge, "Knocking", "warn");
+      setStatus("Knocking. Waiting for the host to approve you...", "live");
+      return;
+    }
+
     sendLocalProfile();
     sendLocalEffects();
     syncTicTacToe();
-    updateBadge(connectionBadge, "Guest joined", "live");
+    updateBadge(connectionBadge, roomId ? "Guest joined" : "Connected", "live");
     waitingCard.hidden = true;
     playRing();
     setStatus("Handshake complete. Waiting for video...", "live");
@@ -896,9 +1091,11 @@ function setBusy(isBusy) {
 
 function setInvite(roomId, shouldRemember = true) {
   const url = roomLink(roomId);
+  currentRoomId = roomId;
   inviteInput.value = url;
   copyButton.disabled = false;
   nativeShareButton.disabled = false;
+  copyCodeButton.disabled = false;
   window.history.replaceState({}, "", url);
   if (shouldRemember) {
     rememberRoom(roomId);
@@ -927,6 +1124,7 @@ async function ensureLocalStream() {
   cameraButton.disabled = false;
   flipButton.disabled = false;
   screenButton.disabled = false;
+  snapshotButton.disabled = false;
   hangupButton.disabled = false;
   updateMediaBadges();
   if (window.matchMedia("(max-width: 620px)").matches) {
@@ -962,6 +1160,7 @@ function bindCall(call) {
 function bindPeerEvents(roomId, isHost) {
   peer.on("open", (id) => {
     if (isHost) {
+      currentRoomId = id;
       setInvite(id);
       waitingCard.hidden = false;
       updateBadge(connectionBadge, "Waiting", "warn");
@@ -970,13 +1169,11 @@ function bindPeerEvents(roomId, isHost) {
       return;
     }
 
-    setStatus("Calling the room now...");
+    currentRoomId = roomId;
+    setStatus("Connecting to the room...");
     waitingCard.hidden = true;
-    updateBadge(connectionBadge, "Calling", "warn");
-    const outgoing = peer.call(roomId, localStream, { metadata: { profile: localProfile } });
-    bindCall(outgoing);
-    bindConnection(peer.connect(roomId));
-    setBusy(false);
+    updateBadge(connectionBadge, "Knocking", "warn");
+    bindConnection(peer.connect(roomId), "joiner", roomId);
   });
 
   peer.on("call", async (call) => {
@@ -992,7 +1189,7 @@ function bindPeerEvents(roomId, isHost) {
   });
 
   peer.on("connection", (connection) => {
-    bindConnection(connection);
+    bindConnection(connection, isHost ? "host" : "peer", roomId);
   });
 
   peer.on("disconnected", () => {
@@ -1044,8 +1241,7 @@ async function joinRoom() {
     setBusy(true);
     waitingCard.hidden = true;
     updateBadge(connectionBadge, "Starting", "warn");
-    setStatus("Asking for camera and microphone permission...");
-    await ensureLocalStream();
+    setStatus("Connecting to the room...");
 
     if (peer) {
       peer.destroy();
@@ -1172,9 +1368,12 @@ function hangUp() {
   muteButton.disabled = true;
   cameraButton.disabled = true;
   screenButton.disabled = true;
+  snapshotButton.disabled = true;
   flipButton.disabled = true;
   hangupButton.disabled = true;
   waitingCard.hidden = true;
+  knockCard.hidden = true;
+  pendingKnockConnection = null;
   updateBadge(connectionBadge, "Ready");
   updateBadge(micBadge, "Mic ready");
   updateBadge(cameraBadge, "Camera ready");
@@ -1195,11 +1394,16 @@ async function shareInvite() {
     return;
   }
 
+  const roomName = cleanRoomName(roomNameInput.value);
+  const shareText = roomName
+    ? `Join my ${roomName} FaceCall room. Code: ${currentRoomId || cleanRoomId(roomInput.value)}.`
+    : `Join my FaceCall room. Code: ${currentRoomId || cleanRoomId(roomInput.value)}.`;
+
   if (navigator.share) {
     try {
       await navigator.share({
         title: "Join my FaceCall",
-        text: "Join my FaceCall room.",
+        text: shareText,
         url: inviteInput.value
       });
       setStatus("Invite shared.", "live");
@@ -1212,6 +1416,15 @@ async function shareInvite() {
   }
 
   await copyInvite();
+}
+
+async function copyRoomCode() {
+  const roomId = currentRoomId || cleanRoomId(roomInput.value);
+  if (!roomId) {
+    return;
+  }
+
+  await copyText(roomId, "Room code copied.");
 }
 
 function toggleChat() {
@@ -1241,6 +1454,61 @@ function closeToolDrawers(exceptDrawer = null) {
   if (exceptDrawer !== playDrawer) {
     toggleDrawer(playDrawer, playButton, false);
   }
+}
+
+function setPlayTab(tabName) {
+  playTabButtons.forEach((button) => {
+    const isActive = button.dataset.playTab === tabName;
+    button.classList.toggle("is-active", isActive);
+    button.setAttribute("aria-selected", String(isActive));
+  });
+
+  playPanels.forEach((panel) => {
+    panel.hidden = panel.dataset.playPanel !== tabName;
+  });
+
+  if (tabName === "board") {
+    resizeWhiteboard();
+  }
+}
+
+function canvasFilterForCurrentEffect() {
+  const filters = {
+    normal: "none",
+    soft: "brightness(1.08) contrast(0.92) saturate(1.16)",
+    noir: "grayscale(1) contrast(1.18)",
+    warm: "sepia(0.22) saturate(1.22) brightness(1.04)",
+    cool: "hue-rotate(178deg) saturate(1.18) brightness(1.03)",
+    party: "hue-rotate(42deg) saturate(1.75) contrast(1.08)",
+    comic: "saturate(1.9) contrast(1.38) brightness(1.04)"
+  };
+  return filters[localEffects.filter] || "none";
+}
+
+function saveSnapshot() {
+  if (!localStream || localVideo.readyState < 2) {
+    setStatus("Start your camera before taking a snapshot.", "error");
+    return;
+  }
+
+  const canvas = document.createElement("canvas");
+  const width = localVideo.videoWidth || 1280;
+  const height = localVideo.videoHeight || 720;
+  canvas.width = width;
+  canvas.height = height;
+  const context = canvas.getContext("2d");
+  context.save();
+  context.filter = canvasFilterForCurrentEffect();
+  context.translate(width, 0);
+  context.scale(-1, 1);
+  context.drawImage(localVideo, 0, 0, width, height);
+  context.restore();
+
+  const link = document.createElement("a");
+  link.download = `facecall-snapshot-${Date.now()}.png`;
+  link.href = canvas.toDataURL("image/png");
+  link.click();
+  setStatus("Snapshot saved.", "live");
 }
 
 function addChatMessage(name, message, side) {
@@ -1274,6 +1542,7 @@ function sendChatMessage(event) {
 createButton.addEventListener("click", createRoom);
 joinButton.addEventListener("click", joinRoom);
 copyButton.addEventListener("click", copyInvite);
+copyCodeButton.addEventListener("click", copyRoomCode);
 newRoomButton.addEventListener("click", () => {
   const roomId = makeRoomId();
   roomInput.value = roomId;
@@ -1289,12 +1558,19 @@ installButton.addEventListener("click", installFaceCall);
 shareAppButton.addEventListener("click", shareFaceCall);
 copyAppButton.addEventListener("click", () => copyText(appLinkInput.value, "Website link copied."));
 nativeShareButton.addEventListener("click", shareInvite);
+approvalToggle.addEventListener("change", () => {
+  saveApprovalSetting();
+  setStatus(approvalToggle.checked ? "Guest approval is on." : "Guest approval is off.", "live");
+});
+approveGuestButton.addEventListener("click", approveGuest);
+declineGuestButton.addEventListener("click", declineGuest);
 settingsButton.addEventListener("click", toggleSettings);
 panelCollapseButton.addEventListener("click", () => setSettingsCollapsed(true));
 muteButton.addEventListener("click", toggleMute);
 cameraButton.addEventListener("click", toggleCamera);
 flipButton.addEventListener("click", flipCamera);
 screenButton.addEventListener("click", shareScreen);
+snapshotButton.addEventListener("click", saveSnapshot);
 effectsButton.addEventListener("click", () => {
   const willOpen = !effectsDrawer.classList.contains("is-open");
   closeToolDrawers(effectsDrawer);
@@ -1359,6 +1635,7 @@ reactionControls.addEventListener("click", (event) => {
 });
 
 resetTicTacToeButton.addEventListener("click", () => resetTicTacToe(true));
+resetRpsButton.addEventListener("click", () => resetRps(true));
 
 rpsControls.addEventListener("click", (event) => {
   const button = event.target.closest("[data-rps]");
@@ -1372,6 +1649,10 @@ whiteboardCanvas.addEventListener("pointermove", moveWhiteboardDraw);
 whiteboardCanvas.addEventListener("pointerup", endWhiteboardDraw);
 whiteboardCanvas.addEventListener("pointercancel", endWhiteboardDraw);
 clearWhiteboardButton.addEventListener("click", () => clearWhiteboard(true));
+
+playTabButtons.forEach((button) => {
+  button.addEventListener("click", () => setPlayTab(button.dataset.playTab));
+});
 
 profileNameInput.addEventListener("input", () => {
   localProfile.name = cleanProfileName(profileNameInput.value);
@@ -1411,6 +1692,12 @@ roomInput.addEventListener("input", () => {
   }
 });
 
+roomNameInput.addEventListener("input", () => {
+  if (currentRoomId) {
+    rememberRoom(currentRoomId, roomNameInput.value);
+  }
+});
+
 roomInput.addEventListener("keydown", (event) => {
   if (event.key === "Enter") {
     event.preventDefault();
@@ -1443,6 +1730,8 @@ applyRemoteEffects();
 qualitySelect.value = qualityMode;
 renderTicTacToe();
 renderRps();
+approvalToggle.checked = loadApprovalSetting();
+setPlayTab("reactions");
 resizeWhiteboard();
 registerServiceWorker();
 renderRingButton();
