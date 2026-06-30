@@ -3,12 +3,20 @@ const inviteInput = document.querySelector("#inviteInput");
 const createButton = document.querySelector("#createButton");
 const joinButton = document.querySelector("#joinButton");
 const copyButton = document.querySelector("#copyButton");
+const nativeShareButton = document.querySelector("#nativeShareButton");
+const settingsButton = document.querySelector("#settingsButton");
 const muteButton = document.querySelector("#muteButton");
 const cameraButton = document.querySelector("#cameraButton");
+const flipButton = document.querySelector("#flipButton");
 const screenButton = document.querySelector("#screenButton");
+const chatButton = document.querySelector("#chatButton");
+const ringButton = document.querySelector("#ringButton");
 const hangupButton = document.querySelector("#hangupButton");
 const statusText = document.querySelector("#statusText");
 const statusDot = document.querySelector("#statusDot");
+const connectionBadge = document.querySelector("#connectionBadge");
+const micBadge = document.querySelector("#micBadge");
+const cameraBadge = document.querySelector("#cameraBadge");
 const localVideo = document.querySelector("#localVideo");
 const remoteVideo = document.querySelector("#remoteVideo");
 const localTile = document.querySelector("#localTile");
@@ -21,9 +29,17 @@ const localAvatar = document.querySelector("#localAvatar");
 const remoteAvatar = document.querySelector("#remoteAvatar");
 const localName = document.querySelector("#localName");
 const remoteName = document.querySelector("#remoteName");
+const panelCollapseButton = document.querySelector("#panelCollapseButton");
+const waitingCard = document.querySelector("#waitingCard");
+const chatDrawer = document.querySelector("#chatDrawer");
+const chatCloseButton = document.querySelector("#chatCloseButton");
+const chatLog = document.querySelector("#chatLog");
+const chatForm = document.querySelector("#chatForm");
+const chatInput = document.querySelector("#chatInput");
 
 const profileStorageKey = "facecall-profile-v1";
 const previewStorageKey = "facecall-preview-position-v1";
+const ringStorageKey = "facecall-ring-v1";
 
 const peerConfig = {
   host: "0.peerjs.com",
@@ -48,6 +64,9 @@ let isCameraOff = false;
 let localProfile = loadProfile();
 let remoteProfile = { name: "Guest", avatar: "" };
 let previewDrag = null;
+let currentFacingMode = "user";
+let ringEnabled = loadRingSetting();
+let audioContext = null;
 
 function cleanRoomId(value) {
   return value
@@ -87,6 +106,92 @@ function saveProfile() {
   localStorage.setItem(profileStorageKey, JSON.stringify(localProfile));
 }
 
+function loadRingSetting() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(ringStorageKey) || "{}");
+    return saved.enabled !== false;
+  } catch {
+    return true;
+  }
+}
+
+function saveRingSetting() {
+  localStorage.setItem(ringStorageKey, JSON.stringify({ enabled: ringEnabled }));
+}
+
+function unlockAudio() {
+  if (!audioContext && (window.AudioContext || window.webkitAudioContext)) {
+    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+  }
+  audioContext?.resume?.();
+}
+
+function playRing() {
+  if (!ringEnabled) {
+    return;
+  }
+
+  navigator.vibrate?.([120, 70, 120]);
+  if (!audioContext) {
+    return;
+  }
+
+  const now = audioContext.currentTime;
+  [0, 0.22].forEach((offset) => {
+    const oscillator = audioContext.createOscillator();
+    const gain = audioContext.createGain();
+    oscillator.type = "sine";
+    oscillator.frequency.setValueAtTime(740, now + offset);
+    gain.gain.setValueAtTime(0.0001, now + offset);
+    gain.gain.exponentialRampToValueAtTime(0.18, now + offset + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + offset + 0.16);
+    oscillator.connect(gain).connect(audioContext.destination);
+    oscillator.start(now + offset);
+    oscillator.stop(now + offset + 0.18);
+  });
+}
+
+function renderRingButton() {
+  ringButton.classList.toggle("is-off", !ringEnabled);
+  ringButton.querySelector("span").textContent = ringEnabled ? "Ring" : "Silent";
+  ringButton.setAttribute("aria-label", ringEnabled ? "Turn ringtone off" : "Turn ringtone on");
+}
+
+function toggleRing() {
+  ringEnabled = !ringEnabled;
+  saveRingSetting();
+  renderRingButton();
+  if (ringEnabled) {
+    unlockAudio();
+    playRing();
+    setStatus("Ringtone and vibration turned on.", "live");
+  } else {
+    setStatus("Ringtone and vibration turned off.");
+  }
+}
+
+function updateBadge(element, text, mode = "idle") {
+  element.textContent = text;
+  element.classList.toggle("is-live", mode === "live");
+  element.classList.toggle("is-warn", mode === "warn");
+}
+
+function updateMediaBadges() {
+  updateBadge(micBadge, isMuted ? "Mic muted" : "Mic on", isMuted ? "warn" : "live");
+  updateBadge(cameraBadge, isCameraOff ? "Camera off" : `Camera ${currentFacingMode === "user" ? "front" : "back"}`, isCameraOff ? "warn" : "live");
+}
+
+function setSettingsCollapsed(isCollapsed) {
+  document.body.classList.toggle("settings-collapsed", isCollapsed);
+  settingsButton.classList.toggle("is-off", !isCollapsed);
+  settingsButton.querySelector("span").textContent = isCollapsed ? "Settings" : "Hide";
+  panelCollapseButton.textContent = "Hide";
+}
+
+function toggleSettings() {
+  setSettingsCollapsed(!document.body.classList.contains("settings-collapsed"));
+}
+
 function applyProfile(target, profile) {
   const avatar = target === "local" ? localAvatar : remoteAvatar;
   const name = target === "local" ? localName : remoteName;
@@ -114,25 +219,35 @@ function sendLocalProfile() {
   }
 }
 
-function handleProfileMessage(data) {
-  if (data?.type !== "profile" || !data.profile) {
+function handleDataMessage(data) {
+  if (data?.type === "profile" && data.profile) {
+    remoteProfile = {
+      name: cleanProfileName(data.profile.name || "Guest"),
+      avatar: typeof data.profile.avatar === "string" ? data.profile.avatar : ""
+    };
+    applyProfile("remote", remoteProfile);
     return;
   }
 
-  remoteProfile = {
-    name: cleanProfileName(data.profile.name || "Guest"),
-    avatar: typeof data.profile.avatar === "string" ? data.profile.avatar : ""
-  };
-  applyProfile("remote", remoteProfile);
+  if (data?.type === "chat" && data.message) {
+    addChatMessage(cleanProfileName(data.name || remoteProfile.name || "Guest"), String(data.message).slice(0, 240), "remote");
+    chatButton.classList.add("is-off");
+  }
 }
 
 function bindConnection(connection) {
   activeConnection = connection;
   connection.on("open", () => {
     sendLocalProfile();
+    updateBadge(connectionBadge, "Guest joined", "live");
+    waitingCard.hidden = true;
+    playRing();
     setStatus("Handshake complete. Waiting for video...", "live");
   });
-  connection.on("data", handleProfileMessage);
+  connection.on("data", handleDataMessage);
+  connection.on("close", () => {
+    updateBadge(connectionBadge, "Guest left", "warn");
+  });
 }
 
 function clamp(value, min, max) {
@@ -266,6 +381,7 @@ function setInvite(roomId) {
   url.searchParams.set("room", roomId);
   inviteInput.value = url.toString();
   copyButton.disabled = false;
+  nativeShareButton.disabled = false;
   window.history.replaceState({}, "", url);
 }
 
@@ -282,7 +398,7 @@ async function ensureLocalStream() {
     video: {
       width: { ideal: 1280 },
       height: { ideal: 720 },
-      facingMode: "user"
+      facingMode: currentFacingMode
     }
   });
 
@@ -292,14 +408,21 @@ async function ensureLocalStream() {
   localEmpty.classList.add("is-hidden");
   muteButton.disabled = false;
   cameraButton.disabled = false;
+  flipButton.disabled = false;
   screenButton.disabled = false;
   hangupButton.disabled = false;
+  updateMediaBadges();
+  if (window.matchMedia("(max-width: 620px)").matches) {
+    setSettingsCollapsed(true);
+  }
   return localStream;
 }
 
 function attachRemoteStream(stream) {
   remoteVideo.srcObject = stream;
   remoteEmpty.classList.add("is-hidden");
+  waitingCard.hidden = true;
+  updateBadge(connectionBadge, "Connected", "live");
   setStatus("Connected. You are live.", "live");
 }
 
@@ -313,6 +436,7 @@ function bindCall(call) {
   call.on("close", () => {
     remoteVideo.srcObject = null;
     remoteEmpty.classList.remove("is-hidden");
+    updateBadge(connectionBadge, "Disconnected", "warn");
     setStatus("The other person left the call.");
   });
   call.on("error", (error) => setStatus(error.message || "The call disconnected.", "error"));
@@ -322,12 +446,16 @@ function bindPeerEvents(roomId, isHost) {
   peer.on("open", (id) => {
     if (isHost) {
       setInvite(id);
+      waitingCard.hidden = false;
+      updateBadge(connectionBadge, "Waiting", "warn");
       setStatus("Room is open. Share the invite link and keep this tab open.", "live");
       setBusy(false);
       return;
     }
 
     setStatus("Calling the room now...");
+    waitingCard.hidden = true;
+    updateBadge(connectionBadge, "Calling", "warn");
     const outgoing = peer.call(roomId, localStream, { metadata: { profile: localProfile } });
     bindCall(outgoing);
     bindConnection(peer.connect(roomId));
@@ -336,8 +464,10 @@ function bindPeerEvents(roomId, isHost) {
 
   peer.on("call", async (call) => {
     if (call.metadata?.profile) {
-      handleProfileMessage({ type: "profile", profile: call.metadata.profile });
+      handleDataMessage({ type: "profile", profile: call.metadata.profile });
     }
+    playRing();
+    updateBadge(connectionBadge, "Incoming", "warn");
     await ensureLocalStream();
     call.answer(localStream);
     bindCall(call);
@@ -348,7 +478,10 @@ function bindPeerEvents(roomId, isHost) {
     bindConnection(connection);
   });
 
-  peer.on("disconnected", () => setStatus("Signaling disconnected. Trying to reconnect..."));
+  peer.on("disconnected", () => {
+    updateBadge(connectionBadge, "Reconnecting", "warn");
+    setStatus("Signaling disconnected. Trying to reconnect...");
+  });
   peer.on("close", () => setStatus("Room closed."));
   peer.on("error", (error) => {
     const message = error.type === "unavailable-id"
@@ -361,7 +494,10 @@ function bindPeerEvents(roomId, isHost) {
 
 async function createRoom() {
   try {
+    unlockAudio();
     setBusy(true);
+    waitingCard.hidden = true;
+    updateBadge(connectionBadge, "Starting", "warn");
     setStatus("Asking for camera and microphone permission...");
     await ensureLocalStream();
 
@@ -387,7 +523,10 @@ async function joinRoom() {
   }
 
   try {
+    unlockAudio();
     setBusy(true);
+    waitingCard.hidden = true;
+    updateBadge(connectionBadge, "Starting", "warn");
     setStatus("Asking for camera and microphone permission...");
     await ensureLocalStream();
 
@@ -412,6 +551,7 @@ function toggleMute() {
   muteButton.classList.toggle("is-off", isMuted);
   muteButton.querySelector("span").textContent = isMuted ? "Muted" : "Mic";
   muteButton.setAttribute("aria-label", isMuted ? "Unmute microphone" : "Mute microphone");
+  updateMediaBadges();
 }
 
 function toggleCamera() {
@@ -422,6 +562,7 @@ function toggleCamera() {
   cameraButton.classList.toggle("is-off", isCameraOff);
   cameraButton.querySelector("span").textContent = isCameraOff ? "Off" : "Cam";
   cameraButton.setAttribute("aria-label", isCameraOff ? "Turn camera on" : "Turn camera off");
+  updateMediaBadges();
 }
 
 async function replaceOutgoingVideo(track) {
@@ -432,6 +573,44 @@ async function replaceOutgoingVideo(track) {
   const sender = activeCall.peerConnection.getSenders().find((item) => item.track?.kind === "video");
   if (sender) {
     await sender.replaceTrack(track);
+  }
+}
+
+async function flipCamera() {
+  if (!localStream) {
+    return;
+  }
+
+  currentFacingMode = currentFacingMode === "user" ? "environment" : "user";
+  try {
+    const replacementStream = await navigator.mediaDevices.getUserMedia({
+      video: {
+        width: { ideal: 1280 },
+        height: { ideal: 720 },
+        facingMode: currentFacingMode
+      }
+    });
+    const nextTrack = replacementStream.getVideoTracks()[0];
+    if (!nextTrack) {
+      throw new Error("No camera track was found.");
+    }
+    nextTrack.enabled = !isCameraOff;
+
+    const oldTrack = localStream.getVideoTracks()[0];
+    if (oldTrack) {
+      localStream.removeTrack(oldTrack);
+      oldTrack.stop();
+    }
+    localStream.addTrack(nextTrack);
+    cameraTrack = nextTrack;
+    await replaceOutgoingVideo(nextTrack);
+    localVideo.srcObject = localStream;
+    updateMediaBadges();
+    setStatus(`Using ${currentFacingMode === "user" ? "front" : "back"} camera.`, "live");
+  } catch (error) {
+    currentFacingMode = currentFacingMode === "user" ? "environment" : "user";
+    updateMediaBadges();
+    setStatus(error.message || "Could not flip the camera.", "error");
   }
 }
 
@@ -478,7 +657,12 @@ function hangUp() {
   muteButton.disabled = true;
   cameraButton.disabled = true;
   screenButton.disabled = true;
+  flipButton.disabled = true;
   hangupButton.disabled = true;
+  waitingCard.hidden = true;
+  updateBadge(connectionBadge, "Ready");
+  updateBadge(micBadge, "Mic ready");
+  updateBadge(cameraBadge, "Camera ready");
   setBusy(false);
   setStatus("Call ended. Create or join another room when ready.");
 }
@@ -492,12 +676,82 @@ async function copyInvite() {
   setStatus("Invite link copied.", "live");
 }
 
+async function shareInvite() {
+  if (!inviteInput.value) {
+    return;
+  }
+
+  if (navigator.share) {
+    try {
+      await navigator.share({
+        title: "Join my FaceCall",
+        text: "Join my FaceCall room.",
+        url: inviteInput.value
+      });
+      setStatus("Invite shared.", "live");
+      return;
+    } catch (error) {
+      if (error.name === "AbortError") {
+        return;
+      }
+    }
+  }
+
+  await copyInvite();
+}
+
+function toggleChat() {
+  const isOpen = !chatDrawer.classList.contains("is-open");
+  chatDrawer.classList.toggle("is-open", isOpen);
+  chatDrawer.setAttribute("aria-hidden", String(!isOpen));
+  chatButton.classList.remove("is-off");
+  if (isOpen) {
+    chatInput.focus();
+  }
+}
+
+function addChatMessage(name, message, side) {
+  const bubble = document.createElement("div");
+  bubble.className = `chat-message ${side === "local" ? "is-local" : ""}`;
+  const sender = document.createElement("strong");
+  sender.textContent = name;
+  const text = document.createElement("span");
+  text.textContent = message;
+  bubble.append(sender, text);
+  chatLog.append(bubble);
+  chatLog.scrollTop = chatLog.scrollHeight;
+}
+
+function sendChatMessage(event) {
+  event.preventDefault();
+  const message = chatInput.value.trim();
+  if (!message) {
+    return;
+  }
+
+  addChatMessage(localProfile.name, message, "local");
+  if (activeConnection?.open) {
+    activeConnection.send({ type: "chat", name: localProfile.name, message });
+  } else {
+    setStatus("No one is connected to receive chat yet.", "error");
+  }
+  chatInput.value = "";
+}
+
 createButton.addEventListener("click", createRoom);
 joinButton.addEventListener("click", joinRoom);
 copyButton.addEventListener("click", copyInvite);
+nativeShareButton.addEventListener("click", shareInvite);
+settingsButton.addEventListener("click", toggleSettings);
+panelCollapseButton.addEventListener("click", () => setSettingsCollapsed(true));
 muteButton.addEventListener("click", toggleMute);
 cameraButton.addEventListener("click", toggleCamera);
+flipButton.addEventListener("click", flipCamera);
 screenButton.addEventListener("click", shareScreen);
+chatButton.addEventListener("click", toggleChat);
+chatCloseButton.addEventListener("click", toggleChat);
+chatForm.addEventListener("submit", sendChatMessage);
+ringButton.addEventListener("click", toggleRing);
 hangupButton.addEventListener("click", hangUp);
 localTile.addEventListener("pointerdown", beginPreviewDrag);
 localTile.addEventListener("pointermove", movePreviewDrag);
@@ -553,4 +807,6 @@ if (roomFromUrl) {
 
 applyProfilePreview();
 applyProfile("remote", remoteProfile);
+renderRingButton();
+updateMediaBadges();
 restorePreviewPosition();

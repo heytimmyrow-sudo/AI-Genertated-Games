@@ -89,6 +89,43 @@ button {
   min-height: 58vh;
 }
 
+.status-badges {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  right: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  z-index: 2;
+}
+
+.status-badge {
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 7px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  background: rgba(0, 0, 0, 0.52);
+  color: var(--text);
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.status-badge.is-live {
+  color: #06100f;
+  background: var(--green);
+  border-color: rgba(48, 211, 125, 0.85);
+}
+
+.status-badge.is-warn {
+  color: var(--gold);
+  border-color: rgba(255, 200, 87, 0.42);
+  background: rgba(255, 200, 87, 0.12);
+}
+
 .video-tile--local {
   position: absolute;
   right: 32px;
@@ -243,6 +280,109 @@ video {
   color: #ffdce0;
 }
 
+.chat-drawer {
+  position: absolute;
+  right: 16px;
+  bottom: 102px;
+  z-index: 5;
+  display: none;
+  width: min(360px, calc(100% - 32px));
+  max-height: min(440px, calc(100% - 130px));
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(18, 22, 28, 0.96);
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.42);
+  overflow: hidden;
+}
+
+.chat-drawer.is-open {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+}
+
+.chat-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px;
+  border-bottom: 1px solid var(--line);
+}
+
+.chat-header h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.chat-close,
+.panel-collapse-button {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 7px 10px;
+  color: var(--text);
+  background: var(--panel-strong);
+  cursor: pointer;
+}
+
+.chat-log {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  min-height: 140px;
+  overflow: auto;
+  padding: 12px;
+}
+
+.chat-message {
+  justify-self: start;
+  max-width: 82%;
+  padding: 8px 10px;
+  border-radius: 8px;
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.07);
+  word-break: break-word;
+}
+
+.chat-message.is-local {
+  justify-self: end;
+  color: #06100f;
+  background: var(--green);
+}
+
+.chat-message strong {
+  display: block;
+  margin-bottom: 3px;
+  font-size: 0.72rem;
+}
+
+.chat-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  padding: 12px;
+  border-top: 1px solid var(--line);
+}
+
+.chat-form input {
+  min-height: 42px;
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 0 10px;
+  color: var(--text);
+  background: rgba(8, 10, 13, 0.78);
+}
+
+.chat-form button {
+  min-height: 42px;
+  border: 0;
+  border-radius: 8px;
+  padding: 0 14px;
+  color: #06100f;
+  background: var(--green);
+  font-weight: 900;
+}
+
 .call-panel {
   display: flex;
   flex-direction: column;
@@ -254,8 +394,20 @@ video {
   background: rgba(21, 25, 31, 0.88);
 }
 
+body.settings-collapsed .call-shell {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+body.settings-collapsed .call-panel {
+  display: none;
+}
+
 body.has-media .call-shell {
   grid-template-columns: minmax(0, 1fr) 276px;
+}
+
+body.has-media.settings-collapsed .call-shell {
+  grid-template-columns: minmax(0, 1fr);
 }
 
 body.has-media .call-panel {
@@ -290,6 +442,16 @@ body.has-media .copy-button {
   font-weight: 800;
   letter-spacing: 0.15em;
   text-transform: uppercase;
+}
+
+.panel-heading {
+  position: relative;
+}
+
+.panel-collapse-button {
+  position: absolute;
+  top: 0;
+  right: 0;
 }
 
 h2 {
@@ -390,6 +552,12 @@ h2 {
   gap: 10px;
 }
 
+.share-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
 .primary-button,
 .secondary-button,
 .copy-button {
@@ -422,6 +590,26 @@ h2 {
   border: 1px solid var(--line);
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.04);
+}
+
+.waiting-card {
+  padding: 14px;
+  border: 1px solid rgba(48, 211, 125, 0.26);
+  border-radius: 8px;
+  background: rgba(48, 211, 125, 0.08);
+}
+
+.setting-title {
+  margin: 0 0 4px;
+  color: var(--text);
+  font-weight: 900;
+}
+
+.setting-copy {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+  line-height: 1.4;
 }
 
 .status-card p,
@@ -554,6 +742,18 @@ h2 {
 
   .button-row {
     grid-template-columns: 1fr;
+  }
+
+  .share-row {
+    grid-template-columns: 1fr;
+  }
+
+  .chat-drawer {
+    left: 10px;
+    right: 10px;
+    bottom: 84px;
+    width: auto;
+    max-height: min(360px, calc(100% - 104px));
   }
 
   .primary-button,

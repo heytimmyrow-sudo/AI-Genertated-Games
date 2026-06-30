@@ -31,6 +31,11 @@
             <h1>FaceCall</h1>
             <p>Start a room, share the invite link, and talk face to face from your phone, iPad, or computer.</p>
           </div>
+          <div class="status-badges" aria-label="Call status">
+            <span class="status-badge" id="connectionBadge">Ready</span>
+            <span class="status-badge" id="micBadge">Mic ready</span>
+            <span class="status-badge" id="cameraBadge">Camera ready</span>
+          </div>
           <div class="tile-label profile-chip">
             <span class="profile-avatar" id="remoteAvatar">G</span>
             <span id="remoteName">Guest</span>
@@ -48,23 +53,48 @@
       </div>
 
       <section class="controls" aria-label="Call controls">
+        <button class="icon-button" id="settingsButton" type="button" aria-label="Toggle settings" title="Toggle settings">
+          <span aria-hidden="true">Settings</span>
+        </button>
         <button class="icon-button" id="muteButton" type="button" disabled aria-label="Mute microphone" title="Mute microphone">
           <span aria-hidden="true">Mic</span>
         </button>
         <button class="icon-button" id="cameraButton" type="button" disabled aria-label="Turn camera off" title="Turn camera off">
           <span aria-hidden="true">Cam</span>
         </button>
+        <button class="icon-button" id="flipButton" type="button" disabled aria-label="Flip camera" title="Flip camera">
+          <span aria-hidden="true">Flip</span>
+        </button>
         <button class="icon-button" id="screenButton" type="button" disabled aria-label="Share screen" title="Share screen">
           <span aria-hidden="true">Share</span>
+        </button>
+        <button class="icon-button" id="chatButton" type="button" aria-label="Open chat" title="Open chat">
+          <span aria-hidden="true">Chat</span>
+        </button>
+        <button class="icon-button" id="ringButton" type="button" aria-label="Toggle ringtone" title="Toggle ringtone">
+          <span aria-hidden="true">Ring</span>
         </button>
         <button class="icon-button icon-button--danger" id="hangupButton" type="button" disabled aria-label="End call" title="End call">
           <span aria-hidden="true">End</span>
         </button>
       </section>
+
+      <section class="chat-drawer" id="chatDrawer" aria-label="Call chat" aria-hidden="true">
+        <div class="chat-header">
+          <h3>Chat</h3>
+          <button class="chat-close" id="chatCloseButton" type="button" aria-label="Close chat">Close</button>
+        </div>
+        <div class="chat-log" id="chatLog" aria-live="polite"></div>
+        <form class="chat-form" id="chatForm">
+          <input id="chatInput" type="text" autocomplete="off" maxlength="240" placeholder="Message">
+          <button type="submit">Send</button>
+        </form>
+      </section>
     </section>
 
     <aside class="call-panel" aria-label="Room setup">
-      <div>
+      <div class="panel-heading">
+        <button class="panel-collapse-button" id="panelCollapseButton" type="button" aria-label="Hide settings">Hide</button>
         <p class="eyebrow">FaceCall video and voice</p>
         <h2>Start a call</h2>
         <p class="panel-copy">No accounts. Create a room, send the link, then keep this tab open as the host.</p>
@@ -97,7 +127,15 @@
         <input id="inviteInput" type="text" readonly placeholder="Create a room to make a link">
       </label>
 
-      <button class="copy-button" id="copyButton" type="button" disabled>Copy Invite Link</button>
+      <div class="share-row">
+        <button class="copy-button" id="copyButton" type="button" disabled>Copy Invite Link</button>
+        <button class="secondary-button" id="nativeShareButton" type="button" disabled>Share Invite</button>
+      </div>
+
+      <section class="waiting-card" id="waitingCard" hidden>
+        <p class="setting-title">Waiting room</p>
+        <p class="setting-copy">Waiting for someone to join. Keep this tab open and send the invite link.</p>
+      </section>
 
       <div class="status-card" aria-live="polite">
         <span id="statusDot" class="status-dot"></span>
