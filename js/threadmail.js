@@ -1005,7 +1005,7 @@ function appendCallBubble({ label, invite, time, isMine }) {
     link.href = invite.url;
     link.target = "_blank";
     link.rel = "noopener";
-    link.textContent = "Join Call";
+    link.textContent = isFaceCallInvite(invite.type) ? "Open FaceCall" : "Join Call";
     bubble.append(link);
   } else if (!isMine) {
     const actions = document.createElement("div");
@@ -1482,14 +1482,44 @@ function getGameRulesShort(type) {
 
 function getCallTitle(type) {
   if (type === "threadmail_voice") return "Threadmail Voice";
-  if (type === "threadmail_video") return "Threadmail FaceTime";
-  if (type === "voice") return "Voice Call";
-  if (type === "video") return "Video Invite";
-  return "FaceTime/Meet";
+  if (type === "threadmail_video") return "FaceCall Video";
+  if (type === "facecall_voice") return "FaceCall Voice";
+  if (type === "facecall_video") return "FaceCall Video";
+  if (type === "facecall_invite" || type === "voice") return "FaceCall Voice Invite";
+  if (type === "facecall_video_invite" || type === "video") return "FaceCall Video Invite";
+  if (type === "facecall_link" || type === "link") return "FaceCall Link";
+  return "FaceCall";
+}
+
+function isFaceCallInvite(type) {
+  return ["facecall_voice", "facecall_video", "facecall_invite", "facecall_video_invite", "facecall_link", "voice", "video", "link"].includes(type);
+}
+
+function makeFaceCallRoomId(sender, recipient, type) {
+  const typeLabel = type.includes("voice") ? "voice" : "video";
+  const seed = `${sender}-${recipient}-${Date.now().toString(36)}-${Math.floor(Math.random() * 1000)}`;
+  return cleanRoomId(`threadmail-${typeLabel}-${seed}`) || `threadmail-${typeLabel}-${Date.now().toString(36)}`;
+}
+
+function cleanRoomId(value) {
+  return String(value || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9-]/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 42);
+}
+
+function buildFaceCallUrl(roomId) {
+  const url = new URL("../public-call/", window.location.href);
+  url.hash = `/r/${roomId}`;
+  return url.toString();
 }
 
 function buildCallInviteBody(type, url = "") {
-  const note = url ? "Join when you are ready." : "Reply when you are ready and we can start.";
+  const note = url && isFaceCallInvite(type)
+    ? "Tap Join Call to open the FaceCall room."
+    : url ? "Join when you are ready." : "Reply when you are ready and we can start.";
   return `${CALL_INVITE_PREFIX}${JSON.stringify({ type, url, note })}\n${getCallTitle(type)} invite. ${note}`;
 }
 
@@ -1500,12 +1530,12 @@ function parseCallInvite(value) {
   try {
     const invite = JSON.parse(firstLine);
     return {
-      type: ["threadmail_voice", "threadmail_video", "voice", "video", "link"].includes(invite.type) ? invite.type : "video",
+      type: ["threadmail_voice", "threadmail_video", "voice", "video", "link", "facecall_voice", "facecall_video", "facecall_invite", "facecall_video_invite", "facecall_link"].includes(invite.type) ? invite.type : "facecall_video",
       url: /^https?:\/\//i.test(invite.url || "") ? invite.url : "",
       note: String(invite.note || "").slice(0, 160)
     };
   } catch {
-    return { type: "video", url: "", note: "Ready for a call?" };
+    return { type: "facecall_video", url: "", note: "Ready for a FaceCall?" };
   }
 }
 
@@ -2150,17 +2180,11 @@ async function sendInlineCall(type) {
     setStatus("Unblock that handle before sending a call invite.", "error");
     return;
   }
-  if (type === "link") {
-    url = window.prompt("Paste your FaceTime, Google Meet, or Zoom link:");
-    if (url === null) return;
-    url = url.trim();
-    if (!/^https?:\/\//i.test(url)) {
-      setStatus("Paste a call link that starts with http or https.", "error");
-      return;
-    }
+  if (isFaceCallInvite(type)) {
+    url = buildFaceCallUrl(makeFaceCallRoomId(sender, recipient, type));
   }
 
-  setStatus("Sending call invite...", "neutral");
+  setStatus(isFaceCallInvite(type) ? "Creating FaceCall invite..." : "Sending call invite...", "neutral");
   try {
     const response = await fetchWithRetry(`${SUPABASE_URL}/rest/v1/${SUPABASE_TABLE}`, {
       method: "POST",
@@ -2183,7 +2207,7 @@ async function sendInlineCall(type) {
     els.inlineCallPicker.hidden = true;
     els.offlineBanner.hidden = true;
     tableReady = true;
-    setStatus(`${getCallTitle(type)} invite sent to ${recipient}.`, "success");
+    setStatus(`${getCallTitle(type)} sent to ${recipient}.`, "success");
     mergeReturnedMessages(payload);
     rebuildThreads();
     activeId = findConversationThreadId(recipient, subject) || (Array.isArray(payload) ? payload[0]?.id || activeId : activeId);
@@ -2477,24 +2501,24 @@ async function createVoicePeer(role, call) {
   });
   peer.addEventListener("connectionstatechange", () => {
     if (["connected", "completed"].includes(peer.connectionState)) {
-      setVoiceCallPanel({ label: `${mediaType === "video" ? "FaceTime" : "Voice"} with ${getCallPeer()}`, status: "Connected", connected: true, video: mediaType === "video" });
+      setVoiceCallPanel({ label: `${mediaType === "video" ? "Video" : "Voice"} with ${getCallPeer()}`, status: "Connected", connected: true, video: mediaType === "video" });
     } else if (peer.connectionState === "disconnected") {
-      setVoiceCallPanel({ label: `${mediaType === "video" ? "FaceTime" : "Voice"} with ${getCallPeer()}`, status: "Reconnecting...", connected: true, video: mediaType === "video" });
+      setVoiceCallPanel({ label: `${mediaType === "video" ? "Video" : "Voice"} with ${getCallPeer()}`, status: "Reconnecting...", connected: true, video: mediaType === "video" });
     } else if (["failed", "closed"].includes(peer.connectionState)) {
       setCallIssue("WebRTC connection was lost. Check camera/mic permissions, VPNs, school Wi-Fi, or cellular restrictions.");
-      setVoiceCallPanel({ label: mediaType === "video" ? "Threadmail FaceTime" : "Threadmail Voice", status: "Connection lost", connected: true, video: mediaType === "video", lost: true });
+      setVoiceCallPanel({ label: mediaType === "video" ? "FaceCall Video" : "Threadmail Voice", status: "Connection lost", connected: true, video: mediaType === "video", lost: true });
     }
   });
   peer.addEventListener("iceconnectionstatechange", () => {
     if (["checking", "new"].includes(peer.iceConnectionState)) {
-      setVoiceCallPanel({ label: `${mediaType === "video" ? "FaceTime" : "Voice"} with ${getCallPeer()}`, status: "Finding connection...", connected: true, video: mediaType === "video" });
+      setVoiceCallPanel({ label: `${mediaType === "video" ? "Video" : "Voice"} with ${getCallPeer()}`, status: "Finding connection...", connected: true, video: mediaType === "video" });
     } else if (peer.iceConnectionState === "connected" || peer.iceConnectionState === "completed") {
-      setVoiceCallPanel({ label: `${mediaType === "video" ? "FaceTime" : "Voice"} with ${getCallPeer()}`, status: "Connected", connected: true, video: mediaType === "video" });
+      setVoiceCallPanel({ label: `${mediaType === "video" ? "Video" : "Voice"} with ${getCallPeer()}`, status: "Connected", connected: true, video: mediaType === "video" });
     } else if (peer.iceConnectionState === "disconnected") {
-      setVoiceCallPanel({ label: `${mediaType === "video" ? "FaceTime" : "Voice"} with ${getCallPeer()}`, status: "Reconnecting...", connected: true, video: mediaType === "video" });
+      setVoiceCallPanel({ label: `${mediaType === "video" ? "Video" : "Voice"} with ${getCallPeer()}`, status: "Reconnecting...", connected: true, video: mediaType === "video" });
     } else if (peer.iceConnectionState === "failed") {
       setCallIssue("Network blocked the call path. Try another Wi-Fi/cellular network or use a stronger TURN relay.");
-      setVoiceCallPanel({ label: mediaType === "video" ? "Threadmail FaceTime" : "Threadmail Voice", status: "Connection blocked by network", connected: true, video: mediaType === "video", lost: true });
+      setVoiceCallPanel({ label: mediaType === "video" ? "FaceCall Video" : "Threadmail Voice", status: "Connection blocked by network", connected: true, video: mediaType === "video", lost: true });
     }
   });
   return { peer, stream };
@@ -2506,11 +2530,11 @@ async function startThreadmailCall(mediaType = "voice") {
   const callee = normalizeHandle(thread?.otherHandle || "");
   if (!thread || thread.draft || !callee) return;
   if (!navigator.mediaDevices?.getUserMedia || !window.RTCPeerConnection) {
-    setStatus(`This browser cannot make Threadmail ${mediaType === "video" ? "FaceTime" : "voice"} calls.`, "error");
+    setStatus(`This browser cannot make ${mediaType === "video" ? "FaceCall video" : "Threadmail voice"} calls.`, "error");
     return;
   }
   if (!isValidHandle(caller)) {
-    setStatus(`Save your handle before starting a ${mediaType === "video" ? "FaceTime" : "voice call"}.`, "error");
+    setStatus(`Save your handle before starting a ${mediaType === "video" ? "FaceCall video" : "voice call"}.`, "error");
     els.identityHandle.focus();
     return;
   }
@@ -2539,10 +2563,10 @@ async function startThreadmailCall(mediaType = "voice") {
     await peer.setLocalDescription(offer);
     callSession.call = await patchCall(call.id, { offer: serializeSessionDescription(peer.localDescription), status: "ringing" });
     setVoiceCallPanel({ label: `Calling ${callee}`, status: "Ringing...", video: mediaType === "video" });
-    await sendThreadUtilityMessage(buildCallInviteBody(mediaType === "video" ? "threadmail_video" : "threadmail_voice", ""), mediaType === "video" ? "FaceTime call" : "Voice call");
+    await sendThreadUtilityMessage(buildCallInviteBody(mediaType === "video" ? "threadmail_video" : "threadmail_voice", ""), mediaType === "video" ? "FaceCall video" : "Voice call");
   } catch {
     endLocalVoiceCall(false);
-    setStatus(`Could not start the Threadmail ${mediaType === "video" ? "FaceTime" : "voice call"}.`, "error");
+    setStatus(`Could not start the ${mediaType === "video" ? "FaceCall video" : "Threadmail voice call"}.`, "error");
   }
 }
 
@@ -2550,7 +2574,7 @@ async function acceptThreadmailVoiceCall() {
   if (!callSession?.call || callSession.role !== "callee") return;
   stopIncomingRingtone();
   if (!navigator.mediaDevices?.getUserMedia || !window.RTCPeerConnection) {
-    setStatus(`This browser cannot accept Threadmail ${getCallMediaType() === "video" ? "FaceTime" : "voice"} calls.`, "error");
+    setStatus(`This browser cannot accept ${getCallMediaType() === "video" ? "FaceCall video" : "Threadmail voice"} calls.`, "error");
     return;
   }
   if (!callSession.call.offer) {
@@ -2566,7 +2590,7 @@ async function acceptThreadmailVoiceCall() {
     await peer.setLocalDescription(answer);
     callSession.call = await patchCall(callSession.call.id, { answer: serializeSessionDescription(peer.localDescription), status: "accepted" });
     knownCallCandidateCounts = { caller: 0, callee: 0 };
-    setVoiceCallPanel({ label: `${getCallMediaType() === "video" ? "FaceTime" : "Voice"} with ${getCallPeer()}`, status: "Connecting...", connected: true, video: getCallMediaType() === "video" });
+    setVoiceCallPanel({ label: `${getCallMediaType() === "video" ? "Video" : "Voice"} with ${getCallPeer()}`, status: "Connecting...", connected: true, video: getCallMediaType() === "video" });
   } catch {
     setStatus("Could not accept the call.", "error");
     await endVoiceCall();
@@ -2589,7 +2613,7 @@ async function acceptThreadmailVoiceInvite(callerHandle) {
     }
     callSession = { role: "callee", call, peer: null, stream: null, accepted: false, muted: false };
     knownCallCandidateCounts = { caller: 0, callee: 0 };
-    setVoiceCallPanel({ label: `Incoming ${getCallMediaType(call) === "video" ? "FaceTime" : "voice"} from ${call.caller_handle}`, status: "Accepting...", video: getCallMediaType(call) === "video" });
+    setVoiceCallPanel({ label: `Incoming ${getCallMediaType(call) === "video" ? "video" : "voice"} from ${call.caller_handle}`, status: "Accepting...", video: getCallMediaType(call) === "video" });
     await acceptThreadmailVoiceCall();
   } catch {
     setStatus("Threadmail calls need the updated Supabase setup SQL.", "error");
@@ -2636,7 +2660,7 @@ async function pollVoiceCalls() {
       if (callSession.role === "caller" && call.answer && !callSession.accepted) {
         await callSession.peer.setRemoteDescription(call.answer);
         callSession.accepted = true;
-        setVoiceCallPanel({ label: `${getCallMediaType() === "video" ? "FaceTime" : "Voice"} with ${getCallPeer()}`, status: "Connecting...", connected: true, video: getCallMediaType() === "video" });
+        setVoiceCallPanel({ label: `${getCallMediaType() === "video" ? "Video" : "Voice"} with ${getCallPeer()}`, status: "Connecting...", connected: true, video: getCallMediaType() === "video" });
       }
       await addRemoteCandidates(call);
       return;
@@ -2650,7 +2674,7 @@ async function pollVoiceCalls() {
     const call = payload[0];
     callSession = { role: "callee", call, peer: null, stream: null, accepted: false, muted: false };
     knownCallCandidateCounts = { caller: 0, callee: 0 };
-    setVoiceCallPanel({ label: `Incoming ${getCallMediaType(call) === "video" ? "FaceTime" : "voice"} from ${call.caller_handle}`, status: "Incoming call", incoming: true, video: getCallMediaType(call) === "video" });
+    setVoiceCallPanel({ label: `Incoming ${getCallMediaType(call) === "video" ? "video" : "voice"} from ${call.caller_handle}`, status: "Incoming call", incoming: true, video: getCallMediaType(call) === "video" });
   } catch {
     // Calls need the optional threadmail_calls table. Fail quietly until the SQL is run.
   }
