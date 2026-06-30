@@ -10,6 +10,10 @@ const appLinkInput = document.querySelector("#appLinkInput");
 const qrCodeImage = document.querySelector("#qrCodeImage");
 const installHelp = document.querySelector("#installHelp");
 const nativeShareButton = document.querySelector("#nativeShareButton");
+const newRoomButton = document.querySelector("#newRoomButton");
+const recentRoomsCard = document.querySelector("#recentRoomsCard");
+const recentRoomsList = document.querySelector("#recentRoomsList");
+const clearRecentRoomsButton = document.querySelector("#clearRecentRoomsButton");
 const settingsButton = document.querySelector("#settingsButton");
 const muteButton = document.querySelector("#muteButton");
 const cameraButton = document.querySelector("#cameraButton");
@@ -46,6 +50,7 @@ const chatInput = document.querySelector("#chatInput");
 const profileStorageKey = "facecall-profile-v1";
 const previewStorageKey = "facecall-preview-position-v1";
 const ringStorageKey = "facecall-ring-v1";
+const recentRoomsStorageKey = "facecall-recent-rooms-v1";
 
 const peerConfig = {
   host: "0.peerjs.com",
@@ -94,6 +99,23 @@ function appBaseUrl() {
   url.search = "";
   url.hash = "";
   return url.toString();
+}
+
+function roomLink(roomId) {
+  const url = new URL(appBaseUrl());
+  url.hash = `/r/${roomId}`;
+  return url.toString();
+}
+
+function roomFromLocation() {
+  const params = new URLSearchParams(window.location.search);
+  const queryRoom = cleanRoomId(params.get("room") || "");
+  if (queryRoom) {
+    return queryRoom;
+  }
+
+  const hashMatch = window.location.hash.match(/^#\/r\/([^/?#]+)/i);
+  return cleanRoomId(hashMatch?.[1] || "");
 }
 
 function isIosDevice() {
@@ -204,6 +226,49 @@ function loadRingSetting() {
 
 function saveRingSetting() {
   localStorage.setItem(ringStorageKey, JSON.stringify({ enabled: ringEnabled }));
+}
+
+function loadRecentRooms() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(recentRoomsStorageKey) || "[]");
+    return Array.isArray(saved) ? saved.map(cleanRoomId).filter(Boolean).slice(0, 5) : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveRecentRooms(rooms) {
+  localStorage.setItem(recentRoomsStorageKey, JSON.stringify(rooms.slice(0, 5)));
+}
+
+function rememberRoom(roomId) {
+  const cleanId = cleanRoomId(roomId);
+  if (!cleanId) {
+    return;
+  }
+
+  const rooms = [cleanId, ...loadRecentRooms().filter((item) => item !== cleanId)];
+  saveRecentRooms(rooms);
+  renderRecentRooms();
+}
+
+function renderRecentRooms() {
+  const rooms = loadRecentRooms();
+  recentRoomsCard.hidden = rooms.length === 0;
+  recentRoomsList.replaceChildren();
+
+  rooms.forEach((roomId) => {
+    const button = document.createElement("button");
+    button.className = "recent-room-button";
+    button.type = "button";
+    button.textContent = roomId;
+    button.addEventListener("click", () => {
+      roomInput.value = roomId;
+      setInvite(roomId, false);
+      setStatus("Recent room loaded. Click Join Room to enter.");
+    });
+    recentRoomsList.append(button);
+  });
 }
 
 function unlockAudio() {
@@ -463,13 +528,15 @@ function setBusy(isBusy) {
   joinButton.disabled = isBusy;
 }
 
-function setInvite(roomId) {
-  const url = new URL(window.location.href);
-  url.searchParams.set("room", roomId);
-  inviteInput.value = url.toString();
+function setInvite(roomId, shouldRemember = true) {
+  const url = roomLink(roomId);
+  inviteInput.value = url;
   copyButton.disabled = false;
   nativeShareButton.disabled = false;
   window.history.replaceState({}, "", url);
+  if (shouldRemember) {
+    rememberRoom(roomId);
+  }
 }
 
 async function ensureLocalStream() {
@@ -827,6 +894,17 @@ function sendChatMessage(event) {
 createButton.addEventListener("click", createRoom);
 joinButton.addEventListener("click", joinRoom);
 copyButton.addEventListener("click", copyInvite);
+newRoomButton.addEventListener("click", () => {
+  const roomId = makeRoomId();
+  roomInput.value = roomId;
+  setInvite(roomId, false);
+  setStatus("New room code ready. Create or share it when you are ready.", "live");
+});
+clearRecentRoomsButton.addEventListener("click", () => {
+  saveRecentRooms([]);
+  renderRecentRooms();
+  setStatus("Recent rooms cleared.");
+});
 installButton.addEventListener("click", installFaceCall);
 shareAppButton.addEventListener("click", shareFaceCall);
 copyAppButton.addEventListener("click", () => copyText(appLinkInput.value, "Website link copied."));
@@ -886,17 +964,33 @@ roomInput.addEventListener("input", () => {
   }
 });
 
-const params = new URLSearchParams(window.location.search);
-const roomFromUrl = cleanRoomId(params.get("room") || "");
+roomInput.addEventListener("keydown", (event) => {
+  if (event.key === "Enter") {
+    event.preventDefault();
+    joinRoom();
+  }
+});
+
+window.addEventListener("hashchange", () => {
+  const roomId = roomFromLocation();
+  if (roomId) {
+    roomInput.value = roomId;
+    setInvite(roomId, false);
+    setStatus("Room link loaded. Click Join Room to enter.");
+  }
+});
+
+const roomFromUrl = roomFromLocation();
 if (roomFromUrl) {
   roomInput.value = roomFromUrl;
-  setInvite(roomFromUrl);
+  setInvite(roomFromUrl, false);
   setStatus("Room link loaded. Click Join Room to enter.");
 }
 
 applyProfilePreview();
 applyProfile("remote", remoteProfile);
 setupQuickAccess();
+renderRecentRooms();
 registerServiceWorker();
 renderRingButton();
 updateMediaBadges();

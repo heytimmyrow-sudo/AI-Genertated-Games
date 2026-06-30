@@ -129,10 +129,21 @@
         </div>
       </section>
 
-      <label class="field">
-        <span>Room code</span>
-        <input id="roomInput" type="text" autocomplete="off" spellcheck="false" placeholder="family-call-4821">
-      </label>
+      <div class="room-field">
+        <label class="field">
+          <span>Room code</span>
+          <input id="roomInput" type="text" autocomplete="off" spellcheck="false" inputmode="text" placeholder="family-call-4821">
+        </label>
+        <button class="secondary-button room-new-button" id="newRoomButton" type="button">New Code</button>
+      </div>
+
+      <section class="recent-card" id="recentRoomsCard" aria-label="Recent rooms" hidden>
+        <div class="recent-heading">
+          <p class="setting-title">Recent rooms</p>
+          <button class="text-button" id="clearRecentRoomsButton" type="button">Clear</button>
+        </div>
+        <div class="recent-list" id="recentRoomsList"></div>
+      </section>
 
       <div class="button-row">
         <button class="primary-button" id="createButton" type="button">Create Room</button>

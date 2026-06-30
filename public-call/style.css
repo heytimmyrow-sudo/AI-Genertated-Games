@@ -585,6 +585,17 @@ h2 {
   box-shadow: 0 0 0 3px rgba(102, 184, 255, 0.12);
 }
 
+.room-field {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: end;
+}
+
+.room-new-button {
+  min-width: 108px;
+}
+
 .button-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -636,6 +647,54 @@ h2 {
   border: 1px solid rgba(48, 211, 125, 0.26);
   border-radius: 8px;
   background: rgba(48, 211, 125, 0.08);
+}
+
+.recent-card {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.recent-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.text-button {
+  border: 0;
+  padding: 4px 0;
+  color: var(--blue);
+  background: transparent;
+  font-size: 0.86rem;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.recent-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.recent-room-button {
+  max-width: 100%;
+  min-height: 36px;
+  border: 1px solid rgba(102, 184, 255, 0.28);
+  border-radius: 999px;
+  padding: 0 12px;
+  color: var(--text);
+  background: rgba(102, 184, 255, 0.09);
+  font-size: 0.86rem;
+  font-weight: 800;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
 }
 
 .setting-title {
@@ -781,6 +840,14 @@ h2 {
 
   .button-row {
     grid-template-columns: 1fr;
+  }
+
+  .room-field {
+    grid-template-columns: 1fr;
+  }
+
+  .room-new-button {
+    width: 100%;
   }
 
   .share-row {
