@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; media-src 'self' blob:; connect-src 'self' https://0.peerjs.com wss://0.peerjs.com https://*.peerjs.com wss://*.peerjs.com; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: https://api.qrserver.com; media-src 'self' blob:; connect-src 'self' https://0.peerjs.com wss://0.peerjs.com https://*.peerjs.com wss://*.peerjs.com; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
   <meta name="referrer" content="no-referrer">
   <meta name="theme-color" content="#050608">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -99,6 +99,23 @@
         <h2>Start a call</h2>
         <p class="panel-copy">No accounts. Create a room, send the link, then keep this tab open as the host.</p>
       </div>
+
+      <section class="access-card" aria-label="Quick access">
+        <div class="access-actions">
+          <button class="primary-button" id="installButton" type="button">Install App</button>
+          <button class="secondary-button" id="shareAppButton" type="button">Share FaceCall</button>
+        </div>
+        <label class="field">
+          <span>Website link</span>
+          <input id="appLinkInput" type="text" readonly>
+        </label>
+        <button class="copy-button" id="copyAppButton" type="button">Copy Website Link</button>
+        <div class="qr-box">
+          <img id="qrCodeImage" alt="QR code for FaceCall">
+          <span>Scan to open FaceCall</span>
+        </div>
+        <p class="setting-copy" id="installHelp">Install FaceCall to open it from your home screen.</p>
+      </section>
 
       <section class="profile-card" aria-label="Your profile">
         <div class="profile-preview" id="profilePreview">Y</div>

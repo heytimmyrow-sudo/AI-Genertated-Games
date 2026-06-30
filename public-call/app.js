@@ -3,6 +3,12 @@ const inviteInput = document.querySelector("#inviteInput");
 const createButton = document.querySelector("#createButton");
 const joinButton = document.querySelector("#joinButton");
 const copyButton = document.querySelector("#copyButton");
+const installButton = document.querySelector("#installButton");
+const shareAppButton = document.querySelector("#shareAppButton");
+const copyAppButton = document.querySelector("#copyAppButton");
+const appLinkInput = document.querySelector("#appLinkInput");
+const qrCodeImage = document.querySelector("#qrCodeImage");
+const installHelp = document.querySelector("#installHelp");
 const nativeShareButton = document.querySelector("#nativeShareButton");
 const settingsButton = document.querySelector("#settingsButton");
 const muteButton = document.querySelector("#muteButton");
@@ -67,6 +73,7 @@ let previewDrag = null;
 let currentFacingMode = "user";
 let ringEnabled = loadRingSetting();
 let audioContext = null;
+let deferredInstallPrompt = null;
 
 function cleanRoomId(value) {
   return value
@@ -80,6 +87,86 @@ function cleanRoomId(value) {
 function makeRoomId() {
   const words = ["call", "room", "hello", "family", "video", "chat"];
   return `${words[Math.floor(Math.random() * words.length)]}-${Math.floor(1000 + Math.random() * 9000)}`;
+}
+
+function appBaseUrl() {
+  const url = new URL(window.location.href);
+  url.search = "";
+  url.hash = "";
+  return url.toString();
+}
+
+function isIosDevice() {
+  return /iphone|ipad|ipod/i.test(navigator.userAgent);
+}
+
+function setupQuickAccess() {
+  const url = appBaseUrl();
+  appLinkInput.value = url;
+  qrCodeImage.src = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&margin=12&data=${encodeURIComponent(url)}`;
+
+  if (window.matchMedia("(display-mode: standalone)").matches || navigator.standalone) {
+    installButton.disabled = true;
+    installHelp.textContent = "FaceCall is already installed on this device.";
+  } else if (isIosDevice()) {
+    installHelp.textContent = "On iPhone or iPad: tap Share, then Add to Home Screen.";
+  } else {
+    installHelp.textContent = "Tap Install App when your browser offers it, or use your browser menu to add FaceCall to your home screen.";
+  }
+}
+
+async function copyText(value, successMessage) {
+  await navigator.clipboard.writeText(value);
+  setStatus(successMessage, "live");
+}
+
+async function shareFaceCall() {
+  const url = appBaseUrl();
+  if (navigator.share) {
+    try {
+      await navigator.share({
+        title: "FaceCall",
+        text: "Open FaceCall for quick video calls.",
+        url
+      });
+      setStatus("FaceCall shared.", "live");
+      return;
+    } catch (error) {
+      if (error.name === "AbortError") {
+        return;
+      }
+    }
+  }
+
+  await copyText(url, "FaceCall link copied.");
+}
+
+async function installFaceCall() {
+  if (deferredInstallPrompt) {
+    deferredInstallPrompt.prompt();
+    const choice = await deferredInstallPrompt.userChoice;
+    deferredInstallPrompt = null;
+    if (choice.outcome === "accepted") {
+      installHelp.textContent = "FaceCall was installed.";
+      installButton.disabled = true;
+      setStatus("FaceCall installed.", "live");
+    } else {
+      setStatus("Install dismissed.");
+    }
+    return;
+  }
+
+  installHelp.textContent = isIosDevice()
+    ? "On iPhone or iPad: tap Share, then Add to Home Screen."
+    : "Use your browser menu and choose Install App or Add to Home Screen.";
+}
+
+function registerServiceWorker() {
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.register("./sw.js").catch(() => {
+      installHelp.textContent = "Install support is limited in this browser.";
+    });
+  }
 }
 
 function cleanProfileName(value) {
@@ -672,8 +759,7 @@ async function copyInvite() {
     return;
   }
 
-  await navigator.clipboard.writeText(inviteInput.value);
-  setStatus("Invite link copied.", "live");
+  await copyText(inviteInput.value, "Invite link copied.");
 }
 
 async function shareInvite() {
@@ -741,6 +827,9 @@ function sendChatMessage(event) {
 createButton.addEventListener("click", createRoom);
 joinButton.addEventListener("click", joinRoom);
 copyButton.addEventListener("click", copyInvite);
+installButton.addEventListener("click", installFaceCall);
+shareAppButton.addEventListener("click", shareFaceCall);
+copyAppButton.addEventListener("click", () => copyText(appLinkInput.value, "Website link copied."));
 nativeShareButton.addEventListener("click", shareInvite);
 settingsButton.addEventListener("click", toggleSettings);
 panelCollapseButton.addEventListener("click", () => setSettingsCollapsed(true));
@@ -807,6 +896,15 @@ if (roomFromUrl) {
 
 applyProfilePreview();
 applyProfile("remote", remoteProfile);
+setupQuickAccess();
+registerServiceWorker();
 renderRingButton();
 updateMediaBadges();
 restorePreviewPosition();
+
+window.addEventListener("beforeinstallprompt", (event) => {
+  event.preventDefault();
+  deferredInstallPrompt = event;
+  installButton.disabled = false;
+  installHelp.textContent = "FaceCall is ready to install on this device.";
+});
