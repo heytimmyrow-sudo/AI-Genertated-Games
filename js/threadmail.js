@@ -1002,10 +1002,12 @@ function appendCallBubble({ label, invite, time, isMine }) {
   bubble.append(name, title, detail);
   if (invite.url) {
     const link = document.createElement("a");
-    link.href = invite.url;
+    link.href = isMine && isFaceCallInvite(invite.type) ? faceCallHostUrl(invite.url) : invite.url;
     link.target = "_blank";
     link.rel = "noopener";
-    link.textContent = isFaceCallInvite(invite.type) ? "Open FaceCall" : "Join Call";
+    link.textContent = isFaceCallInvite(invite.type)
+      ? isMine ? "Open FaceCall Host" : "Open FaceCall"
+      : "Join Call";
     bubble.append(link);
   } else if (!isMine) {
     const actions = document.createElement("div");
@@ -1510,10 +1512,23 @@ function cleanRoomId(value) {
     .slice(0, 42);
 }
 
-function buildFaceCallUrl(roomId) {
+function buildFaceCallUrl(roomId, startMode = "join") {
   const url = new URL("../public-call/", window.location.href);
+  if (startMode === "host" || startMode === "join") {
+    url.searchParams.set("start", startMode);
+  }
   url.hash = `/r/${roomId}`;
   return url.toString();
+}
+
+function faceCallHostUrl(inviteUrl) {
+  try {
+    const url = new URL(inviteUrl, window.location.href);
+    url.searchParams.set("start", "host");
+    return url.toString();
+  } catch {
+    return inviteUrl;
+  }
 }
 
 function buildCallInviteBody(type, url = "") {
@@ -2169,6 +2184,7 @@ async function sendInlineCall(type) {
   const recipient = normalizeHandle(thread?.otherHandle || "");
   const subject = thread?.subject ? `Re: ${thread.subject.replace(/^Re:\s*/i, "")}` : "Call invite";
   let url = "";
+  let hostWindow = null;
 
   if (!thread || thread.draft || !recipient) return;
   if (!isValidHandle(sender)) {
@@ -2181,7 +2197,13 @@ async function sendInlineCall(type) {
     return;
   }
   if (isFaceCallInvite(type)) {
-    url = buildFaceCallUrl(makeFaceCallRoomId(sender, recipient, type));
+    const roomId = makeFaceCallRoomId(sender, recipient, type);
+    url = buildFaceCallUrl(roomId, "join");
+    hostWindow = window.open("about:blank", "_blank");
+    if (hostWindow) {
+      hostWindow.opener = null;
+      hostWindow.location.href = buildFaceCallUrl(roomId, "host");
+    }
   }
 
   setStatus(isFaceCallInvite(type) ? "Creating FaceCall invite..." : "Sending call invite...", "neutral");

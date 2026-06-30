@@ -162,6 +162,11 @@ function roomLink(roomId) {
   return url.toString();
 }
 
+function callLaunchMode() {
+  const mode = new URLSearchParams(window.location.search).get("start");
+  return mode === "host" || mode === "join" ? mode : "";
+}
+
 function roomFromLocation() {
   const params = new URLSearchParams(window.location.search);
   const queryRoom = cleanRoomId(params.get("room") || "");
@@ -1714,11 +1719,16 @@ window.addEventListener("hashchange", () => {
   }
 });
 
+const launchMode = callLaunchMode();
 const roomFromUrl = roomFromLocation();
 if (roomFromUrl) {
   roomInput.value = roomFromUrl;
   setInvite(roomFromUrl, false);
-  setStatus("Room link loaded. Click Join Room to enter.");
+  setStatus(launchMode === "host"
+    ? "Room link loaded. Starting the host room..."
+    : launchMode === "join"
+      ? "Room link loaded. Joining now..."
+      : "Room link loaded. Click Join Room to enter.");
 }
 
 applyProfilePreview();
@@ -1737,6 +1747,16 @@ registerServiceWorker();
 renderRingButton();
 updateMediaBadges();
 restorePreviewPosition();
+
+if (roomFromUrl && launchMode) {
+  window.setTimeout(() => {
+    if (launchMode === "host") {
+      createRoom();
+    } else {
+      joinRoom();
+    }
+  }, 250);
+}
 
 window.addEventListener("beforeinstallprompt", (event) => {
   event.preventDefault();
