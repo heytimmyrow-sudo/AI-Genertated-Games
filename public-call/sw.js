@@ -1,4 +1,4 @@
-const CACHE_NAME = "threadcall-shell-v7";
+const CACHE_NAME = "threadcall-shell-v8";
 const CORE_ASSETS = [
   "./",
   "./index.html",
