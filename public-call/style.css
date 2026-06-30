@@ -815,10 +815,31 @@ h2 {
   }
 
   .video-tile--local {
-    right: 14px;
-    bottom: 78px;
-    width: clamp(108px, 31vw, 150px);
+    right: 12px;
+    bottom: 70px;
+    width: clamp(78px, 22vw, 104px);
     min-width: 0;
+  }
+
+  .video-tile--local .tile-label {
+    left: 6px;
+    bottom: 6px;
+    padding: 4px;
+  }
+
+  .video-tile--local .profile-avatar {
+    width: 20px;
+    height: 20px;
+    font-size: 0.64rem;
+  }
+
+  .video-tile--local .profile-chip span:last-child {
+    display: none;
+  }
+
+  .video-tile--local .camera-placeholder {
+    padding: 8px;
+    font-size: 0.72rem;
   }
 
   .controls {
@@ -885,9 +906,9 @@ h2 {
   }
 
   .video-tile--local {
-    right: 10px;
-    bottom: 74px;
-    width: clamp(96px, 30vw, 116px);
+    right: 8px;
+    bottom: 68px;
+    width: clamp(64px, 21vw, 82px);
   }
 
   .profile-card {
