@@ -1,6 +1,6 @@
 {
-  "name": "FaceCall",
-  "short_name": "FaceCall",
+  "name": "ThreadCall",
+  "short_name": "ThreadCall",
   "description": "Start a private browser video call from your phone, iPad, or computer.",
   "start_url": "./",
   "scope": "./",

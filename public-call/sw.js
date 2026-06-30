@@ -1,4 +1,4 @@
-const CACHE_NAME = "facecall-shell-v6";
+const CACHE_NAME = "threadcall-shell-v7";
 const CORE_ASSETS = [
   "./",
   "./index.html",
@@ -9,7 +9,7 @@ const CORE_ASSETS = [
   "./assets/icon-192.png",
   "./assets/icon-512.png",
   "./assets/apple-touch-icon.png",
-  "./assets/facecall-logo.png",
+  "./assets/threadcall-logo.png",
   "../target-range-fps/peerjs.min.js"
 ];
 

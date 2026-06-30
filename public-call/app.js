@@ -79,13 +79,13 @@ const clearWhiteboardButton = document.querySelector("#clearWhiteboardButton");
 const playTabButtons = document.querySelectorAll("[data-play-tab]");
 const playPanels = document.querySelectorAll("[data-play-panel]");
 
-const profileStorageKey = "facecall-profile-v1";
-const previewStorageKey = "facecall-preview-position-v1";
-const ringStorageKey = "facecall-ring-v1";
-const recentRoomsStorageKey = "facecall-recent-rooms-v1";
-const effectsStorageKey = "facecall-effects-v1";
-const qualityStorageKey = "facecall-quality-v1";
-const approvalStorageKey = "facecall-approval-v1";
+const profileStorageKey = "ThreadCall-profile-v1";
+const previewStorageKey = "ThreadCall-preview-position-v1";
+const ringStorageKey = "ThreadCall-ring-v1";
+const recentRoomsStorageKey = "ThreadCall-recent-rooms-v1";
+const effectsStorageKey = "ThreadCall-effects-v1";
+const qualityStorageKey = "ThreadCall-quality-v1";
+const approvalStorageKey = "ThreadCall-approval-v1";
 
 const qualityPresets = {
   low: { width: 640, height: 360, frameRate: 18 },
@@ -189,11 +189,11 @@ function setupQuickAccess() {
 
   if (window.matchMedia("(display-mode: standalone)").matches || navigator.standalone) {
     installButton.disabled = true;
-    installHelp.textContent = "FaceCall is already installed on this device.";
+    installHelp.textContent = "ThreadCall is already installed on this device.";
   } else if (isIosDevice()) {
     installHelp.textContent = "On iPhone or iPad: tap Share, then Add to Home Screen.";
   } else {
-    installHelp.textContent = "Tap Install App when your browser offers it, or use your browser menu to add FaceCall to your home screen.";
+    installHelp.textContent = "Tap Install App when your browser offers it, or use your browser menu to add ThreadCall to your home screen.";
   }
 }
 
@@ -202,16 +202,16 @@ async function copyText(value, successMessage) {
   setStatus(successMessage, "live");
 }
 
-async function shareFaceCall() {
+async function shareThreadCall() {
   const url = appBaseUrl();
   if (navigator.share) {
     try {
       await navigator.share({
-        title: "FaceCall",
-        text: "Open FaceCall for quick video calls.",
+        title: "ThreadCall",
+        text: "Open ThreadCall for quick video calls.",
         url
       });
-      setStatus("FaceCall shared.", "live");
+      setStatus("ThreadCall shared.", "live");
       return;
     } catch (error) {
       if (error.name === "AbortError") {
@@ -220,18 +220,18 @@ async function shareFaceCall() {
     }
   }
 
-  await copyText(url, "FaceCall link copied.");
+  await copyText(url, "ThreadCall link copied.");
 }
 
-async function installFaceCall() {
+async function installThreadCall() {
   if (deferredInstallPrompt) {
     deferredInstallPrompt.prompt();
     const choice = await deferredInstallPrompt.userChoice;
     deferredInstallPrompt = null;
     if (choice.outcome === "accepted") {
-      installHelp.textContent = "FaceCall was installed.";
+      installHelp.textContent = "ThreadCall was installed.";
       installButton.disabled = true;
-      setStatus("FaceCall installed.", "live");
+      setStatus("ThreadCall installed.", "live");
     } else {
       setStatus("Install dismissed.");
     }
@@ -1401,13 +1401,13 @@ async function shareInvite() {
 
   const roomName = cleanRoomName(roomNameInput.value);
   const shareText = roomName
-    ? `Join my ${roomName} FaceCall room. Code: ${currentRoomId || cleanRoomId(roomInput.value)}.`
-    : `Join my FaceCall room. Code: ${currentRoomId || cleanRoomId(roomInput.value)}.`;
+    ? `Join my ${roomName} ThreadCall room. Code: ${currentRoomId || cleanRoomId(roomInput.value)}.`
+    : `Join my ThreadCall room. Code: ${currentRoomId || cleanRoomId(roomInput.value)}.`;
 
   if (navigator.share) {
     try {
       await navigator.share({
-        title: "Join my FaceCall",
+        title: "Join my ThreadCall",
         text: shareText,
         url: inviteInput.value
       });
@@ -1510,7 +1510,7 @@ function saveSnapshot() {
   context.restore();
 
   const link = document.createElement("a");
-  link.download = `facecall-snapshot-${Date.now()}.png`;
+  link.download = `ThreadCall-snapshot-${Date.now()}.png`;
   link.href = canvas.toDataURL("image/png");
   link.click();
   setStatus("Snapshot saved.", "live");
@@ -1559,8 +1559,8 @@ clearRecentRoomsButton.addEventListener("click", () => {
   renderRecentRooms();
   setStatus("Recent rooms cleared.");
 });
-installButton.addEventListener("click", installFaceCall);
-shareAppButton.addEventListener("click", shareFaceCall);
+installButton.addEventListener("click", installThreadCall);
+shareAppButton.addEventListener("click", shareThreadCall);
 copyAppButton.addEventListener("click", () => copyText(appLinkInput.value, "Website link copied."));
 nativeShareButton.addEventListener("click", shareInvite);
 approvalToggle.addEventListener("change", () => {
@@ -1762,5 +1762,5 @@ window.addEventListener("beforeinstallprompt", (event) => {
   event.preventDefault();
   deferredInstallPrompt = event;
   installButton.disabled = false;
-  installHelp.textContent = "FaceCall is ready to install on this device.";
+  installHelp.textContent = "ThreadCall is ready to install on this device.";
 });
