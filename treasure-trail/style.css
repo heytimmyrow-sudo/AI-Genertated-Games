@@ -8,6 +8,7 @@
   --green: #51a366;
   --blue: #4da9d8;
   --shadow: rgba(12, 18, 24, 0.36);
+  --touch-opacity: 0.72;
 }
 
 * {
@@ -49,6 +50,42 @@ body.large-touch .touch-button {
 body.large-touch .touch-button.jump {
   width: 104px;
   height: 92px;
+}
+
+body.large-ui {
+  font-size: 1.08rem;
+}
+
+body.high-contrast {
+  --text: #ffffff;
+  --muted: #e8f7ff;
+  --panel: rgba(0, 0, 0, 0.95);
+  --panel-border: rgba(255, 255, 255, 0.46);
+  --gold: #ffd400;
+  --coral: #ff4b4b;
+  --green: #32d36b;
+  --blue: #00b7ff;
+  background: #05070a;
+}
+
+body.high-contrast .badge,
+body.high-contrast .icon-button,
+body.high-contrast .menu-panel,
+body.high-contrast .preview-panel,
+body.high-contrast .journal-panel,
+body.high-contrast .vault-panel,
+body.high-contrast .shop-card,
+body.high-contrast .profile-card {
+  border-color: rgba(255, 255, 255, 0.54);
+}
+
+body.left-handed .touch-controls {
+  flex-direction: row-reverse;
+  justify-content: flex-start;
+}
+
+body.left-handed .touch-move {
+  margin-left: auto;
 }
 
 button {
@@ -332,7 +369,10 @@ canvas {
 
 .preview-tags,
 .vault-grid,
-.shop-grid {
+.shop-grid,
+.settings-grid,
+.profile-grid,
+.world-tabs {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
@@ -341,7 +381,8 @@ canvas {
 
 .preview-tag,
 .vault-tile,
-.shop-card {
+.shop-card,
+.profile-card {
   border: 1px solid rgba(255, 248, 231, 0.14);
   border-radius: 8px;
   padding: 7px 9px;
@@ -359,6 +400,29 @@ canvas {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   margin-bottom: 14px;
+}
+
+.settings-grid,
+.profile-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-bottom: 14px;
+}
+
+.world-tabs {
+  margin-bottom: 8px;
+}
+
+.world-tab {
+  min-height: 36px;
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 0 0 1px rgba(255, 248, 231, 0.14);
+}
+
+.world-tab.active {
+  color: #251b08;
+  background: linear-gradient(180deg, #ffe483, var(--gold));
 }
 
 .vault-tile {
@@ -389,6 +453,26 @@ canvas {
 
 .shop-card.owned {
   box-shadow: inset 0 0 0 1px rgba(126, 227, 255, 0.3);
+}
+
+.setting-slider {
+  display: grid;
+  gap: 8px;
+  border: 1px solid rgba(255, 248, 231, 0.14);
+  border-radius: 8px;
+  padding: 10px;
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.075);
+}
+
+.setting-slider input {
+  width: 100%;
+}
+
+.profile-card strong {
+  display: block;
+  color: var(--gold);
+  margin-bottom: 4px;
 }
 
 .vault-tile.open {
@@ -434,6 +518,13 @@ canvas {
   background: rgba(232, 93, 91, 0.18);
 }
 
+.version-label {
+  margin: 10px 0 0;
+  color: var(--muted);
+  font-size: 0.76rem;
+  text-align: right;
+}
+
 .touch-controls {
   position: absolute;
   inset: auto max(14px, env(safe-area-inset-right)) max(14px, env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left));
@@ -459,7 +550,7 @@ canvas {
   color: var(--text);
   font-size: 1.45rem;
   font-weight: 950;
-  background: rgba(17, 28, 36, 0.55);
+  background: rgba(17, 28, 36, var(--touch-opacity));
   box-shadow: inset 0 0 0 1px rgba(255, 248, 231, 0.24);
   pointer-events: auto;
   touch-action: none;
@@ -580,7 +671,9 @@ canvas {
   .world-map,
   .menu-grid,
   .vault-grid,
-  .shop-grid {
+  .shop-grid,
+  .settings-grid,
+  .profile-grid {
     grid-template-columns: 1fr;
   }
 
@@ -605,6 +698,19 @@ canvas {
     max-height: min(48svh, 420px);
     overflow: auto;
     padding-right: 4px;
+  }
+
+  .settings-grid,
+  .profile-grid {
+    max-height: min(52svh, 440px);
+    overflow: auto;
+    padding-right: 4px;
+  }
+
+  .world-tab {
+    flex: 1 1 86px;
+    padding-inline: 8px;
+    font-size: 0.78rem;
   }
 
   .controls {

@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>Treasure Trail</title>
-    <link rel="stylesheet" href="style.css?v=treasure-trail-v23" />
+    <link rel="stylesheet" href="style.css?v=treasure-trail-v24" />
   </head>
   <body>
     <main class="game-shell" aria-label="Treasure Trail browser game">
@@ -48,17 +48,20 @@
                   <button id="cosmeticButton" class="ghost" type="button">Look: Trail</button>
                   <button id="shopButton" class="ghost" type="button">Shop</button>
                   <button id="vaultButton" class="ghost" type="button">Vault</button>
+                  <button id="settingsButton" class="ghost" type="button">Settings</button>
+                  <button id="profileButton" class="ghost" type="button">Profile</button>
                   <button id="reducedMotionButton" class="ghost" type="button">Motion: Full</button>
                   <button id="touchSizeButton" class="ghost" type="button">Touch: Normal</button>
-                  <button id="resetSaveButton" class="ghost danger" type="button">Reset Save</button>
                 </div>
               </section>
             </div>
             <div class="preview-panel" id="levelPreview" aria-label="Selected level preview">Select a level to preview its hazards.</div>
             <div class="world-map" id="worldMap" aria-label="World map"></div>
+            <div class="world-tabs" id="worldTabs" aria-label="Level world filters"></div>
             <div class="level-select" id="levelSelect" aria-label="Level select"></div>
             <div class="journal-panel" id="journalPanel" aria-label="Relic journal">Relic journal: none found yet.</div>
             <div class="vault-panel" id="vaultPanel" aria-label="Final treasure vault">Final vault: locked.</div>
+            <p class="version-label" id="versionLabel">Treasure Trail v24</p>
           </section>
         </div>
 
@@ -111,10 +114,41 @@
           </section>
         </div>
 
+        <div class="overlay hidden" id="settingsScreen">
+          <section class="modal" aria-labelledby="settingsTitle">
+            <p class="eyebrow">Settings</p>
+            <h2 id="settingsTitle">Game Settings</h2>
+            <div class="settings-grid">
+              <button id="highContrastButton" class="ghost" type="button">Contrast: Normal</button>
+              <button id="hazardColorButton" class="ghost" type="button">Hazards: Color Safe Off</button>
+              <button id="leftHandedButton" class="ghost" type="button">Controls: Right Handed</button>
+              <button id="largeUiButton" class="ghost" type="button">UI: Normal</button>
+              <label class="setting-slider">Sound volume <input id="soundVolumeSlider" type="range" min="0" max="100" value="80" /></label>
+              <label class="setting-slider">Music volume <input id="musicVolumeSlider" type="range" min="0" max="100" value="35" /></label>
+              <label class="setting-slider">Touch opacity <input id="touchOpacitySlider" type="range" min="35" max="100" value="72" /></label>
+            </div>
+            <div class="button-row">
+              <button id="closeSettingsButton" type="button">Back</button>
+            </div>
+          </section>
+        </div>
+
+        <div class="overlay hidden" id="profileScreen">
+          <section class="modal" aria-labelledby="profileTitle">
+            <p class="eyebrow">Profile</p>
+            <h2 id="profileTitle">Trail Profile</h2>
+            <div class="profile-grid" id="profileGrid" aria-label="Save profile summary"></div>
+            <div class="button-row">
+              <button id="closeProfileButton" type="button">Back</button>
+              <button id="resetSaveButton" class="ghost danger" type="button">Reset Save</button>
+            </div>
+          </section>
+        </div>
+
         <div class="touch-controls" aria-label="Touch controls">
           <div class="touch-move">
-            <button class="touch-button" data-touch="left" type="button" aria-label="Move left">‹</button>
-            <button class="touch-button" data-touch="right" type="button" aria-label="Move right">›</button>
+            <button class="touch-button" data-touch="left" type="button" aria-label="Move left">&#8249;</button>
+            <button class="touch-button" data-touch="right" type="button" aria-label="Move right">&#8250;</button>
           </div>
           <button class="touch-button jump" data-touch="jump" type="button" aria-label="Jump">Jump</button>
         </div>
@@ -128,6 +162,6 @@
       </footer>
     </main>
 
-    <script src="game.js?v=treasure-trail-v23"></script>
+    <script src="game.js?v=treasure-trail-v24"></script>
   </body>
 </html>

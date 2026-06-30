@@ -16,6 +16,17 @@ const touchSizeButton = document.querySelector("#touchSizeButton");
 const resetSaveButton = document.querySelector("#resetSaveButton");
 const shopButton = document.querySelector("#shopButton");
 const closeShopButton = document.querySelector("#closeShopButton");
+const settingsButton = document.querySelector("#settingsButton");
+const closeSettingsButton = document.querySelector("#closeSettingsButton");
+const profileButton = document.querySelector("#profileButton");
+const closeProfileButton = document.querySelector("#closeProfileButton");
+const highContrastButton = document.querySelector("#highContrastButton");
+const hazardColorButton = document.querySelector("#hazardColorButton");
+const leftHandedButton = document.querySelector("#leftHandedButton");
+const largeUiButton = document.querySelector("#largeUiButton");
+const soundVolumeSlider = document.querySelector("#soundVolumeSlider");
+const musicVolumeSlider = document.querySelector("#musicVolumeSlider");
+const touchOpacitySlider = document.querySelector("#touchOpacitySlider");
 const vaultButton = document.querySelector("#vaultButton");
 const closeVaultButton = document.querySelector("#closeVaultButton");
 const muteButton = document.querySelector("#muteButton");
@@ -32,6 +43,10 @@ const vaultSummary = document.querySelector("#vaultSummary");
 const shopScreen = document.querySelector("#shopScreen");
 const shopGrid = document.querySelector("#shopGrid");
 const shopBalance = document.querySelector("#shopBalance");
+const settingsScreen = document.querySelector("#settingsScreen");
+const profileScreen = document.querySelector("#profileScreen");
+const profileGrid = document.querySelector("#profileGrid");
+const worldTabs = document.querySelector("#worldTabs");
 const scoreRow = document.querySelector("#scoreRow");
 const levelTitle = document.querySelector("#levelTitle");
 const statusText = document.querySelector("#statusText");
@@ -48,6 +63,7 @@ const GAME = {
   gravity: 2200,
   maxFall: 980,
   storageKey: "treasureTrailSaveV3",
+  version: "v24",
 };
 
 const MOVEMENT = {
@@ -329,6 +345,8 @@ const WORLD_CONFIGS = [
   },
 ];
 
+const WORLD_FILTERS = ["All", ...WORLD_CONFIGS.map((world) => world.name), "Bonus"];
+
 const CAMPAIGN_LEVELS = buildCampaignLevels(WORLD_CONFIGS);
 const BONUS_LEVELS = buildBonusLevels(WORLD_CONFIGS);
 const LEVELS = [...CAMPAIGN_LEVELS, ...BONUS_LEVELS];
@@ -356,8 +374,10 @@ function createBonusLevel(world, worldIndex) {
   level.parTime += 18;
   level.treasure = `${TREASURES[world.name]} Shard`;
   level.story = `${world.name} bonus route unlocked by relic hunters. It is optional, tougher, and packed with gems.`;
+  level.hint = "Bonus route: optional challenge, higher gem count, no campaign lock.";
   level.tutorials = [];
   level.gems = createPlatformGems(level.platforms.filter((platform) => platform.width >= 145), 12, 5);
+  level.scenery.push({ x: level.worldWidth * 0.5, y: 250, type: "star" });
   return level;
 }
 
@@ -763,6 +783,13 @@ class AudioSystem {
   constructor() {
     this.context = null;
     this.muted = false;
+    this.soundVolume = 0.8;
+    this.musicVolume = 0.35;
+  }
+
+  setVolumes(soundVolume, musicVolume) {
+    this.soundVolume = clamp(soundVolume, 0, 1);
+    this.musicVolume = clamp(musicVolume, 0, 1);
   }
 
   toggle() {
@@ -792,7 +819,7 @@ class AudioSystem {
     osc.frequency.setValueAtTime(frequency, now);
     osc.frequency.exponentialRampToValueAtTime(Math.max(80, frequency * 0.55), now + duration);
     gain.gain.setValueAtTime(0.001, now);
-    gain.gain.exponentialRampToValueAtTime(0.08, now + 0.01);
+    gain.gain.exponentialRampToValueAtTime(0.08 * this.soundVolume, now + 0.01);
     gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
     osc.connect(gain);
     gain.connect(this.context.destination);
@@ -821,7 +848,7 @@ class AudioSystem {
     osc.type = "sine";
     osc.frequency.setValueAtTime(frequency, now);
     gain.gain.setValueAtTime(0.001, now);
-    gain.gain.exponentialRampToValueAtTime(0.045, now + 0.01);
+    gain.gain.exponentialRampToValueAtTime(0.045 * this.musicVolume, now + 0.01);
     gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
     osc.connect(gain);
     gain.connect(this.context.destination);
@@ -1216,8 +1243,10 @@ class TreasureTrail {
     this.audio = new AudioSystem();
     this.levelConfigs = levelConfigs;
     this.save = loadSave();
+    this.audio.setVolumes(this.save.soundVolume, this.save.musicVolume);
     this.save.unlockedLevel = clamp(this.save.unlockedLevel || 0, 0, MAIN_LEVEL_COUNT - 1);
     this.selectedLevel = this.save.unlockedLevel;
+    this.selectedWorldFilter = "All";
     this.mode = "campaign";
     this.speedrun = false;
     this.speedrunTime = 0;
@@ -1233,6 +1262,7 @@ class TreasureTrail {
     this.messageTimer = 0;
     this.particles = [];
     this.loadLevel(this.selectedLevel);
+    this.renderWorldTabs();
     this.renderLevelSelect();
     requestAnimationFrame((time) => this.loop(time));
   }
@@ -1267,6 +1297,8 @@ class TreasureTrail {
     hide(winScreen);
     hide(vaultScreen);
     hide(shopScreen);
+    hide(settingsScreen);
+    hide(profileScreen);
   }
 
   restart() {
@@ -1278,6 +1310,8 @@ class TreasureTrail {
     hide(winScreen);
     hide(vaultScreen);
     hide(shopScreen);
+    hide(settingsScreen);
+    hide(profileScreen);
   }
 
   togglePause() {
@@ -1334,7 +1368,8 @@ class TreasureTrail {
   }
 
   updateCamera(delta) {
-    const lookAhead = clamp(this.player.vx * 0.18, -72, 92);
+    const lookAheadScale = isTouchMode() ? 0.12 : 0.18;
+    const lookAhead = clamp(this.player.vx * lookAheadScale, -72, 92);
     this.cameraTargetX = clamp(this.player.x + this.player.width / 2 + lookAhead - GAME.width * 0.42, 0, this.level.worldWidth - GAME.width);
     const blend = 1 - Math.exp(-MOVEMENT.cameraSharpness * delta);
     this.cameraX += (this.cameraTargetX - this.cameraX) * blend;
@@ -1413,7 +1448,7 @@ class TreasureTrail {
 
   checkHazards() {
     if (this.player.invulnerableTimer > 0) return;
-    const body = insetRect(this.player.rect, 6);
+    const body = insetRect(this.player.rect, isTouchMode() ? 10 : 6);
     const enemyHit = this.level.enemies.some((enemy) => rectsOverlap(body, enemy.rect));
     const spikeHit = this.level.spikes.some((spike) => spike.active !== false && rectsOverlap(body, spike));
     const trapHit = this.level.traps.some((trap) => trapHitsPlayer(trap, body));
@@ -1506,6 +1541,7 @@ class TreasureTrail {
   renderLevelSelect() {
     levelSelect.innerHTML = "";
     this.levelConfigs.forEach((level, index) => {
+      if (!this.levelMatchesFilter(level)) return;
       const locked = this.isLevelLocked(level, index);
       const button = document.createElement("button");
       button.type = "button";
@@ -1532,9 +1568,35 @@ class TreasureTrail {
     this.renderLevelPreview();
   }
 
+  levelMatchesFilter(level) {
+    if (this.selectedWorldFilter === "All") return true;
+    if (this.selectedWorldFilter === "Bonus") return Boolean(level.isBonus);
+    return level.world === this.selectedWorldFilter && !level.isBonus;
+  }
+
+  renderWorldTabs() {
+    worldTabs.innerHTML = "";
+    WORLD_FILTERS.forEach((filter) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = `world-tab${filter === this.selectedWorldFilter ? " active" : ""}`;
+      button.textContent = filter;
+      button.addEventListener("click", () => {
+        this.selectedWorldFilter = filter;
+        const firstVisibleIndex = this.levelConfigs.findIndex((level, index) => this.levelMatchesFilter(level) && !this.isLevelLocked(level, index));
+        if (firstVisibleIndex >= 0) this.selectedLevel = firstVisibleIndex;
+        this.renderWorldTabs();
+        this.renderLevelSelect();
+      });
+      worldTabs.append(button);
+    });
+  }
+
   renderMetaPanels() {
     this.renderWorldMap();
     this.renderVault();
+    this.renderSettings();
+    this.renderProfile();
     const relics = Object.values(this.save.relics);
     const bonusCount = Object.keys(this.save.bonusLevels).length;
     journalPanel.textContent = relics.length ? `Relic journal: ${relics.join(" ")}` : "Relic journal: none found yet.";
@@ -1552,6 +1614,11 @@ class TreasureTrail {
     touchSizeButton.textContent = this.save.largeTouch ? "Touch: Large" : "Touch: Normal";
     document.body.classList.toggle("reduced-motion", Boolean(this.save.reducedMotion));
     document.body.classList.toggle("large-touch", Boolean(this.save.largeTouch));
+    document.body.classList.toggle("large-ui", Boolean(this.save.largeUi));
+    document.body.classList.toggle("high-contrast", Boolean(this.save.highContrast));
+    document.body.classList.toggle("left-handed", Boolean(this.save.leftHanded));
+    document.body.classList.toggle("color-safe-hazards", Boolean(this.save.colorSafeHazards));
+    document.documentElement.style.setProperty("--touch-opacity", String(this.save.touchOpacity));
   }
 
   isLevelLocked(level, index) {
@@ -1593,6 +1660,51 @@ class TreasureTrail {
   showShop() {
     this.renderShop();
     show(shopScreen);
+  }
+
+  showSettings() {
+    this.renderSettings();
+    show(settingsScreen);
+  }
+
+  showProfile() {
+    this.renderProfile();
+    show(profileScreen);
+  }
+
+  renderSettings() {
+    highContrastButton.textContent = this.save.highContrast ? "Contrast: High" : "Contrast: Normal";
+    hazardColorButton.textContent = this.save.colorSafeHazards ? "Hazards: Color Safe On" : "Hazards: Color Safe Off";
+    leftHandedButton.textContent = this.save.leftHanded ? "Controls: Left Handed" : "Controls: Right Handed";
+    largeUiButton.textContent = this.save.largeUi ? "UI: Large" : "UI: Normal";
+    soundVolumeSlider.value = Math.round(this.save.soundVolume * 100);
+    musicVolumeSlider.value = Math.round(this.save.musicVolume * 100);
+    touchOpacitySlider.value = Math.round(this.save.touchOpacity * 100);
+  }
+
+  renderProfile() {
+    const worldsComplete = WORLD_CONFIGS.filter((world) => CAMPAIGN_LEVELS.filter((level) => level.world === world.name).every((level) => this.save.bestTimes[level.id])).length;
+    const medals = Object.values(this.save.medals);
+    const gold = medals.filter((medal) => medal === "Gold").length;
+    const silver = medals.filter((medal) => medal === "Silver").length;
+    const bronze = medals.filter((medal) => medal === "Bronze").length;
+    const owned = Object.keys(this.save.shopOwned).length;
+    const bonus = Object.keys(this.save.bonusLevels).length;
+    const cards = [
+      ["Gems", this.save.walletGems],
+      ["Worlds complete", `${worldsComplete}/5`],
+      ["Bonus unlocked", `${bonus}/5`],
+      ["Shop items owned", `${owned}/${SHOP_ITEMS.filter((item) => item.type !== "consumable").length}`],
+      ["Medals", `Gold ${gold} / Silver ${silver} / Bronze ${bronze}`],
+      ["Consumables", `Shields ${this.save.inventory.shields} / Extra lives ${this.save.inventory.extraLives}`],
+    ];
+    profileGrid.innerHTML = "";
+    cards.forEach(([label, value]) => {
+      const card = document.createElement("div");
+      card.className = "profile-card";
+      card.innerHTML = `<strong>${label}</strong>${value}`;
+      profileGrid.append(card);
+    });
   }
 
   renderShop() {
@@ -1732,6 +1844,7 @@ class TreasureTrail {
 
   draw() {
     drawBackground(this.level.theme, this.cameraX);
+    if (this.level.isBonus) drawBonusRouteWash();
     ctx.save();
     ctx.translate(-this.cameraX, 0);
     drawScenery(this.level);
@@ -2059,14 +2172,14 @@ function drawSpikes(spikes) {
     const step = spike.width / count;
     for (let i = 0; i < count; i += 1) {
       const x = spike.x + i * step;
-      ctx.fillStyle = "#d9e6e8";
+      ctx.fillStyle = game?.save?.colorSafeHazards ? "#111827" : "#d9e6e8";
       ctx.beginPath();
       ctx.moveTo(x, spike.y);
       ctx.lineTo(x + step / 2, spike.y - spike.height);
       ctx.lineTo(x + step, spike.y);
       ctx.closePath();
       ctx.fill();
-      ctx.strokeStyle = "#8fa2a7";
+      ctx.strokeStyle = game?.save?.colorSafeHazards ? "#ffe483" : "#8fa2a7";
       ctx.stroke();
     }
   }
@@ -2212,6 +2325,18 @@ function drawWorldTransition(level, timer) {
   ctx.restore();
 }
 
+function drawBonusRouteWash() {
+  ctx.save();
+  ctx.globalAlpha = 0.18;
+  const glow = ctx.createLinearGradient(0, 0, GAME.width, GAME.height);
+  glow.addColorStop(0, "#ffe483");
+  glow.addColorStop(0.5, "#ba7cff");
+  glow.addColorStop(1, "#7ee3ff");
+  ctx.fillStyle = glow;
+  ctx.fillRect(0, 0, GAME.width, GAME.height);
+  ctx.restore();
+}
+
 function drawTutorialPrompts(prompts) {
   for (const prompt of prompts || []) {
     ctx.save();
@@ -2271,6 +2396,13 @@ function drawBoss(enemy) {
   ctx.beginPath();
   ctx.arc(-14, -4, 6, 0, Math.PI * 2);
   ctx.arc(14, -4, 6, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = "rgba(0, 0, 0, 0.48)";
+  roundRect(-42, -58, 84, 9, 5);
+  ctx.fill();
+  const chargeCycle = enemy.telegraphing ? 0.42 + Math.sin(enemy.time * 5) * 0.18 : 0.92;
+  ctx.fillStyle = enemy.telegraphing ? "#ffe483" : "#e85d5b";
+  roundRect(-39, -56, 78 * chargeCycle, 5, 4);
   ctx.fill();
   ctx.restore();
 }
@@ -2529,6 +2661,10 @@ function positiveModulo(value, modulo) {
   return ((value % modulo) + modulo) % modulo;
 }
 
+function isTouchMode() {
+  return window.matchMedia?.("(hover: none), (max-width: 860px)")?.matches || false;
+}
+
 function hide(element) {
   element.classList.add("hidden");
 }
@@ -2579,6 +2715,13 @@ function loadSave() {
       activeSkin: parsed.activeSkin || "",
       activeSound: parsed.activeSound || "",
       activeFlag: parsed.activeFlag || "",
+      soundVolume: parsed.soundVolume ?? 0.8,
+      musicVolume: parsed.musicVolume ?? 0.35,
+      touchOpacity: parsed.touchOpacity ?? 0.72,
+      highContrast: Boolean(parsed.highContrast),
+      colorSafeHazards: Boolean(parsed.colorSafeHazards),
+      leftHanded: Boolean(parsed.leftHanded),
+      largeUi: Boolean(parsed.largeUi),
       relics: parsed.relics || {},
       secretExits: parsed.secretExits || {},
       bonusLevels: parsed.bonusLevels || {},
@@ -2587,7 +2730,7 @@ function loadSave() {
       largeTouch: Boolean(parsed.largeTouch),
     };
   } catch {
-    return { unlockedLevel: 0, bestTimes: {}, stars: {}, medals: {}, walletGems: 0, shopOwned: {}, inventory: { shields: 0, extraLives: 0 }, activeSkin: "", activeSound: "", activeFlag: "", relics: {}, secretExits: {}, bonusLevels: {}, cosmeticIndex: 0, reducedMotion: false, largeTouch: false };
+    return { unlockedLevel: 0, bestTimes: {}, stars: {}, medals: {}, walletGems: 0, shopOwned: {}, inventory: { shields: 0, extraLives: 0 }, activeSkin: "", activeSound: "", activeFlag: "", soundVolume: 0.8, musicVolume: 0.35, touchOpacity: 0.72, highContrast: false, colorSafeHazards: false, leftHanded: false, largeUi: false, relics: {}, secretExits: {}, bonusLevels: {}, cosmeticIndex: 0, reducedMotion: false, largeTouch: false };
   }
 }
 
@@ -2605,6 +2748,10 @@ muteButton.addEventListener("click", () => game.audio.toggle());
 nextLevelButton.addEventListener("click", () => game.nextLevel());
 shopButton.addEventListener("click", () => game.showShop());
 closeShopButton.addEventListener("click", () => hide(shopScreen));
+settingsButton.addEventListener("click", () => game.showSettings());
+closeSettingsButton.addEventListener("click", () => hide(settingsScreen));
+profileButton.addEventListener("click", () => game.showProfile());
+closeProfileButton.addEventListener("click", () => hide(profileScreen));
 vaultButton.addEventListener("click", () => game.showVault());
 closeVaultButton.addEventListener("click", () => hide(vaultScreen));
 practiceButton.addEventListener("click", () => {
@@ -2634,15 +2781,56 @@ touchSizeButton.addEventListener("click", () => {
   saveGame(game.save);
   game.renderMetaPanels();
 });
+highContrastButton.addEventListener("click", () => {
+  game.save.highContrast = !game.save.highContrast;
+  saveGame(game.save);
+  game.renderMetaPanels();
+});
+hazardColorButton.addEventListener("click", () => {
+  game.save.colorSafeHazards = !game.save.colorSafeHazards;
+  saveGame(game.save);
+  game.renderMetaPanels();
+});
+leftHandedButton.addEventListener("click", () => {
+  game.save.leftHanded = !game.save.leftHanded;
+  saveGame(game.save);
+  game.renderMetaPanels();
+});
+largeUiButton.addEventListener("click", () => {
+  game.save.largeUi = !game.save.largeUi;
+  saveGame(game.save);
+  game.renderMetaPanels();
+});
+soundVolumeSlider.addEventListener("input", () => {
+  game.save.soundVolume = Number(soundVolumeSlider.value) / 100;
+  game.audio.setVolumes(game.save.soundVolume, game.save.musicVolume);
+  saveGame(game.save);
+  game.renderSettings();
+});
+musicVolumeSlider.addEventListener("input", () => {
+  game.save.musicVolume = Number(musicVolumeSlider.value) / 100;
+  game.audio.setVolumes(game.save.soundVolume, game.save.musicVolume);
+  saveGame(game.save);
+  game.renderSettings();
+});
+touchOpacitySlider.addEventListener("input", () => {
+  game.save.touchOpacity = Number(touchOpacitySlider.value) / 100;
+  saveGame(game.save);
+  game.renderMetaPanels();
+});
 resetSaveButton.addEventListener("click", () => {
   localStorage.removeItem(GAME.storageKey);
   game.save = loadSave();
+  game.audio.setVolumes(game.save.soundVolume, game.save.musicVolume);
   game.selectedLevel = 0;
+  game.selectedWorldFilter = "All";
   game.cosmeticIndex = 0;
   game.mode = "campaign";
   game.speedrun = false;
   game.loadLevel(0);
+  game.renderWorldTabs();
   game.renderLevelSelect();
   game.renderMetaPanels();
+  hide(profileScreen);
 });
 restartButtons.forEach((button) => button.addEventListener("click", () => game.restart()));
