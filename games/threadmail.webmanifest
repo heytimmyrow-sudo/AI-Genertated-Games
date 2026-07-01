@@ -2,7 +2,7 @@
   "name": "Threadmail",
   "short_name": "Threadmail",
   "description": "A compact handle-based messaging app with turn-based games.",
-  "start_url": "./threadmail.html",
+  "start_url": "./threadmail.html?v=61",
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait",
@@ -10,13 +10,13 @@
   "theme_color": "#0d1a26",
   "icons": [
     {
-      "src": "./threadmail-icon-192.png",
+      "src": "./threadmail-tm-icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "./threadmail-icon-512.png",
+      "src": "./threadmail-tm-icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
