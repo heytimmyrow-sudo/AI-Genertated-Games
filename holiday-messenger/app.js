@@ -1,5 +1,6 @@
 const STORAGE_KEY = "holidayMessengerStateV1";
 const SENT_KEY = "holidayMessengerSentV1";
+const PUBLIC_APP_URL = "https://heytimmyrow-sudo.github.io/AI-Genertated-Games/holiday-messenger/";
 
 const defaultHolidays = [
   { id: "new-year", name: "New Year's Day", type: "Holiday", rule: { kind: "fixed", month: 1, day: 1 }, repeats: "yearly", time: "09:00", leadDays: 0, message: "Happy New Year! Hope this year starts strong." },
@@ -47,6 +48,11 @@ const els = {
   sendTest: document.getElementById("sendTest"),
   openLocalApp: document.getElementById("openLocalApp"),
   deliveryStatus: document.getElementById("deliveryStatus"),
+  invitePanel: document.getElementById("invitePanel"),
+  inviteTitle: document.getElementById("inviteTitle"),
+  inviteSummary: document.getElementById("inviteSummary"),
+  acceptInvite: document.getElementById("acceptInvite"),
+  dismissInvite: document.getElementById("dismissInvite"),
   sendNextNow: document.getElementById("sendNextNow"),
   openSms: document.getElementById("openSms"),
   openEmail: document.getElementById("openEmail"),
@@ -54,13 +60,21 @@ const els = {
   exportData: document.getElementById("exportData"),
   importData: document.getElementById("importData"),
   restoreDefaults: document.getElementById("restoreDefaults"),
-  clearCustom: document.getElementById("clearCustom")
+  clearCustom: document.getElementById("clearCustom"),
+  groupName: document.getElementById("groupName"),
+  shareScope: document.getElementById("shareScope"),
+  shareCount: document.getElementById("shareCount"),
+  shareLink: document.getElementById("shareLink"),
+  createShareLink: document.getElementById("createShareLink"),
+  copyShareLink: document.getElementById("copyShareLink"),
+  nativeShareLink: document.getElementById("nativeShareLink")
 };
 
 let state = loadState();
 let sentLog = loadSentLog();
 let activeFilter = "all";
 const isFileMode = window.location.protocol === "file:";
+let pendingShare = null;
 
 function loadState() {
   const fallback = {
@@ -93,6 +107,13 @@ function saveState() {
     sound: els.sound.checked
   };
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+}
+
+function currentShareBaseUrl() {
+  if (window.location.protocol === "http:" || window.location.protocol === "https:") {
+    return new URL(window.location.pathname, window.location.origin).toString();
+  }
+  return PUBLIC_APP_URL;
 }
 
 function loadSentLog() {
@@ -393,6 +414,7 @@ function render() {
   saveState();
   renderNext();
   renderList();
+  renderShareCount();
   updateStatus();
 }
 
@@ -464,11 +486,171 @@ async function importData(file) {
 }
 
 async function copyAppLink() {
-  await navigator.clipboard.writeText(window.location.href);
-  els.copyLink.textContent = "Copied";
-  window.setTimeout(() => {
-    els.copyLink.textContent = "Copy App Link";
-  }, 1200);
+  const appLink = isFileMode ? PUBLIC_APP_URL : currentShareBaseUrl();
+  await copyText(appLink, els.copyLink, "Copy App Link");
+}
+
+async function copyText(text, button, resetText) {
+  try {
+    await navigator.clipboard.writeText(text);
+    if (button) button.textContent = "Copied";
+  } catch {
+    if (els.shareLink.value === text) {
+      els.shareLink.focus();
+      els.shareLink.select();
+    }
+    showDeliveryStatus("Copy was blocked by this browser. Select the link field and copy it manually.", true);
+    return false;
+  } finally {
+    if (button && resetText) {
+      window.setTimeout(() => {
+        button.textContent = resetText;
+      }, 1200);
+    }
+  }
+  return true;
+}
+
+function shareableHolidays() {
+  const scope = els.shareScope.value;
+  const source = scope === "custom" ? state.holidays.filter((holiday) => holiday.custom) : state.holidays;
+  return source.map((holiday) => ({ ...holiday }));
+}
+
+function renderShareCount() {
+  const count = shareableHolidays().length;
+  els.shareCount.textContent = `${count} ${count === 1 ? "holiday" : "holidays"}`;
+}
+
+function encodeSharePayload(payload) {
+  const json = JSON.stringify(payload);
+  const bytes = new TextEncoder().encode(json);
+  let binary = "";
+  bytes.forEach((byte) => {
+    binary += String.fromCharCode(byte);
+  });
+  return btoa(binary).replaceAll("+", "-").replaceAll("/", "_").replaceAll("=", "");
+}
+
+function decodeSharePayload(encoded) {
+  const normalized = encoded.replaceAll("-", "+").replaceAll("_", "/");
+  const padded = normalized + "=".repeat((4 - normalized.length % 4) % 4);
+  const binary = atob(padded);
+  const bytes = Uint8Array.from(binary, (char) => char.charCodeAt(0));
+  return JSON.parse(new TextDecoder().decode(bytes));
+}
+
+function findShareToken() {
+  const params = new URLSearchParams(window.location.search);
+  if (params.has("share")) return params.get("share");
+  if (window.location.hash.startsWith("#share=")) return window.location.hash.slice("#share=".length);
+  return "";
+}
+
+function createShareLink() {
+  saveState();
+  const groupName = els.groupName.value.trim() || "Family Group";
+  const holidays = shareableHolidays();
+  const payload = {
+    v: 1,
+    groupName,
+    createdAt: new Date().toISOString(),
+    holidays
+  };
+  const token = encodeSharePayload(payload);
+  const url = new URL(currentShareBaseUrl());
+  url.searchParams.set("share", token);
+  els.shareLink.value = url.toString();
+  els.copyShareLink.disabled = false;
+  els.nativeShareLink.disabled = false;
+  showDeliveryStatus(`Share link ready for ${groupName}. It includes ${holidays.length} ${holidays.length === 1 ? "holiday" : "holidays"}.`);
+}
+
+async function copyShareLink() {
+  if (!els.shareLink.value) createShareLink();
+  await copyText(els.shareLink.value, els.copyShareLink, "Copy");
+}
+
+async function nativeShareLink() {
+  if (!els.shareLink.value) createShareLink();
+  const title = `${els.groupName.value.trim() || "Family Group"} Holiday Messenger`;
+  const text = "Open this Holiday Messenger link to add our shared holidays.";
+  if (navigator.share) {
+    try {
+      await navigator.share({ title, text, url: els.shareLink.value });
+      showDeliveryStatus("Share sheet opened.");
+      return;
+    } catch {
+      showDeliveryStatus("Share was cancelled or blocked.", true);
+    }
+  }
+  await copyShareLink();
+}
+
+function showPendingShare(payload) {
+  const holidays = Array.isArray(payload.holidays) ? payload.holidays : [];
+  pendingShare = { ...payload, holidays };
+  els.inviteTitle.textContent = `${payload.groupName || "Family Group"} invite`;
+  els.inviteSummary.textContent = `This link includes ${holidays.length} ${holidays.length === 1 ? "holiday" : "holidays"}. Add them to this browser's calendar when you are ready.`;
+  els.invitePanel.hidden = false;
+}
+
+function sharedHolidayKey(holiday) {
+  if (holiday.rule) return `${holiday.name}|${JSON.stringify(holiday.rule)}`;
+  return `${holiday.name}|${holiday.date || ""}`;
+}
+
+function acceptPendingShare() {
+  if (!pendingShare) return;
+  const existingKeys = new Set(state.holidays.map(sharedHolidayKey));
+  let added = 0;
+  pendingShare.holidays.forEach((holiday, index) => {
+    const key = sharedHolidayKey(holiday);
+    if (existingKeys.has(key)) return;
+    existingKeys.add(key);
+    state.holidays.push({
+      ...holiday,
+      id: `shared-${Date.now()}-${index}`,
+      custom: holiday.custom || !holiday.rule,
+      shared: true,
+      groupName: pendingShare.groupName || "Family Group"
+    });
+    added += 1;
+  });
+  els.invitePanel.hidden = true;
+  pendingShare = null;
+  clearShareFromAddress();
+  render();
+  showDeliveryStatus(`Added ${added} ${added === 1 ? "holiday" : "holidays"} from the shared group link.`);
+}
+
+function dismissPendingShare() {
+  els.invitePanel.hidden = true;
+  pendingShare = null;
+  clearShareFromAddress();
+}
+
+function clearShareFromAddress() {
+  try {
+    const cleanUrl = new URL(window.location.href);
+    cleanUrl.searchParams.delete("share");
+    if (cleanUrl.hash.startsWith("#share=")) cleanUrl.hash = "";
+    window.history.replaceState(null, "", cleanUrl.toString());
+  } catch {
+    // Some file:// contexts do not allow history updates. The invite still works.
+  }
+}
+
+function loadSharedInviteFromUrl() {
+  const token = findShareToken();
+  if (!token) return;
+  try {
+    const payload = decodeSharePayload(token);
+    if (!payload || !Array.isArray(payload.holidays)) return;
+    showPendingShare(payload);
+  } catch {
+    showDeliveryStatus("This shared group link could not be opened.", true);
+  }
 }
 
 function hydrateFormValues() {
@@ -501,6 +683,17 @@ function bindEvents() {
     if (next) openEmailDraft(next);
   });
   els.copyLink.addEventListener("click", copyAppLink);
+  els.createShareLink.addEventListener("click", createShareLink);
+  els.copyShareLink.addEventListener("click", copyShareLink);
+  els.nativeShareLink.addEventListener("click", nativeShareLink);
+  els.acceptInvite.addEventListener("click", acceptPendingShare);
+  els.dismissInvite.addEventListener("click", dismissPendingShare);
+  els.shareScope.addEventListener("change", () => {
+    renderShareCount();
+    els.shareLink.value = "";
+    els.copyShareLink.disabled = true;
+    els.nativeShareLink.disabled = true;
+  });
   els.exportData.addEventListener("click", exportData);
   els.importData.addEventListener("change", (event) => importData(event.target.files[0]).catch(() => {
     els.status.textContent = "That import file could not be read.";
@@ -533,6 +726,7 @@ if (!isFileMode && "serviceWorker" in navigator) {
 
 hydrateFormValues();
 bindEvents();
+loadSharedInviteFromUrl();
 render();
 checkDueReminders();
 window.setInterval(checkDueReminders, 60000);

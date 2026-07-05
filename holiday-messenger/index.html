@@ -32,6 +32,18 @@
       </figure>
     </section>
 
+    <section class="invite-panel" id="invitePanel" hidden>
+      <div>
+        <p class="eyebrow">Shared calendar</p>
+        <h2 id="inviteTitle">Family group invite</h2>
+        <p class="notice" id="inviteSummary">Open this shared holiday list on your device.</p>
+      </div>
+      <div class="invite-actions">
+        <button class="primary-button" id="acceptInvite" type="button">Add To My Calendar</button>
+        <button class="secondary-button" id="dismissInvite" type="button">Not Now</button>
+      </div>
+    </section>
+
     <section class="control-grid" aria-label="Holiday messenger controls">
       <article class="panel add-panel">
         <div class="panel-heading">
@@ -121,6 +133,41 @@
         </div>
         <p class="notice">For real automatic SMS/email sending, this static site would need a backend service. Browser notifications work on devices that allow them after the site is opened or installed.</p>
       </article>
+    </section>
+
+    <section class="panel share-panel" aria-labelledby="shareTitle">
+      <div class="panel-heading">
+        <div>
+          <p class="eyebrow">Share with family</p>
+          <h2 id="shareTitle">Family or group link</h2>
+        </div>
+        <span class="type-pill" id="shareCount">0 holidays</span>
+      </div>
+      <div class="share-grid">
+        <label class="field">
+          <span>Group name</span>
+          <input id="groupName" type="text" maxlength="42" placeholder="Smith Family, Team Moms, Cousins">
+        </label>
+        <label class="field">
+          <span>What to share</span>
+          <select id="shareScope">
+            <option value="all">All saved holidays</option>
+            <option value="custom">Custom holidays only</option>
+          </select>
+        </label>
+      </div>
+      <div class="share-link-row">
+        <label class="field">
+          <span>Share link</span>
+          <input id="shareLink" type="text" readonly placeholder="Create a family/group link">
+        </label>
+        <div class="share-actions">
+          <button class="primary-button" id="createShareLink" type="button">Create Link</button>
+          <button class="secondary-button" id="copyShareLink" type="button" disabled>Copy</button>
+          <button class="secondary-button" id="nativeShareLink" type="button" disabled>Share</button>
+        </div>
+      </div>
+      <p class="notice">Anyone with the link can import the shared holidays into their own browser. It is not a live synced group; send a new link after changes.</p>
     </section>
 
     <section class="dashboard">

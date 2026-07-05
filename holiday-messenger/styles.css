@@ -251,6 +251,53 @@ h3 {
   padding: 22px;
 }
 
+.invite-panel {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  align-items: center;
+  margin-top: 18px;
+  padding: 20px 22px;
+  border: 1px solid #b9dfd7;
+  border-radius: 8px;
+  background: #edf9f6;
+  box-shadow: var(--shadow);
+}
+
+.invite-panel[hidden] {
+  display: none;
+}
+
+.invite-actions,
+.share-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.share-panel {
+  margin-top: 18px;
+}
+
+.share-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(220px, 0.55fr);
+  gap: 12px;
+}
+
+.share-link-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: end;
+  margin-top: 14px;
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
 .panel-heading,
 .list-toolbar {
   display: flex;
@@ -430,8 +477,15 @@ h3 {
 @media (max-width: 900px) {
   .hero,
   .control-grid,
-  .dashboard {
+  .dashboard,
+  .share-grid,
+  .share-link-row {
     grid-template-columns: 1fr;
+  }
+
+  .invite-panel {
+    align-items: stretch;
+    flex-direction: column;
   }
 
   .hero {
