@@ -598,6 +598,7 @@ function renderScheduledMessages() {
 function openScheduledSms(id) {
   const schedule = state.scheduledMessages.find((item) => item.id === id);
   if (!schedule) return;
+  showDeliveryStatus(`Opening Messages app for ${schedule.phone}. Tap send there when the draft appears.`);
   openPhoneSmsDraft(schedule.phone, schedule.message);
 }
 
@@ -621,7 +622,7 @@ function checkDueScheduledMessages() {
     if (getScheduleSendDate(schedule) > now) return;
     schedule.remindedAt = now.toISOString();
     changed = true;
-    showDeliveryStatus(`Phone message due for ${schedule.phone}: ${schedule.message}`);
+    showDeliveryStatus(`Phone message due for ${schedule.phone}. Tap Open Messages App to review and send it.`);
     notify({
       holiday: {
         id: schedule.id,
