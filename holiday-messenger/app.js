@@ -67,7 +67,17 @@ const els = {
   shareLink: document.getElementById("shareLink"),
   createShareLink: document.getElementById("createShareLink"),
   copyShareLink: document.getElementById("copyShareLink"),
-  nativeShareLink: document.getElementById("nativeShareLink")
+  nativeShareLink: document.getElementById("nativeShareLink"),
+  scheduleForm: document.getElementById("scheduleForm"),
+  scheduleHoliday: document.getElementById("scheduleHoliday"),
+  schedulePhone: document.getElementById("schedulePhone"),
+  scheduleDate: document.getElementById("scheduleDate"),
+  scheduleTime: document.getElementById("scheduleTime"),
+  scheduleMessage: document.getElementById("scheduleMessage"),
+  fillNextHoliday: document.getElementById("fillNextHoliday"),
+  scheduledCount: document.getElementById("scheduledCount"),
+  scheduledList: document.getElementById("scheduledList"),
+  scheduledTemplate: document.getElementById("scheduledTemplate")
 };
 
 let state = loadState();
@@ -79,6 +89,7 @@ let pendingShare = null;
 function loadState() {
   const fallback = {
     holidays: defaultHolidays,
+    scheduledMessages: [],
     recipient: { name: "", phone: "", email: "" },
     settings: { autoNotify: true, vibrate: true, sound: false }
   };
@@ -87,6 +98,7 @@ function loadState() {
     if (!parsed || !Array.isArray(parsed.holidays)) return fallback;
     return {
       holidays: parsed.holidays,
+      scheduledMessages: Array.isArray(parsed.scheduledMessages) ? parsed.scheduledMessages : [],
       recipient: { ...fallback.recipient, ...(parsed.recipient || {}) },
       settings: { ...fallback.settings, ...(parsed.settings || {}) }
     };
@@ -226,6 +238,10 @@ function formatDate(date) {
   return new Intl.DateTimeFormat(undefined, { weekday: "short", month: "short", day: "numeric", year: "numeric" }).format(date);
 }
 
+function formatDateTime(date) {
+  return new Intl.DateTimeFormat(undefined, { weekday: "short", month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit" }).format(date);
+}
+
 function formatShortDate(date) {
   return {
     month: new Intl.DateTimeFormat(undefined, { month: "short" }).format(date),
@@ -357,6 +373,12 @@ function openSmsDraft(entry) {
   window.location.href = phone ? `sms:${phone}?&body=${text}` : `sms:?&body=${text}`;
 }
 
+function openPhoneSmsDraft(phoneNumber, message) {
+  const text = encodeURIComponent(message);
+  const phone = phoneNumber.replace(/[^\d+]/g, "");
+  window.location.href = phone ? `sms:${phone}?&body=${text}` : `sms:?&body=${text}`;
+}
+
 function openEmailDraft(entry) {
   saveState();
   const subject = encodeURIComponent(entry.holiday.name);
@@ -412,8 +434,10 @@ function renderList() {
 
 function render() {
   saveState();
+  renderScheduleHolidayOptions();
   renderNext();
   renderList();
+  renderScheduledMessages();
   renderShareCount();
   updateStatus();
 }
@@ -444,6 +468,149 @@ function addHoliday(event) {
   els.lead.value = "0";
   els.repeats.value = "yearly";
   render();
+}
+
+function getScheduleSendDate(schedule) {
+  return new Date(`${schedule.date}T${schedule.time || "09:00"}`);
+}
+
+function scheduleStatus(schedule, now = new Date()) {
+  if (schedule.sentAt) return "Sent";
+  return getScheduleSendDate(schedule) <= now ? "Due now" : "Scheduled";
+}
+
+function fillScheduleFromEntry(entry) {
+  if (!entry) return;
+  els.scheduleHoliday.value = entry.holiday.id;
+  els.scheduleDate.value = dateInputValue(entry.notifyAt);
+  els.scheduleTime.value = entry.holiday.time || "09:00";
+  els.scheduleMessage.value = messageFor(entry);
+  if (!els.schedulePhone.value && state.recipient.phone) {
+    els.schedulePhone.value = state.recipient.phone;
+  }
+}
+
+function fillScheduleFromSelectedHoliday() {
+  const selected = els.scheduleHoliday.value;
+  const entry = allUpcoming().find((item) => item.holiday.id === selected) || allUpcoming()[0];
+  fillScheduleFromEntry(entry);
+}
+
+function addScheduledMessage(event) {
+  event.preventDefault();
+  const phone = els.schedulePhone.value.trim();
+  const date = els.scheduleDate.value;
+  const time = els.scheduleTime.value || "09:00";
+  const message = els.scheduleMessage.value.trim();
+  const selectedEntry = allUpcoming().find((entry) => entry.holiday.id === els.scheduleHoliday.value);
+  if (!phone || !date || !time || !message) return;
+
+  state.scheduledMessages.push({
+    id: `scheduled-${Date.now()}`,
+    holidayId: selectedEntry?.holiday.id || "",
+    holidayName: selectedEntry?.holiday.name || "Custom message",
+    phone,
+    date,
+    time,
+    message,
+    createdAt: new Date().toISOString(),
+    remindedAt: ""
+  });
+
+  els.scheduleForm.reset();
+  els.scheduleTime.value = "09:00";
+  fillScheduleFromEntry(allUpcoming()[0]);
+  render();
+  showDeliveryStatus("Phone message scheduled. Keep this site open or installed so it can remind you.");
+}
+
+function renderScheduleHolidayOptions() {
+  const selected = els.scheduleHoliday.value;
+  const upcoming = allUpcoming();
+  els.scheduleHoliday.innerHTML = "";
+  upcoming.slice(0, 30).forEach((entry) => {
+    const option = document.createElement("option");
+    option.value = entry.holiday.id;
+    option.textContent = `${entry.holiday.name} - ${formatDate(entry.holidayDate)}`;
+    els.scheduleHoliday.append(option);
+  });
+  const customOption = document.createElement("option");
+  customOption.value = "";
+  customOption.textContent = "Custom date/message";
+  els.scheduleHoliday.append(customOption);
+  if ([...els.scheduleHoliday.options].some((option) => option.value === selected)) {
+    els.scheduleHoliday.value = selected;
+  }
+}
+
+function renderScheduledMessages() {
+  const schedules = [...state.scheduledMessages].sort((a, b) => getScheduleSendDate(a) - getScheduleSendDate(b));
+  const activeCount = schedules.filter((schedule) => !schedule.sentAt).length;
+  els.scheduledCount.textContent = `${activeCount} scheduled`;
+  els.scheduledList.innerHTML = "";
+
+  if (!schedules.length) {
+    const empty = document.createElement("p");
+    empty.className = "notice";
+    empty.textContent = "No phone messages scheduled yet.";
+    els.scheduledList.append(empty);
+    return;
+  }
+
+  schedules.forEach((schedule) => {
+    const clone = els.scheduledTemplate.content.firstElementChild.cloneNode(true);
+    const status = scheduleStatus(schedule);
+    clone.classList.toggle("is-due", status === "Due now");
+    clone.classList.toggle("is-sent", status === "Sent");
+    clone.querySelector("h3").textContent = schedule.holidayName || "Scheduled message";
+    clone.querySelector(".type-pill").textContent = status;
+    clone.querySelector(".holiday-card-meta").textContent = `To ${schedule.phone} | ${formatDateTime(getScheduleSendDate(schedule))}`;
+    clone.querySelector(".holiday-card-message").textContent = schedule.message;
+    clone.querySelector(".sms-now-button").addEventListener("click", () => openScheduledSms(schedule.id));
+    clone.querySelector(".done-button").addEventListener("click", () => markScheduleSent(schedule.id));
+    clone.querySelector(".delete-schedule-button").addEventListener("click", () => deleteSchedule(schedule.id));
+    els.scheduledList.append(clone);
+  });
+}
+
+function openScheduledSms(id) {
+  const schedule = state.scheduledMessages.find((item) => item.id === id);
+  if (!schedule) return;
+  openPhoneSmsDraft(schedule.phone, schedule.message);
+}
+
+function markScheduleSent(id) {
+  const schedule = state.scheduledMessages.find((item) => item.id === id);
+  if (!schedule) return;
+  schedule.sentAt = new Date().toISOString();
+  render();
+}
+
+function deleteSchedule(id) {
+  state.scheduledMessages = state.scheduledMessages.filter((item) => item.id !== id);
+  render();
+}
+
+function checkDueScheduledMessages() {
+  const now = new Date();
+  let changed = false;
+  state.scheduledMessages.forEach((schedule) => {
+    if (schedule.sentAt || schedule.remindedAt) return;
+    if (getScheduleSendDate(schedule) > now) return;
+    schedule.remindedAt = now.toISOString();
+    changed = true;
+    showDeliveryStatus(`Phone message due for ${schedule.phone}: ${schedule.message}`);
+    notify({
+      holiday: {
+        id: schedule.id,
+        name: "Phone message due",
+        message: `Text ${schedule.phone}: ${schedule.message}`
+      },
+      notifyAt: now,
+      holidayDate: now
+    });
+  });
+  if (changed) render();
 }
 
 function checkDueReminders() {
@@ -478,6 +645,7 @@ async function importData(file) {
   if (!parsed || !Array.isArray(parsed.holidays)) return;
   state = {
     holidays: parsed.holidays,
+    scheduledMessages: Array.isArray(parsed.scheduledMessages) ? parsed.scheduledMessages : [],
     recipient: { ...state.recipient, ...(parsed.recipient || {}) },
     settings: { ...state.settings, ...(parsed.settings || {}) }
   };
@@ -686,6 +854,9 @@ function bindEvents() {
   els.createShareLink.addEventListener("click", createShareLink);
   els.copyShareLink.addEventListener("click", copyShareLink);
   els.nativeShareLink.addEventListener("click", nativeShareLink);
+  els.scheduleForm.addEventListener("submit", addScheduledMessage);
+  els.scheduleHoliday.addEventListener("change", fillScheduleFromSelectedHoliday);
+  els.fillNextHoliday.addEventListener("click", () => fillScheduleFromEntry(allUpcoming()[0]));
   els.acceptInvite.addEventListener("click", acceptPendingShare);
   els.dismissInvite.addEventListener("click", dismissPendingShare);
   els.shareScope.addEventListener("change", () => {
@@ -728,5 +899,10 @@ hydrateFormValues();
 bindEvents();
 loadSharedInviteFromUrl();
 render();
+fillScheduleFromEntry(allUpcoming()[0]);
 checkDueReminders();
-window.setInterval(checkDueReminders, 60000);
+checkDueScheduledMessages();
+window.setInterval(() => {
+  checkDueReminders();
+  checkDueScheduledMessages();
+}, 60000);

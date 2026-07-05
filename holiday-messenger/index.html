@@ -135,6 +135,46 @@
       </article>
     </section>
 
+    <section class="panel schedule-panel" aria-labelledby="scheduleTitle">
+      <div class="panel-heading">
+        <div>
+          <p class="eyebrow">Scheduled texts</p>
+          <h2 id="scheduleTitle">Phone message schedule</h2>
+        </div>
+        <span class="type-pill" id="scheduledCount">0 scheduled</span>
+      </div>
+      <form class="schedule-form" id="scheduleForm">
+        <div class="schedule-grid">
+          <label class="field">
+            <span>Holiday or event</span>
+            <select id="scheduleHoliday"></select>
+          </label>
+          <label class="field">
+            <span>Phone number</span>
+            <input id="schedulePhone" type="tel" inputmode="tel" placeholder="555-123-4567" required>
+          </label>
+          <label class="field">
+            <span>Send date</span>
+            <input id="scheduleDate" type="date" required>
+          </label>
+          <label class="field">
+            <span>Send time</span>
+            <input id="scheduleTime" type="time" value="09:00" required>
+          </label>
+        </div>
+        <label class="field">
+          <span>Text message</span>
+          <textarea id="scheduleMessage" maxlength="220" placeholder="Happy birthday! Hope your day is awesome." required></textarea>
+        </label>
+        <div class="schedule-actions">
+          <button class="primary-button" type="submit">Schedule Phone Message</button>
+          <button class="secondary-button" id="fillNextHoliday" type="button">Use Next Holiday</button>
+        </div>
+      </form>
+      <p class="notice">This schedules a phone-text reminder and opens an SMS draft when you choose to send. Browsers cannot silently send SMS messages by themselves.</p>
+      <div class="scheduled-list" id="scheduledList"></div>
+    </section>
+
     <section class="panel share-panel" aria-labelledby="shareTitle">
       <div class="panel-heading">
         <div>
@@ -224,6 +264,24 @@
           <button class="secondary-button small-button send-button" type="button">Send</button>
           <button class="danger-button small-button delete-button" type="button">Delete</button>
         </div>
+      </div>
+    </article>
+  </template>
+
+  <template id="scheduledTemplate">
+    <article class="scheduled-card">
+      <div>
+        <div class="holiday-card-title">
+          <h3></h3>
+          <span class="type-pill"></span>
+        </div>
+        <p class="holiday-card-meta"></p>
+        <p class="holiday-card-message"></p>
+      </div>
+      <div class="scheduled-actions">
+        <button class="primary-button small-button sms-now-button" type="button">SMS Draft</button>
+        <button class="secondary-button small-button done-button" type="button">Mark Sent</button>
+        <button class="danger-button small-button delete-schedule-button" type="button">Delete</button>
       </div>
     </article>
   </template>
