@@ -40,6 +40,7 @@ jobs:
           cp -r exercise-arena site/exercise-arena
           cp -r echo-archer site/echo-archer
           cp -r games site/games
+          cp -r holiday-messenger site/holiday-messenger
           cp -r idea-arcade site/idea-arcade
           cp -r public-call site/public-call
           cp -r target-range-fps site/target-range-fps

@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
+  <meta name="theme-color" content="#0f766e">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Holiday Messenger">
+  <title>Holiday Messenger</title>
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <main class="app-shell">
+    <section class="hero" aria-labelledby="pageTitle">
+      <div class="hero-copy">
+        <p class="eyebrow">Holiday Messenger</p>
+        <h1 id="pageTitle">Send the right message on every holiday.</h1>
+        <p class="hero-text">Build a calendar for holidays, birthdays, anniversaries, and any custom day. This site can notify your computer or phone through browser notifications, and it can open SMS or email drafts when it is time to send.</p>
+        <div class="hero-actions">
+          <button class="primary-button" id="enableNotifications" type="button">Allow Device Alerts</button>
+          <button class="secondary-button" id="sendTest" type="button">Send Test</button>
+          <a class="secondary-button" id="openLocalApp" href="http://127.0.0.1:8123/holiday-messenger/" hidden>Open Local Version</a>
+        </div>
+        <p class="notice" id="notificationStatus">Device alerts are waiting for permission.</p>
+        <p class="delivery-status" id="deliveryStatus" aria-live="polite">No test sent yet.</p>
+      </div>
+      <figure class="hero-image">
+        <img src="./assets/holiday-messenger-hero.png" alt="A calendar, greeting cards, and phone reminder on a desk">
+      </figure>
+    </section>
+
+    <section class="control-grid" aria-label="Holiday messenger controls">
+      <article class="panel add-panel">
+        <div class="panel-heading">
+          <p class="eyebrow">Add holiday</p>
+          <h2>Holiday details</h2>
+        </div>
+        <form class="holiday-form" id="holidayForm">
+          <label class="field">
+            <span>Name</span>
+            <input id="holidayName" type="text" maxlength="48" placeholder="Grandma's Birthday" required>
+          </label>
+          <div class="field-row">
+            <label class="field">
+              <span>Date</span>
+              <input id="holidayDate" type="date" required>
+            </label>
+            <label class="field">
+              <span>Type</span>
+              <select id="holidayType">
+                <option value="Holiday">Holiday</option>
+                <option value="Birthday">Birthday</option>
+                <option value="Anniversary">Anniversary</option>
+                <option value="Family">Family</option>
+                <option value="School">School</option>
+                <option value="Other">Other</option>
+              </select>
+            </label>
+          </div>
+          <div class="field-row">
+            <label class="field">
+              <span>Repeat</span>
+              <select id="holidayRepeats">
+                <option value="yearly">Every year</option>
+                <option value="once">One time</option>
+              </select>
+            </label>
+            <label class="field">
+              <span>Alert time</span>
+              <input id="holidayTime" type="time" value="09:00">
+            </label>
+          </div>
+          <label class="field">
+            <span>Reminder</span>
+            <select id="holidayLead">
+              <option value="0">On the day</option>
+              <option value="1">1 day before</option>
+              <option value="3">3 days before</option>
+              <option value="7">1 week before</option>
+              <option value="14">2 weeks before</option>
+            </select>
+          </label>
+          <label class="field">
+            <span>Message</span>
+            <textarea id="holidayMessage" maxlength="220" placeholder="Happy birthday! Hope your day is awesome."></textarea>
+          </label>
+          <button class="primary-button full-button" type="submit">Add Custom Holiday</button>
+        </form>
+      </article>
+
+      <article class="panel delivery-panel">
+        <div class="panel-heading">
+          <p class="eyebrow">Send to device</p>
+          <h2>Phone or computer</h2>
+        </div>
+        <label class="field">
+          <span>Person or device name</span>
+          <input id="recipientName" type="text" maxlength="32" placeholder="Mom, my phone, family laptop">
+        </label>
+        <label class="field">
+          <span>Phone number for SMS drafts</span>
+          <input id="recipientPhone" type="tel" inputmode="tel" placeholder="Optional">
+        </label>
+        <label class="field">
+          <span>Email for email drafts</span>
+          <input id="recipientEmail" type="email" placeholder="Optional">
+        </label>
+        <div class="toggle-list">
+          <label><input id="autoNotify" type="checkbox" checked> Browser notification</label>
+          <label><input id="vibrateToggle" type="checkbox" checked> Vibrate on phone when supported</label>
+          <label><input id="soundToggle" type="checkbox"> Soft sound when this tab is open</label>
+        </div>
+        <div class="quick-actions">
+          <button class="secondary-button" id="copyLink" type="button">Copy App Link</button>
+          <button class="secondary-button" id="exportData" type="button">Export List</button>
+          <label class="secondary-button import-button" for="importData">Import List</label>
+          <input class="sr-only" id="importData" type="file" accept="application/json">
+        </div>
+        <p class="notice">For real automatic SMS/email sending, this static site would need a backend service. Browser notifications work on devices that allow them after the site is opened or installed.</p>
+      </article>
+    </section>
+
+    <section class="dashboard">
+      <article class="panel next-panel">
+        <div class="panel-heading">
+          <p class="eyebrow">Next up</p>
+          <h2 id="nextHolidayName">Loading</h2>
+        </div>
+        <div class="countdown" id="nextCountdown">--</div>
+        <p class="message-preview" id="nextMessage">Your next holiday reminder will appear here.</p>
+        <div class="send-row">
+          <button class="primary-button" id="sendNextNow" type="button">Send Now</button>
+          <button class="secondary-button" id="openSms" type="button">SMS Draft</button>
+          <button class="secondary-button" id="openEmail" type="button">Email Draft</button>
+        </div>
+      </article>
+
+      <article class="panel list-panel">
+        <div class="list-toolbar">
+          <div>
+            <p class="eyebrow">Calendar</p>
+            <h2>Saved holidays</h2>
+          </div>
+          <div class="toolbar-actions">
+            <button class="secondary-button small-button" id="restoreDefaults" type="button">Restore Defaults</button>
+            <button class="danger-button small-button" id="clearCustom" type="button">Delete Custom</button>
+          </div>
+        </div>
+        <div class="filter-row" role="group" aria-label="Holiday filters">
+          <button class="filter-chip active" type="button" data-filter="all">All</button>
+          <button class="filter-chip" type="button" data-filter="Holiday">Holidays</button>
+          <button class="filter-chip" type="button" data-filter="Birthday">Birthdays</button>
+          <button class="filter-chip" type="button" data-filter="custom">Custom</button>
+        </div>
+        <div class="holiday-list" id="holidayList"></div>
+      </article>
+    </section>
+  </main>
+
+  <template id="holidayTemplate">
+    <article class="holiday-card">
+      <div class="date-badge">
+        <span class="month"></span>
+        <strong class="day"></strong>
+      </div>
+      <div class="holiday-card-body">
+        <div class="holiday-card-title">
+          <h3></h3>
+          <span class="type-pill"></span>
+        </div>
+        <p class="holiday-card-meta"></p>
+        <p class="holiday-card-message"></p>
+        <div class="holiday-card-actions">
+          <button class="secondary-button small-button send-button" type="button">Send</button>
+          <button class="danger-button small-button delete-button" type="button">Delete</button>
+        </div>
+      </div>
+    </article>
+  </template>
+
+  <script src="./app.js"></script>
+</body>
+</html>
