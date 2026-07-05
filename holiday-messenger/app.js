@@ -110,7 +110,7 @@ function loadState() {
 function saveState() {
   state.recipient = {
     name: els.recipientName.value.trim(),
-    phone: els.recipientPhone.value.trim(),
+    phone: formatPhoneNumber(els.recipientPhone.value),
     email: els.recipientEmail.value.trim()
   };
   state.settings = {
@@ -150,6 +150,28 @@ function dateKey(date) {
 
 function dateInputValue(date) {
   return dateKey(date);
+}
+
+function formatPhoneNumber(value) {
+  const digits = String(value || "").replace(/\D/g, "").slice(0, 11);
+  if (!digits) return "";
+  if (digits.length === 11 && digits.startsWith("1")) {
+    const main = digits.slice(1);
+    return `1-${main.slice(0, 3)}-${main.slice(3, 6)}-${main.slice(6)}`.replace(/-$/g, "");
+  }
+  const main = digits.slice(0, 10);
+  if (main.length <= 3) return main;
+  if (main.length <= 6) return `${main.slice(0, 3)}-${main.slice(3)}`;
+  return `${main.slice(0, 3)}-${main.slice(3, 6)}-${main.slice(6)}`;
+}
+
+function bindPhoneFormatter(input) {
+  input.addEventListener("input", () => {
+    input.value = formatPhoneNumber(input.value);
+  });
+  input.addEventListener("blur", () => {
+    input.value = formatPhoneNumber(input.value);
+  });
 }
 
 function parseDateInput(value) {
@@ -498,7 +520,7 @@ function fillScheduleFromSelectedHoliday() {
 
 function addScheduledMessage(event) {
   event.preventDefault();
-  const phone = els.schedulePhone.value.trim();
+  const phone = formatPhoneNumber(els.schedulePhone.value);
   const date = els.scheduleDate.value;
   const time = els.scheduleTime.value || "09:00";
   const message = els.scheduleMessage.value.trim();
@@ -824,7 +846,7 @@ function loadSharedInviteFromUrl() {
 function hydrateFormValues() {
   els.date.value = dateInputValue(new Date());
   els.recipientName.value = state.recipient.name || "";
-  els.recipientPhone.value = state.recipient.phone || "";
+  els.recipientPhone.value = formatPhoneNumber(state.recipient.phone || "");
   els.recipientEmail.value = state.recipient.email || "";
   els.autoNotify.checked = Boolean(state.settings.autoNotify);
   els.vibrate.checked = Boolean(state.settings.vibrate);
@@ -854,6 +876,8 @@ function bindEvents() {
   els.createShareLink.addEventListener("click", createShareLink);
   els.copyShareLink.addEventListener("click", copyShareLink);
   els.nativeShareLink.addEventListener("click", nativeShareLink);
+  bindPhoneFormatter(els.recipientPhone);
+  bindPhoneFormatter(els.schedulePhone);
   els.scheduleForm.addEventListener("submit", addScheduledMessage);
   els.scheduleHoliday.addEventListener("change", fillScheduleFromSelectedHoliday);
   els.fillNextHoliday.addEventListener("click", () => fillScheduleFromEntry(allUpcoming()[0]));
