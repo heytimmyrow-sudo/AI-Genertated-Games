@@ -1,6 +1,9 @@
 const STORAGE_KEY = "holidayMessengerStateV1";
 const SENT_KEY = "holidayMessengerSentV1";
 const PUBLIC_APP_URL = "https://heytimmyrow-sudo.github.io/AI-Genertated-Games/holiday-messenger/";
+const SUPABASE_URL = "https://jbljqusdpifdyewlenun.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_RYq_rDXqj_Ate8B66PcJEQ_a6yv1YUl";
+const AUTO_SMS_FUNCTION_URL = `${SUPABASE_URL}/functions/v1/send-holiday-sms`;
 
 const defaultHolidays = [
   { id: "new-year", name: "New Year's Day", type: "Holiday", rule: { kind: "fixed", month: 1, day: 1 }, repeats: "yearly", time: "09:00", leadDays: 0, message: "Happy New Year! Hope this year starts strong." },
@@ -73,11 +76,17 @@ const els = {
   schedulePhone: document.getElementById("schedulePhone"),
   scheduleDate: document.getElementById("scheduleDate"),
   scheduleTime: document.getElementById("scheduleTime"),
+  scheduleSendMethod: document.getElementById("scheduleSendMethod"),
   scheduleMessage: document.getElementById("scheduleMessage"),
   fillNextHoliday: document.getElementById("fillNextHoliday"),
   scheduledCount: document.getElementById("scheduledCount"),
   scheduledList: document.getElementById("scheduledList"),
-  scheduledTemplate: document.getElementById("scheduledTemplate")
+  scheduledTemplate: document.getElementById("scheduledTemplate"),
+  autoSendKey: document.getElementById("autoSendKey"),
+  autoSendEnabled: document.getElementById("autoSendEnabled"),
+  autoSendStatus: document.getElementById("autoSendStatus"),
+  saveAutoSendSettings: document.getElementById("saveAutoSendSettings"),
+  testAutoSend: document.getElementById("testAutoSend")
 };
 
 let state = loadState();
@@ -91,7 +100,7 @@ function loadState() {
     holidays: defaultHolidays,
     scheduledMessages: [],
     recipient: { name: "", phone: "", email: "" },
-    settings: { autoNotify: true, vibrate: true, sound: false }
+    settings: { autoNotify: true, vibrate: true, sound: false, autoSendEnabled: false, autoSendKey: "" }
   };
   try {
     const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY));
@@ -116,7 +125,9 @@ function saveState() {
   state.settings = {
     autoNotify: els.autoNotify.checked,
     vibrate: els.vibrate.checked,
-    sound: els.sound.checked
+    sound: els.sound.checked,
+    autoSendEnabled: els.autoSendEnabled.checked,
+    autoSendKey: els.autoSendKey.value.trim()
   };
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
 }
@@ -163,6 +174,13 @@ function formatPhoneNumber(value) {
   if (main.length <= 3) return main;
   if (main.length <= 6) return `${main.slice(0, 3)}-${main.slice(3)}`;
   return `${main.slice(0, 3)}-${main.slice(3, 6)}-${main.slice(6)}`;
+}
+
+function phoneToE164(value) {
+  const digits = String(value || "").replace(/\D/g, "");
+  if (digits.length === 10) return `+1${digits}`;
+  if (digits.length === 11 && digits.startsWith("1")) return `+${digits}`;
+  return String(value || "").trim();
 }
 
 function bindPhoneFormatter(input) {
@@ -372,6 +390,105 @@ function showDeliveryStatus(message, warning = false) {
   els.deliveryStatus.classList.toggle("warning", warning);
 }
 
+function renderAutoSendStatus() {
+  if (!els.autoSendStatus) return;
+  if (!state.settings.autoSendEnabled) {
+    els.autoSendStatus.textContent = "Off";
+    return;
+  }
+  els.autoSendStatus.textContent = state.settings.autoSendKey ? "Ready" : "Needs passcode";
+}
+
+function canUseAutoSend(showMessage = false) {
+  saveState();
+  if (!state.settings.autoSendEnabled) {
+    if (showMessage) showDeliveryStatus("Turn on auto-send first, then save the auto-send settings.", true);
+    return false;
+  }
+  if (!state.settings.autoSendKey) {
+    if (showMessage) showDeliveryStatus("Enter the auto-send passcode that matches your Supabase secret.", true);
+    return false;
+  }
+  return true;
+}
+
+async function sendAutoSms(schedule) {
+  if (!canUseAutoSend(true)) return false;
+  schedule.autoStatus = "sending";
+  schedule.autoError = "";
+  renderScheduledMessages();
+
+  try {
+    const response = await fetch(AUTO_SMS_FUNCTION_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "apikey": SUPABASE_ANON_KEY,
+        "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
+        "x-holiday-send-key": state.settings.autoSendKey
+      },
+      body: JSON.stringify({
+        mode: "send-now",
+        scheduleId: schedule.id,
+        holidayName: schedule.holidayName || "Scheduled message",
+        to: phoneToE164(schedule.phone),
+        message: schedule.message
+      })
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(payload.error || "Twilio send failed.");
+    }
+    schedule.sentAt = new Date().toISOString();
+    schedule.autoStatus = "sent";
+    schedule.twilioSid = payload.sid || "";
+    schedule.autoSentAt = payload.sentAt || schedule.sentAt;
+    schedule.autoError = "";
+    render();
+    showDeliveryStatus(`Auto text sent to ${schedule.phone}${payload.sid ? ` with Twilio id ${payload.sid}` : ""}.`);
+    return true;
+  } catch (error) {
+    schedule.autoStatus = "failed";
+    schedule.autoError = error.message || "Twilio send failed.";
+    schedule.remindedAt = "";
+    render();
+    showDeliveryStatus(`Auto text failed for ${schedule.phone}: ${schedule.autoError}`, true);
+    return false;
+  }
+}
+
+async function saveAutoSmsSchedule(schedule) {
+  if (!canUseAutoSend(true)) return null;
+  const sendAt = getScheduleSendDate(schedule);
+  try {
+    const response = await fetch(AUTO_SMS_FUNCTION_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "apikey": SUPABASE_ANON_KEY,
+        "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
+        "x-holiday-send-key": state.settings.autoSendKey
+      },
+      body: JSON.stringify({
+        mode: "schedule",
+        scheduleId: schedule.id,
+        holidayName: schedule.holidayName || "Scheduled message",
+        to: phoneToE164(schedule.phone),
+        message: schedule.message,
+        sendAt: sendAt.toISOString()
+      })
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(payload.error || "Could not save the backend SMS schedule.");
+    }
+    return payload;
+  } catch (error) {
+    showDeliveryStatus(`Auto text was not scheduled: ${error.message || "backend schedule failed."}`, true);
+    return null;
+  }
+}
+
 function playSoftSound() {
   const AudioContext = window.AudioContext || window.webkitAudioContext;
   if (!AudioContext) return;
@@ -461,6 +578,7 @@ function render() {
   renderList();
   renderScheduledMessages();
   renderShareCount();
+  renderAutoSendStatus();
   updateStatus();
 }
 
@@ -518,16 +636,18 @@ function fillScheduleFromSelectedHoliday() {
   fillScheduleFromEntry(entry);
 }
 
-function addScheduledMessage(event) {
+async function addScheduledMessage(event) {
   event.preventDefault();
   const phone = formatPhoneNumber(els.schedulePhone.value);
   const date = els.scheduleDate.value;
   const time = els.scheduleTime.value || "09:00";
   const message = els.scheduleMessage.value.trim();
+  const deliveryMethod = els.scheduleSendMethod.value === "auto" ? "auto" : "draft";
   const selectedEntry = allUpcoming().find((entry) => entry.holiday.id === els.scheduleHoliday.value);
   if (!phone || !date || !time || !message) return;
+  if (deliveryMethod === "auto" && !canUseAutoSend(true)) return;
 
-  state.scheduledMessages.push({
+  const schedule = {
     id: `scheduled-${Date.now()}`,
     holidayId: selectedEntry?.holiday.id || "",
     holidayName: selectedEntry?.holiday.name || "Custom message",
@@ -535,15 +655,30 @@ function addScheduledMessage(event) {
     date,
     time,
     message,
+    deliveryMethod,
+    autoStatus: deliveryMethod === "auto" ? "scheduled" : "",
+    autoError: "",
     createdAt: new Date().toISOString(),
     remindedAt: ""
-  });
+  };
+
+  if (deliveryMethod === "auto") {
+    const backend = await saveAutoSmsSchedule(schedule);
+    if (!backend) return;
+    schedule.serverScheduleId = backend.id || "";
+    schedule.serverScheduledAt = new Date().toISOString();
+  }
+
+  state.scheduledMessages.push(schedule);
 
   els.scheduleForm.reset();
   els.scheduleTime.value = "09:00";
+  els.scheduleSendMethod.value = deliveryMethod;
   fillScheduleFromEntry(allUpcoming()[0]);
   render();
-  showDeliveryStatus("Phone message scheduled. Keep this site open or installed so it can remind you.");
+  showDeliveryStatus(deliveryMethod === "auto"
+    ? "Auto text scheduled. The backend cron can send it even if this browser is closed."
+    : "Phone message scheduled. Keep this site open or installed so it can remind you.");
 }
 
 function renderScheduleHolidayOptions() {
@@ -582,13 +717,20 @@ function renderScheduledMessages() {
   schedules.forEach((schedule) => {
     const clone = els.scheduledTemplate.content.firstElementChild.cloneNode(true);
     const status = scheduleStatus(schedule);
+    const isAuto = schedule.deliveryMethod === "auto";
+    const label = isAuto && status !== "Sent"
+      ? (schedule.autoStatus === "failed" ? "Auto failed" : "Auto scheduled")
+      : status;
     clone.classList.toggle("is-due", status === "Due now");
     clone.classList.toggle("is-sent", status === "Sent");
+    clone.classList.toggle("is-failed", schedule.autoStatus === "failed");
     clone.querySelector("h3").textContent = schedule.holidayName || "Scheduled message";
-    clone.querySelector(".type-pill").textContent = status;
-    clone.querySelector(".holiday-card-meta").textContent = `To ${schedule.phone} | ${formatDateTime(getScheduleSendDate(schedule))}`;
-    clone.querySelector(".holiday-card-message").textContent = schedule.message;
+    clone.querySelector(".type-pill").textContent = label;
+    clone.querySelector(".holiday-card-meta").textContent = `To ${schedule.phone} | ${formatDateTime(getScheduleSendDate(schedule))} | ${isAuto ? "Twilio auto-send" : "Messages app draft"}`;
+    clone.querySelector(".holiday-card-message").textContent = schedule.autoError ? `${schedule.message} Error: ${schedule.autoError}` : schedule.message;
     clone.querySelector(".sms-now-button").addEventListener("click", () => openScheduledSms(schedule.id));
+    clone.querySelector(".auto-now-button").hidden = !isAuto;
+    clone.querySelector(".auto-now-button").addEventListener("click", () => sendScheduledAutoSms(schedule.id));
     clone.querySelector(".done-button").addEventListener("click", () => markScheduleSent(schedule.id));
     clone.querySelector(".delete-schedule-button").addEventListener("click", () => deleteSchedule(schedule.id));
     els.scheduledList.append(clone);
@@ -602,10 +744,19 @@ function openScheduledSms(id) {
   openPhoneSmsDraft(schedule.phone, schedule.message);
 }
 
+function sendScheduledAutoSms(id) {
+  const schedule = state.scheduledMessages.find((item) => item.id === id);
+  if (!schedule) return;
+  sendAutoSms(schedule);
+}
+
 function markScheduleSent(id) {
   const schedule = state.scheduledMessages.find((item) => item.id === id);
   if (!schedule) return;
   schedule.sentAt = new Date().toISOString();
+  if (schedule.deliveryMethod === "auto" && schedule.autoStatus !== "sent") {
+    schedule.autoStatus = "sent";
+  }
   render();
 }
 
@@ -614,14 +765,39 @@ function deleteSchedule(id) {
   render();
 }
 
-function checkDueScheduledMessages() {
+function sendAutoTextTest() {
+  const phone = formatPhoneNumber(els.schedulePhone.value || state.recipient.phone);
+  const message = (els.scheduleMessage.value || "Holiday Messenger auto-send test from Twilio.").trim();
+  if (!phone) {
+    showDeliveryStatus("Enter a phone number in the schedule form first, then try the Twilio test.", true);
+    return;
+  }
+  sendAutoSms({
+    id: `test-${Date.now()}`,
+    holidayName: "Holiday Messenger test",
+    phone,
+    message,
+    deliveryMethod: "auto"
+  });
+}
+
+async function checkDueScheduledMessages() {
   const now = new Date();
   let changed = false;
-  state.scheduledMessages.forEach((schedule) => {
-    if (schedule.sentAt || schedule.remindedAt) return;
-    if (getScheduleSendDate(schedule) > now) return;
+  for (const schedule of state.scheduledMessages) {
+    if (schedule.sentAt || schedule.remindedAt) continue;
+    if (getScheduleSendDate(schedule) > now) continue;
     schedule.remindedAt = now.toISOString();
     changed = true;
+    if (schedule.deliveryMethod === "auto") {
+      if (schedule.serverScheduleId) {
+        schedule.autoStatus = "server scheduled";
+        showDeliveryStatus(`Auto text for ${schedule.phone} is due. The backend cron will send it from Twilio.`);
+        continue;
+      }
+      await sendAutoSms(schedule);
+      continue;
+    }
     showDeliveryStatus(`Phone message due for ${schedule.phone}. Tap Open Messages App to review and send it.`);
     notify({
       holiday: {
@@ -632,7 +808,7 @@ function checkDueScheduledMessages() {
       notifyAt: now,
       holidayDate: now
     });
-  });
+  }
   if (changed) render();
 }
 
@@ -852,6 +1028,9 @@ function hydrateFormValues() {
   els.autoNotify.checked = Boolean(state.settings.autoNotify);
   els.vibrate.checked = Boolean(state.settings.vibrate);
   els.sound.checked = Boolean(state.settings.sound);
+  els.autoSendEnabled.checked = Boolean(state.settings.autoSendEnabled);
+  els.autoSendKey.value = state.settings.autoSendKey || "";
+  els.scheduleSendMethod.value = "draft";
 }
 
 function bindEvents() {
@@ -882,6 +1061,12 @@ function bindEvents() {
   els.scheduleForm.addEventListener("submit", addScheduledMessage);
   els.scheduleHoliday.addEventListener("change", fillScheduleFromSelectedHoliday);
   els.fillNextHoliday.addEventListener("click", () => fillScheduleFromEntry(allUpcoming()[0]));
+  els.saveAutoSendSettings.addEventListener("click", () => {
+    saveState();
+    renderAutoSendStatus();
+    showDeliveryStatus(state.settings.autoSendEnabled ? "Auto-send settings saved in this browser." : "Auto-send is turned off.");
+  });
+  els.testAutoSend.addEventListener("click", sendAutoTextTest);
   els.acceptInvite.addEventListener("click", acceptPendingShare);
   els.dismissInvite.addEventListener("click", dismissPendingShare);
   els.shareScope.addEventListener("change", () => {
@@ -910,7 +1095,7 @@ function bindEvents() {
       renderList();
     });
   });
-  [els.recipientName, els.recipientPhone, els.recipientEmail, els.autoNotify, els.vibrate, els.sound].forEach((control) => {
+  [els.recipientName, els.recipientPhone, els.recipientEmail, els.autoNotify, els.vibrate, els.sound, els.autoSendEnabled, els.autoSendKey].forEach((control) => {
     control.addEventListener("input", saveState);
     control.addEventListener("change", saveState);
   });

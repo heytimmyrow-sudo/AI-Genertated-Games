@@ -289,6 +289,10 @@ h3 {
   margin-top: 18px;
 }
 
+.auto-send-panel {
+  margin-top: 18px;
+}
+
 .schedule-form {
   display: grid;
   gap: 14px;
@@ -296,8 +300,28 @@ h3 {
 
 .schedule-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(180px, 0.7fr) minmax(150px, 0.52fr) minmax(130px, 0.42fr);
+  grid-template-columns: minmax(0, 1fr) minmax(170px, 0.65fr) minmax(145px, 0.5fr) minmax(125px, 0.42fr) minmax(170px, 0.62fr);
   gap: 12px;
+}
+
+.auto-send-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 0.82fr);
+  gap: 14px;
+  align-items: end;
+}
+
+.toggle-field {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  min-height: 44px;
+  padding: 11px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--muted);
+  background: #fbfdfc;
+  font-weight: 800;
 }
 
 .schedule-actions,
@@ -331,6 +355,11 @@ h3 {
 
 .scheduled-card.is-sent {
   opacity: 0.72;
+}
+
+.scheduled-card.is-failed {
+  border-color: #ef9f9f;
+  background: #fff1f1;
 }
 
 .share-link-row {
@@ -529,6 +558,7 @@ button:disabled {
   .share-grid,
   .share-link-row,
   .schedule-grid,
+  .auto-send-grid,
   .scheduled-card {
     grid-template-columns: 1fr;
   }

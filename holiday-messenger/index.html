@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self' https://jbljqusdpifdyewlenun.supabase.co; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
   <meta name="theme-color" content="#0f766e">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
@@ -131,7 +131,7 @@
           <label class="secondary-button import-button" for="importData">Import List</label>
           <input class="sr-only" id="importData" type="file" accept="application/json">
         </div>
-        <p class="notice">For real automatic SMS/email sending, this static site would need a backend service. Browser notifications work on devices that allow them after the site is opened or installed.</p>
+        <p class="notice">Browser notifications work on devices that allow them after the site is opened or installed. Automatic texts use the Twilio backend settings below.</p>
       </article>
     </section>
 
@@ -161,6 +161,13 @@
             <span>Send time</span>
             <input id="scheduleTime" type="time" value="09:00" required>
           </label>
+          <label class="field">
+            <span>Send method</span>
+            <select id="scheduleSendMethod">
+              <option value="draft">Messages app draft</option>
+              <option value="auto">Auto-send with Twilio</option>
+            </select>
+          </label>
         </div>
         <label class="field">
           <span>Text message</span>
@@ -171,8 +178,33 @@
           <button class="secondary-button" id="fillNextHoliday" type="button">Use Next Holiday</button>
         </div>
       </form>
-      <p class="notice">This schedules a phone-text reminder and opens the Messages app with the number and message filled in. Browsers cannot silently press send by themselves.</p>
+      <p class="notice">Draft mode opens the Messages app with the text filled in. Auto-send mode sends through Twilio when this site is open at the scheduled time.</p>
       <div class="scheduled-list" id="scheduledList"></div>
+    </section>
+
+    <section class="panel auto-send-panel" aria-labelledby="autoSendTitle">
+      <div class="panel-heading">
+        <div>
+          <p class="eyebrow">Twilio auto-send</p>
+          <h2 id="autoSendTitle">Automatic SMS setup</h2>
+        </div>
+        <span class="type-pill" id="autoSendStatus">Not configured</span>
+      </div>
+      <div class="auto-send-grid">
+        <label class="field">
+          <span>Auto-send passcode</span>
+          <input id="autoSendKey" type="password" autocomplete="off" placeholder="Same passcode saved in Supabase">
+        </label>
+        <label class="toggle-field">
+          <input id="autoSendEnabled" type="checkbox">
+          <span>Allow this browser to send due Twilio texts</span>
+        </label>
+      </div>
+      <div class="quick-actions">
+        <button class="secondary-button" id="saveAutoSendSettings" type="button">Save Auto-Send Settings</button>
+        <button class="secondary-button" id="testAutoSend" type="button">Send Twilio Test</button>
+      </div>
+      <p class="notice">Your Twilio Account SID, Auth Token, and sender number stay in Supabase secrets. This passcode only unlocks your backend from this browser.</p>
     </section>
 
     <section class="panel share-panel" aria-labelledby="shareTitle">
@@ -280,6 +312,7 @@
       </div>
       <div class="scheduled-actions">
         <button class="primary-button small-button sms-now-button" type="button">Open Messages App</button>
+        <button class="primary-button small-button auto-now-button" type="button">Send Auto Text</button>
         <button class="secondary-button small-button done-button" type="button">Mark Sent</button>
         <button class="danger-button small-button delete-schedule-button" type="button">Delete</button>
       </div>

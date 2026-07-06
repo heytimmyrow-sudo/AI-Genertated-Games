@@ -1,0 +1,21 @@
+name: Holiday Messenger SMS Cron
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+jobs:
+  process-due-texts:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Process due Holiday Messenger texts
+        env:
+          HOLIDAY_MESSENGER_SEND_KEY: ${{ secrets.HOLIDAY_MESSENGER_SEND_KEY }}
+        run: |
+          curl --fail-with-body \
+            --request POST \
+            --header "Content-Type: application/json" \
+            --header "x-holiday-send-key: ${HOLIDAY_MESSENGER_SEND_KEY}" \
+            --data '{"mode":"process-due"}' \
+            "https://jbljqusdpifdyewlenun.supabase.co/functions/v1/send-holiday-sms"

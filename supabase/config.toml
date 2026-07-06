@@ -1,2 +1,5 @@
 [functions.threadmail-ai]
 verify_jwt = false
+
+[functions.send-holiday-sms]
+verify_jwt = false
