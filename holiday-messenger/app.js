@@ -4,6 +4,7 @@ const PUBLIC_APP_URL = "https://heytimmyrow-sudo.github.io/AI-Genertated-Games/h
 const SUPABASE_URL = "https://jbljqusdpifdyewlenun.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_RYq_rDXqj_Ate8B66PcJEQ_a6yv1YUl";
 const AUTO_SMS_FUNCTION_URL = `${SUPABASE_URL}/functions/v1/send-holiday-sms`;
+const CUSTOM_SCHEDULE_VALUE = "__custom";
 
 const defaultHolidays = [
   { id: "new-year", name: "New Year's Day", type: "Holiday", rule: { kind: "fixed", month: 1, day: 1 }, repeats: "yearly", time: "09:00", leadDays: 0, message: "Happy New Year! Hope this year starts strong." },
@@ -632,7 +633,12 @@ function fillScheduleFromEntry(entry) {
 
 function fillScheduleFromSelectedHoliday() {
   const selected = els.scheduleHoliday.value;
-  const entry = allUpcoming().find((item) => item.holiday.id === selected) || allUpcoming()[0];
+  if (selected === CUSTOM_SCHEDULE_VALUE) {
+    if (!els.scheduleDate.value) els.scheduleDate.value = dateInputValue(new Date());
+    if (!els.scheduleTime.value) els.scheduleTime.value = "09:00";
+    return;
+  }
+  const entry = allUpcoming().find((item) => item.holiday.id === selected);
   fillScheduleFromEntry(entry);
 }
 
@@ -643,7 +649,9 @@ async function addScheduledMessage(event) {
   const time = els.scheduleTime.value || "09:00";
   const message = els.scheduleMessage.value.trim();
   const deliveryMethod = els.scheduleSendMethod.value === "auto" ? "auto" : "draft";
-  const selectedEntry = allUpcoming().find((entry) => entry.holiday.id === els.scheduleHoliday.value);
+  const selectedEntry = els.scheduleHoliday.value === CUSTOM_SCHEDULE_VALUE
+    ? null
+    : allUpcoming().find((entry) => entry.holiday.id === els.scheduleHoliday.value);
   if (!phone || !date || !time || !message) return;
   if (deliveryMethod === "auto" && !canUseAutoSend(true)) return;
 
@@ -692,7 +700,7 @@ function renderScheduleHolidayOptions() {
     els.scheduleHoliday.append(option);
   });
   const customOption = document.createElement("option");
-  customOption.value = "";
+  customOption.value = CUSTOM_SCHEDULE_VALUE;
   customOption.textContent = "Custom date/message";
   els.scheduleHoliday.append(customOption);
   if ([...els.scheduleHoliday.options].some((option) => option.value === selected)) {
