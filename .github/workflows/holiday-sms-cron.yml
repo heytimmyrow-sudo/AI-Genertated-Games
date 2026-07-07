@@ -13,6 +13,11 @@ jobs:
         env:
           HOLIDAY_MESSENGER_SEND_KEY: ${{ secrets.HOLIDAY_MESSENGER_SEND_KEY }}
         run: |
+          if [ -z "${HOLIDAY_MESSENGER_SEND_KEY}" ]; then
+            echo "HOLIDAY_MESSENGER_SEND_KEY is not set yet; skipping SMS cron until setup is finished."
+            exit 0
+          fi
+
           curl --fail-with-body \
             --request POST \
             --header "Content-Type: application/json" \
