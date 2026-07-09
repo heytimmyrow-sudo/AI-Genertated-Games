@@ -39,6 +39,7 @@ jobs:
           cp favicon.ico site/favicon.ico
           cp -r exercise-arena site/exercise-arena
           cp -r echo-archer site/echo-archer
+          cp -r encyclopedia site/encyclopedia
           cp -r games site/games
           cp -r holiday-messenger site/holiday-messenger
           cp -r idea-arcade site/idea-arcade

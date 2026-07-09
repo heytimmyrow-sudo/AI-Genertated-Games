@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
+  <meta name="referrer" content="no-referrer">
+  <title>Verified FactForge Encyclopedia</title>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <main class="app-shell">
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">Verified FactForge Encyclopedia</p>
+        <h1>Browse real-world facts by category</h1>
+        <p class="truth-note">Geography, history, countries, space, governments, records, money, and science entries are source-labeled. Exact reference facts are generated from definitions and formulas.</p>
+      </div>
+      <div class="topbar__stats" aria-label="Encyclopedia totals">
+        <span><strong id="totalFacts">0</strong> facts</span>
+        <span><strong id="visibleFacts">0</strong> showing</span>
+      </div>
+    </header>
+
+    <section class="workspace" aria-label="Encyclopedia workspace">
+      <aside class="sidebar" aria-label="Categories">
+        <div class="search-box">
+          <label for="searchInput">Search facts</label>
+          <input id="searchInput" type="search" placeholder="Try Everest, Japan, NASA, euro, Parliament...">
+        </div>
+
+        <nav class="category-list" id="categoryList" aria-label="Fact categories"></nav>
+
+        <section class="map-panel" aria-label="Knowledge map">
+          <div class="map-panel__heading">
+            <span>Knowledge map</span>
+            <strong id="mapLabel">All</strong>
+          </div>
+          <canvas id="knowledgeCanvas" width="420" height="220"></canvas>
+        </section>
+
+        <section class="source-panel" aria-label="Verification basis">
+          <h2>Verification basis</h2>
+          <a href="https://science.nasa.gov/solar-system/planets/" rel="noreferrer">NASA planet facts</a>
+          <a href="https://data.worldbank.org/indicator/NY.GDP.MKTP.CD" rel="noreferrer">World Bank GDP data</a>
+          <a href="https://www.guinnessworldrecords.com/world-records/highest-mountain" rel="noreferrer">Guinness records</a>
+          <a href="https://www.un.org/en/about-us/member-states" rel="noreferrer">United Nations members</a>
+          <a href="https://www.nist.gov/pml/owm/metric-si-prefixes" rel="noreferrer">NIST SI prefixes</a>
+          <a href="https://airandspace.si.edu/stories/editorial/science-leap-year" rel="noreferrer">Gregorian leap-year rule</a>
+          <p>Real-world facts carry a source label; volatile facts are worded with source context where needed.</p>
+        </section>
+      </aside>
+
+      <section class="fact-browser" aria-label="Fact browser">
+        <div class="toolbar">
+          <div class="toolbar__group">
+            <button class="icon-button is-active" type="button" data-mode="browse" aria-label="Browse facts" title="Browse facts">
+              <span aria-hidden="true">B</span>
+            </button>
+            <button class="icon-button" type="button" data-mode="quiz" aria-label="Take quiz" title="Take quiz">
+              <span aria-hidden="true">Q</span>
+            </button>
+          </div>
+          <div class="select-control" aria-label="Verification scope">
+            <span>Scope</span>
+            <strong>Source-backed</strong>
+          </div>
+        </div>
+
+        <section class="browse-view" id="browseView">
+          <div class="results-meta">
+            <h2 id="sectionTitle">All facts</h2>
+            <p id="sectionMeta">Fast generated encyclopedia index</p>
+          </div>
+          <div class="fact-list" id="factList" aria-live="polite"></div>
+          <div class="pager">
+            <button type="button" id="prevPage">Previous</button>
+            <span id="pageLabel">Page 1</span>
+            <button type="button" id="nextPage">Next</button>
+          </div>
+        </section>
+
+        <section class="quiz-view" id="quizView" hidden>
+          <div class="quiz-header">
+            <div>
+              <h2>Quiz mode</h2>
+              <p id="quizMeta">Questions are drawn from the selected category.</p>
+            </div>
+            <div class="quiz-score" aria-label="Quiz score">
+              <span>Score</span>
+              <strong id="quizScore">0/0</strong>
+            </div>
+          </div>
+          <article class="quiz-card">
+            <p class="quiz-card__category" id="questionCategory">Category</p>
+            <h3 id="questionText">Question text</h3>
+            <div class="answer-grid" id="answerGrid"></div>
+            <p class="quiz-feedback" id="quizFeedback" aria-live="polite"></p>
+            <button type="button" id="nextQuestion">Next question</button>
+          </article>
+        </section>
+      </section>
+    </section>
+  </main>
+
+  <script src="./app.js"></script>
+</body>
+</html>
