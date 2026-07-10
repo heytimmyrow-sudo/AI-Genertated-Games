@@ -1,5 +1,5 @@
 :root {
-  color-scheme: light;
+  color-scheme: light dark;
   --ink: #151817;
   --muted: #58625f;
   --line: #d9e1dc;
@@ -12,6 +12,20 @@
   --warn: #f7eee8;
   --shadow: 0 18px 50px rgba(28, 38, 35, 0.12);
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+body[data-theme="dark"] {
+  --ink: #edf4ef;
+  --muted: #aab8b0;
+  --line: #2c3a34;
+  --paper: #101511;
+  --panel: #18211c;
+  --accent: #6ed0a8;
+  --accent-2: #ff9a76;
+  --accent-3: #92c7ff;
+  --soft: #203d32;
+  --warn: #442820;
+  --shadow: 0 22px 60px rgba(0, 0, 0, 0.38);
 }
 
 * {
@@ -27,6 +41,14 @@ body {
     var(--paper);
   background-size: 36px 36px;
   color: var(--ink);
+}
+
+body[data-theme="dark"] {
+  background:
+    linear-gradient(90deg, rgba(110, 208, 168, 0.08) 1px, transparent 1px),
+    linear-gradient(0deg, rgba(146, 199, 255, 0.06) 1px, transparent 1px),
+    var(--paper);
+  background-size: 36px 36px;
 }
 
 button,
@@ -104,7 +126,7 @@ h1 {
 .topbar__stats span {
   min-width: 128px;
   border: 1px solid var(--line);
-  background: rgba(255, 255, 255, 0.82);
+  background: color-mix(in srgb, var(--panel) 82%, transparent);
   padding: 10px 12px;
   border-radius: 8px;
   color: var(--muted);
@@ -122,7 +144,7 @@ h1 {
   min-height: calc(100vh - 150px);
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.72);
+  background: color-mix(in srgb, var(--panel) 72%, transparent);
   box-shadow: var(--shadow);
   overflow: hidden;
 }
@@ -133,7 +155,7 @@ h1 {
   gap: 14px;
   padding: 16px;
   border-right: 1px solid var(--line);
-  background: rgba(248, 250, 248, 0.92);
+  background: color-mix(in srgb, var(--paper) 88%, var(--panel));
 }
 
 .search-box label,
@@ -157,6 +179,10 @@ h1 {
   text-transform: none;
 }
 
+.search-box input::placeholder {
+  color: color-mix(in srgb, var(--muted) 78%, transparent);
+}
+
 .select-control strong {
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -164,6 +190,16 @@ h1 {
   padding: 11px 12px;
   color: var(--accent);
   text-transform: none;
+}
+
+.theme-toggle {
+  min-width: 80px;
+  min-height: 44px;
+  padding: 0 14px;
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--paper);
+  font-weight: 900;
 }
 
 .category-list {
@@ -245,7 +281,7 @@ canvas {
   margin-top: 8px;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: #fbfdfc;
+  background: var(--panel);
 }
 
 .fact-browser {
@@ -261,7 +297,7 @@ canvas {
   align-items: center;
   padding: 14px 16px;
   border-bottom: 1px solid var(--line);
-  background: rgba(255, 255, 255, 0.86);
+  background: color-mix(in srgb, var(--panel) 86%, transparent);
 }
 
 .toolbar__group {
@@ -348,6 +384,16 @@ canvas {
 .fact-card small {
   color: var(--muted);
   line-height: 1.35;
+}
+
+.fact-card small a {
+  color: var(--accent);
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.fact-card small a:hover {
+  text-decoration: underline;
 }
 
 .pager {

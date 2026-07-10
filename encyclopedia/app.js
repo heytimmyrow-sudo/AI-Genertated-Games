@@ -109,6 +109,57 @@ const REAL_FACTS = [
   fact("science-tech", "Water", "Pure water freezes at 0 degrees Celsius at standard atmospheric pressure.", "Chemistry reference", "At standard pressure, pure water freezes at what Celsius temperature?", "0", ["32", "100", "-40"]),
   fact("science-tech", "Boiling water", "Pure water boils at 100 degrees Celsius at standard atmospheric pressure.", "Chemistry reference", "At standard pressure, pure water boils at what Celsius temperature?", "100", ["0", "32", "212"]),
   fact("science-tech", "Earth rotation", "Earth rotates once relative to the Sun in about 24 hours.", "Astronomy reference", "About how long is a solar day on Earth?", "24 hours", ["12 hours", "30 days", "365 days"])
+,
+
+  fact("animals", "Blue whale", "The blue whale is the largest animal known to have lived on Earth.", "Smithsonian ocean reference", "What is the largest animal known to have lived on Earth?", "Blue whale", ["African elephant", "Whale shark", "Giraffe"]),
+  fact("animals", "Cheetah", "The cheetah is the fastest land animal.", "Smithsonian animal reference", "What is the fastest land animal?", "Cheetah", ["Lion", "Pronghorn", "Horse"]),
+  fact("animals", "Emperor penguin", "The emperor penguin is the tallest living penguin species.", "National Geographic animal reference", "What is the tallest living penguin species?", "Emperor penguin", ["King penguin", "Adelie penguin", "Gentoo penguin"]),
+  fact("animals", "Monarch butterfly", "Monarch butterflies are known for long-distance migration in North America.", "U.S. Fish and Wildlife Service reference", "Which butterfly is known for long-distance migration in North America?", "Monarch butterfly", ["Painted lady", "Swallowtail", "Blue morpho"]),
+
+  fact("plants", "Giant sequoia", "Giant sequoias are among the largest trees by volume.", "National Park Service reference", "Which trees are among the largest by volume?", "Giant sequoias", ["Baobabs", "Mangroves", "Banyans"]),
+  fact("plants", "Photosynthesis", "Photosynthesis lets plants use light energy to make sugars from carbon dioxide and water.", "Biology reference", "What process lets plants use light energy to make sugars?", "Photosynthesis", ["Respiration", "Fermentation", "Evaporation"]),
+  fact("plants", "Bamboo", "Some bamboo species are grasses.", "Botany reference", "Some bamboo species belong to which plant family type?", "Grasses", ["Conifers", "Mosses", "Ferns"]),
+  fact("plants", "Saguaro", "The saguaro cactus is native to the Sonoran Desert.", "National Park Service reference", "The saguaro cactus is native to which desert?", "Sonoran Desert", ["Sahara", "Gobi", "Atacama"]),
+
+  fact("oceans", "Pacific Ocean", "The Pacific Ocean is the largest ocean basin on Earth.", "NOAA ocean reference", "What is Earth's largest ocean basin?", "Pacific Ocean", ["Atlantic Ocean", "Indian Ocean", "Arctic Ocean"]),
+  fact("oceans", "Salinity", "Ocean water is salty because it contains dissolved salts.", "NOAA ocean reference", "Why is ocean water salty?", "It contains dissolved salts", ["It contains sugar", "It contains no minerals", "It is always frozen"]),
+  fact("oceans", "Coral reefs", "Coral reefs are built by colonies of tiny animals called coral polyps.", "NOAA coral reference", "What tiny animals build coral reefs?", "Coral polyps", ["Krill", "Clams", "Sea stars"]),
+  fact("oceans", "Tides", "The Moon is the main driver of Earth's ocean tides.", "NOAA tide reference", "What is the main driver of Earth's ocean tides?", "The Moon", ["Mars", "Clouds", "Volcanoes"]),
+
+  fact("climate", "Weather", "Weather describes short-term atmospheric conditions.", "NOAA weather reference", "What does weather describe?", "Short-term atmospheric conditions", ["Only ocean salinity", "Plate movement", "Moon phases"]),
+  fact("climate", "Climate", "Climate describes average weather patterns over longer periods.", "NOAA climate reference", "What does climate describe?", "Average weather patterns over longer periods", ["A single storm", "One afternoon", "A volcano only"]),
+  fact("climate", "Greenhouse effect", "The greenhouse effect helps keep Earth warmer than it would be without greenhouse gases.", "NASA climate reference", "What does the greenhouse effect help do?", "Keep Earth warmer", ["Stop gravity", "Remove oceans", "Create tides"]),
+  fact("climate", "Carbon dioxide", "Carbon dioxide is a greenhouse gas.", "NASA climate reference", "Carbon dioxide is what kind of gas?", "Greenhouse gas", ["Noble gas only", "Metal vapor", "Liquid fuel"]),
+
+  fact("inventions", "Telephone", "Alexander Graham Bell received a U.S. patent for the telephone in 1876.", "U.S. Patent history reference", "Who received a U.S. patent for the telephone in 1876?", "Alexander Graham Bell", ["Thomas Edison", "Nikola Tesla", "Guglielmo Marconi"]),
+  fact("inventions", "Light bulb", "Thomas Edison is associated with developing a practical incandescent light bulb.", "Smithsonian invention reference", "Who is associated with a practical incandescent light bulb?", "Thomas Edison", ["James Watt", "Ada Lovelace", "Samuel Morse"]),
+  fact("inventions", "Airplane", "The Wright brothers made their first powered flight in 1903.", "National Park Service aviation reference", "Who made a famous first powered flight in 1903?", "Wright brothers", ["Montgolfier brothers", "Bell Labs", "Apollo 11"]),
+  fact("inventions", "Printing press", "Movable-type printing helped books spread more widely in Europe.", "History reference", "What technology helped books spread more widely in Europe?", "Movable-type printing", ["Telegraph", "Steam turbine", "Radio telescope"]),
+
+  fact("arts-culture", "Mona Lisa", "The Mona Lisa was painted by Leonardo da Vinci.", "Louvre reference", "Who painted the Mona Lisa?", "Leonardo da Vinci", ["Michelangelo", "Raphael", "Claude Monet"]),
+  fact("arts-culture", "Starry Night", "The Starry Night was painted by Vincent van Gogh.", "Museum of Modern Art reference", "Who painted The Starry Night?", "Vincent van Gogh", ["Pablo Picasso", "Georgia O'Keeffe", "Rembrandt"]),
+  fact("arts-culture", "Shakespeare", "William Shakespeare wrote Hamlet.", "British Library reference", "Who wrote Hamlet?", "William Shakespeare", ["Charles Dickens", "Jane Austen", "Mark Twain"]),
+  fact("arts-culture", "Beethoven", "Ludwig van Beethoven composed nine numbered symphonies.", "Classical music reference", "How many numbered symphonies did Beethoven compose?", "Nine", ["Five", "Seven", "Twelve"]),
+
+  fact("sports", "Olympics", "The modern Olympic Games began in Athens in 1896.", "International Olympic Committee reference", "Where did the modern Olympic Games begin in 1896?", "Athens", ["Paris", "London", "Rome"]),
+  fact("sports", "Soccer", "A standard outdoor soccer team has 11 players on the field.", "IFAB Laws of the Game reference", "How many players are on the field for one standard soccer team?", "11", ["9", "10", "12"]),
+  fact("sports", "Basketball", "Basketball was invented by James Naismith in 1891.", "Naismith Memorial Basketball Hall of Fame reference", "Who invented basketball in 1891?", "James Naismith", ["Babe Ruth", "Michael Jordan", "Abner Doubleday"]),
+  fact("sports", "Tennis", "A tennis Grand Slam singles match is played at one of four major tournaments.", "Tennis reference", "How many major tournaments make up tennis's Grand Slam?", "Four", ["Two", "Three", "Six"]),
+
+  fact("health", "Heart", "The heart pumps blood through the circulatory system.", "MedlinePlus health reference", "What organ pumps blood through the circulatory system?", "Heart", ["Liver", "Lung", "Kidney"]),
+  fact("health", "Lungs", "The lungs exchange oxygen and carbon dioxide during breathing.", "MedlinePlus health reference", "Which organs exchange oxygen and carbon dioxide during breathing?", "Lungs", ["Stomach", "Spleen", "Pancreas"]),
+  fact("health", "Hydration", "Water is essential for human body function.", "CDC health reference", "What liquid is essential for human body function?", "Water", ["Mercury", "Gasoline", "Vinegar only"]),
+  fact("health", "Sleep", "Sleep supports healthy brain and body function.", "NIH health reference", "What supports healthy brain and body function?", "Sleep", ["Smoke", "Dehydration", "Noise exposure"]),
+
+  fact("food", "Rice", "Rice is a staple food for more than half of the world's population.", "FAO food reference", "Which grain is a staple for more than half of the world's population?", "Rice", ["Rye", "Oats", "Barley"]),
+  fact("food", "Cacao", "Chocolate is made from cacao beans.", "Food history reference", "Chocolate is made from what beans?", "Cacao beans", ["Coffee beans", "Soybeans", "Vanilla beans"]),
+  fact("food", "Olive oil", "Olive oil is produced by pressing olives.", "Food production reference", "Olive oil is produced from what fruit?", "Olives", ["Grapes", "Dates", "Apples"]),
+  fact("food", "Bread", "Bread is commonly made from flour, water, and yeast or another leavening method.", "Food reference", "Bread is commonly made from flour, water, and what?", "Yeast or another leavening method", ["Copper", "Saltwater fish", "Glass"]),
+
+  fact("languages", "Mandarin Chinese", "Mandarin Chinese is the language with the largest number of native speakers.", "Ethnologue language reference", "Which language has the largest number of native speakers?", "Mandarin Chinese", ["English", "Spanish", "Arabic"]),
+  fact("languages", "Arabic", "Arabic is written from right to left.", "Language reference", "Arabic is written in which direction?", "Right to left", ["Left to right", "Top to bottom only", "Bottom to top"]),
+  fact("languages", "English", "Modern English uses the Latin alphabet.", "Language reference", "Modern English uses which alphabet?", "Latin alphabet", ["Cyrillic alphabet", "Greek alphabet", "Hangul"]),
+  fact("languages", "Spanish", "Spanish is a Romance language.", "Language reference", "Spanish belongs to which language family group?", "Romance language", ["Germanic language", "Slavic language", "Sino-Tibetan language"])
 ];
 
 const EXACT_COUNT = 250000;
@@ -122,6 +173,16 @@ const CATEGORY_DEFS = [
   { id: "world-records", label: "World Records", count: countReal("world-records") },
   { id: "money", label: "Money", count: countReal("money") },
   { id: "science-tech", label: "Science + Tech", count: countReal("science-tech") },
+  { id: "animals", label: "Animals", count: countReal("animals") },
+  { id: "plants", label: "Plants", count: countReal("plants") },
+  { id: "oceans", label: "Oceans", count: countReal("oceans") },
+  { id: "climate", label: "Climate", count: countReal("climate") },
+  { id: "inventions", label: "Inventions", count: countReal("inventions") },
+  { id: "arts-culture", label: "Arts + Culture", count: countReal("arts-culture") },
+  { id: "sports", label: "Sports", count: countReal("sports") },
+  { id: "health", label: "Health", count: countReal("health") },
+  { id: "food", label: "Food", count: countReal("food") },
+  { id: "languages", label: "Languages", count: countReal("languages") },
   { id: "exact-reference", label: "Exact Reference", count: EXACT_COUNT }
 ];
 
@@ -131,6 +192,7 @@ const state = {
   search: "",
   page: 0,
   mode: "browse",
+  sort: "default",
   score: 0,
   asked: 0,
   question: null,
@@ -142,6 +204,8 @@ const els = {
   visibleFacts: document.querySelector("#visibleFacts"),
   categoryList: document.querySelector("#categoryList"),
   searchInput: document.querySelector("#searchInput"),
+  sortSelect: document.querySelector("#sortSelect"),
+  themeToggle: document.querySelector("#themeToggle"),
   sectionTitle: document.querySelector("#sectionTitle"),
   sectionMeta: document.querySelector("#sectionMeta"),
   factList: document.querySelector("#factList"),
@@ -239,8 +303,22 @@ function realFactsForState() {
   const facts = state.category === "all"
     ? REAL_FACTS
     : REAL_FACTS.filter((item) => item.category === state.category);
-  if (!state.search) return facts;
-  return facts.filter((item) => searchableText(item).includes(state.search));
+  const filtered = state.search ? facts.filter((item) => searchableText(item).includes(state.search)) : facts;
+  return sortFacts(filtered);
+}
+
+function sortFacts(facts) {
+  const sorted = [...facts];
+  const byText = (a, b) => a.text.localeCompare(b.text);
+  if (state.sort === "az") return sorted.sort(byText);
+  if (state.sort === "za") return sorted.sort((a, b) => b.text.localeCompare(a.text));
+  if (state.sort === "category") {
+    return sorted.sort((a, b) => categoryLabel(a.category).localeCompare(categoryLabel(b.category)) || byText(a, b));
+  }
+  if (state.sort === "source") {
+    return sorted.sort((a, b) => a.proof.localeCompare(b.proof) || byText(a, b));
+  }
+  return sorted;
 }
 
 function shouldIncludeExact() {
@@ -328,7 +406,9 @@ function renderFacts() {
   els.sectionTitle.textContent = categoryLabel(state.category);
   els.sectionMeta.textContent = state.search
     ? `Source-backed entries filtered by "${state.search}"`
-    : "Real-world facts are source-labeled; exact generated facts are formula-based.";
+    : state.sort === "default"
+      ? "Real-world facts are source-labeled; exact generated facts are formula-based."
+      : `Organized by ${els.sortSelect.options[els.sortSelect.selectedIndex].textContent}. Exact Reference stays generated for speed.`;
   els.factList.innerHTML = pageFacts.map(renderFactCard).join("");
   els.pageLabel.textContent = `Page ${formatNumber(state.page + 1)} of ${formatNumber(maxPage + 1)}`;
   els.prevPage.disabled = state.page === 0;
@@ -402,8 +482,13 @@ function drawKnowledgeMap() {
   const ctx = els.canvas.getContext("2d");
   const width = els.canvas.width;
   const height = els.canvas.height;
+  const styles = getComputedStyle(document.body);
+  const panel = styles.getPropertyValue("--panel").trim();
+  const ink = styles.getPropertyValue("--ink").trim();
+  const accent = styles.getPropertyValue("--accent").trim();
+  const line = styles.getPropertyValue("--line").trim();
   ctx.clearRect(0, 0, width, height);
-  ctx.fillStyle = "#fbfdfc";
+  ctx.fillStyle = panel;
   ctx.fillRect(0, 0, width, height);
 
   const cats = CATEGORY_DEFS.slice(1);
@@ -413,9 +498,9 @@ function drawKnowledgeMap() {
     const barHeight = Math.max(8, (category.count / max) * (height - 54));
     const x = index * (barWidth + 10) + 8;
     const y = height - barHeight - 28;
-    ctx.fillStyle = category.id === state.category || state.category === "all" ? "#186c58" : "#c8d5cf";
+    ctx.fillStyle = category.id === state.category || state.category === "all" ? accent : line;
     ctx.fillRect(x, y, barWidth, barHeight);
-    ctx.fillStyle = "#151817";
+    ctx.fillStyle = ink;
     ctx.font = "700 10px system-ui";
     ctx.save();
     ctx.translate(x + 2, height - 8);
@@ -452,6 +537,26 @@ document.querySelectorAll("[data-mode]").forEach((button) => {
   button.addEventListener("click", () => switchMode(button.dataset.mode));
 });
 
+els.sortSelect.addEventListener("change", () => {
+  state.sort = els.sortSelect.value;
+  state.page = 0;
+  renderFacts();
+  if (state.mode === "quiz") newQuestion();
+});
+
+function applyTheme(theme) {
+  document.body.dataset.theme = theme;
+  const isDark = theme === "dark";
+  els.themeToggle.textContent = isDark ? "Light" : "Dark";
+  els.themeToggle.setAttribute("aria-pressed", String(isDark));
+  localStorage.setItem("factforge-theme", theme);
+  drawKnowledgeMap();
+}
+
+els.themeToggle.addEventListener("click", () => {
+  applyTheme(document.body.dataset.theme === "dark" ? "light" : "dark");
+});
+
 els.answerGrid.addEventListener("click", (event) => {
   const button = event.target.closest("[data-answer]");
   if (button) answerQuestion(button.dataset.answer, button);
@@ -459,6 +564,7 @@ els.answerGrid.addEventListener("click", (event) => {
 
 els.nextQuestion.addEventListener("click", newQuestion);
 
+applyTheme(localStorage.getItem("factforge-theme") || "dark");
 renderCategories();
 renderFacts();
 newQuestion();

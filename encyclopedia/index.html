@@ -8,13 +8,13 @@
   <title>Verified FactForge Encyclopedia</title>
   <link rel="stylesheet" href="./styles.css">
 </head>
-<body>
+<body data-theme="dark">
   <main class="app-shell">
     <header class="topbar">
       <div>
         <p class="eyebrow">Verified FactForge Encyclopedia</p>
         <h1>Browse real-world facts by category</h1>
-        <p class="truth-note">Geography, history, countries, space, governments, records, money, and science entries are source-labeled. Exact reference facts are generated from definitions and formulas.</p>
+        <p class="truth-note">Browse geography, history, countries, space, governments, records, money, science, animals, plants, oceans, climate, inventions, arts, sports, health, food, and languages. Real-world entries are source-labeled; exact reference facts are formula-based.</p>
       </div>
       <div class="topbar__stats" aria-label="Encyclopedia totals">
         <span><strong id="totalFacts">0</strong> facts</span>
@@ -61,10 +61,17 @@
               <span aria-hidden="true">Q</span>
             </button>
           </div>
-          <div class="select-control" aria-label="Verification scope">
-            <span>Scope</span>
-            <strong>Source-backed</strong>
-          </div>
+          <label class="select-control" for="sortSelect">
+            Organize
+            <select id="sortSelect">
+              <option value="default">Featured order</option>
+              <option value="az">A to Z</option>
+              <option value="za">Z to A</option>
+              <option value="category">Category</option>
+              <option value="source">Source</option>
+            </select>
+          </label>
+          <button class="theme-toggle" type="button" id="themeToggle" aria-pressed="true">Light</button>
         </div>
 
         <section class="browse-view" id="browseView">
