@@ -1744,25 +1744,152 @@ const CATEGORY_PURPOSES = {
   "natural-disasters": "dangerous natural events and their effects"
 };
 
+const CATEGORY_FACT_WRITEUPS = {
+  "world-records": {
+    "Mount Everest height": recordFact("Mount Everest is Earth's highest mountain above sea level.", "What is Earth's highest mountain above sea level?", "Mount Everest", ["K2", "Denali", "Aconcagua"]),
+    "Blue whale size": recordFact("The blue whale is the largest animal known to have lived on Earth.", "What is the largest animal known to have lived on Earth?", "Blue whale", ["African elephant", "Whale shark", "Giraffe"]),
+    "Fastest land animal": recordFact("The cheetah is the fastest land animal.", "What is the fastest land animal?", "Cheetah", ["Lion", "Horse", "Kangaroo"]),
+    "Largest ocean": recordFact("The largest ocean is the Pacific Ocean.", "What is Earth's largest ocean?", "Pacific Ocean", ["Atlantic Ocean", "Indian Ocean", "Arctic Ocean"]),
+    "Longest river debate": recordFact("The Nile and Amazon are both cited in discussions of the world's longest river because measurement methods differ.", "Which two rivers are often compared in the longest-river debate?", "Nile and Amazon", ["Danube and Rhine", "Thames and Seine", "Tigris and Euphrates"]),
+    "Deepest ocean trench": recordFact("The Mariana Trench is the deepest known ocean trench.", "What is the deepest known ocean trench?", "Mariana Trench", ["Java Trench", "Puerto Rico Trench", "Tonga Trench"]),
+    "Tallest building": recordFact("The Burj Khalifa in Dubai is the world's tallest building.", "What is the world's tallest building?", "Burj Khalifa", ["Shanghai Tower", "One World Trade Center", "Taipei 101"]),
+    "Largest desert": recordFact("Antarctica is the largest desert overall because deserts are defined by low precipitation.", "What is the largest desert overall?", "Antarctica", ["Sahara", "Gobi", "Kalahari"]),
+    "Smallest country": recordFact("Vatican City is the world's smallest country by area.", "What is the smallest country by area?", "Vatican City", ["Monaco", "Nauru", "San Marino"]),
+    "Most populous country": recordFact("India is the world's most populous country according to recent UN estimates.", "What is the world's most populous country?", "India", ["China", "United States", "Indonesia"]),
+    "Longest wall": recordFact("The Great Wall of China is widely cited as the world's longest wall system.", "What wall system is widely cited as the longest?", "Great Wall of China", ["Hadrian's Wall", "Berlin Wall", "Western Wall"]),
+    "Largest island": recordFact("Greenland is the world's largest island that is not a continent.", "What is the largest island that is not a continent?", "Greenland", ["Madagascar", "Borneo", "New Guinea"]),
+    "Highest waterfall": recordFact("Angel Falls in Venezuela is the world's highest uninterrupted waterfall.", "What is the world's highest uninterrupted waterfall?", "Angel Falls", ["Victoria Falls", "Niagara Falls", "Iguazu Falls"]),
+    "Largest rainforest": recordFact("The Amazon rainforest is the world's largest tropical rainforest.", "What is the world's largest tropical rainforest?", "Amazon rainforest", ["Congo rainforest", "Daintree rainforest", "Tongass rainforest"]),
+    "Oldest university": recordFact("The University of al-Qarawiyyin in Fez is often cited as the oldest existing degree-granting university.", "Which university is often cited as the oldest existing degree-granting university?", "University of al-Qarawiyyin", ["University of Bologna", "University of Oxford", "University of Paris"]),
+    "Largest coral reef": recordFact("The Great Barrier Reef is the world's largest coral reef system.", "What is the world's largest coral reef system?", "Great Barrier Reef", ["Belize Barrier Reef", "Red Sea Coral Reef", "New Caledonia Barrier Reef"]),
+    "Fastest bird dive": recordFact("The peregrine falcon reaches the fastest known diving speeds among birds.", "Which bird is famous for the fastest dive?", "Peregrine falcon", ["Golden eagle", "Albatross", "Swift"]),
+    "Largest stadiums": recordFact("Rungrado 1st of May Stadium in Pyongyang is often listed among the world's largest stadiums by capacity.", "Which stadium is often listed among the largest by capacity?", "Rungrado 1st of May Stadium", ["Wembley Stadium", "Madison Square Garden", "Fenway Park"]),
+    "Longest railway": recordFact("The Trans-Siberian Railway is the world's longest railway line by route length.", "What is the world's longest railway line by route length?", "Trans-Siberian Railway", ["Orient Express", "Eurostar", "Tokaido Shinkansen"]),
+    "Deepest lake": recordFact("Lake Baikal is the world's deepest freshwater lake.", "What is the world's deepest freshwater lake?", "Lake Baikal", ["Lake Superior", "Lake Tanganyika", "Lake Victoria"]),
+    "Tallest tree": recordFact("Hyperion, a coast redwood in California, is the tallest known living tree.", "What named coast redwood is the tallest known living tree?", "Hyperion", ["General Sherman", "Methuselah", "Pando"]),
+    "Largest hot desert": recordFact("The Sahara is the largest hot desert on Earth.", "What is Earth's largest hot desert?", "Sahara", ["Gobi", "Mojave", "Atacama"]),
+    "Widest waterfall system": recordFact("Iguazu Falls is one of the world's widest major waterfall systems.", "Which waterfall system is famous for its great width?", "Iguazu Falls", ["Angel Falls", "Yosemite Falls", "Sutherland Falls"]),
+    "Highest capital city": recordFact("La Paz, Bolivia is often cited as the world's highest administrative capital.", "Which city is often cited as the highest administrative capital?", "La Paz", ["Quito", "Kathmandu", "Bogota"]),
+    "Largest bay": recordFact("The Bay of Bengal is commonly described as the world's largest bay.", "What is commonly described as the world's largest bay?", "Bay of Bengal", ["Hudson Bay", "Chesapeake Bay", "Bay of Biscay"]),
+    "Biggest planet": recordFact("Jupiter is the largest planet in the solar system.", "What is the largest planet in the solar system?", "Jupiter", ["Saturn", "Neptune", "Earth"]),
+    "Hottest planet": recordFact("Venus is the hottest planet because its dense atmosphere traps heat.", "What is the hottest planet?", "Venus", ["Mercury", "Mars", "Jupiter"]),
+    "Largest moon": recordFact("Ganymede, a moon of Jupiter, is the largest moon in the solar system.", "What is the largest moon in the solar system?", "Ganymede", ["Titan", "Callisto", "Europa"]),
+    "Longest mountain range": recordFact("The Andes are the longest continental mountain range.", "What is the longest continental mountain range?", "Andes", ["Rockies", "Himalayas", "Alps"]),
+    "Largest volcano": recordFact("Mauna Loa is one of Earth's largest volcanoes by volume and area.", "Which Hawaiian volcano is one of Earth's largest by volume and area?", "Mauna Loa", ["Mount St. Helens", "Vesuvius", "Krakatoa"])
+  },
+  explorers: {
+    "Ibn Battuta": personFact("Ibn Battuta was a Moroccan traveler who journeyed widely across Africa, Asia, and the Islamic world in the 14th century.", "What was Ibn Battuta known for?", "Long-distance travel", ["Painting", "Composing symphonies", "Inventing radio"]),
+    "Marco Polo": personFact("Marco Polo was a Venetian traveler whose accounts described parts of Asia to European readers.", "Marco Polo is best known for travel accounts about which region?", "Asia", ["Antarctica", "The Moon", "The Sahara only"]),
+    "Zheng He": personFact("Zheng He led large Ming dynasty naval expeditions across the Indian Ocean.", "Zheng He led major expeditions for which dynasty?", "Ming dynasty", ["Roman Empire", "Aztec Empire", "Ottoman Empire"]),
+    "Leif Erikson": personFact("Leif Erikson was a Norse explorer associated with early European voyages to North America.", "Leif Erikson is associated with voyages to which continent?", "North America", ["Australia", "Antarctica", "Africa only"]),
+    "Ferdinand Magellan": personFact("Ferdinand Magellan led the expedition that completed the first circumnavigation of Earth after his death.", "Magellan's expedition is known for the first what?", "Circumnavigation of Earth", ["Moon landing", "Railway crossing", "Polar flight"]),
+    "James Cook": personFact("James Cook mapped and explored parts of the Pacific during 18th-century voyages.", "James Cook is strongly associated with exploration of which ocean region?", "Pacific", ["Arctic only", "Mediterranean only", "Baltic only"]),
+    "Sacagawea": personFact("Sacagawea helped the Lewis and Clark Expedition as an interpreter and guide.", "Sacagawea helped which expedition?", "Lewis and Clark Expedition", ["Apollo 11", "Endurance expedition", "Challenger expedition"]),
+    "Roald Amundsen": personFact("Roald Amundsen led the first expedition confirmed to reach the South Pole.", "Roald Amundsen first reached which pole?", "South Pole", ["North Pole only", "Magnetic North only", "No pole"]),
+    "Ernest Shackleton": personFact("Ernest Shackleton is remembered for Antarctic exploration and the survival story of the Endurance expedition.", "Shackleton is linked to which polar region?", "Antarctica", ["Amazon", "Sahara", "Himalayas only"]),
+    "Neil Armstrong": personFact("Neil Armstrong became the first person to walk on the Moon in 1969.", "Neil Armstrong was the first person to walk where?", "Moon", ["Mars", "Venus", "Jupiter"])
+  },
+  "famous-people": {
+    "Albert Einstein": personFact("Albert Einstein developed the theory of relativity.", "Albert Einstein is best known for which theory?", "Relativity", ["Plate tectonics", "Evolution by natural selection", "Germ theory"]),
+    "Marie Curie": personFact("Marie Curie researched radioactivity and won Nobel Prizes in physics and chemistry.", "Marie Curie is strongly associated with research on what?", "Radioactivity", ["Botany", "Linguistics", "Cartography"]),
+    "Isaac Newton": personFact("Isaac Newton formulated laws of motion and universal gravitation.", "Newton formulated laws of motion and what?", "Universal gravitation", ["Plate tectonics", "Relativity", "DNA structure"]),
+    "Ada Lovelace": personFact("Ada Lovelace wrote notes on Charles Babbage's Analytical Engine and is remembered in computing history.", "Ada Lovelace is remembered in the history of what field?", "Computing", ["Oceanography", "Architecture", "Film editing"]),
+    "Leonardo da Vinci": personFact("Leonardo da Vinci was a Renaissance artist and inventor known for works such as the Mona Lisa.", "Leonardo da Vinci is associated with which period?", "Renaissance", ["Stone Age", "Jazz Age", "Cold War"]),
+    "Florence Nightingale": personFact("Florence Nightingale helped transform nursing and hospital statistics.", "Florence Nightingale helped transform which profession?", "Nursing", ["Astronomy", "Banking", "Cartography"]),
+    "Martin Luther King Jr.": personFact("Martin Luther King Jr. was a civil rights leader who advocated nonviolent protest.", "Martin Luther King Jr. is known for leadership in what movement?", "Civil rights movement", ["Space race", "Gold rush", "Industrial Revolution"]),
+    "Rosa Parks": personFact("Rosa Parks helped spark the Montgomery Bus Boycott by refusing to give up her bus seat.", "Rosa Parks is linked to which boycott?", "Montgomery Bus Boycott", ["Boston Tea Party", "Salt March", "Berlin Airlift"]),
+    "Mahatma Gandhi": personFact("Mahatma Gandhi led nonviolent resistance against British rule in India.", "Gandhi is known for what kind of resistance?", "Nonviolent resistance", ["Naval warfare", "Spaceflight", "Gold mining"]),
+    "Nelson Mandela": personFact("Nelson Mandela fought apartheid and became president of South Africa.", "Nelson Mandela became president of which country?", "South Africa", ["India", "Brazil", "Canada"])
+  },
+  "natural-disasters": {
+    "Earthquakes": recordFact("Earthquakes happen when sudden movement along faults releases energy through the ground.", "Earthquakes are usually caused by movement along what?", "Faults", ["Clouds", "Tides only", "Tree roots"]),
+    "Volcanic eruptions": recordFact("Volcanic eruptions occur when magma, gases, and ash escape from a volcano.", "What molten material is involved in volcanic eruptions?", "Magma", ["Ice only", "Sand only", "Freshwater"]),
+    "Tsunamis": recordFact("Tsunamis are large sea waves often triggered by undersea earthquakes.", "Tsunamis are often triggered by what?", "Undersea earthquakes", ["Solar eclipses", "Forest growth", "Snowmelt only"]),
+    "Hurricanes": recordFact("Hurricanes are powerful tropical cyclones that form over warm ocean water.", "Hurricanes form over what kind of water?", "Warm ocean water", ["Frozen lakes", "Dry deserts", "Mountain snowfields"]),
+    "Tornadoes": recordFact("Tornadoes are violently rotating columns of air that extend from thunderstorms to the ground.", "Tornadoes are rotating columns of what?", "Air", ["Lava", "Ice", "Sandstone"]),
+    "Floods": recordFact("Floods happen when water covers land that is usually dry.", "A flood covers land with what?", "Water", ["Ash", "Fog", "Ice only"]),
+    "Droughts": recordFact("Droughts are long periods of unusually low water availability.", "Droughts involve unusually low availability of what?", "Water", ["Sunlight", "Wind", "Rocks"]),
+    "Wildfires": recordFact("Wildfires are uncontrolled fires that burn vegetation and can spread quickly in dry, windy conditions.", "Wildfires burn what kind of material?", "Vegetation", ["Ocean water", "Glaciers", "Clouds"]),
+    "Landslides": recordFact("Landslides happen when rock, soil, or debris moves down a slope.", "Landslides move material down what?", "Slope", ["Orbit", "River only", "Cloud layer"]),
+    "Avalanches": recordFact("Avalanches are rapid flows of snow down a mountain slope.", "Avalanches are rapid flows of what?", "Snow", ["Lava only", "Saltwater", "Smoke"])
+  }
+};
+
 function generatedTopicsFor(category, roots) {
-  if (roots.length >= FACTS_PER_STANDARD_CATEGORY) return roots.slice(0, FACTS_PER_STANDARD_CATEGORY);
-  return roots.flatMap((root) => GENERATED_ASPECTS.map((aspect) => `${root} ${aspect}`)).slice(0, FACTS_PER_STANDARD_CATEGORY);
+  const expanded = [
+    ...roots,
+    ...roots.flatMap((root) => GENERATED_ASPECTS.map((aspect) => `${root} ${aspect}`))
+  ];
+  return expanded.slice(0, FACTS_PER_STANDARD_CATEGORY);
 }
 
 function generatedTopicFact(category, topic) {
   const label = CATEGORY_LABEL_OVERRIDES[category] || titleCase(category.replace(/-/g, " "));
+  const { base, aspect } = splitGeneratedTopic(topic);
+  const writeup = CATEGORY_FACT_WRITEUPS[category]?.[base];
   const purpose = CATEGORY_PURPOSES[category] || `important ideas in ${label.toLowerCase()}`;
   const source = categorySource(category);
+  if (writeup) {
+    return entry(
+      category,
+      topic,
+      writeup.fact,
+      source,
+      writeup.question,
+      writeup.answer,
+      writeup.distractors,
+      `${aspect ? `${titleCase(aspect)} note: ` : "Learn more: "}${writeup.detail || writeup.fact} This entry stays in the app so you can learn the answer without opening the source website.`
+    );
+  }
+  const fallback = generatedFallbackText(category, label, base, aspect, purpose);
   return entry(
     category,
     topic,
-    `${topic} is a recognized topic in ${label.toLowerCase()}.`,
+    fallback.text,
     source,
-    `Which section includes ${topic}?`,
-    label,
-    categoryDistractors(category),
-    `Learn more: ${topic} belongs in ${label} because this section covers ${purpose}. This in-app note gives extra context without requiring a source-page visit.`
+    `Which topic is this ${label} fact about?`,
+    base,
+    topicDistractors(category, base),
+    fallback.detail
   );
+}
+
+function recordFact(fact, question, answer, distractors) {
+  return { fact, question, answer, distractors, detail: fact };
+}
+
+function personFact(fact, question, answer, distractors) {
+  return { fact, question, answer, distractors, detail: fact };
+}
+
+function splitGeneratedTopic(topic) {
+  const aspect = GENERATED_ASPECTS.find((item) => topic.endsWith(` ${item}`));
+  return aspect
+    ? { base: topic.slice(0, -aspect.length - 1), aspect }
+    : { base: topic, aspect: "" };
+}
+
+function generatedFallbackText(category, label, base, aspect, purpose) {
+  const lowerLabel = label.toLowerCase();
+  const subject = base === "Internet" ? "the Internet" : base;
+  const aspectText = {
+    history: `${base} history explains how ${subject} developed and why it matters in ${lowerLabel}.`,
+    features: `${base} features are the traits people use to identify, compare, or describe ${subject} in ${lowerLabel}.`,
+    uses: `${base} uses show how ${subject} is applied, practiced, or discussed in ${lowerLabel}.`,
+    study: `${base} study focuses on evidence, vocabulary, and examples connected to ${subject}.`,
+    impact: `${base} impact describes how ${subject} affects people, places, ideas, or systems.`
+  };
+  const text = aspect ? aspectText[aspect] : `${base} is a key ${lowerLabel} topic connected to ${purpose}.`;
+  return {
+    text,
+    detail: `Learn more: ${text} This explanation is included here so the card gives useful context without requiring a source-page visit.`
+  };
+}
+
+function topicDistractors(category, base) {
+  return (CATEGORY_TOPIC_ROOTS[category] || [])
+    .filter((topic) => topic !== base)
+    .slice(0, 3);
 }
 
 function categoryDistractors(category) {
@@ -1942,6 +2069,7 @@ function categorySource(category) {
   if (category === "oceans" || category === "climate") return SOURCES.noaa;
   if (category === "health") return SOURCES.who;
   if (category === "sports") return SOURCES.olympics;
+  if (category === "world-records") return SOURCES.guinness;
   if (category === "movies") return SOURCES.imdb;
   if (category === "video-games") return SOURCES.gameHistory;
   if (category === "space") return SOURCES.nasa;
