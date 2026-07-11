@@ -1,0 +1,17 @@
+{
+  "name": "Study Companion",
+  "short_name": "Study",
+  "description": "A colorful study planner for subjects, grades, notes, and focus time.",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#f7f7fc",
+  "theme_color": "#6558e8",
+  "icons": [
+    {
+      "src": "notebook-pen-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
