@@ -769,7 +769,7 @@ body.dark .timer {
 }
 @media (max-width: 580px) {
   body {
-    padding-bottom: 82px;
+    padding-bottom: 170px;
   }
   .sidebar {
     position: fixed;
@@ -778,7 +778,7 @@ body.dark .timer {
     display: block;
     width: 100%;
     height: auto;
-    padding: 8px 10px 10px;
+    padding: 10px;
     border-top: 1px solid var(--line);
     border-right: 0;
     box-shadow: 0 -12px 30px #25233d14;
@@ -789,23 +789,25 @@ body.dark .timer {
     display: none;
   }
   .sidebar nav {
-    display: flex;
-    gap: 8px;
-    overflow-x: auto;
-    scrollbar-width: none;
-  }
-  .sidebar nav::-webkit-scrollbar {
-    display: none;
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 7px;
+    overflow: visible;
   }
   .sidebar .nav {
-    flex: 0 0 auto;
-    min-width: 76px;
-    min-height: 48px;
-    padding: 8px 10px;
-    font-size: 11px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    min-width: 0;
+    min-height: 0;
+    aspect-ratio: 1;
+    padding: 6px 4px;
+    font-size: 9.5px;
     line-height: 1.1;
     text-align: center;
     white-space: normal;
+    overflow-wrap: anywhere;
   }
   .sidebar .nav:before {
     content: none;
@@ -897,6 +899,15 @@ body.dark .timer {
   }
   .toast {
     right: 16px;
-    bottom: 96px;
+    bottom: 182px;
+  }
+}
+@media (max-width: 360px) {
+  .sidebar nav {
+    gap: 5px;
+  }
+  .sidebar .nav {
+    font-size: 9px;
+    padding: 5px 3px;
   }
 }
