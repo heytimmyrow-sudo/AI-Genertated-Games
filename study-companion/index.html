@@ -100,6 +100,23 @@
             </div>
             <button data-view="goals">View badges →</button>
           </article>
+          <article class="panel notify-card">
+            <div class="head">
+              <div>
+                <h2>Notifications</h2>
+                <small id="notificationStatus"
+                  >Off until you enable them.</small
+                >
+              </div>
+              <span id="notificationDot" class="status-dot"></span>
+            </div>
+            <div class="notify-actions">
+              <button class="primary" id="enableNotifications" type="button">
+                Enable notifications
+              </button>
+              <button id="testNotification" type="button">Test</button>
+            </div>
+          </article>
         </div>
       </section>
       <section id="planner" class="view">
@@ -325,6 +342,7 @@
         </menu>
       </form>
     </dialog>
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
     <script src="app.js"></script>
   </body>
 </html>

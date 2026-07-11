@@ -2,6 +2,7 @@ const key = "study-companion-v2";
 let state = JSON.parse(localStorage.getItem(key) || "null") || {
   dark: false,
   focus: 0,
+  notifications: false,
   tasks: [],
 };
 const q = (s) => document.querySelector(s),
@@ -12,6 +13,9 @@ if (!Array.isArray(state.profiles)) {
 }
 if (!state.activeProfileId && state.profiles.length) {
   state.activeProfileId = state.profiles[0].id;
+}
+if (typeof state.notifications !== "boolean") {
+  state.notifications = false;
 }
 let editingProfileId = state.activeProfileId || null;
 function activeProfile() {
@@ -84,6 +88,7 @@ function tasks() {
         let t = state.tasks.find((x) => x.id == b.dataset.id);
         t.done = !t.done;
         save();
+        if (t.done) notify("Task complete", t.title + " is done.");
         tasks();
       }),
   );
@@ -109,6 +114,65 @@ function renderStats() {
     ? cards.join("")
     : '<div class="stats-empty">Your study statistics will appear after you log activity.</div>';
 }
+function toast(message) {
+  const el = q("#toast");
+  el.textContent = message;
+  el.classList.add("show");
+  clearTimeout(toast.timer);
+  toast.timer = setTimeout(() => el.classList.remove("show"), 3200);
+}
+function canNotify() {
+  return "Notification" in window && Notification.permission === "granted";
+}
+function notify(title, body) {
+  if (state.notifications && canNotify()) {
+    new Notification(title, {
+      body,
+      tag: "study-companion",
+    });
+  }
+  toast(body);
+}
+function renderNotifications() {
+  const supported = "Notification" in window;
+  const permission = supported ? Notification.permission : "unsupported";
+  const enabled = state.notifications && permission === "granted";
+  q("#notificationDot").classList.toggle("on", enabled);
+  q("#enableNotifications").textContent = enabled
+    ? "Notifications on"
+    : "Enable notifications";
+  q("#testNotification").disabled = !enabled;
+  q("#notificationStatus").textContent = !supported
+    ? "This browser does not support notifications."
+    : enabled
+      ? "Focus sessions and completed tasks can alert you."
+      : permission === "denied"
+        ? "Notifications are blocked in your browser settings."
+        : "Off until you enable them.";
+}
+async function enableNotifications() {
+  if (!("Notification" in window)) {
+    toast("This browser does not support notifications.");
+    renderNotifications();
+    return;
+  }
+  const permission =
+    Notification.permission === "default"
+      ? await Notification.requestPermission()
+      : Notification.permission;
+  state.notifications = permission === "granted";
+  save();
+  renderNotifications();
+  if (state.notifications) {
+    notify("Study Companion", "Notifications are ready.");
+  } else {
+    toast(
+      permission === "denied"
+        ? "Notifications are blocked in your browser settings."
+        : "Notifications were not enabled.",
+    );
+  }
+}
 function nav(v) {
   qa(".view").forEach((x) => x.classList.toggle("active", x.id === v));
   qa(".nav").forEach((x) => x.classList.toggle("active", x.dataset.view === v));
@@ -131,6 +195,8 @@ q("#save").onclick = () => {
     save();
     tasks();
     q("#title").value = "";
+    q("#subject").value = "";
+    notify("Task added", "Your new task was saved.");
   }
 };
 q("#theme").onclick = () => {
@@ -164,7 +230,7 @@ q("#start").onclick = () => {
         state.focus += 25;
         renderStats();
         save();
-        alert("Focus session complete. Great work!");
+        notify("Focus session complete", "Great work. Take a short reset.");
       }
     }, 1000);
   else clearInterval(clock);
@@ -175,6 +241,10 @@ q("#reset").onclick = () => {
   sec = 1500;
   show();
   q("#start").textContent = "Start focus";
+};
+q("#enableNotifications").onclick = enableNotifications;
+q("#testNotification").onclick = () => {
+  notify("Study Companion", "This is what your reminders will look like.");
 };
 q("#flash").onclick = () => {
   q("#cardText").textContent = "Use New card to create your first flashcard.";
@@ -239,4 +309,5 @@ q("#saveProfile").onclick = (event) => {
 };
 tasks();
 renderProfile();
+renderNotifications();
 show();
