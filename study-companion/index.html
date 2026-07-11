@@ -41,7 +41,14 @@
         <div class="search">
           ⌕ <input id="search" placeholder="Search anything..." />
         </div>
-        <button class="avatar">JS</button>
+        <button
+          id="profileButton"
+          class="avatar"
+          aria-label="Open profile settings"
+          title="Profile"
+        >
+          ＋
+        </button>
       </header>
       <section id="dashboard" class="view active">
         <div class="welcome">
@@ -343,6 +350,42 @@
         <menu>
           <button value="cancel">Cancel</button
           ><button class="primary" id="save">Add task</button>
+        </menu>
+      </form>
+    </dialog>
+    <dialog id="profileDialog">
+      <form method="dialog" id="profileForm">
+        <button value="cancel" class="x">×</button>
+        <p>PERSONALIZE</p>
+        <h2>Your study profile</h2>
+        <label>Switch profile<select id="profilePicker"></select></label>
+        <button type="button" id="newProfile" class="profile-new">
+          ＋ Create a new profile
+        </button>
+        <label
+          >Display name<input
+            id="profileName"
+            maxlength="24"
+            placeholder="Your name"
+            required
+        /></label>
+        <label
+          >Focus subject<input
+            id="profileFocus"
+            maxlength="32"
+            placeholder="e.g. Biology"
+        /></label>
+        <label
+          >Profile color<select id="profileColor">
+            <option value="#6558e8">Violet</option>
+            <option value="#ef7e72">Coral</option>
+            <option value="#37a98a">Mint</option>
+            <option value="#4b93e6">Blue</option>
+          </select></label
+        >
+        <menu>
+          <button value="cancel">Cancel</button
+          ><button id="saveProfile" class="primary">Save profile</button>
         </menu>
       </form>
     </dialog>

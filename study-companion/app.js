@@ -1,4 +1,4 @@
-const key = "study-companion-v1";
+const key = "study-companion-v2";
 let state = JSON.parse(localStorage.getItem(key) || "null") || {
   dark: false,
   focus: 0,
@@ -7,6 +7,52 @@ let state = JSON.parse(localStorage.getItem(key) || "null") || {
 const q = (s) => document.querySelector(s),
   qa = (s) => [...document.querySelectorAll(s)],
   save = () => localStorage.setItem(key, JSON.stringify(state));
+if (!Array.isArray(state.profiles)) {
+  state.profiles = [];
+}
+if (!state.activeProfileId && state.profiles.length) {
+  state.activeProfileId = state.profiles[0].id;
+}
+let editingProfileId = state.activeProfileId || null;
+function activeProfile() {
+  return (
+    state.profiles.find((profile) => profile.id === state.activeProfileId) ||
+    null
+  );
+}
+function initials(name) {
+  return name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0])
+    .join("")
+    .toUpperCase();
+}
+function renderProfile() {
+  const profile = activeProfile();
+  const button = q("#profileButton");
+  button.textContent = profile ? initials(profile.name) : "+";
+  button.classList.toggle("has-profile", Boolean(profile));
+  button.style.background = profile ? profile.color : "";
+  button.title = profile ? profile.name + " profile" : "Create your profile";
+}
+function populateProfileForm() {
+  const picker = q("#profilePicker");
+  picker.innerHTML = state.profiles.length
+    ? state.profiles
+        .map(
+          (profile) =>
+            '<option value="' + profile.id + '">' + profile.name + "</option>",
+        )
+        .join("")
+    : '<option value="">New profile</option>';
+  picker.value = editingProfileId || "";
+  const profile = state.profiles.find((item) => item.id === editingProfileId);
+  q("#profileName").value = profile ? profile.name : "";
+  q("#profileFocus").value = profile ? profile.focus : "";
+  q("#profileColor").value = profile ? profile.color : "#6558e8";
+}
 function html(t) {
   return (
     '<div class="task ' +
@@ -26,11 +72,12 @@ function html(t) {
 }
 function tasks() {
   let x = state.tasks.map(html).join("");
-  const empty = '<div class="empty-state"><b>Your workspace is clear.</b><small>Add a task when you are ready to begin.</small></div>';
+  const empty =
+    '<div class="empty-state"><b>Your workspace is clear.</b><small>Add a task when you are ready to begin.</small></div>';
   q("#taskList").innerHTML = x || empty;
   q("#plannerTasks").innerHTML = x || empty;
   q("#plannerCount").textContent = state.tasks.filter((t) => !t.done).length;
-  q("#completed").textContent = 12 + state.tasks.filter((t) => t.done).length;
+  q("#completed").textContent = state.tasks.filter((t) => t.done).length;
   qa(".check").forEach(
     (b) =>
       (b.onclick = () => {
@@ -150,5 +197,40 @@ q("#search").oninput = (e) => {
   )
     nav("planner");
 };
+q("#profileButton").onclick = () => {
+  editingProfileId = state.activeProfileId || null;
+  populateProfileForm();
+  q("#profileDialog").showModal();
+};
+q("#profilePicker").onchange = (event) => {
+  editingProfileId = event.target.value || null;
+  populateProfileForm();
+};
+q("#newProfile").onclick = () => {
+  editingProfileId = null;
+  populateProfileForm();
+  q("#profileName").focus();
+};
+q("#saveProfile").onclick = (event) => {
+  const name = q("#profileName").value.trim();
+  if (!name) {
+    event.preventDefault();
+    q("#profileName").focus();
+    return;
+  }
+  const profile = {
+    id: editingProfileId || String(Date.now()),
+    name,
+    focus: q("#profileFocus").value.trim(),
+    color: q("#profileColor").value,
+  };
+  const existing = state.profiles.findIndex((item) => item.id === profile.id);
+  if (existing >= 0) state.profiles[existing] = profile;
+  else state.profiles.push(profile);
+  state.activeProfileId = profile.id;
+  save();
+  renderProfile();
+};
 tasks();
+renderProfile();
 show();

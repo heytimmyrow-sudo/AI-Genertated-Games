@@ -137,6 +137,11 @@ header {
   color: #fff;
   background: #2e2c42;
   border: 0;
+  font-size: 13px;
+  font-weight: 700;
+}
+.avatar.has-profile {
+  font-size: 11px;
 }
 .view {
   display: none;
@@ -599,6 +604,20 @@ dialog menu {
   margin: 20px 0 0;
   padding: 0;
 }
+.profile-new {
+  width: 100%;
+  padding: 9px;
+  margin-top: 12px;
+  border: 1px dashed #bdb7e8;
+  border-radius: 7px;
+  color: var(--purple);
+  background: #f7f6ff;
+  font-size: 11px;
+  font-weight: 700;
+}
+body.dark .profile-new {
+  background: #302e46;
+}
 .x {
   position: absolute;
   right: 14px;
@@ -621,10 +640,20 @@ body.dark .editor input {
   background: #2b2a3b;
   color: #f4f2fb;
 }
-body.dark .task .check { background: #2d2c3e; }
-body.dark .tabs button { background: #373548; color: #d4d0e3; }
-body.dark dialog { background: #282738; color: #fff; }
-body.dark .timer { background: linear-gradient(145deg, #29283b, #211f32); }
+body.dark .task .check {
+  background: #2d2c3e;
+}
+body.dark .tabs button {
+  background: #373548;
+  color: #d4d0e3;
+}
+body.dark dialog {
+  background: #282738;
+  color: #fff;
+}
+body.dark .timer {
+  background: linear-gradient(145deg, #29283b, #211f32);
+}
 @media (max-width: 850px) {
   .sidebar {
     width: 60px;
