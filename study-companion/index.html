@@ -91,37 +91,29 @@
           </article>
           <article class="panel countdown">
             <p>NEXT EXAM</p>
-            <h2>Biology midterm</h2>
-            <small>Cell biology & genetics</small
-            ><strong
-              >12 <small>days<br />to go</small></strong
-            >
-            <div class="bar"><span></span></div>
-            <small>6 of 9 study sessions complete</small
-            ><button data-view="focus">Start a session →</button>
+            <h2>No exams added yet</h2>
+            <small>Add an exam when you are ready to plan for it.</small>
+            <button data-view="planner">Add an exam →</button>
           </article>
           <article class="panel schedule">
             <div class="head">
               <div>
                 <h2>Up next</h2>
-                <small>Your Friday schedule</small>
+                <small>Your next class will appear here.</small>
               </div>
               <button data-view="schedule">Full schedule →</button>
             </div>
-            <div>
-              10:30 AM <b>● World History</b><small>Room 204 · In 25 min</small>
+            <div class="empty-state">
+              <b>No classes yet.</b
+              ><small>Add your schedule to see what is next.</small>
             </div>
-            <div>
-              1:00 PM <b>● English Literature</b><small>Room 118</small>
-            </div>
-            <div>3:15 PM <b>● Calculus II</b><small>Online · Zoom</small></div>
           </article>
           <article class="panel achievement">
             🏆
             <div>
-              <p>NEW ACHIEVEMENT</p>
-              <h2>On a roll!</h2>
-              <small>You completed 5 tasks this week.</small>
+              <p>YOUR ACHIEVEMENTS</p>
+              <h2>Ready for your first win</h2>
+              <small>Your badges will appear as you build study habits.</small>
             </div>
             <button data-view="goals">View badges →</button>
           </article>
@@ -152,7 +144,7 @@
           </div>
         </div>
         <article class="timer">
-          <p>POMODORO · BIOLOGY</p>
+          <p>POMODORO · FOCUS SESSION</p>
           <strong id="time">25:00</strong>
           <div>
             <button class="primary" id="start">Start focus</button
@@ -172,15 +164,15 @@
         </div>
         <div class="two">
           <article class="flash" id="flash">
-            <small>BIOLOGY · 1 / 12</small>
-            <h2 id="cardText">What is the powerhouse of the cell?</h2>
-            <small>Click to reveal answer</small>
+            <small>YOUR FIRST DECK</small>
+            <h2 id="cardText">Create a card to start studying.</h2>
+            <small>Your cards will live here.</small>
           </article>
           <article class="panel">
             <h2>Your decks</h2>
-            <button class="deck">🧬 Biology <span>12</span></button
-            ><button class="deck">∫ Calculus II <span>18</span></button
-            ><button class="deck">📖 Literature <span>9</span></button>
+            <div class="empty-state">
+              <b>No decks yet.</b><small>Create cards for any subject.</small>
+            </div>
           </article>
         </div>
       </section>
@@ -196,7 +188,7 @@
           <b>What would you like to practice?</b
           ><textarea
             id="topic"
-            placeholder="e.g. Mitosis, chapter 4 key terms, quadratic equations"
+            placeholder="Enter a topic, concept, or chapter"
           ></textarea
           ><button class="primary" id="generate">
             Generate practice quiz →
@@ -215,26 +207,17 @@
         </div>
         <div class="two">
           <article class="panel">
-            <button class="deck">
-              Cell structure<br /><small>Biology · Today</small></button
-            ><button class="deck">
-              Primary sources<br /><small>History · Yesterday</small></button
-            ><button class="deck">
-              Integration rules<br /><small>Calculus · Oct 9</small>
-            </button>
+            <div class="empty-state">
+              <b>No notes yet.</b
+              ><small>Create a note for any class or topic.</small>
+            </div>
           </article>
           <article class="panel editor">
-            <input value="Cell structure" />
-            <div contenteditable="true">
-              <b>Cell structure review</b>
-              <p>
-                Prokaryotic cells lack a nucleus. Eukaryotic cells contain
-                membrane-bound organelles.
-              </p>
-              <p>
-                Remember: mitochondria produce ATP through cellular respiration.
-              </p>
-            </div>
+            <input placeholder="Untitled note" />
+            <div
+              contenteditable="true"
+              data-placeholder="Start writing your note here..."
+            ></div>
             <small>Saved automatically · Cloud sync ready</small>
           </article>
         </div>
@@ -242,7 +225,7 @@
       <section id="calendar" class="view">
         <div class="welcome">
           <div>
-            <p>OCTOBER 2024</p>
+            <p>YOUR SCHEDULE</p>
             <h1>Your calendar</h1>
           </div>
           <button class="primary" data-action="task">＋ Add event</button>
@@ -259,19 +242,9 @@
           <button class="primary">＋ Add class</button>
         </div>
         <article class="panel classcards">
-          <div>
-            World History<small>Mon · Wed · Fri<br />10:30 AM · Room 204</small>
-          </div>
-          <div>
-            English Literature<small
-              >Mon · Wed · Fri<br />1:00 PM · Room 118</small
-            >
-          </div>
-          <div>
-            Calculus II<small>Tue · Thu · Fri<br />3:15 PM · Online</small>
-          </div>
-          <div>
-            Biology<small>Tue · Thu<br />11:00 AM · Lab 3</small>
+          <div class="empty-state">
+            <b>No classes added yet.</b
+            ><small>Build your schedule around your own classes.</small>
           </div>
         </article>
       </section>
@@ -285,20 +258,9 @@
           <button class="primary">＋ Add grade</button>
         </div>
         <div class="grades">
-          <article class="panel">
-            <b>History</b>
-            <h1>92% <small>A−</small></h1>
-            <div class="bar"><span></span></div>
-          </article>
-          <article class="panel">
-            <b>Literature</b>
-            <h1>88% <small>B+</small></h1>
-            <div class="bar"><span></span></div>
-          </article>
-          <article class="panel">
-            <b>Calculus</b>
-            <h1>86% <small>B</small></h1>
-            <div class="bar"><span></span></div>
+          <article class="panel empty-state">
+            <b>No grades tracked yet.</b
+            ><small>Add a grade to begin seeing your progress.</small>
           </article>
         </div>
       </section>
@@ -312,19 +274,15 @@
           <button class="primary">＋ New goal</button>
         </div>
         <div class="two">
-          <article class="panel">
+          <article class="panel empty-state">
             <h2>Current goals</h2>
-            <p><b>Raise calculus average to 90%</b></p>
-            <div class="bar"><span></span></div>
-            <small>60% complete</small>
-            <p><b>Study 4 times this week</b></p>
-            <div class="bar"><span></span></div>
-            <small>3 of 4 sessions</small>
+            <b>No goals yet.</b
+            ><small>Create a goal that matters to you.</small>
           </article>
-          <article class="panel">
+          <article class="panel empty-state">
             <h2>Achievement badges</h2>
-            <div class="badges">🔥 ⚡ 🏅 🌱</div>
-            <small>7 day streak · Focus master · Task tamer · Early bird</small>
+            <b>Your collection starts here.</b
+            ><small>Complete tasks and focus sessions to earn badges.</small>
           </article>
         </div>
       </section>
@@ -340,13 +298,8 @@
             required
             placeholder="e.g. Finish chemistry worksheet" /></label
         ><label
-          >Subject<select id="subject">
-            <option>Biology</option>
-            <option>Calculus II</option>
-            <option>World History</option>
-            <option>English Literature</option>
-          </select></label
-        >
+          >Subject<input id="subject" placeholder="e.g. Your class"
+        /></label>
         <menu>
           <button value="cancel">Cancel</button
           ><button class="primary" id="save">Add task</button>

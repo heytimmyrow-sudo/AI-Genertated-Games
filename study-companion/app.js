@@ -156,10 +156,7 @@ q("#reset").onclick = () => {
   q("#start").textContent = "Start focus";
 };
 q("#flash").onclick = () => {
-  let x = q("#cardText");
-  x.textContent = x.textContent.startsWith("What")
-    ? "Mitochondria generate most of the cell’s ATP energy."
-    : "What is the powerhouse of the cell?";
+  q("#cardText").textContent = "Use New card to create your first flashcard.";
 };
 q("#generate").onclick = () => {
   let t = q("#topic").value || "your selected topic";
@@ -171,19 +168,7 @@ q("#generate").onclick = () => {
 let c = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
   .map((x) => '<div class="day"><b>' + x + "</b></div>")
   .join("");
-for (let i = 1; i < 32; i++)
-  c +=
-    '<div class="day"><b>' +
-    i +
-    "</b>" +
-    (i == 11
-      ? '<div class="event">Lab report due</div>'
-      : i == 16
-        ? '<div class="event">History quiz</div>'
-        : i == 23
-          ? '<div class="event">Biology midterm</div>'
-          : "") +
-    "</div>";
+for (let i = 1; i < 32; i++) c += '<div class="day"><b>' + i + "</b></div>";
 q("#calendarGrid").innerHTML = c;
 q("#search").oninput = (e) => {
   let x = e.target.value.toLowerCase();
