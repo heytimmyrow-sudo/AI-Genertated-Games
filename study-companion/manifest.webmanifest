@@ -8,9 +8,9 @@
   "theme_color": "#6558e8",
   "icons": [
     {
-      "src": "shared-notebook-pen.png",
-      "sizes": "1254x1254",
-      "type": "image/png",
+      "src": "study-notepad-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
       "purpose": "any maskable"
     }
   ]
