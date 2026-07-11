@@ -1,7 +1,18 @@
 const $ = (s) => document.querySelector(s);
 const $$ = (s) => [...document.querySelectorAll(s)];
 const state = JSON.parse(localStorage.getItem('ai-tool-builder') || '{"tools":[]}');
+state.profile ||= { name: 'Jordan Cooper', role: '', workspace: 'Personal workspace', color: 'violet' };
 let toastTimer;
+
+function initials(name) { return name.split(/\s+/).filter(Boolean).slice(0, 2).map(part => part[0]).join('').toUpperCase() || 'AT'; }
+function renderProfile() {
+  const { name, role, workspace, color } = state.profile;
+  $('#profileName').textContent = name;
+  $('#profileWorkspace').textContent = role || workspace;
+  $('#profileAvatar').textContent = initials(name);
+  document.body.classList.remove('profile-violet', 'profile-blue', 'profile-green', 'profile-amber', 'profile-rose');
+  document.body.classList.add(`profile-${color}`);
+}
 
 function flash(message = 'Saved automatically') {
   $('#saveState').textContent = '● Saving…';
@@ -42,4 +53,20 @@ $('#addStep').addEventListener('click', () => { $('#workflowCanvas').insertAdjac
 $('#runTool').addEventListener('click', () => { $('.editor-tab[data-panel="output"]').click(); flash('Demo output generated'); });
 $('#templateButton').addEventListener('click', () => { $('#promptText').value += '\n\nReturn the response in a polished, scannable format.'; flash('Template guidance added'); });
 $('#searchButton').addEventListener('click', () => { $('#toast').textContent = 'Search is ready — press ⌘ K to create a tool'; $('#toast').classList.add('show'); setTimeout(() => $('#toast').classList.remove('show'), 2400); });
-document.addEventListener('keydown', e => { if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); $('#newTool').click(); } if (e.key === 'Escape') $('#modal').classList.remove('open'); });
+$('#profileButton').addEventListener('click', () => {
+  const { name, role, workspace, color } = state.profile;
+  $('#profileNameInput').value = name; $('#profileRoleInput').value = role; $('#profileWorkspaceInput').value = workspace;
+  $('#profilePreview').textContent = initials(name);
+  $$('.color-choice').forEach(button => button.classList.toggle('selected', button.dataset.color === color));
+  $('#profileModal').classList.add('open');
+});
+['#closeProfileModal', '#cancelProfileModal'].forEach(s => $(s).addEventListener('click', () => $('#profileModal').classList.remove('open')));
+$('#profileModal').addEventListener('click', e => { if (e.target === $('#profileModal')) $('#profileModal').classList.remove('open'); });
+$$('.color-choice').forEach(button => button.addEventListener('click', () => { $$('.color-choice').forEach(choice => choice.classList.remove('selected')); button.classList.add('selected'); }));
+$('#profileNameInput').addEventListener('input', e => { $('#profilePreview').textContent = initials(e.target.value); });
+$('#saveProfile').addEventListener('click', () => {
+  state.profile = { name: $('#profileNameInput').value.trim() || 'AI Tool Builder', role: $('#profileRoleInput').value.trim(), workspace: $('#profileWorkspaceInput').value.trim() || 'Personal workspace', color: $('.color-choice.selected').dataset.color };
+  renderProfile(); $('#profileModal').classList.remove('open'); flash('Profile saved');
+});
+renderProfile();
+document.addEventListener('keydown', e => { if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); $('#newTool').click(); } if (e.key === 'Escape') { $('#modal').classList.remove('open'); $('#profileModal').classList.remove('open'); } });

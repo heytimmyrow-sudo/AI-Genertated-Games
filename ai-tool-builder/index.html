@@ -9,6 +9,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="profiles.css" />
   </head>
   <body>
     <div class="app-shell">
@@ -28,7 +29,7 @@
         <div class="sidebar-bottom">
           <button class="nav-item" id="themeToggle"><span>◐</span> Appearance <i>Dark</i></button>
           <button class="nav-item" data-view="settings"><span>⚙</span> Settings</button>
-          <div class="profile"><div class="avatar">JC</div><div><strong>Jordan Cooper</strong><small>Personal workspace</small></div><span>⌄</span></div>
+          <button class="profile" id="profileButton" aria-label="Edit profile"><div class="avatar" id="profileAvatar">JC</div><div><strong id="profileName">Jordan Cooper</strong><small id="profileWorkspace">Personal workspace</small></div><span>⌄</span></button>
         </div>
       </aside>
 
@@ -93,6 +94,7 @@
       </main>
     </div>
     <div class="modal-backdrop" id="modal"><div class="modal"><button class="modal-close" id="closeModal">×</button><span class="modal-mark">✦</span><h2>Create a new tool</h2><p>Start with an idea, then make it yours.</p><label>Tool name<input id="newToolName" placeholder="e.g. Meeting note summarizer" autofocus /></label><label>Description<textarea id="newToolDesc" placeholder="What will this tool help people do?"></textarea></label><div class="modal-actions"><button id="cancelModal">Cancel</button><button class="run-button" id="createTool">Create tool →</button></div></div></div>
+    <div class="modal-backdrop" id="profileModal"><div class="modal profile-modal"><button class="modal-close" id="closeProfileModal">×</button><span class="modal-mark">✦</span><h2>Customize your profile</h2><p>Personalize this workspace. Your changes stay on this device.</p><div class="profile-editor"><div class="avatar avatar-preview" id="profilePreview">JC</div><div class="color-options" aria-label="Profile color"><button class="color-choice selected" data-color="violet" style="--profile-color:#9f7cff"></button><button class="color-choice" data-color="blue" style="--profile-color:#68a8ff"></button><button class="color-choice" data-color="green" style="--profile-color:#75d9a5"></button><button class="color-choice" data-color="amber" style="--profile-color:#e6ac65"></button><button class="color-choice" data-color="rose" style="--profile-color:#ef839d"></button></div></div><label>Your name<input id="profileNameInput" maxlength="32" placeholder="Your name" /></label><label>Role or title<input id="profileRoleInput" maxlength="40" placeholder="e.g. Product designer" /></label><label>Workspace name<input id="profileWorkspaceInput" maxlength="40" placeholder="e.g. My AI workspace" /></label><div class="modal-actions"><button id="cancelProfileModal">Cancel</button><button class="run-button" id="saveProfile">Save profile</button></div></div></div>
     <div class="toast" id="toast">Saved automatically</div>
     <script src="app.js"></script>
   </body>
