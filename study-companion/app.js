@@ -657,6 +657,19 @@ q("#saveProfile").onclick = (event) => {
   save();
   renderProfile();
 };
+let navScrollTimer;
+function handleMobileScroll() {
+  if (innerWidth > 580) return;
+  document.body.classList.add("nav-hidden");
+  clearTimeout(navScrollTimer);
+  navScrollTimer = setTimeout(() => {
+    document.body.classList.remove("nav-hidden");
+  }, 520);
+}
+addEventListener("scroll", handleMobileScroll, { passive: true });
+addEventListener("resize", () => {
+  if (innerWidth > 580) document.body.classList.remove("nav-hidden");
+});
 tasks();
 renderProfile();
 renderNotifications();

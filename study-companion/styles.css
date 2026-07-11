@@ -938,6 +938,15 @@ body.dark .timer {
     border-top: 1px solid var(--line);
     border-right: 0;
     box-shadow: 0 -12px 30px #25233d14;
+    transition:
+      transform 0.22s ease,
+      opacity 0.22s ease;
+    will-change: transform;
+  }
+  body.nav-hidden .sidebar {
+    opacity: 0.18;
+    pointer-events: none;
+    transform: translateY(calc(100% - 18px));
   }
   .sidebar .brand,
   .sidebar footer,
@@ -1067,6 +1076,9 @@ body.dark .timer {
   .toast {
     right: 16px;
     bottom: 182px;
+  }
+  body.nav-hidden .toast {
+    bottom: 28px;
   }
 }
 @media (max-width: 360px) {
