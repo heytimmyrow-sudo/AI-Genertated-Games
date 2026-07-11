@@ -6,6 +6,7 @@
     <meta name="theme-color" content="#11131a" />
     <title>Game Dev Studio</title>
     <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="profiles.css" />
   </head>
   <body>
     <div class="app-shell">
@@ -15,10 +16,21 @@
           <button class="icon-button mobile-menu" id="menuButton" aria-label="Open navigation"></button>
           <div class="crumbs" id="crumbs">Game Dev Studio <span>/</span> Dashboard</div>
           <label class="global-search"><span id="searchIcon"></span><input id="globalSearch" type="search" placeholder="Search projects, data, tools…" /><kbd>⌘ K</kbd></label>
-          <div class="top-actions"><button class="icon-button" id="undoButton" title="Undo (Ctrl+Z)"></button><button class="icon-button" id="redoButton" title="Redo (Ctrl+Shift+Z)"></button><div class="avatar">JD</div></div>
+          <div class="top-actions"><button class="icon-button" id="undoButton" title="Undo (Ctrl+Z)"></button><button class="icon-button" id="redoButton" title="Redo (Ctrl+Shift+Z)"></button><button class="avatar profile-button" id="profileButton" aria-label="Manage profiles" title="Manage profiles">+</button></div>
         </header>
         <section class="content" id="content"></section>
       </main>
+    </div>
+    <div class="modal hidden" id="profileModal" role="dialog" aria-modal="true" aria-labelledby="profileModalTitle">
+      <button class="close-modal" id="closeProfileModal" aria-label="Close">×</button>
+      <div class="eyebrow">YOUR WORKSPACE</div><h2 id="profileModalTitle">Custom profiles</h2><p>Create profiles for each person who uses this studio on this device.</p>
+      <div class="profile-list" id="profileList"></div>
+      <form id="profileForm">
+        <label>Display name<input id="profileName" required maxlength="32" placeholder="e.g. Alex Rivera" /></label>
+        <label>Role or studio name<input id="profileRole" maxlength="42" placeholder="e.g. Lead designer" /></label>
+        <label>Profile color<select id="profileColor"><option value="#8395ff">Indigo</option><option value="#45d8d2">Teal</option><option value="#f383c7">Rose</option><option value="#f3ae75">Amber</option><option value="#70d59b">Green</option></select></label>
+        <div class="form-actions"><button class="primary-button" type="submit">Save profile</button><button class="secondary-button" type="button" id="newProfile">New profile</button></div>
+      </form>
     </div>
     <div class="modal-backdrop hidden" id="modalBackdrop"></div>
     <div class="modal hidden" id="projectModal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
@@ -33,5 +45,6 @@
     </div>
     <div class="toast-region" id="toastRegion" aria-live="polite"></div>
     <script src="app.js"></script>
+    <script src="profiles.js"></script>
   </body>
 </html>
