@@ -44,6 +44,7 @@ jobs:
           cp -r holiday-messenger site/holiday-messenger
           cp -r idea-arcade site/idea-arcade
           cp -r public-call site/public-call
+          cp -r game-dev-studio site/game-dev-studio
           cp -r study-companion site/study-companion
           cp -r target-range-fps site/target-range-fps
           cp -r treasure-trail site/treasure-trail

@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#11131a" />
+    <title>Game Dev Studio</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar" id="sidebar"></aside>
+      <main class="workspace">
+        <header class="topbar">
+          <button class="icon-button mobile-menu" id="menuButton" aria-label="Open navigation"></button>
+          <div class="crumbs" id="crumbs">Game Dev Studio <span>/</span> Dashboard</div>
+          <label class="global-search"><span id="searchIcon"></span><input id="globalSearch" type="search" placeholder="Search projects, data, tools…" /><kbd>⌘ K</kbd></label>
+          <div class="top-actions"><button class="icon-button" id="undoButton" title="Undo (Ctrl+Z)"></button><button class="icon-button" id="redoButton" title="Redo (Ctrl+Shift+Z)"></button><div class="avatar">JD</div></div>
+        </header>
+        <section class="content" id="content"></section>
+      </main>
+    </div>
+    <div class="modal-backdrop hidden" id="modalBackdrop"></div>
+    <div class="modal hidden" id="projectModal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+      <button class="close-modal" id="closeModal" aria-label="Close">×</button>
+      <div class="eyebrow">NEW PROJECT</div><h2 id="modalTitle">Start a new game</h2><p>Set up a clean workspace. You can change everything later.</p>
+      <form id="projectForm">
+        <label>Project name<input id="projectName" required maxlength="44" placeholder="e.g. Moonlit Market" /></label>
+        <label>Game type<select id="projectType"><option>2D Adventure</option><option>3D Explorer</option><option>Platformer</option><option>RPG</option><option>Custom</option></select></label>
+        <div class="template-options" id="templateOptions"><button type="button" class="template selected" data-template="Blank"><span>✦</span>Blank canvas<small>Start from scratch</small></button><button type="button" class="template" data-template="Starter"><span>◫</span>Starter kit<small>Sample player & level</small></button></div>
+        <button class="primary-button wide" type="submit">Create project <span>→</span></button>
+      </form>
+    </div>
+    <div class="toast-region" id="toastRegion" aria-live="polite"></div>
+    <script src="app.js"></script>
+  </body>
+</html>

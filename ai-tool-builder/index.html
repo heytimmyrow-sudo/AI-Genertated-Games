@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#0b0d12" />
+    <title>AI Tool Builder</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <a class="brand" href="#"><span class="brand-mark">✦</span><span>AI Tool<br />Builder</span></a>
+        <button class="new-tool" id="newTool"><span>＋</span> New tool <kbd>⌘ K</kbd></button>
+        <nav class="main-nav" aria-label="Main navigation">
+          <button class="nav-item active" data-view="workspace"><span>▦</span> Workspace</button>
+          <button class="nav-item" data-view="recent"><span>◷</span> Recent</button>
+          <button class="nav-item" data-view="favorites"><span>★</span> Favorites</button>
+          <button class="nav-item" data-view="history"><span>◫</span> Prompt history</button>
+        </nav>
+        <div class="sidebar-section">
+          <div class="section-heading"><span>FOLDERS</span><button id="addFolder" title="Add folder">＋</button></div>
+          <button class="folder active"><span class="folder-dot violet"></span> All tools <b id="toolCount">0</b></button>
+        </div>
+        <div class="sidebar-bottom">
+          <button class="nav-item" id="themeToggle"><span>◐</span> Appearance <i>Dark</i></button>
+          <button class="nav-item" data-view="settings"><span>⚙</span> Settings</button>
+          <div class="profile"><div class="avatar">JC</div><div><strong>Jordan Cooper</strong><small>Personal workspace</small></div><span>⌄</span></div>
+        </div>
+      </aside>
+
+      <main class="main-content">
+        <header class="topbar">
+          <div class="breadcrumbs"><span>Workspace</span><b>/</b><strong id="crumbName">Untitled tool</strong><span class="saved" id="saveState">● Saved</span></div>
+          <div class="top-actions"><button class="icon-button" id="searchButton" title="Search">⌕</button><button class="icon-button" title="Notifications">♧</button><button class="share-button">Share</button><button class="run-button" id="runTool">▶ Run tool</button></div>
+        </header>
+
+        <section class="tool-header">
+          <div class="tool-title-row"><div class="tool-icon">✦</div><div><div class="eyebrow">NEW AI TOOL</div><h1 id="toolTitle">Untitled tool</h1><p id="toolDescription">Describe what this AI tool will help people do.</p></div><button class="more-button">•••</button></div>
+          <div class="tool-meta"><span class="model-chip"><i></i> GPT-4o mini <b>⌄</b></span><span>Last edited just now</span><span>•</span><span>v1.4</span><button id="duplicateTool">⧉ Duplicate</button></div>
+        </section>
+
+        <div class="editor-tabs" role="tablist">
+          <button class="editor-tab active" data-panel="prompt">Prompt builder</button>
+          <button class="editor-tab" data-panel="workflow">Workflow</button>
+          <button class="editor-tab" data-panel="form">Form builder</button>
+          <button class="editor-tab" data-panel="output">Output viewer</button>
+        </div>
+
+        <section class="editor-layout">
+          <div class="canvas">
+            <div class="panel active" id="prompt-panel">
+              <div class="canvas-heading"><div><h2>Prompt template</h2><p>Tell the model how to do its best work.</p></div><button class="ghost-button" id="templateButton">✦ Use template</button></div>
+              <div class="prompt-editor"><div class="line-numbers">1<br />2<br />3<br />4<br />5<br />6<br />7<br />8<br />9<br />10<br />11</div><textarea id="promptText" spellcheck="false" placeholder="Start writing your prompt here…"></textarea></div>
+              <div class="prompt-footer"><span><b>{ }</b> Type <b>/</b> to insert a variable</span><span>0 / 8,000</span></div>
+              <div class="tip"><span>✦</span><div><b>Prompt tip</b><p>Start with the role, context, constraints, and the format you want the model to return.</p></div><button>×</button></div>
+            </div>
+
+            <div class="panel" id="workflow-panel">
+              <div class="canvas-heading"><div><h2>Workflow</h2><p>Design how your tool thinks, step by step.</p></div><button class="ghost-button" id="addStep">＋ Add step</button></div>
+              <div class="workflow-canvas" id="workflowCanvas">
+                <div class="flow-card trigger"><span>⚡</span><div><b>When form is submitted</b><small>Trigger</small></div><em>•••</em></div><div class="flow-line"></div>
+                <div class="flow-card action"><span>✦</span><div><b>Generate with AI</b><small>AI generation · GPT-4o mini</small></div><em>•••</em></div><div class="flow-line"></div>
+                <div class="flow-card output"><span>↗</span><div><b>Show result</b><small>Output</small></div><em>•••</em></div>
+              </div>
+            </div>
+
+            <div class="panel" id="form-panel">
+              <div class="canvas-heading"><div><h2>Form builder</h2><p>Create a simple, delightful input experience.</p></div><button class="ghost-button" id="addField">＋ Add field</button></div>
+              <div class="form-preview" id="formPreview"><label>New input <input placeholder="Add a helpful placeholder" /></label><button>Run tool <span>→</span></button></div>
+            </div>
+
+            <div class="panel" id="output-panel">
+              <div class="canvas-heading"><div><h2>Output viewer</h2><p>Define how a completed result is presented.</p></div><button class="ghost-button">▣ Preview</button></div>
+              <div class="result-card"><span class="output-label">GENERATED RESULT</span><h3>Your result will appear here.</h3><p>Set up your prompt and form, then run your tool to preview its output.</p><div class="result-actions"><button>⧉ Copy</button><button>↻ Regenerate</button></div></div>
+            </div>
+          </div>
+
+          <aside class="inspector">
+            <div class="inspector-tabs"><button class="active">Configuration</button><button>Activity</button></div>
+            <div class="inspector-body">
+              <section><div class="label-row"><label>AI model</label><button class="tiny-link">Manage</button></div><button class="select-control"><span class="model-spark">✦</span><div><b>GPT-4o mini</b><small>Fast & affordable</small></div><span>⌄</span></button></section>
+              <section><div class="label-row"><label>Response creativity</label><span class="mono" id="creativityValue">0.7</span></div><input type="range" id="creativity" min="0" max="1" value="0.7" step="0.1" /><div class="range-labels"><span>Precise</span><span>Creative</span></div></section>
+              <section><div class="label-row"><label>Input variables</label><button class="tiny-link" id="addVariable">＋ Add</button></div><div id="variables"><p class="empty-variables">Add variables to use them in your prompt.</p></div></section>
+              <section><div class="label-row"><label>Output format</label></div><div class="segmented"><button class="active">Text</button><button>JSON</button><button>Markdown</button></div></section>
+              <section><label>Tool actions</label><button class="secondary-action">＋ Add action</button></section>
+            </div>
+          </aside>
+        </section>
+      </main>
+    </div>
+    <div class="modal-backdrop" id="modal"><div class="modal"><button class="modal-close" id="closeModal">×</button><span class="modal-mark">✦</span><h2>Create a new tool</h2><p>Start with an idea, then make it yours.</p><label>Tool name<input id="newToolName" placeholder="e.g. Meeting note summarizer" autofocus /></label><label>Description<textarea id="newToolDesc" placeholder="What will this tool help people do?"></textarea></label><div class="modal-actions"><button id="cancelModal">Cancel</button><button class="run-button" id="createTool">Create tool →</button></div></div></div>
+    <div class="toast" id="toast">Saved automatically</div>
+    <script src="app.js"></script>
+  </body>
+</html>
