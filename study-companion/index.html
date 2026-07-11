@@ -1,0 +1,351 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Study Companion</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,600;9..144,700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <aside class="sidebar">
+      <a class="brand"><span>✦</span>study<br /><b>companion</b></a>
+      <nav>
+        <button class="nav active" data-view="dashboard">⌂ Dashboard</button>
+        <p>PLAN</p>
+        <button class="nav" data-view="planner">
+          ✓ Homework planner <em id="plannerCount">0</em></button
+        ><button class="nav" data-view="calendar">□ Calendar</button
+        ><button class="nav" data-view="schedule">◫ Class schedule</button>
+        <p>STUDY</p>
+        <button class="nav" data-view="focus">◉ Focus timer</button
+        ><button class="nav" data-view="flashcards">▤ Flashcards</button
+        ><button class="nav" data-view="quiz">? Quiz generator</button
+        ><button class="nav" data-view="notes">≡ Notes</button>
+        <p>TRACK</p>
+        <button class="nav" data-view="grades">↗ Grades</button
+        ><button class="nav" data-view="goals">◎ Goals & streaks</button>
+      </nav>
+      <footer>
+        <button id="theme">☾ Dark mode</button
+        ><small>● Saved automatically</small>
+      </footer>
+    </aside>
+    <main>
+      <header>
+        <div class="search">
+          ⌕ <input id="search" placeholder="Search anything..." />
+        </div>
+        <button class="avatar">JS</button>
+      </header>
+      <section id="dashboard" class="view active">
+        <div class="welcome">
+          <div>
+            <p>YOUR STUDY SPACE</p>
+            <h1>Make today <i>count.</i></h1>
+            <small>Start with one task, then build momentum.</small>
+          </div>
+          <button class="primary" data-action="task">＋ Add task</button>
+        </div>
+        <div class="stats">
+          <article>
+            ◷ <b id="focused">0m<small>Focused today</small></b
+            ><span>Start now</span>
+          </article>
+          <article>
+            ♨ <b>7 days<small>Study streak</small></b
+            ><span>▁▃▂▅▆▃▇</span>
+          </article>
+          <article>
+            ↗ <b>89%<small>Current average</small></b
+            ><span>+4%</span>
+          </article>
+          <article>
+            ✓ <b id="completed">12<small>Tasks completed</small></b
+            ><span>This week</span>
+          </article>
+        </div>
+        <div class="grid">
+          <article class="panel tasks">
+            <div class="head">
+              <div>
+                <h2>Today’s focus</h2>
+                <small>Small steps, big wins.</small>
+              </div>
+              <button data-view="planner">View planner →</button>
+            </div>
+            <div id="taskList"></div>
+            <button class="add" data-action="task">＋ Add a task</button>
+          </article>
+          <article class="panel countdown">
+            <p>NEXT EXAM</p>
+            <h2>Biology midterm</h2>
+            <small>Cell biology & genetics</small
+            ><strong
+              >12 <small>days<br />to go</small></strong
+            >
+            <div class="bar"><span></span></div>
+            <small>6 of 9 study sessions complete</small
+            ><button data-view="focus">Start a session →</button>
+          </article>
+          <article class="panel schedule">
+            <div class="head">
+              <div>
+                <h2>Up next</h2>
+                <small>Your Friday schedule</small>
+              </div>
+              <button data-view="schedule">Full schedule →</button>
+            </div>
+            <div>
+              10:30 AM <b>● World History</b><small>Room 204 · In 25 min</small>
+            </div>
+            <div>
+              1:00 PM <b>● English Literature</b><small>Room 118</small>
+            </div>
+            <div>3:15 PM <b>● Calculus II</b><small>Online · Zoom</small></div>
+          </article>
+          <article class="panel achievement">
+            🏆
+            <div>
+              <p>NEW ACHIEVEMENT</p>
+              <h2>On a roll!</h2>
+              <small>You completed 5 tasks this week.</small>
+            </div>
+            <button data-view="goals">View badges →</button>
+          </article>
+        </div>
+      </section>
+      <section id="planner" class="view">
+        <div class="welcome">
+          <div>
+            <p>YOUR WORKSPACE</p>
+            <h1>Homework planner</h1>
+            <small>Keep assignments visible and moving forward.</small>
+          </div>
+          <button class="primary" data-action="task">＋ Add assignment</button>
+        </div>
+        <article class="panel">
+          <div class="tabs">
+            <button>All</button><button>Today</button><button>Upcoming</button>
+          </div>
+          <div id="plannerTasks"></div>
+        </article>
+      </section>
+      <section id="focus" class="view">
+        <div class="welcome">
+          <div>
+            <p>FOCUS SPACE</p>
+            <h1>Study timer</h1>
+            <small>One uninterrupted session at a time.</small>
+          </div>
+        </div>
+        <article class="timer">
+          <p>POMODORO · BIOLOGY</p>
+          <strong id="time">25:00</strong>
+          <div>
+            <button class="primary" id="start">Start focus</button
+            ><button id="reset">Reset</button>
+          </div>
+          <small>Put your phone away. You’ve got this.</small>
+        </article>
+      </section>
+      <section id="flashcards" class="view">
+        <div class="welcome">
+          <div>
+            <p>STUDY TOOLS</p>
+            <h1>Flashcards</h1>
+            <small>Build your recall, one card at a time.</small>
+          </div>
+          <button class="primary">＋ New card</button>
+        </div>
+        <div class="two">
+          <article class="flash" id="flash">
+            <small>BIOLOGY · 1 / 12</small>
+            <h2 id="cardText">What is the powerhouse of the cell?</h2>
+            <small>Click to reveal answer</small>
+          </article>
+          <article class="panel">
+            <h2>Your decks</h2>
+            <button class="deck">🧬 Biology <span>12</span></button
+            ><button class="deck">∫ Calculus II <span>18</span></button
+            ><button class="deck">📖 Literature <span>9</span></button>
+          </article>
+        </div>
+      </section>
+      <section id="quiz" class="view">
+        <div class="welcome">
+          <div>
+            <p>SMART PRACTICE</p>
+            <h1>Quiz generator</h1>
+            <small>Turn any topic into a quick confidence check.</small>
+          </div>
+        </div>
+        <article class="panel quiz">
+          <b>What would you like to practice?</b
+          ><textarea
+            id="topic"
+            placeholder="e.g. Mitosis, chapter 4 key terms, quadratic equations"
+          ></textarea
+          ><button class="primary" id="generate">
+            Generate practice quiz →
+          </button>
+          <div id="result"></div>
+        </article>
+      </section>
+      <section id="notes" class="view">
+        <div class="welcome">
+          <div>
+            <p>YOUR KNOWLEDGE BASE</p>
+            <h1>Notes organizer</h1>
+            <small>Capture ideas now, find them later.</small>
+          </div>
+          <button class="primary">＋ New note</button>
+        </div>
+        <div class="two">
+          <article class="panel">
+            <button class="deck">
+              Cell structure<br /><small>Biology · Today</small></button
+            ><button class="deck">
+              Primary sources<br /><small>History · Yesterday</small></button
+            ><button class="deck">
+              Integration rules<br /><small>Calculus · Oct 9</small>
+            </button>
+          </article>
+          <article class="panel editor">
+            <input value="Cell structure" />
+            <div contenteditable="true">
+              <b>Cell structure review</b>
+              <p>
+                Prokaryotic cells lack a nucleus. Eukaryotic cells contain
+                membrane-bound organelles.
+              </p>
+              <p>
+                Remember: mitochondria produce ATP through cellular respiration.
+              </p>
+            </div>
+            <small>Saved automatically · Cloud sync ready</small>
+          </article>
+        </div>
+      </section>
+      <section id="calendar" class="view">
+        <div class="welcome">
+          <div>
+            <p>OCTOBER 2024</p>
+            <h1>Your calendar</h1>
+          </div>
+          <button class="primary" data-action="task">＋ Add event</button>
+        </div>
+        <article class="panel calendar" id="calendarGrid"></article>
+      </section>
+      <section id="schedule" class="view">
+        <div class="welcome">
+          <div>
+            <p>WEEKLY RHYTHM</p>
+            <h1>Class schedule</h1>
+            <small>A clear view of your time.</small>
+          </div>
+          <button class="primary">＋ Add class</button>
+        </div>
+        <article class="panel classcards">
+          <div>
+            World History<small>Mon · Wed · Fri<br />10:30 AM · Room 204</small>
+          </div>
+          <div>
+            English Literature<small
+              >Mon · Wed · Fri<br />1:00 PM · Room 118</small
+            >
+          </div>
+          <div>
+            Calculus II<small>Tue · Thu · Fri<br />3:15 PM · Online</small>
+          </div>
+          <div>
+            Biology<small>Tue · Thu<br />11:00 AM · Lab 3</small>
+          </div>
+        </article>
+      </section>
+      <section id="grades" class="view">
+        <div class="welcome">
+          <div>
+            <p>ACADEMIC PROGRESS</p>
+            <h1>Grade tracker</h1>
+            <small>See your growth and know where to focus.</small>
+          </div>
+          <button class="primary">＋ Add grade</button>
+        </div>
+        <div class="grades">
+          <article class="panel">
+            <b>History</b>
+            <h1>92% <small>A−</small></h1>
+            <div class="bar"><span></span></div>
+          </article>
+          <article class="panel">
+            <b>Literature</b>
+            <h1>88% <small>B+</small></h1>
+            <div class="bar"><span></span></div>
+          </article>
+          <article class="panel">
+            <b>Calculus</b>
+            <h1>86% <small>B</small></h1>
+            <div class="bar"><span></span></div>
+          </article>
+        </div>
+      </section>
+      <section id="goals" class="view">
+        <div class="welcome">
+          <div>
+            <p>KEEP MOVING</p>
+            <h1>Goals & achievements</h1>
+            <small>Your momentum is building.</small>
+          </div>
+          <button class="primary">＋ New goal</button>
+        </div>
+        <div class="two">
+          <article class="panel">
+            <h2>Current goals</h2>
+            <p><b>Raise calculus average to 90%</b></p>
+            <div class="bar"><span></span></div>
+            <small>60% complete</small>
+            <p><b>Study 4 times this week</b></p>
+            <div class="bar"><span></span></div>
+            <small>3 of 4 sessions</small>
+          </article>
+          <article class="panel">
+            <h2>Achievement badges</h2>
+            <div class="badges">🔥 ⚡ 🏅 🌱</div>
+            <small>7 day streak · Focus master · Task tamer · Early bird</small>
+          </article>
+        </div>
+      </section>
+    </main>
+    <dialog id="dialog">
+      <form method="dialog">
+        <button value="cancel" class="x">×</button>
+        <p>NEW TASK</p>
+        <h2>Add to your plan</h2>
+        <label
+          >What needs doing?<input
+            id="title"
+            required
+            placeholder="e.g. Finish chemistry worksheet" /></label
+        ><label
+          >Subject<select id="subject">
+            <option>Biology</option>
+            <option>Calculus II</option>
+            <option>World History</option>
+            <option>English Literature</option>
+          </select></label
+        >
+        <menu>
+          <button value="cancel">Cancel</button
+          ><button class="primary" id="save">Add task</button>
+        </menu>
+      </form>
+    </dialog>
+    <script src="app.js"></script>
+  </body>
+</html>

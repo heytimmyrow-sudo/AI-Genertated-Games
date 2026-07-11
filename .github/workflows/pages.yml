@@ -44,8 +44,10 @@ jobs:
           cp -r holiday-messenger site/holiday-messenger
           cp -r idea-arcade site/idea-arcade
           cp -r public-call site/public-call
+          cp -r study-companion site/study-companion
           cp -r target-range-fps site/target-range-fps
           cp -r treasure-trail site/treasure-trail
+          cp -r ai-tool-builder site/ai-tool-builder
           cp -r js site/js
           cp -r vendor site/vendor
           cp -r workshop site/workshop
