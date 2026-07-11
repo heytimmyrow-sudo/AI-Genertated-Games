@@ -213,6 +213,15 @@ small {
   color: #35a67a;
   margin-left: auto;
 }
+.stats-empty {
+  grid-column: 1 / -1;
+  border: 1px dashed var(--line);
+  border-radius: 11px;
+  padding: 16px;
+  text-align: center;
+  color: var(--muted);
+  font-size: 12px;
+}
 .grid {
   display: grid;
   grid-template-columns: 1.5fr 1fr;

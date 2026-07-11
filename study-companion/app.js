@@ -77,7 +77,7 @@ function tasks() {
   q("#taskList").innerHTML = x || empty;
   q("#plannerTasks").innerHTML = x || empty;
   q("#plannerCount").textContent = state.tasks.filter((t) => !t.done).length;
-  q("#completed").textContent = state.tasks.filter((t) => t.done).length;
+  renderStats();
   qa(".check").forEach(
     (b) =>
       (b.onclick = () => {
@@ -87,6 +87,27 @@ function tasks() {
         tasks();
       }),
   );
+}
+function renderStats() {
+  const completed = state.tasks.filter((task) => task.done).length;
+  const cards = [];
+  if (state.focus > 0) {
+    cards.push(
+      "<article>◷ <b>" +
+        state.focus +
+        "m<small>Focused today</small></b><span>Keep going</span></article>",
+    );
+  }
+  if (completed > 0) {
+    cards.push(
+      "<article>✓ <b>" +
+        completed +
+        "<small>Tasks completed</small></b><span>This week</span></article>",
+    );
+  }
+  q("#stats").innerHTML = cards.length
+    ? cards.join("")
+    : '<div class="stats-empty">Your study statistics will appear after you log activity.</div>';
 }
 function nav(v) {
   qa(".view").forEach((x) => x.classList.toggle("active", x.id === v));
@@ -141,7 +162,7 @@ q("#start").onclick = () => {
         clearInterval(clock);
         run = false;
         state.focus += 25;
-        q("#focused").innerHTML = state.focus + "m<small>Focused today</small>";
+        renderStats();
         save();
         alert("Focus session complete. Great work!");
       }
