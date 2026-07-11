@@ -654,6 +654,61 @@ small {
 .gradebook {
   margin-top: 14px;
 }
+.weight-chart-card {
+  margin-top: 14px;
+}
+.weight-chart-wrap {
+  display: grid;
+  grid-template-columns: 180px 1fr;
+  align-items: center;
+  gap: 18px;
+}
+.weight-pie {
+  width: 180px;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: #edeafe;
+  display: grid;
+  place-items: center;
+  position: relative;
+}
+.weight-pie:after {
+  content: "";
+  position: absolute;
+  inset: 34px;
+  border-radius: inherit;
+  background: var(--paper);
+}
+.weight-pie span {
+  position: relative;
+  z-index: 1;
+  color: var(--text);
+  font: 700 24px Fraunces;
+  text-align: center;
+}
+.weight-pie small {
+  display: block;
+  font: 700 10px "DM Sans";
+  color: var(--muted);
+}
+.weight-legend {
+  display: grid;
+  gap: 8px;
+}
+.weight-key {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 9px;
+  font-size: 12px;
+}
+.weight-key span {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+}
 .grade-card {
   position: relative;
   overflow: hidden;
@@ -727,6 +782,17 @@ dialog select {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 8px;
+}
+.weight-preview {
+  margin-top: 10px;
+  border: 1px dashed var(--line);
+  border-radius: 8px;
+  padding: 10px;
+  color: var(--purple);
+  background: #f7f6ff;
+  font-size: 12px;
+  font-weight: 700;
+  text-align: center;
 }
 dialog menu {
   text-align: right;
@@ -965,8 +1031,13 @@ body.dark .timer {
     margin-left: 0;
   }
   .form-grid,
-  .grade-row {
+  .grade-row,
+  .weight-chart-wrap {
     grid-template-columns: 1fr;
+  }
+  .weight-pie {
+    width: min(210px, 72vw);
+    justify-self: center;
   }
   .calendar {
     grid-template-columns: repeat(7, minmax(0, 1fr));

@@ -25,6 +25,9 @@ if (!Array.isArray(state.subjects)) {
 if (!Array.isArray(state.grades)) {
   state.grades = [];
 }
+state.grades.forEach((grade) => {
+  if (!grade.weightLabel) grade.weightLabel = grade.type || "Grade";
+});
 state.tasks
   .map((task) => task.subject)
   .filter(Boolean)
@@ -134,6 +137,33 @@ function subjectAverage(subjectId) {
       0,
     ) / weight
   );
+}
+const weightColors = [
+  "#6558e8",
+  "#ef7e72",
+  "#37a98a",
+  "#4b93e6",
+  "#d89c2f",
+  "#c25fd6",
+  "#2f9ab7",
+];
+function weightBreakdown() {
+  const totals = new Map();
+  state.grades.forEach((grade) => {
+    const label = grade.weightLabel || grade.type || "Grade";
+    totals.set(label, (totals.get(label) || 0) + grade.weight);
+  });
+  return [...totals.entries()].map(([label, weight], index) => ({
+    label,
+    weight,
+    color: weightColors[index % weightColors.length],
+  }));
+}
+function updateWeightPreview() {
+  const label =
+    q("#weightLabel").value.trim() || q("#gradeType").value || "Weight";
+  const weight = Number(q("#gradeWeight").value) || 0;
+  q("#weightPreview").textContent = label + " = " + weight + "%";
 }
 function renderSubjects() {
   syncSubjectSelectors();
@@ -287,7 +317,7 @@ function renderGrades() {
             "</b><small>" +
             escapeHtml(subject ? subject.name : "No subject") +
             " · " +
-            escapeHtml(grade.type) +
+            escapeHtml(grade.weightLabel || grade.type) +
             "</small></div><strong>" +
             Math.round(gradePercent(grade)) +
             '%</strong><span class="tag">' +
@@ -297,6 +327,38 @@ function renderGrades() {
         })
         .join("")
     : '<div class="empty-state"><b>No grades tracked yet.</b><small>Add tests, schoolwork, projects, or homework with weights.</small></div>';
+  renderWeightChart();
+}
+function renderWeightChart() {
+  const items = weightBreakdown();
+  const total = items.reduce((sum, item) => sum + item.weight, 0);
+  if (!total) {
+    q("#weightPie").style.background = "";
+    q("#weightPie").innerHTML = "<span>No weights</span>";
+    q("#weightLegend").innerHTML =
+      '<div class="empty-state"><b>No chart yet.</b><small>Add weighted grades to build your pie chart.</small></div>';
+    return;
+  }
+  let cursor = 0;
+  const stops = items.map((item) => {
+    const start = cursor;
+    cursor += (item.weight / total) * 100;
+    return item.color + " " + start + "% " + cursor + "%";
+  });
+  q("#weightPie").innerHTML = "<span>Weights<small>by label</small></span>";
+  q("#weightPie").style.background = "conic-gradient(" + stops.join(",") + ")";
+  q("#weightLegend").innerHTML = items
+    .map(
+      (item) =>
+        '<div class="weight-key"><span style="background:' +
+        item.color +
+        '"></span><b>' +
+        escapeHtml(item.label) +
+        " = " +
+        item.weight +
+        "%</b></div>",
+    )
+    .join("");
 }
 function toast(message) {
   const el = q("#toast");
@@ -396,6 +458,8 @@ qa('[data-action="grade"]').forEach(
       q("#gradeScore").value = "";
       q("#gradeOutOf").value = "100";
       q("#gradeWeight").value = "10";
+      q("#weightLabel").value = q("#gradeType").value;
+      updateWeightPreview();
       q("#gradeDialog").showModal();
     }),
 );
@@ -455,6 +519,8 @@ q("#saveGrade").onclick = (event) => {
   const score = Number(q("#gradeScore").value);
   const outOf = Number(q("#gradeOutOf").value);
   const weight = Number(q("#gradeWeight").value);
+  const weightLabel =
+    q("#weightLabel").value.trim() || q("#gradeType").value || "Grade";
   if (!subject || !name || score < 0 || outOf <= 0 || weight <= 0) {
     event.preventDefault();
     toast("Fill in the grade, score, total, and weight.");
@@ -468,6 +534,7 @@ q("#saveGrade").onclick = (event) => {
     score,
     outOf,
     weight,
+    weightLabel,
   });
   save();
   renderGrades();
@@ -475,6 +542,13 @@ q("#saveGrade").onclick = (event) => {
   renderStats();
   notify("Grade added", subject.name + " average updated.");
 };
+q("#gradeType").onchange = () => {
+  if (!q("#weightLabel").value.trim())
+    q("#weightLabel").value = q("#gradeType").value;
+  updateWeightPreview();
+};
+q("#gradeWeight").oninput = updateWeightPreview;
+q("#weightLabel").oninput = updateWeightPreview;
 q("#theme").onclick = () => {
   state.dark = !state.dark;
   document.body.classList.toggle("dark", state.dark);

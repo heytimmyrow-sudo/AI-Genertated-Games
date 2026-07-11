@@ -274,6 +274,22 @@
           </div>
         </div>
         <div id="gradeSummary" class="grades"></div>
+        <article class="panel weight-chart-card">
+          <div class="head">
+            <div>
+              <h2>Weight chart</h2>
+              <small>See how your grade weights are split.</small>
+            </div>
+          </div>
+          <div class="weight-chart-wrap">
+            <div
+              id="weightPie"
+              class="weight-pie"
+              aria-label="Grade weight pie chart"
+            ></div>
+            <div id="weightLegend" class="weight-legend"></div>
+          </div>
+        </article>
         <article class="panel gradebook">
           <div class="head">
             <div>
@@ -402,6 +418,13 @@
               required
           /></label>
         </div>
+        <label
+          >Weight label<input
+            id="weightLabel"
+            maxlength="24"
+            placeholder="e.g. Tests"
+        /></label>
+        <div id="weightPreview" class="weight-preview">Tests = 10%</div>
         <menu>
           <button value="cancel">Cancel</button
           ><button class="primary" id="saveGrade">Add grade</button>
