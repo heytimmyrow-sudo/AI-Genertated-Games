@@ -162,6 +162,7 @@ header {
   justify-content: space-between;
   align-items: start;
   margin-bottom: 28px;
+  gap: 18px;
 }
 .welcome p {
   margin: 0 0 9px;
@@ -180,6 +181,14 @@ h1 i {
 small {
   color: var(--muted);
   font-size: 12px;
+}
+.hero-photo {
+  width: min(220px, 28vw);
+  aspect-ratio: 1.35;
+  object-fit: cover;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  box-shadow: 0 16px 32px #28263c1c;
 }
 .primary {
   background: var(--purple);
@@ -1020,6 +1029,11 @@ body.dark .timer {
   .welcome {
     gap: 16px;
     margin-bottom: 20px;
+  }
+  .hero-photo {
+    order: 2;
+    width: 100%;
+    aspect-ratio: 1.8;
   }
   .welcome .primary,
   .action-row button,
