@@ -72,6 +72,16 @@
             <div id="taskList"></div>
             <button class="add" data-action="task">＋ Add a task</button>
           </article>
+          <article class="panel subject-panel">
+            <div class="head">
+              <div>
+                <h2>Subjects</h2>
+                <small>Organize work and grades by class.</small>
+              </div>
+              <button data-action="subject">Add subject -></button>
+            </div>
+            <div id="subjectList"></div>
+          </article>
           <article class="panel countdown">
             <p>NEXT EXAM</p>
             <h2>No exams added yet</h2>
@@ -253,16 +263,26 @@
           <div>
             <p>ACADEMIC PROGRESS</p>
             <h1>Grade tracker</h1>
-            <small>See your growth and know where to focus.</small>
+            <small
+              >Track tests, schoolwork, projects, and weighted
+              categories.</small
+            >
           </div>
-          <button class="primary">＋ Add grade</button>
+          <div class="action-row">
+            <button data-action="subject">+ Add subject</button>
+            <button class="primary" data-action="grade">+ Add grade</button>
+          </div>
         </div>
-        <div class="grades">
-          <article class="panel empty-state">
-            <b>No grades tracked yet.</b
-            ><small>Add a grade to begin seeing your progress.</small>
-          </article>
-        </div>
+        <div id="gradeSummary" class="grades"></div>
+        <article class="panel gradebook">
+          <div class="head">
+            <div>
+              <h2>Grade entries</h2>
+              <small>Each item can carry its own weight.</small>
+            </div>
+          </div>
+          <div id="gradeList"></div>
+        </article>
       </section>
       <section id="goals" class="view">
         <div class="welcome">
@@ -297,12 +317,94 @@
             id="title"
             required
             placeholder="e.g. Finish chemistry worksheet" /></label
-        ><label
-          >Subject<input id="subject" placeholder="e.g. Your class"
-        /></label>
+        ><label>Subject<select id="subject"></select></label>
         <menu>
           <button value="cancel">Cancel</button
           ><button class="primary" id="save">Add task</button>
+        </menu>
+      </form>
+    </dialog>
+    <dialog id="subjectDialog">
+      <form method="dialog">
+        <button value="cancel" class="x">×</button>
+        <p>SUBJECT</p>
+        <h2>Add a subject</h2>
+        <label
+          >Subject name<input
+            id="subjectName"
+            maxlength="32"
+            required
+            placeholder="e.g. Algebra"
+        /></label>
+        <label
+          >Color<select id="subjectColor">
+            <option value="#6558e8">Violet</option>
+            <option value="#ef7e72">Coral</option>
+            <option value="#37a98a">Mint</option>
+            <option value="#4b93e6">Blue</option>
+            <option value="#d89c2f">Gold</option>
+          </select></label
+        >
+        <menu>
+          <button value="cancel">Cancel</button
+          ><button class="primary" id="saveSubject">Add subject</button>
+        </menu>
+      </form>
+    </dialog>
+    <dialog id="gradeDialog">
+      <form method="dialog">
+        <button value="cancel" class="x">×</button>
+        <p>GRADE</p>
+        <h2>Add grade</h2>
+        <label>Subject<select id="gradeSubject"></select></label>
+        <label
+          >Type<select id="gradeType">
+            <option value="Test">Test</option>
+            <option value="Quiz">Quiz</option>
+            <option value="Schoolwork">Schoolwork</option>
+            <option value="Project">Project</option>
+            <option value="Homework">Homework</option>
+            <option value="Participation">Participation</option>
+          </select></label
+        >
+        <label
+          >Name<input
+            id="gradeName"
+            maxlength="42"
+            required
+            placeholder="e.g. Unit 2 test"
+        /></label>
+        <div class="form-grid">
+          <label
+            >Score<input
+              id="gradeScore"
+              type="number"
+              min="0"
+              step="0.1"
+              required
+          /></label>
+          <label
+            >Out of<input
+              id="gradeOutOf"
+              type="number"
+              min="1"
+              step="0.1"
+              value="100"
+              required
+          /></label>
+          <label
+            >Weight %<input
+              id="gradeWeight"
+              type="number"
+              min="0.1"
+              step="0.1"
+              value="10"
+              required
+          /></label>
+        </div>
+        <menu>
+          <button value="cancel">Cancel</button
+          ><button class="primary" id="saveGrade">Add grade</button>
         </menu>
       </form>
     </dialog>

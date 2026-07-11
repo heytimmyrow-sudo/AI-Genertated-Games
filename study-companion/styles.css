@@ -323,6 +323,52 @@ small {
   font-size: 11px;
   font-weight: 700;
 }
+.action-row {
+  display: flex;
+  gap: 10px;
+}
+.action-row button:not(.primary) {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--paper);
+  color: var(--text);
+  font-weight: 700;
+  padding: 10px 13px;
+}
+.subject-panel {
+  grid-column: 1;
+}
+.subject-card {
+  display: grid;
+  grid-template-columns: 12px 1fr;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: transparent;
+  color: var(--text);
+  padding: 10px;
+  margin: 8px 0;
+  text-align: left;
+}
+.subject-card span {
+  width: 12px;
+  height: 38px;
+  border-radius: 999px;
+  grid-row: span 2;
+}
+.subject-card b,
+.subject-card small {
+  display: block;
+}
+.subject-card small {
+  color: var(--muted);
+  font-size: 10px;
+}
+.subject-card:hover {
+  background: #f6f5ff;
+}
 .countdown {
   background: linear-gradient(140deg, #7569ec, #5043c6);
   color: white;
@@ -605,6 +651,43 @@ small {
   font-size: 34px;
   margin: 20px 0;
 }
+.gradebook {
+  margin-top: 14px;
+}
+.grade-card {
+  position: relative;
+  overflow: hidden;
+}
+.grade-card > span {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 6px;
+}
+.grade-card p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+}
+.grade-row {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  padding: 11px;
+  margin: 8px 0;
+  font-size: 12px;
+}
+.grade-row b,
+.grade-row small {
+  display: block;
+}
+.grade-row strong {
+  font: 700 21px Fraunces;
+  color: var(--purple);
+}
 .grades h1 small {
   font: 700 13px "DM Sans";
 }
@@ -639,6 +722,11 @@ dialog select {
   padding: 10px;
   border: 1px solid var(--line);
   border-radius: 6px;
+}
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
 }
 dialog menu {
   text-align: right;
@@ -701,6 +789,7 @@ body.dark {
 }
 body.dark .search,
 body.dark .search input,
+body.dark select,
 body.dark textarea,
 body.dark .editor input {
   background: #2b2a3b;
@@ -763,6 +852,7 @@ body.dark .timer {
     grid-template-columns: 1fr;
   }
   .schedule,
+  .subject-panel,
   .notify-card {
     grid-column: auto;
   }
@@ -847,6 +937,7 @@ body.dark .timer {
   .welcome,
   .head,
   .achievement,
+  .action-row,
   .notify-actions {
     align-items: stretch;
     flex-direction: column;
@@ -856,6 +947,7 @@ body.dark .timer {
     margin-bottom: 20px;
   }
   .welcome .primary,
+  .action-row button,
   .notify-actions button {
     width: 100%;
   }
@@ -871,6 +963,10 @@ body.dark .timer {
   }
   .tag {
     margin-left: 0;
+  }
+  .form-grid,
+  .grade-row {
+    grid-template-columns: 1fr;
   }
   .calendar {
     grid-template-columns: repeat(7, minmax(0, 1fr));

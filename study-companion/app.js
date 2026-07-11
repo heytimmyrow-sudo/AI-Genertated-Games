@@ -3,6 +3,8 @@ let state = JSON.parse(localStorage.getItem(key) || "null") || {
   dark: false,
   focus: 0,
   notifications: false,
+  subjects: [],
+  grades: [],
   tasks: [],
 };
 const q = (s) => document.querySelector(s),
@@ -17,7 +19,44 @@ if (!state.activeProfileId && state.profiles.length) {
 if (typeof state.notifications !== "boolean") {
   state.notifications = false;
 }
+if (!Array.isArray(state.subjects)) {
+  state.subjects = [];
+}
+if (!Array.isArray(state.grades)) {
+  state.grades = [];
+}
+state.tasks
+  .map((task) => task.subject)
+  .filter(Boolean)
+  .forEach((name) => {
+    if (!state.subjects.some((subject) => subject.name === name)) {
+      state.subjects.push({
+        id: "subject-" + name.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
+        name,
+        color: "#6558e8",
+      });
+    }
+  });
+state.tasks.forEach((task) => {
+  if (!task.subjectId && task.subject) {
+    const subject = state.subjects.find((item) => item.name === task.subject);
+    if (subject) task.subjectId = subject.id;
+  }
+});
 let editingProfileId = state.activeProfileId || null;
+function escapeHtml(value) {
+  return String(value || "").replace(
+    /[&<>"']/g,
+    (char) =>
+      ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#039;",
+      })[char],
+  );
+}
 function activeProfile() {
   return (
     state.profiles.find((profile) => profile.id === state.activeProfileId) ||
@@ -47,7 +86,11 @@ function populateProfileForm() {
     ? state.profiles
         .map(
           (profile) =>
-            '<option value="' + profile.id + '">' + profile.name + "</option>",
+            '<option value="' +
+            profile.id +
+            '">' +
+            escapeHtml(profile.name) +
+            "</option>",
         )
         .join("")
     : '<option value="">New profile</option>';
@@ -57,7 +100,75 @@ function populateProfileForm() {
   q("#profileFocus").value = profile ? profile.focus : "";
   q("#profileColor").value = profile ? profile.color : "#6558e8";
 }
+function subjectById(id) {
+  return state.subjects.find((subject) => subject.id === id) || null;
+}
+function subjectOptions() {
+  return state.subjects.length
+    ? state.subjects
+        .map(
+          (subject) =>
+            '<option value="' +
+            subject.id +
+            '">' +
+            escapeHtml(subject.name) +
+            "</option>",
+        )
+        .join("")
+    : '<option value="">Add a subject first</option>';
+}
+function syncSubjectSelectors() {
+  q("#subject").innerHTML = subjectOptions();
+  q("#gradeSubject").innerHTML = subjectOptions();
+}
+function gradePercent(grade) {
+  return grade.outOf ? (grade.score / grade.outOf) * 100 : 0;
+}
+function subjectAverage(subjectId) {
+  const entries = state.grades.filter((grade) => grade.subjectId === subjectId);
+  const weight = entries.reduce((total, grade) => total + grade.weight, 0);
+  if (!weight) return null;
+  return (
+    entries.reduce(
+      (total, grade) => total + gradePercent(grade) * grade.weight,
+      0,
+    ) / weight
+  );
+}
+function renderSubjects() {
+  syncSubjectSelectors();
+  q("#subjectList").innerHTML = state.subjects.length
+    ? state.subjects
+        .map((subject) => {
+          const openTasks = state.tasks.filter(
+            (task) => task.subjectId === subject.id && !task.done,
+          ).length;
+          const average = subjectAverage(subject.id);
+          return (
+            '<button class="subject-card" data-subject-id="' +
+            subject.id +
+            '"><span style="background:' +
+            subject.color +
+            '"></span><b>' +
+            escapeHtml(subject.name) +
+            "</b><small>" +
+            openTasks +
+            " open tasks" +
+            (average === null ? "" : " · " + Math.round(average) + "% avg") +
+            "</small></button>"
+          );
+        })
+        .join("")
+    : '<div class="empty-state"><b>No subjects yet.</b><small>Add classes like Algebra, History, or Science.</small></div>';
+  qa(".subject-card").forEach(
+    (button) =>
+      (button.onclick = () => {
+        nav("grades");
+      }),
+  );
+}
 function html(t) {
+  const subject = subjectById(t.subjectId);
   return (
     '<div class="task ' +
     (t.done ? "done" : "") +
@@ -66,11 +177,11 @@ function html(t) {
     '">' +
     (t.done ? "✓" : "") +
     "</button><div><b>" +
-    t.title +
+    escapeHtml(t.title) +
     "</b><small>" +
     t.due +
     '</small></div><span class="tag">' +
-    t.subject +
+    escapeHtml(subject ? subject.name : t.subject || "No subject") +
     "</span></div>"
   );
 }
@@ -81,6 +192,8 @@ function tasks() {
   q("#taskList").innerHTML = x || empty;
   q("#plannerTasks").innerHTML = x || empty;
   q("#plannerCount").textContent = state.tasks.filter((t) => !t.done).length;
+  renderSubjects();
+  renderGrades();
   renderStats();
   qa(".check").forEach(
     (b) =>
@@ -95,6 +208,9 @@ function tasks() {
 }
 function renderStats() {
   const completed = state.tasks.filter((task) => task.done).length;
+  const gradedSubjects = state.subjects.filter(
+    (subject) => subjectAverage(subject.id) !== null,
+  );
   const cards = [];
   if (state.focus > 0) {
     cards.push(
@@ -110,9 +226,77 @@ function renderStats() {
         "<small>Tasks completed</small></b><span>This week</span></article>",
     );
   }
+  if (state.subjects.length > 0) {
+    cards.push(
+      "<article>□ <b>" +
+        state.subjects.length +
+        "<small>Subjects</small></b><span>Active</span></article>",
+    );
+  }
+  if (gradedSubjects.length > 0) {
+    const overall =
+      gradedSubjects.reduce(
+        (total, subject) => total + subjectAverage(subject.id),
+        0,
+      ) / gradedSubjects.length;
+    cards.push(
+      "<article>↗ <b>" +
+        Math.round(overall) +
+        "%<small>Grade average</small></b><span>Weighted</span></article>",
+    );
+  }
   q("#stats").innerHTML = cards.length
     ? cards.join("")
     : '<div class="stats-empty">Your study statistics will appear after you log activity.</div>';
+}
+function renderGrades() {
+  q("#gradeSummary").innerHTML = state.subjects.length
+    ? state.subjects
+        .map((subject) => {
+          const entries = state.grades.filter(
+            (grade) => grade.subjectId === subject.id,
+          );
+          const weight = entries.reduce(
+            (total, grade) => total + grade.weight,
+            0,
+          );
+          const average = subjectAverage(subject.id);
+          return (
+            '<article class="panel grade-card"><span style="background:' +
+            subject.color +
+            '"></span><p>' +
+            escapeHtml(subject.name) +
+            "</p><h1>" +
+            (average === null ? "--" : Math.round(average) + "%") +
+            "</h1><small>" +
+            entries.length +
+            " grades · " +
+            weight +
+            "% weight logged</small></article>"
+          );
+        })
+        .join("")
+    : '<article class="panel empty-state"><b>No subjects yet.</b><small>Add a subject before tracking grades.</small></article>';
+  q("#gradeList").innerHTML = state.grades.length
+    ? state.grades
+        .map((grade) => {
+          const subject = subjectById(grade.subjectId);
+          return (
+            '<div class="grade-row"><div><b>' +
+            escapeHtml(grade.name) +
+            "</b><small>" +
+            escapeHtml(subject ? subject.name : "No subject") +
+            " · " +
+            escapeHtml(grade.type) +
+            "</small></div><strong>" +
+            Math.round(gradePercent(grade)) +
+            '%</strong><span class="tag">' +
+            grade.weight +
+            "% weight</span></div>"
+          );
+        })
+        .join("")
+    : '<div class="empty-state"><b>No grades tracked yet.</b><small>Add tests, schoolwork, projects, or homework with weights.</small></div>';
 }
 function toast(message) {
   const el = q("#toast");
@@ -180,24 +364,116 @@ function nav(v) {
 }
 qa("[data-view]").forEach((b) => (b.onclick = () => nav(b.dataset.view)));
 qa('[data-action="task"]').forEach(
-  (b) => (b.onclick = () => q("#dialog").showModal()),
+  (b) =>
+    (b.onclick = () => {
+      syncSubjectSelectors();
+      if (!state.subjects.length) {
+        toast("Add a subject first.");
+        q("#subjectDialog").showModal();
+        return;
+      }
+      q("#dialog").showModal();
+    }),
+);
+qa('[data-action="subject"]').forEach(
+  (b) =>
+    (b.onclick = () => {
+      q("#subjectName").value = "";
+      q("#subjectColor").value = "#6558e8";
+      q("#subjectDialog").showModal();
+    }),
+);
+qa('[data-action="grade"]').forEach(
+  (b) =>
+    (b.onclick = () => {
+      syncSubjectSelectors();
+      if (!state.subjects.length) {
+        toast("Add a subject before adding grades.");
+        q("#subjectDialog").showModal();
+        return;
+      }
+      q("#gradeName").value = "";
+      q("#gradeScore").value = "";
+      q("#gradeOutOf").value = "100";
+      q("#gradeWeight").value = "10";
+      q("#gradeDialog").showModal();
+    }),
 );
 q("#save").onclick = () => {
   let x = q("#title").value.trim();
   if (x) {
+    const subject = subjectById(q("#subject").value);
+    if (!subject) {
+      toast("Choose a subject for this task.");
+      return;
+    }
     state.tasks.unshift({
       id: Date.now(),
       title: x,
-      subject: q("#subject").value,
+      subjectId: subject.id,
+      subject: subject.name,
       due: "Due soon",
       done: false,
     });
     save();
     tasks();
     q("#title").value = "";
-    q("#subject").value = "";
     notify("Task added", "Your new task was saved.");
   }
+};
+q("#saveSubject").onclick = (event) => {
+  const name = q("#subjectName").value.trim();
+  if (!name) {
+    event.preventDefault();
+    q("#subjectName").focus();
+    return;
+  }
+  const existing = state.subjects.find(
+    (subject) => subject.name.toLowerCase() === name.toLowerCase(),
+  );
+  if (existing) {
+    state.tasks.forEach((task) => {
+      if (task.subject === name && !task.subjectId)
+        task.subjectId = existing.id;
+    });
+  } else {
+    state.subjects.push({
+      id: "subject-" + Date.now(),
+      name,
+      color: q("#subjectColor").value,
+    });
+  }
+  save();
+  renderSubjects();
+  renderGrades();
+  renderStats();
+  toast(existing ? "That subject already exists." : "Subject added.");
+};
+q("#saveGrade").onclick = (event) => {
+  const subject = subjectById(q("#gradeSubject").value);
+  const name = q("#gradeName").value.trim();
+  const score = Number(q("#gradeScore").value);
+  const outOf = Number(q("#gradeOutOf").value);
+  const weight = Number(q("#gradeWeight").value);
+  if (!subject || !name || score < 0 || outOf <= 0 || weight <= 0) {
+    event.preventDefault();
+    toast("Fill in the grade, score, total, and weight.");
+    return;
+  }
+  state.grades.unshift({
+    id: Date.now(),
+    subjectId: subject.id,
+    type: q("#gradeType").value,
+    name,
+    score,
+    outOf,
+    weight,
+  });
+  save();
+  renderGrades();
+  renderSubjects();
+  renderStats();
+  notify("Grade added", subject.name + " average updated.");
 };
 q("#theme").onclick = () => {
   state.dark = !state.dark;
