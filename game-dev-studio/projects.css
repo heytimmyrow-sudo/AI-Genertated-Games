@@ -1,0 +1,1 @@
+.project-tile .delete-project{position:absolute;right:9px;top:8px;width:25px;height:25px;border:0;border-radius:7px;background:#282e3a;color:#afb8c6;font:500 19px/20px system-ui;cursor:pointer;opacity:0}.project-tile:hover .delete-project,.delete-project:focus{opacity:1}.delete-project:hover{background:#653747;color:#fff}
