@@ -1,6 +1,7 @@
 const key = "study-companion-v2";
 let state = JSON.parse(localStorage.getItem(key) || "null") || {
   dark: false,
+  schoolTheme: "st-patrick",
   focus: 0,
   notifications: false,
   profiles: [],
@@ -24,6 +25,9 @@ function ensureArray(name) {
   ensureArray,
 );
 if (typeof state.notifications !== "boolean") state.notifications = false;
+if (!["st-patrick", "notre-dame", "fenwick"].includes(state.schoolTheme)) {
+  state.schoolTheme = "st-patrick";
+}
 if (!state.activeProfileId && state.profiles.length) {
   state.activeProfileId = state.profiles[0].id;
 }
@@ -91,6 +95,19 @@ function daysUntil(value) {
   const target = new Date(value + "T00:00:00");
   if (Number.isNaN(target.getTime())) return null;
   return Math.ceil((target - today) / 86400000);
+}
+
+function applySchoolTheme() {
+  document.body.classList.toggle(
+    "theme-notre-dame",
+    state.schoolTheme === "notre-dame",
+  );
+  document.body.classList.toggle(
+    "theme-fenwick",
+    state.schoolTheme === "fenwick",
+  );
+  const picker = q("#schoolTheme");
+  if (picker) picker.value = state.schoolTheme;
 }
 
 function activeProfile() {
@@ -969,6 +986,13 @@ q("#importData").onchange = (event) => {
   reader.readAsText(file);
 };
 
+q("#schoolTheme").onchange = (event) => {
+  state.schoolTheme = event.target.value;
+  applySchoolTheme();
+  save();
+  toast("School theme updated.");
+};
+
 q("#theme").onclick = () => {
   state.dark = !state.dark;
   document.body.classList.toggle("dark", state.dark);
@@ -1093,6 +1117,7 @@ addEventListener("resize", () => {
 });
 
 tasks();
+applySchoolTheme();
 renderProfile();
 renderNotifications();
 renderNotes();

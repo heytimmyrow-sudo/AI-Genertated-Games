@@ -9,6 +9,15 @@
   --green-soft: #e7f3e9;
   --green-mint: #53b282;
   --photo-fade: 0.32;
+  --school-photo: url("saint-patrick-school-stoneham.jpg");
+  --accent-soft: #e4f2e7;
+  --accent-soft-2: #eaf5ec;
+  --accent-card: #edf7ef;
+  --accent-event: #e6f3e8;
+  --accent-gradient-start: #2f704c;
+  --accent-gradient-end: #163c29;
+  --accent-flash-start: #2e7a51;
+  --accent-flash-end: #153c29;
 }
 * {
   box-sizing: border-box;
@@ -31,7 +40,7 @@ body::before {
   position: fixed;
   inset: 0;
   z-index: -2;
-  background: url("saint-patrick-school-stoneham.jpg") center / cover fixed;
+  background: var(--school-photo) center / cover fixed;
   opacity: var(--photo-fade);
   filter: saturate(0.82) contrast(1.02);
 }
@@ -59,6 +68,34 @@ body::after {
   padding: 27px 18px;
   display: flex;
   flex-direction: column;
+}
+body.theme-notre-dame {
+  --purple: #0b2345;
+  --green-deep: #041e42;
+  --green-mint: #c99700;
+  --school-photo: url("notre-dame-university.jpg");
+  --accent-soft: #eef3fb;
+  --accent-soft-2: #f7edc8;
+  --accent-card: #f4e8bd;
+  --accent-event: #edf3fb;
+  --accent-gradient-start: #0b2345;
+  --accent-gradient-end: #c99700;
+  --accent-flash-start: #041e42;
+  --accent-flash-end: #b58b00;
+}
+body.theme-fenwick {
+  --purple: #111111;
+  --green-deep: #0b0b0b;
+  --green-mint: #f2c300;
+  --school-photo: url("bishop-fenwick-highschool.jpg");
+  --accent-soft: #fff5bf;
+  --accent-soft-2: #fff0a6;
+  --accent-card: #fff2ad;
+  --accent-event: #fff3b8;
+  --accent-gradient-start: #111111;
+  --accent-gradient-end: #f2c300;
+  --accent-flash-start: #111111;
+  --accent-flash-end: #caa100;
 }
 .brand {
   font-size: 16px;
@@ -110,13 +147,13 @@ nav p {
 }
 .nav:hover,
 .nav.active {
-  background: #e4f2e7;
+  background: var(--accent-soft);
   color: var(--green-deep);
 }
 .nav em {
   float: right;
   font-style: normal;
-  background: #cfe8d4;
+  background: color-mix(in srgb, var(--accent-soft) 72%, var(--green-mint));
   padding: 2px 6px;
   border-radius: 10px;
 }
@@ -156,6 +193,8 @@ header {
   display: flex;
   align-items: center;
   gap: 9px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 .utility {
   border: 1px solid var(--line);
@@ -165,6 +204,26 @@ header {
   padding: 8px 12px;
   font-size: 11px;
   font-weight: 700;
+}
+.theme-picker {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--paper);
+  color: var(--muted);
+  padding: 6px 9px 6px 12px;
+  font-size: 10px;
+  font-weight: 700;
+}
+.theme-picker select {
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  max-width: 150px;
 }
 .import-backup {
   display: inline-flex;
@@ -378,7 +437,7 @@ small {
 .tag {
   margin-left: auto;
   padding: 4px 6px;
-  background: #e4f2e7;
+  background: var(--accent-soft);
   color: var(--green-deep);
   border-radius: 5px;
   font-size: 9px;
@@ -388,7 +447,7 @@ small {
   width: 100%;
   border: 0;
   color: var(--green-deep);
-  background: #eaf5ec;
+  background: var(--accent-soft-2);
   padding: 10px;
   text-align: left;
   border-radius: 8px;
@@ -447,10 +506,14 @@ small {
   font-size: 10px;
 }
 .subject-card:hover {
-  background: #edf7ef;
+  background: var(--accent-card);
 }
 .countdown {
-  background: linear-gradient(140deg, #2f704c, #163c29);
+  background: linear-gradient(
+    140deg,
+    var(--accent-gradient-start),
+    var(--accent-gradient-end)
+  );
   color: white;
   border: 0;
 }
@@ -562,7 +625,11 @@ small {
   max-width: 620px;
   text-align: center;
   padding: 52px;
-  background: linear-gradient(145deg, rgba(255, 255, 249, 0.95), #e8f4e9);
+  background: linear-gradient(
+    145deg,
+    rgba(255, 255, 249, 0.95),
+    var(--accent-soft)
+  );
   border: 1px solid #cbe4d1;
   border-radius: 18px;
 }
@@ -593,7 +660,11 @@ small {
 .flash {
   height: 290px;
   color: white;
-  background: linear-gradient(140deg, #2e7a51, #153c29);
+  background: linear-gradient(
+    140deg,
+    var(--accent-flash-start),
+    var(--accent-flash-end)
+  );
   border-radius: 16px;
   padding: 27px;
   text-align: center;
@@ -621,7 +692,7 @@ small {
   border-radius: 7px;
 }
 .deck:hover {
-  background: #e8f4e9;
+  background: var(--accent-soft);
   color: var(--green-deep);
 }
 .deck span {
@@ -704,7 +775,7 @@ small {
 }
 .note-item.active,
 .note-item:hover {
-  background: #e8f4e9;
+  background: var(--accent-soft);
   border-color: #b9dcc3;
 }
 .note-item b,
@@ -737,7 +808,7 @@ small {
   display: block;
   font-size: 9px;
   color: var(--green-deep);
-  background: #e6f3e8;
+  background: var(--accent-event);
   padding: 4px;
   border-radius: 4px;
   margin-top: 7px;
@@ -748,7 +819,7 @@ small {
 }
 .event.assignment {
   color: var(--green-deep);
-  background: #e6f3e8;
+  background: var(--accent-event);
 }
 .classcards,
 .grades {
@@ -757,7 +828,7 @@ small {
   gap: 12px;
 }
 .classcards div {
-  background: #e7f4e9;
+  background: var(--accent-card);
   color: var(--green-deep);
   border-radius: 9px;
   padding: 20px;
@@ -802,7 +873,7 @@ small {
   width: 180px;
   aspect-ratio: 1;
   border-radius: 50%;
-  background: #e5f2e8;
+  background: var(--accent-soft);
   display: grid;
   place-items: center;
   position: relative;
@@ -919,7 +990,7 @@ dialog select {
   border-radius: 8px;
   padding: 10px;
   color: var(--purple);
-  background: #edf7ef;
+  background: var(--accent-card);
   font-size: 12px;
   font-weight: 700;
   text-align: center;
@@ -936,7 +1007,7 @@ dialog menu {
   border: 1px dashed #9cc7aa;
   border-radius: 7px;
   color: var(--purple);
-  background: #edf7ef;
+  background: var(--accent-card);
   font-size: 11px;
   font-weight: 700;
 }
@@ -1021,6 +1092,32 @@ body.dark dialog {
 }
 body.dark .timer {
   background: linear-gradient(145deg, #1f3328, #14241b);
+}
+body.dark.theme-notre-dame {
+  --purple: #c99700;
+  --green-deep: #f5d76b;
+  --green-mint: #041e42;
+  --accent-soft: #182f55;
+  --accent-soft-2: #5c4b18;
+  --accent-card: #332b14;
+  --accent-event: #1c3358;
+  --accent-gradient-start: #041e42;
+  --accent-gradient-end: #c99700;
+  --accent-flash-start: #041e42;
+  --accent-flash-end: #876800;
+}
+body.dark.theme-fenwick {
+  --purple: #f2c300;
+  --green-deep: #ffe477;
+  --green-mint: #111111;
+  --accent-soft: #3b3108;
+  --accent-soft-2: #5e4d08;
+  --accent-card: #322a07;
+  --accent-event: #4a3d08;
+  --accent-gradient-start: #050505;
+  --accent-gradient-end: #f2c300;
+  --accent-flash-start: #050505;
+  --accent-flash-end: #a98800;
 }
 @media (max-width: 850px) {
   .sidebar {
