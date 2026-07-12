@@ -914,6 +914,22 @@ small {
     700 28px/1 "Fraunces",
     serif;
   text-align: right;
+  display: block;
+  margin-top: 4px;
+}
+.calendar-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+.calendar-controls button {
+  border: 1px solid color-mix(in srgb, currentColor 24%, transparent);
+  border-radius: 999px;
+  padding: 8px 11px;
+  background: color-mix(in srgb, #ffffff 16%, transparent);
+  color: currentColor;
+  font-weight: 800;
 }
 .day {
   border-right: 1px solid var(--line);
@@ -962,6 +978,11 @@ small {
 .event.classwork {
   color: var(--button-text);
   background: var(--button-bg);
+}
+.event.school-event {
+  color: var(--feature-text);
+  background: var(--feature-bg);
+  border-left: 3px solid var(--button-bg);
 }
 .school-calendar-sync {
   margin-top: 0;
@@ -1626,6 +1647,15 @@ body.dark.theme-fenwick {
     align-items: start;
     flex-direction: column;
     padding: 14px;
+  }
+  .calendar-controls {
+    justify-content: stretch;
+    width: 100%;
+  }
+  .calendar-controls button {
+    flex: 1;
+    padding: 8px 6px;
+    font-size: 10px;
   }
   .calendar-month b {
     font-size: 22px;

@@ -138,6 +138,7 @@ let editingSubjectId = null;
 let editingGradeId = null;
 let editingExamId = null;
 let activeNoteId = state.activeNoteId || null;
+let calendarCursor = new Date();
 let noteSaveTimer;
 
 function escapeHtml(value) {
@@ -160,6 +161,90 @@ function formatDate(value) {
   if (!year || !month || !day) return "No due date";
   return Number(month) + "/" + Number(day) + "/" + year;
 }
+
+function makeDateKey(year, month, day) {
+  return (
+    year +
+    "-" +
+    String(month).padStart(2, "0") +
+    "-" +
+    String(day).padStart(2, "0")
+  );
+}
+
+function schoolDate(year, month, day, title) {
+  return { date: makeDateKey(year, month, day), title };
+}
+
+function schoolDateRange(year, month, start, end, title) {
+  return Array.from({ length: end - start + 1 }, (_, index) =>
+    schoolDate(year, month, start + index, title),
+  );
+}
+
+const saintPatsImportantDates = [
+  schoolDate(2025, 9, 3, "First Day of School"),
+  schoolDate(2025, 9, 5, "11:30 Dismissal/Tag Day"),
+  schoolDate(2025, 9, 12, "All School Forms Due"),
+  schoolDate(2025, 9, 15, "Mass Day - Mass Uniform Required"),
+  schoolDate(2025, 9, 30, "Picture Day"),
+  schoolDate(2025, 10, 3, "11:30 Dismissal/Tag Day"),
+  schoolDate(2025, 10, 6, "Mass Day - Mass Uniform Required"),
+  schoolDate(2025, 10, 10, "No School"),
+  schoolDate(2025, 10, 13, "No School"),
+  schoolDate(2025, 10, 15, "Class Picture Day - Mass Uniform Required"),
+  schoolDate(2025, 10, 15, "Cap & Gown Pictures - Mass Uniform Required"),
+  schoolDate(2025, 10, 25, "Open House"),
+  schoolDate(2025, 11, 3, "Mass Day - Mass Uniform Required"),
+  schoolDate(2025, 11, 7, "11:30 Dismissal/Tag Day"),
+  schoolDate(2025, 11, 11, "No School"),
+  schoolDate(2025, 11, 13, "Picture Make Up Day"),
+  ...schoolDateRange(2025, 11, 16, 22, "Discover Catholic Schools Week"),
+  schoolDate(2025, 11, 20, "Enrollment is Open 26-27 School Year"),
+  schoolDate(2025, 11, 20, "Open House"),
+  ...schoolDateRange(2025, 11, 26, 28, "No School - Thanksgiving Break"),
+  ...schoolDateRange(2025, 12, 4, 5, "11:30 Dismissal"),
+  ...schoolDateRange(2025, 12, 4, 5, "Parent Teacher Conferences"),
+  schoolDate(2025, 12, 8, "Mass Day - Mass Uniform Required"),
+  schoolDate(2025, 12, 12, "11:30 Dismissal/Tag Day"),
+  schoolDate(2025, 12, 19, "After School Closes at 4 pm"),
+  ...schoolDateRange(2025, 12, 22, 31, "No School - Winter Break"),
+  ...schoolDateRange(2026, 1, 1, 2, "No School - Winter Break"),
+  schoolDate(2026, 1, 9, "11:30 Dismissal/Tag Day"),
+  schoolDate(2026, 1, 9, "No After School"),
+  schoolDate(2026, 1, 12, "Mass Day - Mass Uniform Required"),
+  schoolDate(2026, 1, 19, "No School"),
+  ...schoolDateRange(2026, 1, 25, 31, "Celebrate Catholic Schools Week"),
+  schoolDate(2026, 2, 6, "11:30 Dismissal"),
+  schoolDate(2026, 2, 9, "Mass Day - Mass Uniform Required"),
+  schoolDate(2026, 2, 13, "Tag Day"),
+  schoolDate(2026, 2, 13, "After School Closes at 4 pm"),
+  ...schoolDateRange(2026, 2, 16, 20, "No School - February Break"),
+  schoolDate(2026, 3, 12, "Mass Day - Mass Uniform Required"),
+  schoolDate(2026, 3, 13, "No School"),
+  schoolDate(2026, 3, 17, "Mass Day - Mass Uniform Required"),
+  schoolDate(2026, 3, 20, "11:30 Dismissal/Tag Day"),
+  schoolDate(2026, 3, 20, "Parent Teacher Conferences"),
+  schoolDate(2026, 4, 3, "No School"),
+  schoolDate(2026, 4, 6, "No School"),
+  schoolDate(2026, 4, 10, "11:30 Dismissal/Tag Day"),
+  schoolDate(2026, 4, 13, "Mass Day - Mass Uniform Required"),
+  schoolDate(2026, 4, 17, "After School Closes at 4 pm"),
+  ...schoolDateRange(2026, 4, 20, 24, "No School - April Break"),
+  schoolDate(2026, 5, 1, "11:30 Dismissal/Tag Day"),
+  schoolDate(2026, 5, 8, "Fun Run"),
+  schoolDate(2026, 5, 12, "Fun Run (Rain Date)"),
+  schoolDate(2026, 5, 14, "Mass Day - Mass Uniform Required"),
+  schoolDate(2026, 5, 22, "No After School"),
+  schoolDate(2026, 5, 25, "No School"),
+  schoolDate(2026, 5, 29, "Field Day / 1 pm Dismissal"),
+  schoolDate(2026, 6, 1, "Field Day (Rain Date) / 1 pm Dismissal"),
+  schoolDate(2026, 6, 2, "PK Field Day"),
+  schoolDate(2026, 6, 3, "PK Field Day (Rain Date)"),
+  schoolDate(2026, 6, 9, "Last Day for After School"),
+  schoolDate(2026, 6, 12, "Last Day of School"),
+  schoolDate(2026, 6, 12, "11:30 Dismissal"),
+];
 
 function daysUntil(value) {
   if (!value) return null;
@@ -769,7 +854,7 @@ function openClassAssignmentDialog(id) {
 }
 
 function renderCalendar() {
-  const now = new Date();
+  const now = calendarCursor;
   const year = now.getFullYear();
   const month = now.getMonth();
   const first = new Date(year, month, 1).getDay();
@@ -779,9 +864,9 @@ function renderCalendar() {
     year: "numeric",
   });
   let html =
-    '<div class="calendar-month"><span>Calendar</span><b>' +
+    '<div class="calendar-month"><div><span>Calendar</span><b>' +
     monthName +
-    "</b></div>";
+    '</b></div><div class="calendar-controls"><button type="button" data-calendar-shift="-1">‹ Previous</button><button type="button" data-calendar-today>Today</button><button type="button" data-calendar-shift="1">Next ›</button></div></div>';
   html += [
     ["Sunday", "Sun"],
     ["Monday", "Mon"],
@@ -802,12 +887,7 @@ function renderCalendar() {
     .join("");
   for (let i = 0; i < first; i++) html += '<div class="day muted-day"></div>';
   for (let day = 1; day <= days; day++) {
-    const dateKey =
-      year +
-      "-" +
-      String(month + 1).padStart(2, "0") +
-      "-" +
-      String(day).padStart(2, "0");
+    const dateKey = makeDateKey(year, month + 1, day);
     const dayTasks = state.tasks.filter((task) => task.dueDate === dateKey);
     const dayExams = state.exams.filter((exam) => exam.date === dateKey);
     const dayClasswork = state.classes.flatMap((classItem) =>
@@ -815,7 +895,17 @@ function renderCalendar() {
         .filter((assignment) => assignment.dueDate === dateKey)
         .map((assignment) => ({ ...assignment, className: classItem.name })),
     );
+    const daySchoolEvents =
+      state.schoolTheme === "st-patrick"
+        ? saintPatsImportantDates.filter((event) => event.date === dateKey)
+        : [];
     html += '<div class="day"><b>' + day + "</b>";
+    daySchoolEvents.forEach((event) => {
+      html +=
+        '<span class="event school-event">School: ' +
+        escapeHtml(event.title) +
+        "</span>";
+    });
     dayTasks.forEach((task) => {
       html +=
         '<span class="event assignment">HW: ' +
@@ -835,6 +925,23 @@ function renderCalendar() {
     html += "</div>";
   }
   q("#calendarGrid").innerHTML = html;
+  qa("[data-calendar-shift]").forEach((button) => {
+    button.onclick = () => {
+      calendarCursor = new Date(
+        calendarCursor.getFullYear(),
+        calendarCursor.getMonth() + Number(button.dataset.calendarShift),
+        1,
+      );
+      renderCalendar();
+    };
+  });
+  const todayButton = q("[data-calendar-today]");
+  if (todayButton) {
+    todayButton.onclick = () => {
+      calendarCursor = new Date();
+      renderCalendar();
+    };
+  }
   renderSchoolCalendarSync();
 }
 
@@ -846,7 +953,7 @@ function renderSchoolCalendarSync() {
   const status = q("#schoolCalendarStatus");
   if (status) {
     status.textContent = enabled
-      ? "Synced from the official Saint Patrick School calendar."
+      ? "Official 2025-2026 important dates are shown in the month grid. The live school calendar is below."
       : "School calendar sync is only enabled for Saint Patrick.";
   }
 }
