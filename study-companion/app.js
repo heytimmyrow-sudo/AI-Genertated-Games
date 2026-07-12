@@ -1235,16 +1235,18 @@ q("#schoolTheme").onchange = (event) => {
   toast("School changed. This school has its own saved data.");
 };
 
+function applyAppearance() {
+  document.body.classList.toggle("dark", Boolean(state.dark));
+  q("#theme").textContent = state.dark ? "☾ Dark mode" : "☀ Light mode";
+  q("#theme").setAttribute("aria-pressed", String(Boolean(state.dark)));
+}
+
 q("#theme").onclick = () => {
   state.dark = !state.dark;
-  document.body.classList.toggle("dark", state.dark);
-  q("#theme").textContent = state.dark ? "☀ Light mode" : "☾ Dark mode";
+  applyAppearance();
   save();
 };
-if (state.dark) {
-  document.body.classList.add("dark");
-  q("#theme").textContent = "☀ Light mode";
-}
+applyAppearance();
 
 let sec = 1500;
 let clock;

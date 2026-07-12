@@ -19,6 +19,22 @@
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
+    <script>
+      (() => {
+        try {
+          const saved = JSON.parse(
+            localStorage.getItem("study-companion-v2") || "{}",
+          );
+          if (saved.dark) document.body.classList.add("dark");
+          if (saved.schoolTheme === "notre-dame") {
+            document.body.classList.add("theme-notre-dame");
+          }
+          if (saved.schoolTheme === "fenwick") {
+            document.body.classList.add("theme-fenwick");
+          }
+        } catch {}
+      })();
+    </script>
     <aside class="sidebar">
       <a class="brand"><span>✦</span>study<br /><b>companion</b></a>
       <nav>
@@ -38,7 +54,8 @@
         ><button class="nav" data-view="goals">◎ Goals & streaks</button>
       </nav>
       <footer>
-        <button id="theme">☾ Dark mode</button
+        <button id="theme" type="button" aria-pressed="false">
+          ☀ Light mode</button
         ><small>● Saved automatically</small>
       </footer>
     </aside>
