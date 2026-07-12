@@ -3,30 +3,33 @@ let state = JSON.parse(localStorage.getItem(key) || "null") || {
   dark: false,
   focus: 0,
   notifications: false,
+  profiles: [],
   subjects: [],
   grades: [],
   tasks: [],
+  notes: [],
+  exams: [],
+  activeNoteId: null,
 };
-const q = (s) => document.querySelector(s),
-  qa = (s) => [...document.querySelectorAll(s)],
-  save = () => localStorage.setItem(key, JSON.stringify(state));
-if (!Array.isArray(state.profiles)) {
-  state.profiles = [];
+
+const q = (s) => document.querySelector(s);
+const qa = (s) => [...document.querySelectorAll(s)];
+const save = () => localStorage.setItem(key, JSON.stringify(state));
+
+function ensureArray(name) {
+  if (!Array.isArray(state[name])) state[name] = [];
 }
+
+["profiles", "subjects", "grades", "tasks", "notes", "exams"].forEach(
+  ensureArray,
+);
+if (typeof state.notifications !== "boolean") state.notifications = false;
 if (!state.activeProfileId && state.profiles.length) {
   state.activeProfileId = state.profiles[0].id;
 }
-if (typeof state.notifications !== "boolean") {
-  state.notifications = false;
-}
-if (!Array.isArray(state.subjects)) {
-  state.subjects = [];
-}
-if (!Array.isArray(state.grades)) {
-  state.grades = [];
-}
 state.grades.forEach((grade) => {
   if (!grade.weightLabel) grade.weightLabel = grade.type || "Grade";
+  grade.weight = Number(grade.weight) || 0;
 });
 state.tasks
   .map((task) => task.subject)
@@ -45,8 +48,21 @@ state.tasks.forEach((task) => {
     const subject = state.subjects.find((item) => item.name === task.subject);
     if (subject) task.subjectId = subject.id;
   }
+  if (!task.dueDate) task.dueDate = "";
+  task.due = formatDate(task.dueDate);
 });
+state.notes.forEach((note) => {
+  if (!note.updatedAt) note.updatedAt = Date.now();
+});
+
 let editingProfileId = state.activeProfileId || null;
+let editingTaskId = null;
+let editingSubjectId = null;
+let editingGradeId = null;
+let editingExamId = null;
+let activeNoteId = state.activeNoteId || null;
+let noteSaveTimer;
+
 function escapeHtml(value) {
   return String(value || "").replace(
     /[&<>"']/g,
@@ -60,12 +76,30 @@ function escapeHtml(value) {
       })[char],
   );
 }
+
+function formatDate(value) {
+  if (!value) return "No due date";
+  const [year, month, day] = String(value).split("-");
+  if (!year || !month || !day) return "No due date";
+  return Number(month) + "/" + Number(day) + "/" + year;
+}
+
+function daysUntil(value) {
+  if (!value) return null;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const target = new Date(value + "T00:00:00");
+  if (Number.isNaN(target.getTime())) return null;
+  return Math.ceil((target - today) / 86400000);
+}
+
 function activeProfile() {
   return (
     state.profiles.find((profile) => profile.id === state.activeProfileId) ||
     null
   );
 }
+
 function initials(name) {
   return name
     .split(/\s+/)
@@ -75,6 +109,7 @@ function initials(name) {
     .join("")
     .toUpperCase();
 }
+
 function renderProfile() {
   const profile = activeProfile();
   const button = q("#profileButton");
@@ -83,6 +118,7 @@ function renderProfile() {
   button.style.background = profile ? profile.color : "";
   button.title = profile ? profile.name + " profile" : "Create your profile";
 }
+
 function populateProfileForm() {
   const picker = q("#profilePicker");
   picker.innerHTML = state.profiles.length
@@ -103,30 +139,43 @@ function populateProfileForm() {
   q("#profileFocus").value = profile ? profile.focus : "";
   q("#profileColor").value = profile ? profile.color : "#6558e8";
 }
+
 function subjectById(id) {
   return state.subjects.find((subject) => subject.id === id) || null;
 }
-function subjectOptions() {
-  return state.subjects.length
-    ? state.subjects
-        .map(
-          (subject) =>
-            '<option value="' +
-            subject.id +
-            '">' +
-            escapeHtml(subject.name) +
-            "</option>",
-        )
-        .join("")
-    : '<option value="">Add a subject first</option>';
+
+function subjectOptions(includeEmpty = false) {
+  const empty = includeEmpty
+    ? '<option value="">No subject</option>'
+    : state.subjects.length
+      ? ""
+      : '<option value="">Add a subject first</option>';
+  return (
+    empty +
+    state.subjects
+      .map(
+        (subject) =>
+          '<option value="' +
+          subject.id +
+          '">' +
+          escapeHtml(subject.name) +
+          "</option>",
+      )
+      .join("")
+  );
 }
+
 function syncSubjectSelectors() {
-  q("#subject").innerHTML = subjectOptions();
-  q("#gradeSubject").innerHTML = subjectOptions();
+  ["#subject", "#gradeSubject", "#examSubject"].forEach((selector) => {
+    if (q(selector)) q(selector).innerHTML = subjectOptions();
+  });
+  if (q("#noteSubject")) q("#noteSubject").innerHTML = subjectOptions(true);
 }
+
 function gradePercent(grade) {
   return grade.outOf ? (grade.score / grade.outOf) * 100 : 0;
 }
+
 function subjectAverage(subjectId) {
   const entries = state.grades.filter((grade) => grade.subjectId === subjectId);
   const weight = entries.reduce((total, grade) => total + grade.weight, 0);
@@ -138,6 +187,7 @@ function subjectAverage(subjectId) {
     ) / weight
   );
 }
+
 const weightColors = [
   "#6558e8",
   "#ef7e72",
@@ -147,6 +197,7 @@ const weightColors = [
   "#c25fd6",
   "#2f9ab7",
 ];
+
 function weightBreakdown() {
   const totals = new Map();
   state.grades.forEach((grade) => {
@@ -159,12 +210,14 @@ function weightBreakdown() {
     color: weightColors[index % weightColors.length],
   }));
 }
+
 function updateWeightPreview() {
   const label =
     q("#weightLabel").value.trim() || q("#gradeType").value || "Weight";
   const weight = Number(q("#gradeWeight").value) || 0;
   q("#weightPreview").textContent = label + " = " + weight + "%";
 }
+
 function renderSubjects() {
   syncSubjectSelectors();
   q("#subjectList").innerHTML = state.subjects.length
@@ -175,7 +228,9 @@ function renderSubjects() {
           ).length;
           const average = subjectAverage(subject.id);
           return (
-            '<button class="subject-card" data-subject-id="' +
+            '<article class="subject-card" data-subject-id="' +
+            subject.id +
+            '"><button class="subject-main" data-open-subject="' +
             subject.id +
             '"><span style="background:' +
             subject.color +
@@ -185,19 +240,27 @@ function renderSubjects() {
             openTasks +
             " open tasks" +
             (average === null ? "" : " · " + Math.round(average) + "% avg") +
-            "</small></button>"
+            '</small></button><div class="item-actions"><button data-edit-subject="' +
+            subject.id +
+            '">Edit</button><button class="danger" data-delete-subject="' +
+            subject.id +
+            '">Delete</button></div></article>'
           );
         })
         .join("")
     : '<div class="empty-state"><b>No subjects yet.</b><small>Add classes like Algebra, History, or Science.</small></div>';
-  qa(".subject-card").forEach(
-    (button) =>
-      (button.onclick = () => {
-        nav("grades");
-      }),
+  qa("[data-open-subject]").forEach(
+    (button) => (button.onclick = () => nav("grades")),
   );
+  qa("[data-edit-subject]").forEach((button) => {
+    button.onclick = () => openSubjectDialog(button.dataset.editSubject);
+  });
+  qa("[data-delete-subject]").forEach((button) => {
+    button.onclick = () => deleteSubject(button.dataset.deleteSubject);
+  });
 }
-function html(t) {
+
+function taskHtml(t) {
   const subject = subjectById(t.subjectId);
   return (
     '<div class="task ' +
@@ -209,14 +272,19 @@ function html(t) {
     "</button><div><b>" +
     escapeHtml(t.title) +
     "</b><small>" +
-    t.due +
+    formatDate(t.dueDate) +
     '</small></div><span class="tag">' +
     escapeHtml(subject ? subject.name : t.subject || "No subject") +
-    "</span></div>"
+    '</span><div class="item-actions"><button data-edit-task="' +
+    t.id +
+    '">Edit</button><button class="danger" data-delete-task="' +
+    t.id +
+    '">Delete</button></div></div>'
   );
 }
+
 function tasks() {
-  let x = state.tasks.map(html).join("");
+  const x = state.tasks.map(taskHtml).join("");
   const empty =
     '<div class="empty-state"><b>Your workspace is clear.</b><small>Add a task when you are ready to begin.</small></div>';
   q("#taskList").innerHTML = x || empty;
@@ -225,17 +293,33 @@ function tasks() {
   renderSubjects();
   renderGrades();
   renderStats();
-  qa(".check").forEach(
-    (b) =>
-      (b.onclick = () => {
-        let t = state.tasks.find((x) => x.id == b.dataset.id);
-        t.done = !t.done;
-        save();
-        if (t.done) notify("Task complete", t.title + " is done.");
-        tasks();
-      }),
-  );
+  renderCalendar();
+  renderExamCountdown();
+  qa(".check").forEach((b) => {
+    b.onclick = () => {
+      const t = state.tasks.find((item) => String(item.id) === b.dataset.id);
+      if (!t) return;
+      t.done = !t.done;
+      save();
+      if (t.done) notify("Task complete", t.title + " is done.");
+      tasks();
+    };
+  });
+  qa("[data-edit-task]").forEach((button) => {
+    button.onclick = () => openTaskDialog(button.dataset.editTask);
+  });
+  qa("[data-delete-task]").forEach((button) => {
+    button.onclick = () => {
+      state.tasks = state.tasks.filter(
+        (task) => String(task.id) !== button.dataset.deleteTask,
+      );
+      save();
+      tasks();
+      toast("Task deleted.");
+    };
+  });
 }
+
 function renderStats() {
   const completed = state.tasks.filter((task) => task.done).length;
   const gradedSubjects = state.subjects.filter(
@@ -244,7 +328,7 @@ function renderStats() {
   const cards = [];
   if (state.focus > 0) {
     cards.push(
-      "<article>◷ <b>" +
+      "<article>◇ <b>" +
         state.focus +
         "m<small>Focused today</small></b><span>Keep going</span></article>",
     );
@@ -279,6 +363,7 @@ function renderStats() {
     ? cards.join("")
     : '<div class="stats-empty">Your study statistics will appear after you log activity.</div>';
 }
+
 function renderGrades() {
   q("#gradeSummary").innerHTML = state.subjects.length
     ? state.subjects
@@ -322,13 +407,33 @@ function renderGrades() {
             Math.round(gradePercent(grade)) +
             '%</strong><span class="tag">' +
             grade.weight +
-            "% weight</span></div>"
+            '% weight</span><div class="item-actions"><button data-edit-grade="' +
+            grade.id +
+            '">Edit</button><button class="danger" data-delete-grade="' +
+            grade.id +
+            '">Delete</button></div></div>'
           );
         })
         .join("")
     : '<div class="empty-state"><b>No grades tracked yet.</b><small>Add tests, schoolwork, projects, or homework with weights.</small></div>';
+  qa("[data-edit-grade]").forEach((button) => {
+    button.onclick = () => openGradeDialog(button.dataset.editGrade);
+  });
+  qa("[data-delete-grade]").forEach((button) => {
+    button.onclick = () => {
+      state.grades = state.grades.filter(
+        (grade) => String(grade.id) !== button.dataset.deleteGrade,
+      );
+      save();
+      renderGrades();
+      renderSubjects();
+      renderStats();
+      toast("Grade deleted.");
+    };
+  });
   renderWeightChart();
 }
+
 function renderWeightChart() {
   const items = weightBreakdown();
   const total = items.reduce((sum, item) => sum + item.weight, 0);
@@ -360,6 +465,246 @@ function renderWeightChart() {
     )
     .join("");
 }
+
+function renderCalendar() {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth();
+  const first = new Date(year, month, 1).getDay();
+  const days = new Date(year, month + 1, 0).getDate();
+  let html = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
+    .map((x) => '<div class="day day-head"><b>' + x + "</b></div>")
+    .join("");
+  for (let i = 0; i < first; i++) html += '<div class="day muted-day"></div>';
+  for (let day = 1; day <= days; day++) {
+    const dateKey =
+      year +
+      "-" +
+      String(month + 1).padStart(2, "0") +
+      "-" +
+      String(day).padStart(2, "0");
+    const dayTasks = state.tasks.filter((task) => task.dueDate === dateKey);
+    const dayExams = state.exams.filter((exam) => exam.date === dateKey);
+    html += '<div class="day"><b>' + day + "</b>";
+    dayTasks.forEach((task) => {
+      html +=
+        '<span class="event assignment">HW: ' +
+        escapeHtml(task.title) +
+        "</span>";
+    });
+    dayExams.forEach((exam) => {
+      html +=
+        '<span class="event exam">Exam: ' + escapeHtml(exam.title) + "</span>";
+    });
+    html += "</div>";
+  }
+  q("#calendarGrid").innerHTML = html;
+}
+
+function renderExamCountdown() {
+  const card = q("#examCountdown");
+  if (!card) return;
+  const upcoming = state.exams
+    .map((exam) => ({ ...exam, days: daysUntil(exam.date) }))
+    .filter((exam) => exam.days !== null && exam.days >= 0)
+    .sort((a, b) => a.days - b.days)[0];
+  if (!upcoming) {
+    card.innerHTML =
+      '<p>NEXT EXAM</p><h2>No exams added yet</h2><small>Add an exam when you are ready to plan for it.</small><button data-action="exam">Add an exam -></button>';
+  } else {
+    const subject = subjectById(upcoming.subjectId);
+    card.innerHTML =
+      "<p>NEXT EXAM</p><h2>" +
+      escapeHtml(upcoming.title) +
+      "</h2><small>" +
+      (upcoming.days === 0 ? "Today" : upcoming.days + " days away") +
+      (subject ? " · " + escapeHtml(subject.name) : "") +
+      '</small><button data-action="exam">Add another exam -></button>';
+  }
+  wireActionButtons(card);
+}
+
+function renderNotes() {
+  syncSubjectSelectors();
+  if (!activeNoteId && state.notes.length) activeNoteId = state.notes[0].id;
+  const active = state.notes.find(
+    (note) => String(note.id) === String(activeNoteId),
+  );
+  state.activeNoteId = active ? active.id : null;
+  q("#noteList").innerHTML = state.notes.length
+    ? state.notes
+        .map((note) => {
+          const subject = subjectById(note.subjectId);
+          return (
+            '<button class="note-item ' +
+            (String(note.id) === String(activeNoteId) ? "active" : "") +
+            '" data-note-id="' +
+            note.id +
+            '"><b>' +
+            escapeHtml(note.title || "Untitled note") +
+            "</b><small>" +
+            escapeHtml(subject ? subject.name : "No subject") +
+            "</small></button>"
+          );
+        })
+        .join("")
+    : '<div class="empty-state"><b>No notes yet.</b><small>Create a note for any class or topic.</small></div>';
+  q("#noteTitle").value = active ? active.title : "";
+  q("#noteSubject").value = active ? active.subjectId || "" : "";
+  q("#noteBody").textContent = active ? active.body : "";
+  q("#saveNote").disabled = !active;
+  q("#deleteNote").disabled = !active;
+  qa("[data-note-id]").forEach((button) => {
+    button.onclick = () => {
+      activeNoteId = button.dataset.noteId;
+      renderNotes();
+    };
+  });
+  save();
+}
+
+function currentNote() {
+  return state.notes.find((note) => String(note.id) === String(activeNoteId));
+}
+
+function saveCurrentNote(showToast = false) {
+  const note = currentNote();
+  if (!note) return;
+  note.title = q("#noteTitle").value.trim() || "Untitled note";
+  note.subjectId = q("#noteSubject").value;
+  note.body = q("#noteBody").textContent.trim();
+  note.updatedAt = Date.now();
+  state.activeNoteId = note.id;
+  save();
+  if (showToast) {
+    renderNotes();
+    toast("Note saved.");
+  }
+}
+
+function scheduleNoteAutosave() {
+  if (!currentNote()) return;
+  clearTimeout(noteSaveTimer);
+  noteSaveTimer = setTimeout(() => saveCurrentNote(false), 450);
+}
+
+function openTaskDialog(id = null) {
+  editingTaskId = id;
+  syncSubjectSelectors();
+  if (!state.subjects.length) {
+    toast("Add a subject first.");
+    openSubjectDialog();
+    return;
+  }
+  const task = state.tasks.find((item) => String(item.id) === String(id));
+  q("#taskDialogTitle").textContent = task ? "Edit task" : "Add to your plan";
+  q("#save").textContent = task ? "Save task" : "Add task";
+  q("#title").value = task ? task.title : "";
+  q("#subject").value = task ? task.subjectId || "" : state.subjects[0].id;
+  q("#due").value = task ? task.dueDate || "" : "";
+  q("#dialog").showModal();
+}
+
+function openSubjectDialog(id = null) {
+  editingSubjectId = id;
+  const subject = subjectById(id);
+  q("#subjectDialogTitle").textContent = subject
+    ? "Edit subject"
+    : "Add a subject";
+  q("#saveSubject").textContent = subject ? "Save subject" : "Add subject";
+  q("#subjectName").value = subject ? subject.name : "";
+  q("#subjectColor").value = subject ? subject.color : "#6558e8";
+  q("#subjectDialog").showModal();
+}
+
+function openGradeDialog(id = null) {
+  editingGradeId = id;
+  syncSubjectSelectors();
+  if (!state.subjects.length) {
+    toast("Add a subject before adding grades.");
+    openSubjectDialog();
+    return;
+  }
+  const grade = state.grades.find((item) => String(item.id) === String(id));
+  q("#gradeDialogTitle").textContent = grade ? "Edit grade" : "Add grade";
+  q("#saveGrade").textContent = grade ? "Save grade" : "Add grade";
+  q("#gradeSubject").value = grade ? grade.subjectId : state.subjects[0].id;
+  q("#gradeType").value = grade ? grade.type : "Test";
+  q("#gradeName").value = grade ? grade.name : "";
+  q("#gradeScore").value = grade ? grade.score : "";
+  q("#gradeOutOf").value = grade ? grade.outOf : "100";
+  q("#gradeWeight").value = grade ? grade.weight : "10";
+  q("#weightLabel").value = grade ? grade.weightLabel : q("#gradeType").value;
+  updateWeightPreview();
+  q("#gradeDialog").showModal();
+}
+
+function openExamDialog(id = null) {
+  editingExamId = id;
+  syncSubjectSelectors();
+  if (!state.subjects.length) {
+    toast("Add a subject before adding exams.");
+    openSubjectDialog();
+    return;
+  }
+  const exam = state.exams.find((item) => String(item.id) === String(id));
+  q("#examDialogTitle").textContent = exam ? "Edit exam" : "Add exam";
+  q("#saveExam").textContent = exam ? "Save exam" : "Add exam";
+  q("#examTitle").value = exam ? exam.title : "";
+  q("#examSubject").value = exam ? exam.subjectId : state.subjects[0].id;
+  q("#examDate").value = exam ? exam.date : "";
+  q("#examDialog").showModal();
+}
+
+function deleteSubject(id) {
+  const used =
+    state.tasks.some((task) => task.subjectId === id) ||
+    state.grades.some((grade) => grade.subjectId === id) ||
+    state.notes.some((note) => note.subjectId === id) ||
+    state.exams.some((exam) => exam.subjectId === id);
+  if (used) {
+    toast("Delete or move this subject's items first.");
+    return;
+  }
+  state.subjects = state.subjects.filter((subject) => subject.id !== id);
+  save();
+  renderSubjects();
+  renderGrades();
+  renderNotes();
+  toast("Subject deleted.");
+}
+
+function wireActionButtons(scope = document) {
+  scope.querySelectorAll('[data-action="task"]').forEach((b) => {
+    b.onclick = () => openTaskDialog();
+  });
+  scope.querySelectorAll('[data-action="subject"]').forEach((b) => {
+    b.onclick = () => openSubjectDialog();
+  });
+  scope.querySelectorAll('[data-action="grade"]').forEach((b) => {
+    b.onclick = () => openGradeDialog();
+  });
+  scope.querySelectorAll('[data-action="exam"]').forEach((b) => {
+    b.onclick = () => openExamDialog();
+  });
+  scope.querySelectorAll('[data-action="note"]').forEach((b) => {
+    b.onclick = () => {
+      const note = {
+        id: Date.now(),
+        title: "Untitled note",
+        subjectId: state.subjects[0]?.id || "",
+        body: "",
+        updatedAt: Date.now(),
+      };
+      state.notes.unshift(note);
+      activeNoteId = note.id;
+      renderNotes();
+      q("#noteTitle").focus();
+      toast("New note created.");
+    };
+  });
+}
+
 function toast(message) {
   const el = q("#toast");
   el.textContent = message;
@@ -367,9 +712,11 @@ function toast(message) {
   clearTimeout(toast.timer);
   toast.timer = setTimeout(() => el.classList.remove("show"), 3200);
 }
+
 function canNotify() {
   return "Notification" in window && Notification.permission === "granted";
 }
+
 function notify(title, body) {
   if (state.notifications && canNotify()) {
     new Notification(title, {
@@ -379,6 +726,7 @@ function notify(title, body) {
   }
   toast(body);
 }
+
 function renderNotifications() {
   const supported = "Notification" in window;
   const permission = supported ? Notification.permission : "unsupported";
@@ -396,6 +744,7 @@ function renderNotifications() {
         ? "Notifications are blocked in your browser settings."
         : "Off until you enable them.";
 }
+
 async function enableNotifications() {
   if (!("Notification" in window)) {
     toast("This browser does not support notifications.");
@@ -409,9 +758,9 @@ async function enableNotifications() {
   state.notifications = permission === "granted";
   save();
   renderNotifications();
-  if (state.notifications) {
+  if (state.notifications)
     notify("Study Companion", "Notifications are ready.");
-  } else {
+  else {
     toast(
       permission === "denied"
         ? "Notifications are blocked in your browser settings."
@@ -419,72 +768,42 @@ async function enableNotifications() {
     );
   }
 }
+
 function nav(v) {
   qa(".view").forEach((x) => x.classList.toggle("active", x.id === v));
   qa(".nav").forEach((x) => x.classList.toggle("active", x.dataset.view === v));
   scrollTo(0, 0);
 }
+
 qa("[data-view]").forEach((b) => (b.onclick = () => nav(b.dataset.view)));
-qa('[data-action="task"]').forEach(
-  (b) =>
-    (b.onclick = () => {
-      syncSubjectSelectors();
-      if (!state.subjects.length) {
-        toast("Add a subject first.");
-        q("#subjectDialog").showModal();
-        return;
-      }
-      q("#dialog").showModal();
-    }),
-);
-qa('[data-action="subject"]').forEach(
-  (b) =>
-    (b.onclick = () => {
-      q("#subjectName").value = "";
-      q("#subjectColor").value = "#6558e8";
-      q("#subjectDialog").showModal();
-    }),
-);
-qa('[data-action="grade"]').forEach(
-  (b) =>
-    (b.onclick = () => {
-      syncSubjectSelectors();
-      if (!state.subjects.length) {
-        toast("Add a subject before adding grades.");
-        q("#subjectDialog").showModal();
-        return;
-      }
-      q("#gradeName").value = "";
-      q("#gradeScore").value = "";
-      q("#gradeOutOf").value = "100";
-      q("#gradeWeight").value = "10";
-      q("#weightLabel").value = q("#gradeType").value;
-      updateWeightPreview();
-      q("#gradeDialog").showModal();
-    }),
-);
-q("#save").onclick = () => {
-  let x = q("#title").value.trim();
-  if (x) {
-    const subject = subjectById(q("#subject").value);
-    if (!subject) {
-      toast("Choose a subject for this task.");
-      return;
-    }
-    state.tasks.unshift({
-      id: Date.now(),
-      title: x,
-      subjectId: subject.id,
-      subject: subject.name,
-      due: "Due soon",
-      done: false,
-    });
-    save();
-    tasks();
-    q("#title").value = "";
-    notify("Task added", "Your new task was saved.");
+wireActionButtons();
+
+q("#save").onclick = (event) => {
+  const title = q("#title").value.trim();
+  const subject = subjectById(q("#subject").value);
+  if (!title || !subject) {
+    event.preventDefault();
+    toast("Add a title and subject.");
+    return;
   }
+  const data = {
+    title,
+    subjectId: subject.id,
+    subject: subject.name,
+    dueDate: q("#due").value,
+    due: formatDate(q("#due").value),
+  };
+  const task = state.tasks.find(
+    (item) => String(item.id) === String(editingTaskId),
+  );
+  if (task) Object.assign(task, data);
+  else state.tasks.unshift({ id: Date.now(), done: false, ...data });
+  editingTaskId = null;
+  save();
+  tasks();
+  notify(task ? "Task updated" : "Task added", title + " was saved.");
 };
+
 q("#saveSubject").onclick = (event) => {
   const name = q("#subjectName").value.trim();
   if (!name) {
@@ -492,13 +811,22 @@ q("#saveSubject").onclick = (event) => {
     q("#subjectName").focus();
     return;
   }
-  const existing = state.subjects.find(
-    (subject) => subject.name.toLowerCase() === name.toLowerCase(),
+  const duplicate = state.subjects.find(
+    (subject) =>
+      subject.id !== editingSubjectId &&
+      subject.name.toLowerCase() === name.toLowerCase(),
   );
-  if (existing) {
+  if (duplicate) {
+    event.preventDefault();
+    toast("That subject already exists.");
+    return;
+  }
+  const subject = subjectById(editingSubjectId);
+  if (subject) {
+    subject.name = name;
+    subject.color = q("#subjectColor").value;
     state.tasks.forEach((task) => {
-      if (task.subject === name && !task.subjectId)
-        task.subjectId = existing.id;
+      if (task.subjectId === subject.id) task.subject = subject.name;
     });
   } else {
     state.subjects.push({
@@ -507,12 +835,13 @@ q("#saveSubject").onclick = (event) => {
       color: q("#subjectColor").value,
     });
   }
+  editingSubjectId = null;
   save();
-  renderSubjects();
-  renderGrades();
-  renderStats();
-  toast(existing ? "That subject already exists." : "Subject added.");
+  tasks();
+  renderNotes();
+  toast(subject ? "Subject updated." : "Subject added.");
 };
+
 q("#saveGrade").onclick = (event) => {
   const subject = subjectById(q("#gradeSubject").value);
   const name = q("#gradeName").value.trim();
@@ -526,8 +855,7 @@ q("#saveGrade").onclick = (event) => {
     toast("Fill in the grade, score, total, and weight.");
     return;
   }
-  state.grades.unshift({
-    id: Date.now(),
+  const data = {
     subjectId: subject.id,
     type: q("#gradeType").value,
     name,
@@ -535,13 +863,45 @@ q("#saveGrade").onclick = (event) => {
     outOf,
     weight,
     weightLabel,
-  });
+  };
+  const grade = state.grades.find(
+    (item) => String(item.id) === String(editingGradeId),
+  );
+  if (grade) Object.assign(grade, data);
+  else state.grades.unshift({ id: Date.now(), ...data });
+  editingGradeId = null;
   save();
   renderGrades();
   renderSubjects();
   renderStats();
-  notify("Grade added", subject.name + " average updated.");
+  notify(
+    grade ? "Grade updated" : "Grade added",
+    subject.name + " average updated.",
+  );
 };
+
+q("#saveExam").onclick = (event) => {
+  const subject = subjectById(q("#examSubject").value);
+  const title = q("#examTitle").value.trim();
+  const date = q("#examDate").value;
+  if (!subject || !title || !date) {
+    event.preventDefault();
+    toast("Add an exam title, subject, and date.");
+    return;
+  }
+  const data = { title, subjectId: subject.id, date };
+  const exam = state.exams.find(
+    (item) => String(item.id) === String(editingExamId),
+  );
+  if (exam) Object.assign(exam, data);
+  else state.exams.unshift({ id: Date.now(), ...data });
+  editingExamId = null;
+  save();
+  renderCalendar();
+  renderExamCountdown();
+  notify(exam ? "Exam updated" : "Exam added", title + " is on the calendar.");
+};
+
 q("#gradeType").onchange = () => {
   if (!q("#weightLabel").value.trim())
     q("#weightLabel").value = q("#gradeType").value;
@@ -549,6 +909,66 @@ q("#gradeType").onchange = () => {
 };
 q("#gradeWeight").oninput = updateWeightPreview;
 q("#weightLabel").oninput = updateWeightPreview;
+
+q("#newNote").onclick = () => {
+  const note = {
+    id: Date.now(),
+    title: "Untitled note",
+    subjectId: state.subjects[0]?.id || "",
+    body: "",
+    updatedAt: Date.now(),
+  };
+  state.notes.unshift(note);
+  activeNoteId = note.id;
+  renderNotes();
+  q("#noteTitle").focus();
+};
+q("#saveNote").onclick = () => saveCurrentNote(true);
+q("#deleteNote").onclick = () => {
+  if (!currentNote()) return;
+  state.notes = state.notes.filter(
+    (note) => String(note.id) !== String(activeNoteId),
+  );
+  activeNoteId = state.notes[0]?.id || null;
+  save();
+  renderNotes();
+  toast("Note deleted.");
+};
+q("#noteTitle").oninput = scheduleNoteAutosave;
+q("#noteSubject").onchange = scheduleNoteAutosave;
+q("#noteBody").oninput = scheduleNoteAutosave;
+
+q("#exportData").onclick = () => {
+  const blob = new Blob([JSON.stringify(state, null, 2)], {
+    type: "application/json",
+  });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = "study-companion-backup.json";
+  link.click();
+  URL.revokeObjectURL(url);
+  toast("Backup exported.");
+};
+q("#importData").onchange = (event) => {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const imported = JSON.parse(reader.result);
+      if (!imported || typeof imported !== "object")
+        throw new Error("bad backup");
+      state = { ...state, ...imported };
+      save();
+      location.reload();
+    } catch {
+      toast("That backup file could not be imported.");
+    }
+  };
+  reader.readAsText(file);
+};
+
 q("#theme").onclick = () => {
   state.dark = !state.dark;
   document.body.classList.toggle("dark", state.dark);
@@ -559,9 +979,10 @@ if (state.dark) {
   document.body.classList.add("dark");
   q("#theme").textContent = "☀ Light mode";
 }
-let sec = 1500,
-  clock,
-  run = false;
+
+let sec = 1500;
+let clock;
+let run = false;
 function show() {
   q("#time").textContent =
     Math.floor(sec / 60) + ":" + String(sec % 60).padStart(2, "0");
@@ -569,7 +990,7 @@ function show() {
 q("#start").onclick = () => {
   run = !run;
   q("#start").textContent = run ? "Pause focus" : "Start focus";
-  if (run)
+  if (run) {
     clock = setInterval(() => {
       if (sec) {
         sec--;
@@ -583,7 +1004,7 @@ q("#start").onclick = () => {
         notify("Focus session complete", "Great work. Take a short reset.");
       }
     }, 1000);
-  else clearInterval(clock);
+  } else clearInterval(clock);
 };
 q("#reset").onclick = () => {
   clearInterval(clock);
@@ -600,28 +1021,27 @@ q("#flash").onclick = () => {
   q("#cardText").textContent = "Use New card to create your first flashcard.";
 };
 q("#generate").onclick = () => {
-  let t = q("#topic").value || "your selected topic";
+  const t = q("#topic").value || "your selected topic";
   q("#result").innerHTML =
     "<b>Your " +
-    t +
+    escapeHtml(t) +
     " practice quiz is ready.</b><br>1. Which idea is most central to this topic?<br>2. How would you explain its key process in your own words?<br>3. What is one real-world example?";
 };
-let c = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
-  .map((x) => '<div class="day"><b>' + x + "</b></div>")
-  .join("");
-for (let i = 1; i < 32; i++) c += '<div class="day"><b>' + i + "</b></div>";
-q("#calendarGrid").innerHTML = c;
 q("#search").oninput = (e) => {
-  let x = e.target.value.toLowerCase();
-  if (
-    x.length > 1 &&
-    state.tasks.some(
-      (t) =>
-        t.title.toLowerCase().includes(x) ||
-        t.subject.toLowerCase().includes(x),
-    )
-  )
-    nav("planner");
+  const x = e.target.value.toLowerCase();
+  if (x.length <= 1) return;
+  const inTasks = state.tasks.some(
+    (t) =>
+      t.title.toLowerCase().includes(x) ||
+      (t.subject || "").toLowerCase().includes(x),
+  );
+  const inNotes = state.notes.some(
+    (note) =>
+      (note.title || "").toLowerCase().includes(x) ||
+      (note.body || "").toLowerCase().includes(x),
+  );
+  if (inTasks) nav("planner");
+  else if (inNotes) nav("notes");
 };
 q("#profileButton").onclick = () => {
   editingProfileId = state.activeProfileId || null;
@@ -657,6 +1077,7 @@ q("#saveProfile").onclick = (event) => {
   save();
   renderProfile();
 };
+
 let navScrollTimer;
 function handleMobileScroll() {
   if (innerWidth > 580) return;
@@ -670,7 +1091,9 @@ addEventListener("scroll", handleMobileScroll, { passive: true });
 addEventListener("resize", () => {
   if (innerWidth > 580) document.body.classList.remove("nav-hidden");
 });
+
 tasks();
 renderProfile();
 renderNotifications();
+renderNotes();
 show();

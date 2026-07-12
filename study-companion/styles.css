@@ -122,6 +122,28 @@ header {
   justify-content: space-between;
   padding: 0 52px;
 }
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+.utility {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--paper);
+  color: var(--text);
+  padding: 8px 12px;
+  font-size: 11px;
+  font-weight: 700;
+}
+.import-backup {
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+}
+.import-backup input {
+  display: none;
+}
 .search {
   border: 1px solid var(--line);
   background: var(--paper);
@@ -286,6 +308,27 @@ small {
 .task b {
   display: block;
 }
+.item-actions {
+  display: flex;
+  gap: 6px;
+  margin-left: auto;
+}
+.item-actions button,
+.editor-actions button,
+.danger {
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--paper);
+  color: var(--text);
+  padding: 6px 8px;
+  font-size: 10px;
+  font-weight: 700;
+}
+.item-actions .danger,
+.editor-actions .danger,
+.danger {
+  color: #d65353;
+}
 .empty-state {
   border: 1px dashed var(--line);
   border-radius: 9px;
@@ -340,29 +383,37 @@ small {
 }
 .subject-card {
   display: grid;
-  grid-template-columns: 12px 1fr;
+  grid-template-columns: 1fr auto;
   align-items: center;
   gap: 9px;
   width: 100%;
   border: 1px solid var(--line);
   border-radius: 9px;
-  background: transparent;
-  color: var(--text);
   padding: 10px;
   margin: 8px 0;
+}
+.subject-main {
+  display: grid;
+  grid-template-columns: 12px 1fr;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: var(--text);
   text-align: left;
 }
-.subject-card span {
+.subject-main span {
   width: 12px;
   height: 38px;
   border-radius: 999px;
   grid-row: span 2;
 }
-.subject-card b,
-.subject-card small {
+.subject-main b,
+.subject-main small {
   display: block;
 }
-.subject-card small {
+.subject-main small {
   color: var(--muted);
   font-size: 10px;
 }
@@ -587,12 +638,69 @@ small {
   font: 700 23px Fraunces;
   padding-bottom: 11px;
 }
+.inline-label {
+  display: block;
+  margin-top: 12px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+}
+.inline-label select {
+  width: 100%;
+  margin-top: 6px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--paper);
+  color: var(--text);
+  padding: 9px;
+}
 .editor [contenteditable] {
   min-height: 175px;
   line-height: 1.8;
   color: #575368;
   font-size: 13px;
   padding: 14px 0;
+}
+.editor [contenteditable]:empty:before {
+  content: attr(data-placeholder);
+  color: var(--muted);
+}
+.editor-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-top: 1px solid var(--line);
+  padding-top: 12px;
+}
+.editor-actions small {
+  margin-right: auto;
+}
+.note-list {
+  display: grid;
+  gap: 8px;
+}
+.note-item {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: transparent;
+  color: var(--text);
+  padding: 11px;
+  text-align: left;
+}
+.note-item.active,
+.note-item:hover {
+  background: #f4f1ff;
+  border-color: #d7d0ff;
+}
+.note-item b,
+.note-item small {
+  display: block;
+}
+.note-item small {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 10px;
 }
 .calendar {
   padding: 0;
@@ -607,13 +715,26 @@ small {
   padding: 10px;
   font-size: 11px;
 }
+.day-head,
+.muted-day {
+  background: #faf9ff;
+}
 .event {
+  display: block;
   font-size: 9px;
   color: #5e52d0;
   background: #eeebff;
   padding: 4px;
   border-radius: 4px;
   margin-top: 7px;
+}
+.event.exam {
+  color: #a4472e;
+  background: #fff0e4;
+}
+.event.assignment {
+  color: #4f44bc;
+  background: #eeebff;
 }
 .classcards,
 .grades {

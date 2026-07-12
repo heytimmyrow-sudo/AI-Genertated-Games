@@ -47,14 +47,20 @@
         <div class="search">
           ⌕ <input id="search" placeholder="Search anything..." />
         </div>
-        <button
-          id="profileButton"
-          class="avatar"
-          aria-label="Open profile settings"
-          title="Profile"
-        >
-          ＋
-        </button>
+        <div class="header-actions">
+          <button id="exportData" class="utility" type="button">Export</button>
+          <label class="utility import-backup"
+            >Import<input id="importData" type="file" accept="application/json"
+          /></label>
+          <button
+            id="profileButton"
+            class="avatar"
+            aria-label="Open profile settings"
+            title="Profile"
+          >
+            ＋
+          </button>
+        </div>
       </header>
       <section id="dashboard" class="view active">
         <div class="welcome">
@@ -88,11 +94,11 @@
             </div>
             <div id="subjectList"></div>
           </article>
-          <article class="panel countdown">
+          <article class="panel countdown" id="examCountdown">
             <p>NEXT EXAM</p>
             <h2>No exams added yet</h2>
             <small>Add an exam when you are ready to plan for it.</small>
-            <button data-view="planner">Add an exam →</button>
+            <button data-action="exam">Add an exam →</button>
           </article>
           <article class="panel schedule">
             <div class="head">
@@ -219,22 +225,33 @@
             <h1>Notes organizer</h1>
             <small>Capture ideas now, find them later.</small>
           </div>
-          <button class="primary">＋ New note</button>
+          <button class="primary" id="newNote" data-action="note">
+            ＋ New note
+          </button>
         </div>
         <div class="two">
           <article class="panel">
-            <div class="empty-state">
-              <b>No notes yet.</b
-              ><small>Create a note for any class or topic.</small>
-            </div>
+            <div id="noteList" class="note-list"></div>
           </article>
           <article class="panel editor">
-            <input placeholder="Untitled note" />
+            <input id="noteTitle" placeholder="Untitled note" />
+            <label class="inline-label"
+              >Subject<select id="noteSubject"></select
+            ></label>
             <div
+              id="noteBody"
               contenteditable="true"
               data-placeholder="Start writing your note here..."
             ></div>
-            <small>Saved automatically · Cloud sync ready</small>
+            <div class="editor-actions">
+              <small>Saved automatically · Cloud sync ready</small>
+              <button id="deleteNote" class="danger" type="button">
+                Delete
+              </button>
+              <button id="saveNote" class="primary" type="button">
+                Save note
+              </button>
+            </div>
           </article>
         </div>
       </section>
@@ -244,7 +261,12 @@
             <p>YOUR SCHEDULE</p>
             <h1>Your calendar</h1>
           </div>
-          <button class="primary" data-action="task">＋ Add event</button>
+          <div class="action-row">
+            <button data-action="exam">+ Add exam</button>
+            <button class="primary" data-action="task">
+              ＋ Add assignment
+            </button>
+          </div>
         </div>
         <article class="panel calendar" id="calendarGrid"></article>
       </section>
@@ -333,13 +355,14 @@
       <form method="dialog">
         <button value="cancel" class="x">×</button>
         <p>NEW TASK</p>
-        <h2>Add to your plan</h2>
+        <h2 id="taskDialogTitle">Add to your plan</h2>
         <label
           >What needs doing?<input
             id="title"
             required
             placeholder="e.g. Finish chemistry worksheet" /></label
         ><label>Subject<select id="subject"></select></label>
+        <label>Due date<input id="due" type="date" /></label>
         <menu>
           <button value="cancel">Cancel</button
           ><button class="primary" id="save">Add task</button>
@@ -350,7 +373,7 @@
       <form method="dialog">
         <button value="cancel" class="x">×</button>
         <p>SUBJECT</p>
-        <h2>Add a subject</h2>
+        <h2 id="subjectDialogTitle">Add a subject</h2>
         <label
           >Subject name<input
             id="subjectName"
@@ -377,7 +400,7 @@
       <form method="dialog">
         <button value="cancel" class="x">×</button>
         <p>GRADE</p>
-        <h2>Add grade</h2>
+        <h2 id="gradeDialogTitle">Add grade</h2>
         <label>Subject<select id="gradeSubject"></select></label>
         <label
           >Type<select id="gradeType">
@@ -434,6 +457,26 @@
         <menu>
           <button value="cancel">Cancel</button
           ><button class="primary" id="saveGrade">Add grade</button>
+        </menu>
+      </form>
+    </dialog>
+    <dialog id="examDialog">
+      <form method="dialog">
+        <button value="cancel" class="x">×</button>
+        <p>EXAM</p>
+        <h2 id="examDialogTitle">Add exam</h2>
+        <label
+          >Exam name<input
+            id="examTitle"
+            maxlength="42"
+            required
+            placeholder="e.g. Biology midterm"
+        /></label>
+        <label>Subject<select id="examSubject"></select></label>
+        <label>Exam date<input id="examDate" type="date" required /></label>
+        <menu>
+          <button value="cancel">Cancel</button
+          ><button class="primary" id="saveExam">Add exam</button>
         </menu>
       </form>
     </dialog>
