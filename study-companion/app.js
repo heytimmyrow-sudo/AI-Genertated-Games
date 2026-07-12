@@ -10,24 +10,93 @@ let state = JSON.parse(localStorage.getItem(key) || "null") || {
   tasks: [],
   notes: [],
   exams: [],
+  classes: [],
   activeNoteId: null,
 };
 
 const q = (s) => document.querySelector(s);
 const qa = (s) => [...document.querySelectorAll(s)];
-const save = () => localStorage.setItem(key, JSON.stringify(state));
+const schoolThemes = ["st-patrick", "notre-dame", "fenwick"];
+const schoolDataFields = [
+  "profiles",
+  "subjects",
+  "grades",
+  "tasks",
+  "notes",
+  "exams",
+  "classes",
+];
+
+function makeSchoolData(source = {}) {
+  const data = {
+    focus: Number(source.focus) || 0,
+    activeProfileId: source.activeProfileId || null,
+    activeNoteId: source.activeNoteId || null,
+  };
+  schoolDataFields.forEach((field) => {
+    data[field] = Array.isArray(source[field]) ? source[field] : [];
+  });
+  return data;
+}
+
+function ensureSchoolData(theme = state.schoolTheme) {
+  if (!state.schoolData || typeof state.schoolData !== "object") {
+    state.schoolData = {};
+  }
+  if (!state.schoolData["st-patrick"]) {
+    state.schoolData["st-patrick"] = makeSchoolData(state);
+  }
+  schoolThemes.forEach((item) => {
+    if (!state.schoolData[item]) state.schoolData[item] = makeSchoolData();
+  });
+  return state.schoolData[theme] || state.schoolData["st-patrick"];
+}
+
+function bindSchoolData(theme = state.schoolTheme) {
+  const data = ensureSchoolData(theme);
+  schoolDataFields.forEach((field) => {
+    state[field] = data[field];
+  });
+  state.focus = data.focus || 0;
+  state.activeProfileId = data.activeProfileId || null;
+  state.activeNoteId = data.activeNoteId || null;
+}
+
+function syncSchoolData() {
+  const data = ensureSchoolData(state.schoolTheme);
+  schoolDataFields.forEach((field) => {
+    data[field] = state[field];
+  });
+  data.focus = Number(state.focus) || 0;
+  data.activeProfileId = state.activeProfileId || null;
+  data.activeNoteId =
+    typeof activeNoteId === "undefined" ? state.activeNoteId : activeNoteId;
+}
+
+function save() {
+  syncSchoolData();
+  localStorage.setItem(key, JSON.stringify(state));
+}
 
 function ensureArray(name) {
   if (!Array.isArray(state[name])) state[name] = [];
 }
 
-["profiles", "subjects", "grades", "tasks", "notes", "exams"].forEach(
-  ensureArray,
-);
+[
+  "profiles",
+  "subjects",
+  "grades",
+  "tasks",
+  "notes",
+  "exams",
+  "classes",
+].forEach(ensureArray);
 if (typeof state.notifications !== "boolean") state.notifications = false;
-if (!["st-patrick", "notre-dame", "fenwick"].includes(state.schoolTheme)) {
+if (!schoolThemes.includes(state.schoolTheme)) {
   state.schoolTheme = "st-patrick";
 }
+ensureSchoolData();
+bindSchoolData();
 if (!state.activeProfileId && state.profiles.length) {
   state.activeProfileId = state.profiles[0].id;
 }
@@ -97,6 +166,19 @@ function daysUntil(value) {
   return Math.ceil((target - today) / 86400000);
 }
 
+function activeSchoolPrimary() {
+  return (
+    {
+      "st-patrick": { primary: "#24583b", label: "Saint Patrick green" },
+      "notre-dame": { primary: "#c99700", label: "Notre Dame gold" },
+      fenwick: { primary: "#f2c300", label: "Fenwick yellow" },
+    }[state.schoolTheme] || {
+      primary: "#24583b",
+      label: "Saint Patrick green",
+    }
+  );
+}
+
 function applySchoolTheme() {
   document.body.classList.toggle(
     "theme-notre-dame",
@@ -108,12 +190,7 @@ function applySchoolTheme() {
   );
   const picker = q("#schoolTheme");
   if (picker) picker.value = state.schoolTheme;
-  const themeColors = {
-    "st-patrick": { primary: "#24583b", label: "Saint Patrick green" },
-    "notre-dame": { primary: "#c99700", label: "Notre Dame gold" },
-    fenwick: { primary: "#f2c300", label: "Fenwick yellow" },
-  };
-  const active = themeColors[state.schoolTheme] || themeColors["st-patrick"];
+  const active = activeSchoolPrimary();
   ["#subjectColor", "#profileColor"].forEach((selector) => {
     const select = q(selector);
     const option = select?.querySelector('option[data-school-primary="true"]');
@@ -169,7 +246,9 @@ function populateProfileForm() {
   const profile = state.profiles.find((item) => item.id === editingProfileId);
   q("#profileName").value = profile ? profile.name : "";
   q("#profileFocus").value = profile ? profile.focus : "";
-  q("#profileColor").value = profile ? profile.color : "#24583b";
+  q("#profileColor").value = profile
+    ? profile.color
+    : activeSchoolPrimary().primary;
 }
 
 function subjectById(id) {
@@ -498,6 +577,80 @@ function renderWeightChart() {
     .join("");
 }
 
+function makeInviteCode() {
+  const letters = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  let code = "";
+  do {
+    code = Array.from(
+      { length: 6 },
+      () => letters[Math.floor(Math.random() * letters.length)],
+    ).join("");
+  } while (state.classes.some((item) => item.code === code));
+  return code;
+}
+
+function renderClasses() {
+  const list = q("#classList");
+  if (!list) return;
+  list.innerHTML = state.classes.length
+    ? state.classes
+        .map((item) => {
+          const students = Array.isArray(item.students) ? item.students : [];
+          return (
+            '<article class="classroom-card"><div><p>' +
+            escapeHtml(
+              item.role === "student" ? "JOINED CLASS" : "TEACHER CLASS",
+            ) +
+            "</p><h2>" +
+            escapeHtml(item.name) +
+            "</h2><small>" +
+            escapeHtml(item.teacher || "Teacher") +
+            (item.room ? " · " + escapeHtml(item.room) : "") +
+            '</small></div><div class="class-code"><span>Invite code</span><b>' +
+            escapeHtml(item.code) +
+            '</b></div><div class="student-roster"><b>' +
+            students.length +
+            " student" +
+            (students.length === 1 ? "" : "s") +
+            "</b><small>" +
+            (students.length
+              ? students.map((student) => escapeHtml(student.name)).join(", ")
+              : "Students will appear after they join.") +
+            '</small></div><div class="item-actions"><button data-copy-class="' +
+            item.id +
+            '">Copy code</button><button class="danger" data-delete-class="' +
+            item.id +
+            '">Delete</button></div></article>'
+          );
+        })
+        .join("")
+    : '<div class="empty-state"><b>No classes yet.</b><small>Teachers can create a class and students can join with an invite code.</small></div>';
+  qa("[data-copy-class]").forEach((button) => {
+    button.onclick = async () => {
+      const item = state.classes.find(
+        (classItem) => String(classItem.id) === button.dataset.copyClass,
+      );
+      if (!item) return;
+      try {
+        await navigator.clipboard.writeText(item.code);
+        toast("Invite code copied: " + item.code);
+      } catch {
+        toast("Invite code: " + item.code);
+      }
+    };
+  });
+  qa("[data-delete-class]").forEach((button) => {
+    button.onclick = () => {
+      state.classes = state.classes.filter(
+        (item) => String(item.id) !== button.dataset.deleteClass,
+      );
+      save();
+      renderClasses();
+      toast("Class deleted.");
+    };
+  });
+}
+
 function renderCalendar() {
   const now = new Date();
   const year = now.getFullYear();
@@ -645,7 +798,9 @@ function openSubjectDialog(id = null) {
     : "Add a subject";
   q("#saveSubject").textContent = subject ? "Save subject" : "Add subject";
   q("#subjectName").value = subject ? subject.name : "";
-  q("#subjectColor").value = subject ? subject.color : "#24583b";
+  q("#subjectColor").value = subject
+    ? subject.color
+    : activeSchoolPrimary().primary;
   q("#subjectDialog").showModal();
 }
 
@@ -718,6 +873,21 @@ function wireActionButtons(scope = document) {
   });
   scope.querySelectorAll('[data-action="exam"]').forEach((b) => {
     b.onclick = () => openExamDialog();
+  });
+  scope.querySelectorAll('[data-action="class"]').forEach((b) => {
+    b.onclick = () => {
+      q("#className").value = "";
+      q("#teacherName").value = "";
+      q("#classRoom").value = "";
+      q("#classDialog").showModal();
+    };
+  });
+  scope.querySelectorAll('[data-action="join-class"]').forEach((b) => {
+    b.onclick = () => {
+      q("#joinCode").value = "";
+      q("#studentName").value = "";
+      q("#joinClassDialog").showModal();
+    };
   });
   scope.querySelectorAll('[data-action="note"]').forEach((b) => {
     b.onclick = () => {
@@ -934,6 +1104,50 @@ q("#saveExam").onclick = (event) => {
   notify(exam ? "Exam updated" : "Exam added", title + " is on the calendar.");
 };
 
+q("#saveClass").onclick = (event) => {
+  const name = q("#className").value.trim();
+  const teacher = q("#teacherName").value.trim();
+  if (!name || !teacher) {
+    event.preventDefault();
+    toast("Add a class name and teacher name.");
+    return;
+  }
+  state.classes.unshift({
+    id: Date.now(),
+    role: "teacher",
+    name,
+    teacher,
+    room: q("#classRoom").value.trim(),
+    code: makeInviteCode(),
+    students: [],
+    createdAt: Date.now(),
+  });
+  save();
+  renderClasses();
+  notify("Class created", "Invite code is ready for students.");
+};
+
+q("#joinClass").onclick = (event) => {
+  const code = q("#joinCode").value.trim().toUpperCase();
+  const studentName = q("#studentName").value.trim();
+  const classItem = state.classes.find((item) => item.code === code);
+  if (!code || !studentName || !classItem) {
+    event.preventDefault();
+    toast("Enter a valid class code and student name.");
+    return;
+  }
+  if (!Array.isArray(classItem.students)) classItem.students = [];
+  const existing = classItem.students.find(
+    (student) => student.name.toLowerCase() === studentName.toLowerCase(),
+  );
+  if (!existing) {
+    classItem.students.push({ id: Date.now(), name: studentName });
+  }
+  save();
+  renderClasses();
+  notify("Class joined", studentName + " joined " + classItem.name + ".");
+};
+
 q("#gradeType").onchange = () => {
   if (!q("#weightLabel").value.trim())
     q("#weightLabel").value = q("#gradeType").value;
@@ -1002,10 +1216,23 @@ q("#importData").onchange = (event) => {
 };
 
 q("#schoolTheme").onchange = (event) => {
+  syncSchoolData();
   state.schoolTheme = event.target.value;
+  bindSchoolData();
+  activeNoteId = state.activeNoteId || null;
+  editingProfileId = state.activeProfileId || null;
+  editingTaskId = null;
+  editingSubjectId = null;
+  editingGradeId = null;
+  editingExamId = null;
   applySchoolTheme();
+  tasks();
+  renderNotes();
+  renderClasses();
+  renderProfile();
+  renderNotifications();
   save();
-  toast("School theme updated.");
+  toast("School changed. This school has its own saved data.");
 };
 
 q("#theme").onclick = () => {
@@ -1136,4 +1363,5 @@ applySchoolTheme();
 renderProfile();
 renderNotifications();
 renderNotes();
+renderClasses();
 show();

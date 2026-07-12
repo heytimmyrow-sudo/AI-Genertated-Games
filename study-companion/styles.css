@@ -120,6 +120,39 @@ body.theme-fenwick {
   --haze-start: rgba(255, 252, 236, 0.84);
   --haze-end: rgba(255, 246, 191, 0.76);
 }
+body.theme-notre-dame .sidebar,
+body.theme-notre-dame header,
+body.theme-fenwick .sidebar,
+body.theme-fenwick header {
+  background: var(--chrome-bg);
+  color: var(--chrome-text);
+}
+body.theme-notre-dame .brand,
+body.theme-notre-dame footer,
+body.theme-fenwick .brand,
+body.theme-fenwick footer {
+  color: var(--chrome-text);
+}
+body.theme-notre-dame nav p,
+body.theme-fenwick nav p {
+  color: color-mix(in srgb, var(--chrome-text) 72%, transparent);
+}
+body.theme-notre-dame .nav,
+body.theme-fenwick .nav {
+  color: var(--chrome-text);
+}
+body.theme-notre-dame .nav:hover,
+body.theme-notre-dame .nav.active,
+body.theme-fenwick .nav:hover,
+body.theme-fenwick .nav.active {
+  background: var(--button-bg);
+  color: var(--button-text);
+}
+body.theme-notre-dame .nav em,
+body.theme-fenwick .nav em {
+  background: var(--button-bg);
+  color: var(--button-text);
+}
 .brand {
   font-size: 16px;
   line-height: 0.8;
@@ -865,6 +898,55 @@ small {
   display: block;
   margin-top: 8px;
 }
+.classroom-list {
+  display: grid;
+  gap: 12px;
+}
+.classroom-card {
+  display: grid;
+  grid-template-columns: 1.3fr auto 1fr auto;
+  align-items: center;
+  gap: 13px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 15px;
+  background: color-mix(in srgb, var(--paper) 82%, var(--accent-soft));
+}
+.classroom-card p {
+  margin: 0 0 5px;
+  color: var(--muted);
+  font-size: 10px;
+  letter-spacing: 1.2px;
+  font-weight: 700;
+}
+.classroom-card h2 {
+  margin: 0;
+  font-size: 22px;
+}
+.class-code {
+  border-radius: 10px;
+  background: var(--feature-bg);
+  color: var(--feature-text);
+  padding: 10px 12px;
+  text-align: center;
+  min-width: 108px;
+}
+.class-code span,
+.student-roster small {
+  display: block;
+  color: color-mix(in srgb, currentColor 72%, transparent);
+  font-size: 10px;
+}
+.class-code b {
+  display: block;
+  margin-top: 3px;
+  font-size: 18px;
+  letter-spacing: 1.4px;
+}
+.student-roster b {
+  display: block;
+  color: var(--green-deep);
+}
 .grades {
   grid-template-columns: repeat(3, 1fr);
 }
@@ -1266,7 +1348,7 @@ body.dark.theme-fenwick {
     min-height: 64px;
     padding: 0 16px;
     gap: 10px;
-    background: rgba(238, 245, 238, 0.86);
+    background: var(--chrome-bg);
     backdrop-filter: blur(16px);
   }
   body.theme-notre-dame .brand,

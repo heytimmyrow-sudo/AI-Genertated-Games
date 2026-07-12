@@ -273,16 +273,26 @@
         <div class="welcome">
           <div>
             <p>WEEKLY RHYTHM</p>
-            <h1>Class schedule</h1>
-            <small>A clear view of your time.</small>
+            <h1>Classes</h1>
+            <small
+              >Create classes, invite students, and join with a code.</small
+            >
           </div>
-          <button class="primary">＋ Add class</button>
+          <div class="action-row">
+            <button data-action="join-class">Join class</button>
+            <button class="primary" data-action="class">＋ Create class</button>
+          </div>
         </div>
-        <article class="panel classcards">
-          <div class="empty-state">
-            <b>No classes added yet.</b
-            ><small>Build your schedule around your own classes.</small>
+        <article class="panel classroom-panel">
+          <div class="head">
+            <div>
+              <h2>Classroom hub</h2>
+              <small
+                >Teachers set up a class. Students join by invite code.</small
+              >
+            </div>
           </div>
+          <div id="classList" class="classroom-list"></div>
         </article>
       </section>
       <section id="grades" class="view">
@@ -473,6 +483,62 @@
         <menu>
           <button value="cancel">Cancel</button
           ><button class="primary" id="saveExam">Add exam</button>
+        </menu>
+      </form>
+    </dialog>
+    <dialog id="classDialog">
+      <form method="dialog">
+        <button value="cancel" class="x">×</button>
+        <p>TEACHER SETUP</p>
+        <h2>Create class</h2>
+        <label
+          >Class name<input
+            id="className"
+            maxlength="42"
+            required
+            placeholder="e.g. Grade 7 Math"
+        /></label>
+        <label
+          >Teacher name<input
+            id="teacherName"
+            maxlength="32"
+            required
+            placeholder="e.g. Mrs. Carter"
+        /></label>
+        <label
+          >Room / period<input
+            id="classRoom"
+            maxlength="32"
+            placeholder="e.g. Room 204 · Period 2"
+        /></label>
+        <menu>
+          <button value="cancel">Cancel</button
+          ><button class="primary" id="saveClass">Create class</button>
+        </menu>
+      </form>
+    </dialog>
+    <dialog id="joinClassDialog">
+      <form method="dialog">
+        <button value="cancel" class="x">×</button>
+        <p>STUDENT JOIN</p>
+        <h2>Join a class</h2>
+        <label
+          >Invite code<input
+            id="joinCode"
+            maxlength="12"
+            required
+            placeholder="e.g. ABC123"
+        /></label>
+        <label
+          >Student name<input
+            id="studentName"
+            maxlength="32"
+            required
+            placeholder="Your name"
+        /></label>
+        <menu>
+          <button value="cancel">Cancel</button
+          ><button class="primary" id="joinClass">Join class</button>
         </menu>
       </form>
     </dialog>
