@@ -22,7 +22,7 @@ button:disabled {
 }
 body {
   margin: 0;
-  background: linear-gradient(120deg, #fbfcf8, #f2f7f1);
+  background: linear-gradient(120deg, #ffffff, #f7f6f1);
   color: var(--text);
   font-family: "DM Sans", sans-serif;
 }
@@ -33,7 +33,7 @@ body::before {
   z-index: -2;
   background: url("saint-patrick-school-stoneham.jpg") center / cover fixed;
   opacity: var(--photo-fade);
-  filter: saturate(0.98) contrast(1);
+  filter: saturate(0.82) contrast(1.02);
 }
 body::after {
   content: "";
@@ -43,14 +43,10 @@ body::after {
   background:
     radial-gradient(
       circle at top left,
-      rgba(36, 88, 59, 0.08),
+      rgba(255, 255, 255, 0.42),
       transparent 34rem
     ),
-    linear-gradient(
-      135deg,
-      rgba(255, 255, 255, 0.84),
-      rgba(248, 252, 246, 0.76)
-    );
+    linear-gradient(135deg, rgba(255, 255, 255, 0.88), rgba(250, 249, 244, 0.8));
   pointer-events: none;
 }
 .sidebar {
