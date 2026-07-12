@@ -8,7 +8,7 @@
   --green-deep: #173d2a;
   --green-soft: #e7f3e9;
   --green-mint: #53b282;
-  --photo-fade: 0.24;
+  --photo-fade: 0.32;
 }
 * {
   box-sizing: border-box;
@@ -31,10 +31,9 @@ body::before {
   position: fixed;
   inset: 0;
   z-index: -2;
-  background: url("saint-patrick-logo.png") center 42% / min(76vw, 680px) auto
-    fixed no-repeat;
+  background: url("saint-patrick-school-stoneham.jpg") center / cover fixed;
   opacity: var(--photo-fade);
-  filter: saturate(1.05) contrast(1);
+  filter: saturate(0.98) contrast(1);
 }
 body::after {
   content: "";
