@@ -577,6 +577,61 @@
         </menu>
       </form>
     </dialog>
+    <dialog id="classPostDialog">
+      <form method="dialog">
+        <button value="cancel" class="x">×</button>
+        <p>CLASS STREAM</p>
+        <h2>Post announcement</h2>
+        <input id="postClassId" type="hidden" />
+        <label
+          >Title<input
+            id="classPostTitle"
+            maxlength="48"
+            required
+            placeholder="e.g. Chapter 5 reminder"
+        /></label>
+        <label
+          >Message<textarea
+            id="classPostBody"
+            maxlength="260"
+            placeholder="Share an update for the class"
+          ></textarea>
+        </label>
+        <menu>
+          <button value="cancel">Cancel</button
+          ><button class="primary" id="saveClassPost">Post</button>
+        </menu>
+      </form>
+    </dialog>
+    <dialog id="classAssignmentDialog">
+      <form method="dialog">
+        <button value="cancel" class="x">×</button>
+        <p>CLASSWORK</p>
+        <h2>Create assignment</h2>
+        <input id="assignmentClassId" type="hidden" />
+        <label
+          >Assignment title<input
+            id="classAssignmentTitle"
+            maxlength="48"
+            required
+            placeholder="e.g. Study guide questions"
+        /></label>
+        <label>Due date<input id="classAssignmentDue" type="date" /></label>
+        <label
+          >Instructions<textarea
+            id="classAssignmentInstructions"
+            maxlength="260"
+            placeholder="What should students do?"
+          ></textarea>
+        </label>
+        <menu>
+          <button value="cancel">Cancel</button
+          ><button class="primary" id="saveClassAssignment">
+            Add assignment
+          </button>
+        </menu>
+      </form>
+    </dialog>
     <dialog id="profileDialog">
       <form method="dialog" id="profileForm">
         <button value="cancel" class="x">×</button>

@@ -955,6 +955,10 @@ small {
   color: var(--green-deep);
   background: var(--accent-event);
 }
+.event.classwork {
+  color: var(--button-text);
+  background: var(--button-bg);
+}
 .classcards,
 .grades {
   display: grid;
@@ -989,18 +993,24 @@ small {
   gap: 12px;
 }
 .classroom-card {
-  display: grid;
-  grid-template-columns: 1.3fr auto 1fr auto;
-  align-items: center;
-  gap: 13px;
   border: 1px solid var(--line);
   border-radius: 12px;
-  padding: 15px;
+  padding: 0;
+  overflow: hidden;
   background: color-mix(in srgb, var(--paper) 82%, var(--accent-soft));
+}
+.classroom-top {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 13px;
+  padding: 18px;
+  background: linear-gradient(135deg, var(--feature-bg), var(--button-bg));
+  color: var(--feature-text);
 }
 .classroom-card p {
   margin: 0 0 5px;
-  color: var(--muted);
+  color: color-mix(in srgb, currentColor 72%, transparent);
   font-size: 10px;
   letter-spacing: 1.2px;
   font-weight: 700;
@@ -1011,11 +1021,76 @@ small {
 }
 .class-code {
   border-radius: 10px;
-  background: var(--feature-bg);
-  color: var(--feature-text);
+  background: color-mix(in srgb, #ffffff 16%, transparent);
+  color: currentColor;
   padding: 10px 12px;
   text-align: center;
   min-width: 108px;
+  border: 1px solid color-mix(in srgb, currentColor 28%, transparent);
+}
+.classroom-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 13px 18px;
+  border-bottom: 1px solid var(--line);
+}
+.classroom-actions button {
+  border: 0;
+  border-radius: 999px;
+  padding: 9px 12px;
+  background: var(--accent-soft);
+  color: var(--green-deep);
+  font-weight: 800;
+}
+.classroom-actions .danger {
+  margin-left: auto;
+}
+.classroom-sections {
+  display: grid;
+  grid-template-columns: 1fr 1fr 0.8fr;
+  gap: 14px;
+  padding: 18px;
+}
+.classroom-sections h3 {
+  margin: 0 0 9px;
+  color: var(--green-deep);
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+.class-stream-item,
+.class-work-item,
+.classroom-empty {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px;
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 10px;
+  background: color-mix(in srgb, var(--paper) 84%, transparent);
+}
+.class-stream-item + .class-stream-item,
+.class-work-item + .class-work-item {
+  margin-top: 8px;
+}
+.class-stream-item small,
+.class-work-item small {
+  display: block;
+  margin-top: 3px;
+  color: var(--muted);
+}
+.classroom-empty {
+  display: block;
+  color: var(--muted);
+  font-size: 12px;
+}
+.class-stream-item button,
+.class-work-item button {
+  border: 0;
+  border-radius: 8px;
+  padding: 8px 10px;
 }
 .class-code span,
 .student-roster small {
@@ -1473,7 +1548,20 @@ body.dark.theme-fenwick {
   .stats,
   .two,
   .grades,
-  .classcards {
+  .classcards,
+  .classroom-top,
+  .classroom-sections {
+    grid-template-columns: 1fr;
+  }
+  .classroom-actions .danger {
+    margin-left: 0;
+  }
+  .classroom-actions button,
+  .classroom-actions .danger {
+    width: 100%;
+  }
+  .class-stream-item,
+  .class-work-item {
     grid-template-columns: 1fr;
   }
   .welcome,

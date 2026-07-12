@@ -593,15 +593,58 @@ function makeInviteCode() {
   return code;
 }
 
+function classById(id) {
+  return state.classes.find((item) => String(item.id) === String(id));
+}
+
+function ensureClassCollections(item) {
+  if (!Array.isArray(item.students)) item.students = [];
+  if (!Array.isArray(item.posts)) item.posts = [];
+  if (!Array.isArray(item.assignments)) item.assignments = [];
+}
+
+function classPostHtml(classItem, post) {
+  return (
+    '<div class="class-stream-item"><div><b>' +
+    escapeHtml(post.title || "Announcement") +
+    "</b><small>" +
+    escapeHtml(post.body || "No details added.") +
+    '</small></div><button class="danger" data-delete-class-post="' +
+    classItem.id +
+    '" data-post-id="' +
+    post.id +
+    '">Delete</button></div>'
+  );
+}
+
+function classAssignmentHtml(classItem, assignment) {
+  return (
+    '<div class="class-work-item"><div><b>' +
+    escapeHtml(assignment.title || "Assignment") +
+    "</b><small>" +
+    formatDate(assignment.dueDate) +
+    (assignment.instructions
+      ? " · " + escapeHtml(assignment.instructions)
+      : "") +
+    '</small></div><button class="danger" data-delete-class-assignment="' +
+    classItem.id +
+    '" data-assignment-id="' +
+    assignment.id +
+    '">Delete</button></div>'
+  );
+}
+
 function renderClasses() {
   const list = q("#classList");
   if (!list) return;
   list.innerHTML = state.classes.length
     ? state.classes
         .map((item) => {
-          const students = Array.isArray(item.students) ? item.students : [];
+          ensureClassCollections(item);
+          const latestPosts = item.posts.slice(0, 3);
+          const upcomingAssignments = item.assignments.slice(0, 4);
           return (
-            '<article class="classroom-card"><div><p>' +
+            '<article class="classroom-card"><div class="classroom-top"><div><p>' +
             escapeHtml(
               item.role === "student" ? "JOINED CLASS" : "TEACHER CLASS",
             ) +
@@ -612,23 +655,46 @@ function renderClasses() {
             (item.room ? " · " + escapeHtml(item.room) : "") +
             '</small></div><div class="class-code"><span>Invite code</span><b>' +
             escapeHtml(item.code) +
-            '</b></div><div class="student-roster"><b>' +
-            students.length +
-            " student" +
-            (students.length === 1 ? "" : "s") +
-            "</b><small>" +
-            (students.length
-              ? students.map((student) => escapeHtml(student.name)).join(", ")
-              : "Students will appear after they join.") +
-            '</small></div><div class="item-actions"><button data-copy-class="' +
+            '</b></div></div><div class="classroom-actions"><button data-class-post="' +
+            item.id +
+            '">Post announcement</button><button data-class-assignment="' +
+            item.id +
+            '">Create assignment</button><button data-copy-class="' +
             item.id +
             '">Copy code</button><button class="danger" data-delete-class="' +
             item.id +
-            '">Delete</button></div></article>'
+            '">Delete class</button></div><div class="classroom-sections"><section><h3>Stream</h3>' +
+            (latestPosts.length
+              ? latestPosts.map((post) => classPostHtml(item, post)).join("")
+              : '<div class="classroom-empty">No announcements yet.</div>') +
+            "</section><section><h3>Classwork</h3>" +
+            (upcomingAssignments.length
+              ? upcomingAssignments
+                  .map((assignment) => classAssignmentHtml(item, assignment))
+                  .join("")
+              : '<div class="classroom-empty">No assignments posted yet.</div>') +
+            '</section><section class="student-roster"><h3>People</h3><b>' +
+            item.students.length +
+            " student" +
+            (item.students.length === 1 ? "" : "s") +
+            "</b><small>" +
+            (item.students.length
+              ? item.students
+                  .map((student) => escapeHtml(student.name))
+                  .join(", ")
+              : "Students will appear after they join.") +
+            "</small></section></div></article>"
           );
         })
         .join("")
     : '<div class="empty-state"><b>No classes yet.</b><small>Teachers can create a class and students can join with an invite code.</small></div>';
+  qa("[data-class-post]").forEach((button) => {
+    button.onclick = () => openClassPostDialog(button.dataset.classPost);
+  });
+  qa("[data-class-assignment]").forEach((button) => {
+    button.onclick = () =>
+      openClassAssignmentDialog(button.dataset.classAssignment);
+  });
   qa("[data-copy-class]").forEach((button) => {
     button.onclick = async () => {
       const item = state.classes.find(
@@ -650,9 +716,56 @@ function renderClasses() {
       );
       save();
       renderClasses();
+      renderCalendar();
       toast("Class deleted.");
     };
   });
+  qa("[data-delete-class-post]").forEach((button) => {
+    button.onclick = () => {
+      const item = classById(button.dataset.deleteClassPost);
+      if (!item) return;
+      ensureClassCollections(item);
+      item.posts = item.posts.filter(
+        (post) => String(post.id) !== button.dataset.postId,
+      );
+      save();
+      renderClasses();
+      toast("Announcement deleted.");
+    };
+  });
+  qa("[data-delete-class-assignment]").forEach((button) => {
+    button.onclick = () => {
+      const item = classById(button.dataset.deleteClassAssignment);
+      if (!item) return;
+      ensureClassCollections(item);
+      item.assignments = item.assignments.filter(
+        (assignment) => String(assignment.id) !== button.dataset.assignmentId,
+      );
+      save();
+      renderClasses();
+      renderCalendar();
+      toast("Class assignment deleted.");
+    };
+  });
+}
+
+function openClassPostDialog(id) {
+  const item = classById(id);
+  if (!item) return;
+  q("#postClassId").value = item.id;
+  q("#classPostTitle").value = "";
+  q("#classPostBody").value = "";
+  q("#classPostDialog").showModal();
+}
+
+function openClassAssignmentDialog(id) {
+  const item = classById(id);
+  if (!item) return;
+  q("#assignmentClassId").value = item.id;
+  q("#classAssignmentTitle").value = "";
+  q("#classAssignmentDue").value = "";
+  q("#classAssignmentInstructions").value = "";
+  q("#classAssignmentDialog").showModal();
 }
 
 function renderCalendar() {
@@ -697,6 +810,11 @@ function renderCalendar() {
       String(day).padStart(2, "0");
     const dayTasks = state.tasks.filter((task) => task.dueDate === dateKey);
     const dayExams = state.exams.filter((exam) => exam.date === dateKey);
+    const dayClasswork = state.classes.flatMap((classItem) =>
+      (Array.isArray(classItem.assignments) ? classItem.assignments : [])
+        .filter((assignment) => assignment.dueDate === dateKey)
+        .map((assignment) => ({ ...assignment, className: classItem.name })),
+    );
     html += '<div class="day"><b>' + day + "</b>";
     dayTasks.forEach((task) => {
       html +=
@@ -707,6 +825,12 @@ function renderCalendar() {
     dayExams.forEach((exam) => {
       html +=
         '<span class="event exam">Exam: ' + escapeHtml(exam.title) + "</span>";
+    });
+    dayClasswork.forEach((assignment) => {
+      html +=
+        '<span class="event classwork">Class: ' +
+        escapeHtml(assignment.title) +
+        "</span>";
     });
     html += "</div>";
   }
@@ -1147,6 +1271,15 @@ q("#saveClass").onclick = (event) => {
     room: q("#classRoom").value.trim(),
     code: makeInviteCode(),
     students: [],
+    posts: [
+      {
+        id: Date.now() + 1,
+        title: "Welcome to " + name,
+        body: "Class announcements and assignments will appear here.",
+        createdAt: Date.now(),
+      },
+    ],
+    assignments: [],
     createdAt: Date.now(),
   });
   save();
@@ -1173,6 +1306,49 @@ q("#joinClass").onclick = (event) => {
   save();
   renderClasses();
   notify("Class joined", studentName + " joined " + classItem.name + ".");
+};
+
+q("#saveClassPost").onclick = (event) => {
+  const item = classById(q("#postClassId").value);
+  const title = q("#classPostTitle").value.trim();
+  const body = q("#classPostBody").value.trim();
+  if (!item || !title) {
+    event.preventDefault();
+    toast("Add an announcement title.");
+    return;
+  }
+  ensureClassCollections(item);
+  item.posts.unshift({
+    id: Date.now(),
+    title,
+    body,
+    createdAt: Date.now(),
+  });
+  save();
+  renderClasses();
+  notify("Announcement posted", title);
+};
+
+q("#saveClassAssignment").onclick = (event) => {
+  const item = classById(q("#assignmentClassId").value);
+  const title = q("#classAssignmentTitle").value.trim();
+  if (!item || !title) {
+    event.preventDefault();
+    toast("Add an assignment title.");
+    return;
+  }
+  ensureClassCollections(item);
+  item.assignments.unshift({
+    id: Date.now(),
+    title,
+    dueDate: q("#classAssignmentDue").value,
+    instructions: q("#classAssignmentInstructions").value.trim(),
+    createdAt: Date.now(),
+  });
+  save();
+  renderClasses();
+  renderCalendar();
+  notify("Class assignment posted", title);
 };
 
 q("#gradeType").onchange = () => {
