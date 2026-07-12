@@ -8,7 +8,7 @@
   --green-deep: #173d2a;
   --green-soft: #e7f3e9;
   --green-mint: #53b282;
-  --photo-fade: 0.18;
+  --photo-fade: 0.42;
 }
 * {
   box-sizing: border-box;
@@ -25,8 +25,8 @@ body {
   background:
     linear-gradient(
       120deg,
-      rgba(238, 245, 238, 0.94),
-      rgba(248, 244, 232, 0.9)
+      rgba(238, 245, 238, 0.78),
+      rgba(248, 244, 232, 0.68)
     ),
     url("saint-patrick-school-stoneham.jpg") center / cover fixed;
   color: var(--text);
@@ -39,7 +39,7 @@ body::before {
   z-index: -2;
   background: url("saint-patrick-school-stoneham.jpg") center / cover fixed;
   opacity: var(--photo-fade);
-  filter: saturate(0.85) contrast(0.95);
+  filter: saturate(0.95) contrast(1);
 }
 body::after {
   content: "";
@@ -49,10 +49,14 @@ body::after {
   background:
     radial-gradient(
       circle at top left,
-      rgba(36, 88, 59, 0.18),
+      rgba(36, 88, 59, 0.1),
       transparent 34rem
     ),
-    linear-gradient(135deg, rgba(246, 249, 240, 0.9), rgba(232, 243, 234, 0.82));
+    linear-gradient(
+      135deg,
+      rgba(246, 249, 240, 0.68),
+      rgba(232, 243, 234, 0.56)
+    );
   pointer-events: none;
 }
 .sidebar {
@@ -308,8 +312,7 @@ small {
   font-size: 19px;
   margin: 0;
 }
-.head button,
-.achievement button {
+.head button {
   border: 0;
   background: transparent;
   color: var(--green-deep);
@@ -525,24 +528,6 @@ small {
   margin-left: 61px;
   font-size: 10px;
 }
-.achievement {
-  display: flex;
-  align-items: center;
-  gap: 13px;
-  font-size: 34px;
-}
-.achievement p {
-  font-size: 10px;
-  color: #8d8a9c;
-  margin: 0;
-}
-.achievement h2 {
-  font-size: 20px;
-  margin: 4px 0;
-}
-.achievement button {
-  margin-left: auto;
-}
 .notify-card {
   grid-column: 2;
 }
@@ -611,6 +596,9 @@ small {
   display: grid;
   grid-template-columns: 1.5fr 0.7fr;
   gap: 17px;
+}
+.single-column {
+  grid-template-columns: 1fr;
 }
 .flash {
   height: 290px;
@@ -903,11 +891,6 @@ small {
 .grades h1 small {
   font: 700 13px "DM Sans";
 }
-.badges {
-  font-size: 36px;
-  word-spacing: 13px;
-  margin: 25px 0;
-}
 dialog {
   border: 0;
   border-radius: 15px;
@@ -1012,16 +995,16 @@ body.dark {
   --purple: #64b985;
   --green-deep: #bde8ca;
   --green-soft: #203a2c;
-  --photo-fade: 0.11;
+  --photo-fade: 0.28;
 }
 body.dark::after {
   background:
     radial-gradient(
       circle at top left,
-      rgba(63, 135, 91, 0.18),
+      rgba(63, 135, 91, 0.12),
       transparent 34rem
     ),
-    linear-gradient(135deg, rgba(9, 24, 16, 0.94), rgba(19, 44, 30, 0.9));
+    linear-gradient(135deg, rgba(9, 24, 16, 0.78), rgba(19, 44, 30, 0.72));
 }
 body.dark .sidebar,
 body.dark header {
@@ -1186,7 +1169,6 @@ body.dark .timer {
   }
   .welcome,
   .head,
-  .achievement,
   .action-row,
   .notify-actions {
     align-items: stretch;
@@ -1203,10 +1185,6 @@ body.dark .timer {
   }
   .head {
     gap: 10px;
-  }
-  .achievement button {
-    margin-left: 0;
-    text-align: left;
   }
   .task {
     align-items: flex-start;
