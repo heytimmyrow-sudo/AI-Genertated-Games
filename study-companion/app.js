@@ -657,8 +657,31 @@ function renderCalendar() {
   const month = now.getMonth();
   const first = new Date(year, month, 1).getDay();
   const days = new Date(year, month + 1, 0).getDate();
-  let html = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
-    .map((x) => '<div class="day day-head"><b>' + x + "</b></div>")
+  const monthName = now.toLocaleDateString(undefined, {
+    month: "long",
+    year: "numeric",
+  });
+  let html =
+    '<div class="calendar-month"><span>Calendar</span><b>' +
+    monthName +
+    "</b></div>";
+  html += [
+    ["Sunday", "Sun"],
+    ["Monday", "Mon"],
+    ["Tuesday", "Tue"],
+    ["Wednesday", "Wed"],
+    ["Thursday", "Thu"],
+    ["Friday", "Fri"],
+    ["Saturday", "Sat"],
+  ]
+    .map(
+      ([full, short]) =>
+        '<div class="day day-head"><b class="weekday-full">' +
+        full +
+        '</b><b class="weekday-short">' +
+        short +
+        "</b></div>",
+    )
     .join("");
   for (let i = 0; i < first; i++) html += '<div class="day muted-day"></div>';
   for (let day = 1; day <= days; day++) {
