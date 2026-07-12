@@ -959,6 +959,19 @@ small {
   color: var(--button-text);
   background: var(--button-bg);
 }
+.school-calendar-sync {
+  margin-top: 16px;
+}
+.school-calendar-sync .head {
+  margin-bottom: 14px;
+}
+.school-calendar-sync iframe {
+  width: 100%;
+  min-height: 640px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--paper);
+}
 .classcards,
 .grades {
   display: grid;
@@ -1626,6 +1639,10 @@ body.dark.theme-fenwick {
     height: auto;
     padding: 7px 5px;
     overflow-wrap: anywhere;
+  }
+  .school-calendar-sync iframe {
+    min-height: 520px;
+    border-radius: 12px;
   }
   .welcome h1 {
     font-size: 30px;

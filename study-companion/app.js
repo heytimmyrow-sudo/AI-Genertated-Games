@@ -835,6 +835,20 @@ function renderCalendar() {
     html += "</div>";
   }
   q("#calendarGrid").innerHTML = html;
+  renderSchoolCalendarSync();
+}
+
+function renderSchoolCalendarSync() {
+  const panel = q("#schoolCalendarSync");
+  if (!panel) return;
+  const enabled = state.schoolTheme === "st-patrick";
+  panel.hidden = !enabled;
+  const status = q("#schoolCalendarStatus");
+  if (status) {
+    status.textContent = enabled
+      ? "Synced from the official Saint Patrick School calendar."
+      : "School calendar sync is only enabled for Saint Patrick.";
+  }
 }
 
 function renderExamCountdown() {

@@ -303,6 +303,33 @@
           </div>
         </div>
         <article class="panel calendar" id="calendarGrid"></article>
+        <article
+          class="panel school-calendar-sync"
+          id="schoolCalendarSync"
+          hidden
+        >
+          <div class="head">
+            <div>
+              <h2>Saint Patrick school calendar</h2>
+              <small id="schoolCalendarStatus"
+                >Synced from the official Saint Patrick School calendar.</small
+              >
+            </div>
+            <a
+              class="utility"
+              href="https://www.stpatrickschoolstoneham.org/calendar?rq=calendar"
+              target="_blank"
+              rel="noreferrer"
+              >Open source</a
+            >
+          </div>
+          <iframe
+            id="saintPatsCalendarFrame"
+            title="Saint Patrick School Stoneham calendar"
+            loading="lazy"
+            src="https://calendar.google.com/calendar/embed?src=c_3f59e75832755cf97aa8996d27422d883238168ed0ab9ed90f770fcc8f58d2a5%40group.calendar.google.com&ctz=America%2FNew_York"
+          ></iframe>
+        </article>
       </section>
       <section id="schedule" class="view">
         <div class="welcome">
