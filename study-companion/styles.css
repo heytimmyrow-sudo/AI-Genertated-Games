@@ -20,6 +20,10 @@
   --feature-text: #ffffff;
   --chrome-bg: rgba(255, 255, 255, 0.9);
   --chrome-text: #747187;
+  --success-color: #24583b;
+  --neutral-soft: #f4f4f1;
+  --contrast-soft: #e6f3e8;
+  --contrast-text: #173d2a;
   --haze-spot: rgba(255, 255, 255, 0.42);
   --haze-start: rgba(255, 255, 255, 0.88);
   --haze-end: rgba(250, 249, 244, 0.8);
@@ -85,6 +89,10 @@ body.theme-notre-dame {
   --feature-text: #ffffff;
   --chrome-bg: rgba(4, 30, 66, 0.92);
   --chrome-text: #f6e7b2;
+  --success-color: #c99700;
+  --neutral-soft: #eef3fb;
+  --contrast-soft: #f6e7b2;
+  --contrast-text: #041e42;
   --haze-spot: rgba(201, 151, 0, 0.16);
   --haze-start: rgba(255, 252, 241, 0.84);
   --haze-end: rgba(239, 245, 255, 0.78);
@@ -104,6 +112,10 @@ body.theme-fenwick {
   --feature-text: #ffffff;
   --chrome-bg: rgba(12, 12, 12, 0.92);
   --chrome-text: #ffe477;
+  --success-color: #111111;
+  --neutral-soft: #fff6c7;
+  --contrast-soft: #111111;
+  --contrast-text: #f2c300;
   --haze-spot: rgba(242, 195, 0, 0.18);
   --haze-start: rgba(255, 252, 236, 0.84);
   --haze-end: rgba(255, 246, 191, 0.76);
@@ -183,7 +195,7 @@ footer button {
 footer small {
   display: block;
   font-size: 10px;
-  color: #2f8155;
+  color: var(--success-color);
   margin-top: 12px;
 }
 main {
@@ -339,7 +351,7 @@ small {
 }
 .stats span {
   font-size: 10px;
-  color: #35a67a;
+  color: var(--success-color);
   margin-left: auto;
 }
 .stats-empty {
@@ -599,7 +611,7 @@ small {
   box-shadow: inset 0 0 0 2px #fff;
 }
 .status-dot.on {
-  background: #35a67a;
+  background: var(--success-color);
 }
 .notify-actions {
   display: flex;
@@ -621,8 +633,8 @@ small {
 }
 .tabs button {
   border: 0;
-  background: #f1eff7;
-  color: #69657b;
+  background: var(--neutral-soft);
+  color: var(--green-deep);
   border-radius: 6px;
   padding: 7px 10px;
   font-weight: 700;
@@ -637,7 +649,7 @@ small {
     rgba(255, 255, 249, 0.95),
     var(--accent-soft)
   );
-  border: 1px solid #cbe4d1;
+  border: 1px solid var(--line);
   border-radius: 18px;
 }
 .timer strong {
@@ -779,7 +791,7 @@ small {
 .note-item.active,
 .note-item:hover {
   background: var(--accent-soft);
-  border-color: #b9dcc3;
+  border-color: var(--button-bg);
 }
 .note-item b,
 .note-item small {
@@ -805,7 +817,7 @@ small {
 }
 .day-head,
 .muted-day {
-  background: #faf9ff;
+  background: var(--neutral-soft);
 }
 .event {
   display: block;
@@ -817,8 +829,8 @@ small {
   margin-top: 7px;
 }
 .event.exam {
-  color: #a4472e;
-  background: #fff0e4;
+  color: var(--contrast-text);
+  background: var(--contrast-soft);
 }
 .event.assignment {
   color: var(--green-deep);
@@ -838,16 +850,16 @@ small {
   font: 700 19px Fraunces;
 }
 .classcards div:nth-child(2) {
-  background: #fff0e4;
-  color: #b96a39;
+  background: var(--contrast-soft);
+  color: var(--contrast-text);
 }
 .classcards div:nth-child(3) {
-  background: #e5f1ff;
-  color: #397cc7;
+  background: var(--neutral-soft);
+  color: var(--green-deep);
 }
 .classcards div:nth-child(4) {
-  background: #e2f7ef;
-  color: #287e63;
+  background: var(--accent-soft-2);
+  color: var(--green-deep);
 }
 .classcards small {
   display: block;
@@ -1007,7 +1019,7 @@ dialog menu {
   width: 100%;
   padding: 9px;
   margin-top: 12px;
-  border: 1px dashed #9cc7aa;
+  border: 1px dashed var(--line);
   border-radius: 7px;
   color: var(--purple);
   background: var(--accent-card);

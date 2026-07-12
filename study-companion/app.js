@@ -108,6 +108,21 @@ function applySchoolTheme() {
   );
   const picker = q("#schoolTheme");
   if (picker) picker.value = state.schoolTheme;
+  const themeColors = {
+    "st-patrick": { primary: "#24583b", label: "Saint Patrick green" },
+    "notre-dame": { primary: "#c99700", label: "Notre Dame gold" },
+    fenwick: { primary: "#f2c300", label: "Fenwick yellow" },
+  };
+  const active = themeColors[state.schoolTheme] || themeColors["st-patrick"];
+  ["#subjectColor", "#profileColor"].forEach((selector) => {
+    const select = q(selector);
+    const option = select?.querySelector('option[data-school-primary="true"]');
+    if (!option) return;
+    const shouldUpdate = !select.value || select.value === option.value;
+    option.value = active.primary;
+    option.textContent = active.label;
+    if (shouldUpdate) select.value = active.primary;
+  });
 }
 
 function activeProfile() {
@@ -207,12 +222,12 @@ function subjectAverage(subjectId) {
 
 const weightColors = [
   "#24583b",
-  "#ef7e72",
-  "#37a98a",
-  "#4b93e6",
-  "#d89c2f",
-  "#c25fd6",
-  "#2f9ab7",
+  "#c99700",
+  "#041e42",
+  "#f2c300",
+  "#111111",
+  "#b58b00",
+  "#5b6770",
 ];
 
 function weightBreakdown() {
