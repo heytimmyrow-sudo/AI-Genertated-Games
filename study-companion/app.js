@@ -39,7 +39,7 @@ state.tasks
       state.subjects.push({
         id: "subject-" + name.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
         name,
-        color: "#6558e8",
+        color: "#24583b",
       });
     }
   });
@@ -137,7 +137,7 @@ function populateProfileForm() {
   const profile = state.profiles.find((item) => item.id === editingProfileId);
   q("#profileName").value = profile ? profile.name : "";
   q("#profileFocus").value = profile ? profile.focus : "";
-  q("#profileColor").value = profile ? profile.color : "#6558e8";
+  q("#profileColor").value = profile ? profile.color : "#24583b";
 }
 
 function subjectById(id) {
@@ -189,7 +189,7 @@ function subjectAverage(subjectId) {
 }
 
 const weightColors = [
-  "#6558e8",
+  "#24583b",
   "#ef7e72",
   "#37a98a",
   "#4b93e6",
@@ -613,7 +613,7 @@ function openSubjectDialog(id = null) {
     : "Add a subject";
   q("#saveSubject").textContent = subject ? "Save subject" : "Add subject";
   q("#subjectName").value = subject ? subject.name : "";
-  q("#subjectColor").value = subject ? subject.color : "#6558e8";
+  q("#subjectColor").value = subject ? subject.color : "#24583b";
   q("#subjectDialog").showModal();
 }
 

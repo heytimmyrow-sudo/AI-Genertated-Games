@@ -1,10 +1,14 @@
 :root {
-  --bg: #f7f7fc;
-  --paper: #fff;
-  --text: #28263c;
-  --muted: #858296;
-  --line: #e9e8f0;
-  --purple: #6558e8;
+  --bg: #eef5ee;
+  --paper: rgba(255, 255, 249, 0.9);
+  --text: #1f3429;
+  --muted: #6f8178;
+  --line: rgba(37, 78, 55, 0.15);
+  --purple: #24583b;
+  --green-deep: #173d2a;
+  --green-soft: #e7f3e9;
+  --green-mint: #53b282;
+  --photo-fade: 0.18;
 }
 * {
   box-sizing: border-box;
@@ -18,13 +22,43 @@ button:disabled {
 }
 body {
   margin: 0;
-  background: var(--bg);
+  background:
+    linear-gradient(
+      120deg,
+      rgba(238, 245, 238, 0.94),
+      rgba(248, 244, 232, 0.9)
+    ),
+    url("saint-patrick-school-stoneham.jpg") center / cover fixed;
   color: var(--text);
   font-family: "DM Sans", sans-serif;
 }
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -2;
+  background: url("saint-patrick-school-stoneham.jpg") center / cover fixed;
+  opacity: var(--photo-fade);
+  filter: saturate(0.85) contrast(0.95);
+}
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background:
+    radial-gradient(
+      circle at top left,
+      rgba(36, 88, 59, 0.18),
+      transparent 34rem
+    ),
+    linear-gradient(135deg, rgba(246, 249, 240, 0.9), rgba(232, 243, 234, 0.82));
+  pointer-events: none;
+}
 .sidebar {
   position: fixed;
-  background: var(--paper);
+  background: rgba(255, 255, 249, 0.92);
+  backdrop-filter: blur(18px);
   width: 235px;
   height: 100vh;
   border-right: 1px solid var(--line);
@@ -82,13 +116,13 @@ nav p {
 }
 .nav:hover,
 .nav.active {
-  background: #edeafe;
-  color: #5d51d1;
+  background: #e4f2e7;
+  color: var(--green-deep);
 }
 .nav em {
   float: right;
   font-style: normal;
-  background: #dedafd;
+  background: #cfe8d4;
   padding: 2px 6px;
   border-radius: 10px;
 }
@@ -107,7 +141,7 @@ footer button {
 footer small {
   display: block;
   font-size: 10px;
-  color: #55bb94;
+  color: #2f8155;
   margin-top: 12px;
 }
 main {
@@ -117,6 +151,8 @@ main {
 header {
   height: 76px;
   border-bottom: 1px solid var(--line);
+  background: rgba(247, 250, 241, 0.7);
+  backdrop-filter: blur(16px);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -164,7 +200,7 @@ header {
   width: 34px;
   border-radius: 50%;
   color: #fff;
-  background: #2e2c42;
+  background: var(--green-deep);
   border: 0;
   font-size: 13px;
   font-weight: 700;
@@ -211,7 +247,7 @@ small {
   font-size: 12px;
   padding: 11px 15px;
   border-radius: 8px;
-  box-shadow: 0 5px 12px #6558e844;
+  box-shadow: 0 5px 12px rgba(36, 88, 59, 0.28);
 }
 .stats {
   display: grid;
@@ -276,7 +312,7 @@ small {
 .achievement button {
   border: 0;
   background: transparent;
-  color: #5e52d0;
+  color: var(--green-deep);
   font-size: 11px;
   font-weight: 700;
 }
@@ -349,8 +385,8 @@ small {
 .tag {
   margin-left: auto;
   padding: 4px 6px;
-  background: #f0edff;
-  color: #6358d4;
+  background: #e4f2e7;
+  color: var(--green-deep);
   border-radius: 5px;
   font-size: 9px;
   font-weight: 700;
@@ -358,8 +394,8 @@ small {
 .add {
   width: 100%;
   border: 0;
-  color: #6358d4;
-  background: #f6f5ff;
+  color: var(--green-deep);
+  background: #eaf5ec;
   padding: 10px;
   text-align: left;
   border-radius: 8px;
@@ -418,10 +454,10 @@ small {
   font-size: 10px;
 }
 .subject-card:hover {
-  background: #f6f5ff;
+  background: #edf7ef;
 }
 .countdown {
-  background: linear-gradient(140deg, #7569ec, #5043c6);
+  background: linear-gradient(140deg, #2f704c, #163c29);
   color: white;
   border: 0;
 }
@@ -551,13 +587,13 @@ small {
   max-width: 620px;
   text-align: center;
   padding: 52px;
-  background: linear-gradient(145deg, #fff, #f0eeff);
-  border: 1px solid #ded9ff;
+  background: linear-gradient(145deg, rgba(255, 255, 249, 0.95), #e8f4e9);
+  border: 1px solid #cbe4d1;
   border-radius: 18px;
 }
 .timer strong {
   font: 700 94px Fraunces;
-  color: #5649cf;
+  color: var(--green-deep);
   display: block;
   margin: 22px;
 }
@@ -579,7 +615,7 @@ small {
 .flash {
   height: 290px;
   color: white;
-  background: linear-gradient(140deg, #786bef, #4d40bb);
+  background: linear-gradient(140deg, #2e7a51, #153c29);
   border-radius: 16px;
   padding: 27px;
   text-align: center;
@@ -587,7 +623,7 @@ small {
   flex-direction: column;
   justify-content: center;
   cursor: pointer;
-  box-shadow: 0 15px 25px #574aca44;
+  box-shadow: 0 15px 25px rgba(21, 60, 41, 0.28);
 }
 .flash h2 {
   font-size: 29px;
@@ -607,8 +643,8 @@ small {
   border-radius: 7px;
 }
 .deck:hover {
-  background: #efedff;
-  color: #5f52d1;
+  background: #e8f4e9;
+  color: var(--green-deep);
 }
 .deck span {
   float: right;
@@ -690,8 +726,8 @@ small {
 }
 .note-item.active,
 .note-item:hover {
-  background: #f4f1ff;
-  border-color: #d7d0ff;
+  background: #e8f4e9;
+  border-color: #b9dcc3;
 }
 .note-item b,
 .note-item small {
@@ -722,8 +758,8 @@ small {
 .event {
   display: block;
   font-size: 9px;
-  color: #5e52d0;
-  background: #eeebff;
+  color: var(--green-deep);
+  background: #e6f3e8;
   padding: 4px;
   border-radius: 4px;
   margin-top: 7px;
@@ -733,8 +769,8 @@ small {
   background: #fff0e4;
 }
 .event.assignment {
-  color: #4f44bc;
-  background: #eeebff;
+  color: var(--green-deep);
+  background: #e6f3e8;
 }
 .classcards,
 .grades {
@@ -743,8 +779,8 @@ small {
   gap: 12px;
 }
 .classcards div {
-  background: #eeeaff;
-  color: #5e52cb;
+  background: #e7f4e9;
+  color: var(--green-deep);
   border-radius: 9px;
   padding: 20px;
   font: 700 19px Fraunces;
@@ -788,7 +824,7 @@ small {
   width: 180px;
   aspect-ratio: 1;
   border-radius: 50%;
-  background: #edeafe;
+  background: #e5f2e8;
   display: grid;
   place-items: center;
   position: relative;
@@ -910,7 +946,7 @@ dialog select {
   border-radius: 8px;
   padding: 10px;
   color: var(--purple);
-  background: #f7f6ff;
+  background: #edf7ef;
   font-size: 12px;
   font-weight: 700;
   text-align: center;
@@ -924,15 +960,15 @@ dialog menu {
   width: 100%;
   padding: 9px;
   margin-top: 12px;
-  border: 1px dashed #bdb7e8;
+  border: 1px dashed #9cc7aa;
   border-radius: 7px;
   color: var(--purple);
-  background: #f7f6ff;
+  background: #edf7ef;
   font-size: 11px;
   font-weight: 700;
 }
 body.dark .profile-new {
-  background: #302e46;
+  background: #203a2c;
 }
 .toast {
   position: fixed;
@@ -968,33 +1004,50 @@ body.dark .profile-new {
   font-size: 22px;
 }
 body.dark {
-  --bg: #191826;
-  --paper: #252435;
-  --text: #f4f2fb;
-  --muted: #aaa7bd;
-  --line: #383649;
+  --bg: #101c15;
+  --paper: rgba(28, 43, 34, 0.92);
+  --text: #f4fbf5;
+  --muted: #abc0b4;
+  --line: rgba(188, 221, 198, 0.16);
+  --purple: #64b985;
+  --green-deep: #bde8ca;
+  --green-soft: #203a2c;
+  --photo-fade: 0.11;
+}
+body.dark::after {
+  background:
+    radial-gradient(
+      circle at top left,
+      rgba(63, 135, 91, 0.18),
+      transparent 34rem
+    ),
+    linear-gradient(135deg, rgba(9, 24, 16, 0.94), rgba(19, 44, 30, 0.9));
+}
+body.dark .sidebar,
+body.dark header {
+  background: rgba(22, 35, 27, 0.86);
 }
 body.dark .search,
 body.dark .search input,
 body.dark select,
 body.dark textarea,
 body.dark .editor input {
-  background: #2b2a3b;
+  background: #1f3328;
   color: #f4f2fb;
 }
 body.dark .task .check {
-  background: #2d2c3e;
+  background: #20372b;
 }
 body.dark .tabs button {
-  background: #373548;
-  color: #d4d0e3;
+  background: #233c2d;
+  color: #d9eadf;
 }
 body.dark dialog {
-  background: #282738;
+  background: #1a2b21;
   color: #fff;
 }
 body.dark .timer {
-  background: linear-gradient(145deg, #29283b, #211f32);
+  background: linear-gradient(145deg, #1f3328, #14241b);
 }
 @media (max-width: 850px) {
   .sidebar {
@@ -1018,7 +1071,7 @@ body.dark .timer {
     font-size: 20px;
   }
   .nav.active:before {
-    color: #5d51d1;
+    color: var(--green-deep);
   }
   .nav em {
     display: none;
@@ -1113,7 +1166,8 @@ body.dark .timer {
     min-height: 64px;
     padding: 0 16px;
     gap: 10px;
-    background: var(--bg);
+    background: rgba(238, 245, 238, 0.86);
+    backdrop-filter: blur(16px);
   }
   .search {
     flex: 1;

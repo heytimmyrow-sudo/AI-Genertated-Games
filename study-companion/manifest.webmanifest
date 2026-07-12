@@ -4,8 +4,8 @@
   "description": "A colorful study planner for subjects, grades, notes, and focus time.",
   "start_url": "./",
   "display": "standalone",
-  "background_color": "#f7f7fc",
-  "theme_color": "#6558e8",
+  "background_color": "#eef5ee",
+  "theme_color": "#24583b",
   "icons": [
     {
       "src": "study-notepad-icon.svg",
