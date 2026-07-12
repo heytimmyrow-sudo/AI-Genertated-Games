@@ -882,6 +882,10 @@ small {
   color: var(--muted);
   font-size: 10px;
 }
+.calendar-combo {
+  padding: 0;
+  overflow: hidden;
+}
 .calendar {
   padding: 0;
   display: grid;
@@ -960,7 +964,10 @@ small {
   background: var(--button-bg);
 }
 .school-calendar-sync {
-  margin-top: 16px;
+  margin-top: 0;
+  padding: 18px;
+  border-top: 1px solid var(--line);
+  background: color-mix(in srgb, var(--paper) 86%, var(--accent-soft));
 }
 .school-calendar-sync .head {
   margin-bottom: 14px;
@@ -971,6 +978,7 @@ small {
   border: 1px solid var(--line);
   border-radius: 16px;
   background: var(--paper);
+  display: block;
 }
 .classcards,
 .grades {
