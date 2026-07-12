@@ -847,10 +847,12 @@ small {
   height: 96px;
   padding: 10px;
   font-size: 11px;
+  background: color-mix(in srgb, var(--paper) 82%, transparent);
 }
 .day-head,
 .muted-day {
   background: var(--neutral-soft);
+  color: var(--muted);
 }
 .event {
   display: block;
@@ -1160,6 +1162,9 @@ body.dark {
   --feature-text: #f4fbf5;
   --chrome-bg: rgba(22, 35, 27, 0.86);
   --chrome-text: #d8f0df;
+  --neutral-soft: rgba(32, 58, 44, 0.92);
+  --contrast-soft: #284936;
+  --contrast-text: #d8f0df;
   --haze-spot: rgba(255, 255, 255, 0.08);
   --haze-start: rgba(9, 24, 16, 0.78);
   --haze-end: rgba(19, 44, 30, 0.72);
@@ -1203,6 +1208,9 @@ body.dark.theme-notre-dame {
   --accent-soft-2: #5c4b18;
   --accent-card: #332b14;
   --accent-event: #1c3358;
+  --neutral-soft: rgba(24, 47, 85, 0.92);
+  --contrast-soft: #5c4b18;
+  --contrast-text: #f5d76b;
   --button-bg: #c99700;
   --button-text: #041e42;
   --feature-bg: #041e42;
@@ -1221,6 +1229,9 @@ body.dark.theme-fenwick {
   --accent-soft-2: #5e4d08;
   --accent-card: #322a07;
   --accent-event: #4a3d08;
+  --neutral-soft: rgba(27, 27, 23, 0.92);
+  --contrast-soft: #f2c300;
+  --contrast-text: #111111;
   --button-bg: #f2c300;
   --button-text: #111111;
   --feature-bg: #050505;
