@@ -691,6 +691,53 @@ small {
   display: block;
   margin: 22px;
 }
+.timer-setting {
+  width: min(100%, 360px);
+  margin: 18px auto 10px;
+  display: grid;
+  grid-template-columns: 1fr 86px auto;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--paper) 78%, transparent);
+  color: var(--text);
+  font-weight: 800;
+}
+.timer-setting span,
+.timer-setting em {
+  font-size: 12px;
+}
+.timer-setting em {
+  color: var(--muted);
+  font-style: normal;
+}
+.timer-setting input {
+  width: 100%;
+  border: 0;
+  border-radius: 999px;
+  padding: 9px 10px;
+  text-align: center;
+  font:
+    800 16px "DM Sans",
+    sans-serif;
+  background: var(--button-bg);
+  color: var(--button-text);
+}
+.timer-presets {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.timer .timer-presets button:not(.primary) {
+  margin-left: 0;
+  padding: 8px 12px;
+  background: var(--accent-soft);
+  color: var(--green-deep);
+  border: 1px solid var(--line);
+}
 .timer button:not(.primary) {
   border: 0;
   padding: 11px 15px;

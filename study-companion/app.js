@@ -3,6 +3,7 @@ let state = JSON.parse(localStorage.getItem(key) || "null") || {
   dark: false,
   schoolTheme: "st-patrick",
   focus: 0,
+  focusMinutes: 25,
   notifications: false,
   profiles: [],
   subjects: [],
@@ -30,6 +31,7 @@ const schoolDataFields = [
 function makeSchoolData(source = {}) {
   const data = {
     focus: Number(source.focus) || 0,
+    focusMinutes: Number(source.focusMinutes) || 25,
     activeProfileId: source.activeProfileId || null,
     activeNoteId: source.activeNoteId || null,
   };
@@ -58,6 +60,7 @@ function bindSchoolData(theme = state.schoolTheme) {
     state[field] = data[field];
   });
   state.focus = data.focus || 0;
+  state.focusMinutes = data.focusMinutes || 25;
   state.activeProfileId = data.activeProfileId || null;
   state.activeNoteId = data.activeNoteId || null;
 }
@@ -68,6 +71,7 @@ function syncSchoolData() {
     data[field] = state[field];
   });
   data.focus = Number(state.focus) || 0;
+  data.focusMinutes = Number(state.focusMinutes) || 25;
   data.activeProfileId = state.activeProfileId || null;
   data.activeNoteId =
     typeof activeNoteId === "undefined" ? state.activeNoteId : activeNoteId;
@@ -1254,6 +1258,7 @@ q("#schoolTheme").onchange = (event) => {
   renderClasses();
   renderProfile();
   renderNotifications();
+  syncFocusControls(true);
   save();
   toast("School changed. This school has its own saved data.");
 };
@@ -1271,13 +1276,43 @@ q("#theme").onclick = () => {
 };
 applyAppearance();
 
-let sec = 1500;
+function cleanFocusMinutes(value) {
+  const minutes = Number.parseInt(value, 10);
+  if (!Number.isFinite(minutes)) return 25;
+  return Math.min(180, Math.max(1, minutes));
+}
+
+function focusSeconds() {
+  return cleanFocusMinutes(state.focusMinutes) * 60;
+}
+
+let sec = focusSeconds();
 let clock;
 let run = false;
 function show() {
   q("#time").textContent =
     Math.floor(sec / 60) + ":" + String(sec % 60).padStart(2, "0");
 }
+
+function syncFocusControls(resetTimer = false) {
+  state.focusMinutes = cleanFocusMinutes(state.focusMinutes);
+  q("#focusMinutes").value = state.focusMinutes;
+  if (resetTimer) {
+    clearInterval(clock);
+    run = false;
+    sec = focusSeconds();
+    q("#start").textContent = "Start focus";
+  }
+  show();
+}
+
+function setFocusMinutes(value) {
+  state.focusMinutes = cleanFocusMinutes(value);
+  syncFocusControls(true);
+  save();
+  toast("Focus timer set to " + state.focusMinutes + " minutes.");
+}
+
 q("#start").onclick = () => {
   run = !run;
   q("#start").textContent = run ? "Pause focus" : "Start focus";
@@ -1289,7 +1324,7 @@ q("#start").onclick = () => {
       } else {
         clearInterval(clock);
         run = false;
-        state.focus += 25;
+        state.focus += cleanFocusMinutes(state.focusMinutes);
         renderStats();
         save();
         notify("Focus session complete", "Great work. Take a short reset.");
@@ -1300,10 +1335,14 @@ q("#start").onclick = () => {
 q("#reset").onclick = () => {
   clearInterval(clock);
   run = false;
-  sec = 1500;
+  sec = focusSeconds();
   show();
   q("#start").textContent = "Start focus";
 };
+q("#focusMinutes").onchange = (event) => setFocusMinutes(event.target.value);
+qa("[data-focus-minutes]").forEach((button) => {
+  button.onclick = () => setFocusMinutes(button.dataset.focusMinutes);
+});
 q("#enableNotifications").onclick = enableNotifications;
 q("#testNotification").onclick = () => {
   notify("Study Companion", "This is what your reminders will look like.");
@@ -1389,4 +1428,4 @@ renderProfile();
 renderNotifications();
 renderNotes();
 renderClasses();
-show();
+syncFocusControls(true);
