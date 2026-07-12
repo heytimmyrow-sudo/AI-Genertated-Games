@@ -14,10 +14,15 @@
   --accent-soft-2: #eaf5ec;
   --accent-card: #edf7ef;
   --accent-event: #e6f3e8;
-  --accent-gradient-start: #2f704c;
-  --accent-gradient-end: #163c29;
-  --accent-flash-start: #2e7a51;
-  --accent-flash-end: #153c29;
+  --button-bg: #24583b;
+  --button-text: #ffffff;
+  --feature-bg: #24583b;
+  --feature-text: #ffffff;
+  --chrome-bg: rgba(255, 255, 255, 0.9);
+  --chrome-text: #747187;
+  --haze-spot: rgba(255, 255, 255, 0.42);
+  --haze-start: rgba(255, 255, 255, 0.88);
+  --haze-end: rgba(250, 249, 244, 0.8);
 }
 * {
   box-sizing: border-box;
@@ -50,17 +55,13 @@ body::after {
   inset: 0;
   z-index: -1;
   background:
-    radial-gradient(
-      circle at top left,
-      rgba(255, 255, 255, 0.42),
-      transparent 34rem
-    ),
-    linear-gradient(135deg, rgba(255, 255, 255, 0.88), rgba(250, 249, 244, 0.8));
+    radial-gradient(circle at top left, var(--haze-spot), transparent 34rem),
+    linear-gradient(135deg, var(--haze-start), var(--haze-end));
   pointer-events: none;
 }
 .sidebar {
   position: fixed;
-  background: rgba(255, 255, 255, 0.9);
+  background: var(--chrome-bg);
   backdrop-filter: blur(18px);
   width: 235px;
   height: 100vh;
@@ -70,21 +71,26 @@ body::after {
   flex-direction: column;
 }
 body.theme-notre-dame {
-  --purple: #0b2345;
+  --purple: #c99700;
   --green-deep: #041e42;
   --green-mint: #c99700;
   --school-photo: url("notre-dame-university.jpg");
-  --accent-soft: #eef3fb;
+  --accent-soft: #f5e5ad;
   --accent-soft-2: #f7edc8;
   --accent-card: #f4e8bd;
   --accent-event: #edf3fb;
-  --accent-gradient-start: #0b2345;
-  --accent-gradient-end: #c99700;
-  --accent-flash-start: #041e42;
-  --accent-flash-end: #b58b00;
+  --button-bg: #c99700;
+  --button-text: #041e42;
+  --feature-bg: #041e42;
+  --feature-text: #ffffff;
+  --chrome-bg: rgba(4, 30, 66, 0.92);
+  --chrome-text: #f6e7b2;
+  --haze-spot: rgba(201, 151, 0, 0.16);
+  --haze-start: rgba(255, 252, 241, 0.84);
+  --haze-end: rgba(239, 245, 255, 0.78);
 }
 body.theme-fenwick {
-  --purple: #111111;
+  --purple: #f2c300;
   --green-deep: #0b0b0b;
   --green-mint: #f2c300;
   --school-photo: url("bishop-fenwick-highschool.jpg");
@@ -92,10 +98,15 @@ body.theme-fenwick {
   --accent-soft-2: #fff0a6;
   --accent-card: #fff2ad;
   --accent-event: #fff3b8;
-  --accent-gradient-start: #111111;
-  --accent-gradient-end: #f2c300;
-  --accent-flash-start: #111111;
-  --accent-flash-end: #caa100;
+  --button-bg: #f2c300;
+  --button-text: #111111;
+  --feature-bg: #111111;
+  --feature-text: #ffffff;
+  --chrome-bg: rgba(12, 12, 12, 0.92);
+  --chrome-text: #ffe477;
+  --haze-spot: rgba(242, 195, 0, 0.18);
+  --haze-start: rgba(255, 252, 236, 0.84);
+  --haze-end: rgba(255, 246, 191, 0.76);
 }
 .brand {
   font-size: 16px;
@@ -106,8 +117,8 @@ body.theme-fenwick {
 .brand span {
   display: inline-grid;
   place-items: center;
-  background: var(--purple);
-  color: #fff;
+  background: var(--button-bg);
+  color: var(--button-text);
   border-radius: 9px;
   width: 29px;
   height: 29px;
@@ -137,7 +148,7 @@ nav p {
 .nav {
   border: 0;
   background: transparent;
-  color: #747187;
+  color: var(--chrome-text);
   width: 100%;
   padding: 10px;
   border-radius: 8px;
@@ -161,7 +172,7 @@ footer {
   margin-top: auto;
   border-top: 1px solid var(--line);
   padding: 13px 7px;
-  color: var(--muted);
+  color: var(--chrome-text);
 }
 footer button {
   background: transparent;
@@ -182,7 +193,7 @@ main {
 header {
   height: 76px;
   border-bottom: 1px solid var(--line);
-  background: rgba(255, 255, 255, 0.72);
+  background: var(--chrome-bg);
   backdrop-filter: blur(16px);
   display: flex;
   align-items: center;
@@ -253,7 +264,7 @@ header {
   width: 34px;
   border-radius: 50%;
   color: #fff;
-  background: var(--green-deep);
+  background: var(--feature-bg);
   border: 0;
   font-size: 13px;
   font-weight: 700;
@@ -293,9 +304,9 @@ small {
   font-size: 12px;
 }
 .primary {
-  background: var(--purple);
+  background: var(--button-bg);
   border: 0;
-  color: #fff;
+  color: var(--button-text);
   font-weight: 700;
   font-size: 12px;
   padding: 11px 15px;
@@ -390,8 +401,8 @@ small {
   text-decoration: line-through;
 }
 .task.done .check {
-  background: var(--purple);
-  color: white;
+  background: var(--button-bg);
+  color: var(--button-text);
 }
 .task b {
   display: block;
@@ -509,17 +520,13 @@ small {
   background: var(--accent-card);
 }
 .countdown {
-  background: linear-gradient(
-    140deg,
-    var(--accent-gradient-start),
-    var(--accent-gradient-end)
-  );
-  color: white;
+  background: var(--feature-bg);
+  color: var(--feature-text);
   border: 0;
 }
 .countdown p,
 .countdown small {
-  color: #e5e1ff;
+  color: color-mix(in srgb, var(--feature-text) 78%, transparent);
 }
 .countdown h2 {
   margin: 0;
@@ -542,7 +549,7 @@ small {
 }
 .bar span {
   display: block;
-  background: var(--purple);
+  background: var(--button-bg);
   height: 100%;
   width: 70%;
 }
@@ -556,8 +563,8 @@ small {
   display: block;
   width: 100%;
   margin-top: 18px;
-  background: #29273e;
-  color: white;
+  background: var(--button-bg);
+  color: var(--button-text);
   border: 0;
   border-radius: 7px;
   padding: 11px;
@@ -635,7 +642,7 @@ small {
 }
 .timer strong {
   font: 700 94px Fraunces;
-  color: var(--green-deep);
+  color: var(--feature-bg);
   display: block;
   margin: 22px;
 }
@@ -659,12 +666,8 @@ small {
 }
 .flash {
   height: 290px;
-  color: white;
-  background: linear-gradient(
-    140deg,
-    var(--accent-flash-start),
-    var(--accent-flash-end)
-  );
+  color: var(--feature-text);
+  background: var(--feature-bg);
   border-radius: 16px;
   padding: 27px;
   text-align: center;
@@ -1057,19 +1060,24 @@ body.dark {
   --green-deep: #bde8ca;
   --green-soft: #203a2c;
   --photo-fade: 0.28;
+  --button-bg: #64b985;
+  --button-text: #102218;
+  --feature-bg: #1a3a29;
+  --feature-text: #f4fbf5;
+  --chrome-bg: rgba(22, 35, 27, 0.86);
+  --chrome-text: #d8f0df;
+  --haze-spot: rgba(255, 255, 255, 0.08);
+  --haze-start: rgba(9, 24, 16, 0.78);
+  --haze-end: rgba(19, 44, 30, 0.72);
 }
 body.dark::after {
   background:
-    radial-gradient(
-      circle at top left,
-      rgba(63, 135, 91, 0.12),
-      transparent 34rem
-    ),
-    linear-gradient(135deg, rgba(9, 24, 16, 0.78), rgba(19, 44, 30, 0.72));
+    radial-gradient(circle at top left, var(--haze-spot), transparent 34rem),
+    linear-gradient(135deg, var(--haze-start), var(--haze-end));
 }
 body.dark .sidebar,
 body.dark header {
-  background: rgba(22, 35, 27, 0.86);
+  background: var(--chrome-bg);
 }
 body.dark .search,
 body.dark .search input,
@@ -1101,10 +1109,15 @@ body.dark.theme-notre-dame {
   --accent-soft-2: #5c4b18;
   --accent-card: #332b14;
   --accent-event: #1c3358;
-  --accent-gradient-start: #041e42;
-  --accent-gradient-end: #c99700;
-  --accent-flash-start: #041e42;
-  --accent-flash-end: #876800;
+  --button-bg: #c99700;
+  --button-text: #041e42;
+  --feature-bg: #041e42;
+  --feature-text: #ffffff;
+  --chrome-bg: rgba(4, 30, 66, 0.92);
+  --chrome-text: #f6e7b2;
+  --haze-spot: rgba(201, 151, 0, 0.1);
+  --haze-start: rgba(5, 18, 40, 0.76);
+  --haze-end: rgba(4, 30, 66, 0.7);
 }
 body.dark.theme-fenwick {
   --purple: #f2c300;
@@ -1114,10 +1127,15 @@ body.dark.theme-fenwick {
   --accent-soft-2: #5e4d08;
   --accent-card: #322a07;
   --accent-event: #4a3d08;
-  --accent-gradient-start: #050505;
-  --accent-gradient-end: #f2c300;
-  --accent-flash-start: #050505;
-  --accent-flash-end: #a98800;
+  --button-bg: #f2c300;
+  --button-text: #111111;
+  --feature-bg: #050505;
+  --feature-text: #ffffff;
+  --chrome-bg: rgba(8, 8, 8, 0.92);
+  --chrome-text: #ffe477;
+  --haze-spot: rgba(242, 195, 0, 0.1);
+  --haze-start: rgba(7, 7, 7, 0.76);
+  --haze-end: rgba(17, 17, 17, 0.7);
 }
 @media (max-width: 850px) {
   .sidebar {
@@ -1238,6 +1256,21 @@ body.dark.theme-fenwick {
     gap: 10px;
     background: rgba(238, 245, 238, 0.86);
     backdrop-filter: blur(16px);
+  }
+  body.theme-notre-dame .brand,
+  body.theme-fenwick .brand {
+    color: var(--chrome-text);
+  }
+  body.theme-notre-dame nav p,
+  body.theme-fenwick nav p {
+    color: color-mix(in srgb, var(--chrome-text) 82%, transparent);
+  }
+  body.theme-notre-dame .nav:hover,
+  body.theme-notre-dame .nav.active,
+  body.theme-fenwick .nav:hover,
+  body.theme-fenwick .nav.active {
+    background: var(--button-bg);
+    color: var(--button-text);
   }
   .search {
     flex: 1;
