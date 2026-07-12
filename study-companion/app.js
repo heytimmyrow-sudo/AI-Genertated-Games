@@ -942,20 +942,6 @@ function renderCalendar() {
       renderCalendar();
     };
   }
-  renderSchoolCalendarSync();
-}
-
-function renderSchoolCalendarSync() {
-  const panel = q("#schoolCalendarSync");
-  if (!panel) return;
-  const enabled = state.schoolTheme === "st-patrick";
-  panel.hidden = !enabled;
-  const status = q("#schoolCalendarStatus");
-  if (status) {
-    status.textContent = enabled
-      ? "Official 2025-2026 important dates are shown in the month grid. The live school calendar is below."
-      : "School calendar sync is only enabled for Saint Patrick.";
-  }
 }
 
 function renderExamCountdown() {

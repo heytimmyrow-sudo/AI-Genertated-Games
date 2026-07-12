@@ -882,10 +882,6 @@ small {
   color: var(--muted);
   font-size: 10px;
 }
-.calendar-combo {
-  padding: 0;
-  overflow: hidden;
-}
 .calendar {
   padding: 0;
   display: grid;
@@ -983,23 +979,6 @@ small {
   color: var(--feature-text);
   background: var(--feature-bg);
   border-left: 3px solid var(--button-bg);
-}
-.school-calendar-sync {
-  margin-top: 0;
-  padding: 18px;
-  border-top: 1px solid var(--line);
-  background: color-mix(in srgb, var(--paper) 86%, var(--accent-soft));
-}
-.school-calendar-sync .head {
-  margin-bottom: 14px;
-}
-.school-calendar-sync iframe {
-  width: 100%;
-  min-height: 640px;
-  border: 1px solid var(--line);
-  border-radius: 16px;
-  background: var(--paper);
-  display: block;
 }
 .classcards,
 .grades {
@@ -1677,10 +1656,6 @@ body.dark.theme-fenwick {
     height: auto;
     padding: 7px 5px;
     overflow-wrap: anywhere;
-  }
-  .school-calendar-sync iframe {
-    min-height: 520px;
-    border-radius: 12px;
   }
   .welcome h1 {
     font-size: 30px;
